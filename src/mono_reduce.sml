@@ -537,16 +537,20 @@ fun reduce file =
 
                 fun doLet (x, t, e', b) =
                     let
-                        val notValue = U.Exp.exists {typ = fn _ => false,
-                                                     exp = fn e =>
-                                                              case e of
-                                                                  EPrim _ => false
-                                                                | ECon _ => false
-                                                                | ENone _ => false
-                                                                | ESome _ => false
-                                                                | ERecord _ => false
-                                                                | _ => true}
-
+                        fun passive (e : exp) =
+                            case #1 e of
+                                EPrim _ => true
+                              | ERel _ => true
+                              | ENamed _ => true
+                              | ECon (_, _, NONE) => true
+                              | ECon (_, _, SOME e) => passive e
+                              | ENone _ => true
+                              | ESome (_, e) => passive e
+                              | EFfi _ => true
+                              | EAbs _ => true
+                              | ERecord xets => List.all (passive o #2) xets
+                              | EField (e, _) => passive e
+                              | _ => false
 
                         fun doSub () =
                             let
@@ -626,7 +630,7 @@ fun reduce file =
                                 else
                                     e
                             end
-                        else if countFree 0 0 b > 1 andalso notValue e' then
+                        else if countFree 0 0 b > 1 andalso not (passive e') then
                             e
                         else
                             trySub ()

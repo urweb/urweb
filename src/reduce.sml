@@ -247,6 +247,11 @@ fun passive (e : exp) =
       | EField (e, _, _) => passive e
       | _ => false
 
+fun notFfi (t : con) =
+    case #1 t of
+        CFfi _ => false
+      | _ => true
+
 fun kindConAndExp (namedC, namedE) =
     let
         fun kind env (all as (k, loc)) =
@@ -793,7 +798,7 @@ fun kindConAndExp (namedC, namedE) =
 
                                 val t = con env t
                             in
-                                if passive e1' orelse count e2 <= 1 orelse ESpecialize.functionInside t then
+                                if notFfi t andalso (passive e1' orelse count e2 <= 1 orelse ESpecialize.functionInside t) then
                                     exp (KnownE e1 :: env) e2
                                 else
                                     (ELet (x, t, e1', exp (UnknownE :: env) e2), loc)
