@@ -94,6 +94,24 @@ if test [$WORKING_VERSION = "1"]; then
    VERSION="$VERSION + `hg identify || (cat .hg_archival.txt | grep 'node\:') || echo ?`"
 fi
 
+# Clang does not like being passed -pthread, since it's implicit on OS X.
+# So let's get rid of that! Here's to hoping it doesn't break Clang
+# on other platforms.
+AC_MSG_CHECKING([if compiling with clang])
+AC_COMPILE_IFELSE(
+[AC_LANG_PROGRAM([], [[
+#ifndef __clang__
+       not clang
+#endif
+]])],
+[CLANG=yes], [CLANG=no])
+AC_MSG_RESULT([$CLANG])
+
+if test [$CLANG = "yes"]; then
+   PTHREAD_CFLAGS=""
+   PTHREAD_LIBS=""
+fi
+
 AC_SUBST(CC)
 AC_SUBST(BIN)
 AC_SUBST(LIB)
@@ -130,6 +148,8 @@ Ur/Web configuration:
   MySQL C header:      MSHEADER       $MSHEADER
   SQLite C header:     SQHEADER       $SQHEADER
   OpenSSL:             OPENSSL_LIBS   $OPENSSL_LIBS
+  pthreads:            PTHREAD_CFLAGS $PTHREAD_CFLAGS
+                       PTHREAD_LIBS   $PTHREAD_LIBS
 
   Version:             $VERSION
 EOF
