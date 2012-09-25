@@ -1,4 +1,15 @@
 ========
+20120925
+========
+
+- Changes to optimization/compilation strategy that can speed up compilation and
+  reduce code size dramatically
+- New .urp directives: 'coreInline' and 'monoInline'
+- 'show' instance for 'sql_query'
+- Improvements to compiler error messages
+- Bug fixes and optimization improvements
+
+========
 20120807
 ========
 
