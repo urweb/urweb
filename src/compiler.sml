@@ -1469,7 +1469,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
         val linker = Option.getOpt (linker, Config.ccompiler ^ " -Werror" ^ opt ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " " ^ Config.pthreadLibs)
 
         val link = linker
-                   ^ " " ^ lib ^ " " ^ escapeFilename oname ^ " " ^ libs ^ " -lm " ^ Config.openssl ^ " -o " ^ escapeFilename ename
+                   ^ " " ^ lib ^ " " ^ escapeFilename oname ^ " -lm " ^ Config.openssl ^ " " ^ libs ^ " -o " ^ escapeFilename ename
 
         val (compile, link) =
             if profile then
