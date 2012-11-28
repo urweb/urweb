@@ -42,7 +42,7 @@ val minus : t ::: Type -> num t -> t -> t -> t
 val times : t ::: Type -> num t -> t -> t -> t
 val divide : t ::: Type -> num t -> t -> t -> t
 val mod : t ::: Type -> num t -> t -> t -> t
-val exp : t ::: Type -> num t -> t -> t -> t
+val pow : t ::: Type -> num t -> t -> t -> t
 val num_int : num int
 val num_float : num float
 
