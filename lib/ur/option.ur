@@ -49,3 +49,8 @@ fun get [a] (x : a) (o : option a) =
     case o of
         None => x
       | Some v => v
+
+fun unsafeGet [a] (o : option a) =
+    case o of
+        None   => error <xml>Option.unsafeGet: encountered None</xml>
+      | Some v => v

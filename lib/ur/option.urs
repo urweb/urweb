@@ -12,3 +12,4 @@ val mp : a ::: Type -> b ::: Type -> (a -> b) -> t a -> t b
 val bind : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> t b
 
 val get : a ::: Type -> a -> option a -> a
+val unsafeGet : a ::: Type -> option a -> a
