@@ -2482,6 +2482,12 @@ It is possible to write JavaScript FFI code that interacts with the functional-r
 \item It is possible to use the more standard ``IDs and mutation'' style of JavaScript coding, though that style is unidiomatic for Ur/Web and should be avoided wherever possible.  Recall the abstract type $\mt{id}$ and its constructor $\mt{fresh}$, which can be used to generate new unique IDs in Ur/Web code.  Values of this type are represented as strings in JavaScript, and a function \cd{fresh()} is available to generate new unique IDs.  Application-specific ID generation schemes may cause bad interactions with Ur/Web code that also generates IDs, so the recommended approach is to produce IDs only via calls to \cd{fresh()}.  FFI code shouldn't depend on the ID generation scheme (on either server side or client side), but it is safe to include these IDs in tag attributes (in either server-side or client-side code) and manipulate the associated DOM nodes in the standard way (in client-side code).  Be forewarned that this kind of imperative DOM manipulation may confuse the Ur/Web runtime system and interfere with proper behavior of tags like \cd{<dyn>}!
 \end{itemize}
 
+\subsection{Introducing New HTML Tags}
+
+FFI modules may introduce new tags as values with $\mt{Basis.tag}$ types.  See \texttt{basis.urs} for examples of how tags are declared.  The identifier of a tag value is used as its rendering in HTML.  The Ur/Web syntax sugar for XML literals desugars each use of a tag into a reference to an identifier with the same name.  There is no need to provide implementations (i.e., in C or JavaScript code) for such identifiers.
+
+The onus is on the coder of a new tag's interface to think about consequences for code injection attacks, messing with the DOM in ways that may break Ur/Web reactive programming, etc.
+
 
 \section{Compiler Phases}
 

@@ -1,16 +1,16 @@
-.Grid1_tabl {
+.Grid1_tab {
         border-style: solid
 }
 
-.Grid1_th {
+.Grid1_header {
         border-style: solid
 }
 
-.Grid1_tr {
+.Grid1_row {
         border-style: solid
 }
 
-.Grid1_td {
+.Grid1_data {
         border-style: solid
 }
 

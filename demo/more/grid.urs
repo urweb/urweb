@@ -49,9 +49,9 @@ functor Make(M : sig
     val showSelection : grid -> source bool
     val selection : grid -> signal (list M.row)
 
-    style tabl
-    style tr
-    style th
-    style td
+    style tab
+    style row
+    style header
+    style data
     style agg
 end

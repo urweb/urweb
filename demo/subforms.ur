@@ -13,7 +13,7 @@ fun sub r =
         </body></xml>
     end
 
-fun subforms n =
+fun subfrms n =
     if n <= 0 then
         <xml/>
     else
@@ -22,13 +22,13 @@ fun subforms n =
             <hidden{#Num} value={show n}/>
             <li>{[n]}: <textbox{#Text}/></li>
           </entry>
-          {subforms (n - 1)}
+          {subfrms (n - 1)}
         </xml>
 
 fun form n = return <xml><body>
   <form>
     <subforms{#Lines}>
-      {subforms n}
+      {subfrms n}
     </subforms>
     <submit action={sub}/>
   </form>

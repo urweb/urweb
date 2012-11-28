@@ -40,10 +40,10 @@ functor Make(M : sig
 
                  val pageLength : option int
              end) = struct
-    style tabl
-    style tr
-    style th
-    style td
+    style tab
+    style row
+    style header
+    style data
     style agg
 
     fun make (row : M.row) [input] [filter] (m : colMeta' M.row input filter) : transaction input = m.Project row
@@ -122,13 +122,13 @@ functor Make(M : sig
          M.folder M.cols grid.Cols grid.Filters row
 
     fun render (grid : grid) = <xml>
-      <table class={tabl}>
-        <tr class={tr}>
+      <table class={tab}>
+        <tr class={row}>
           <th/> <th/> <th><button value="No sort" onclick={fn _ => set grid.Sort None}/></th>
           {@mapX2 [fst3] [colMeta M.row] [tr]
             (fn [nm :: Name] [p :: (Type * Type * Type)] [rest :: {(Type * Type * Type)}] [[nm] ~ rest]
                              data (meta : colMeta M.row p) =>
-                <xml><th class={th}>
+                <xml><th class={header}>
                   {case (meta.Handlers data).Sort of
                        None => txt (meta.Handlers data).Header
                      | sort => <xml><button value={(meta.Handlers data).Header}
@@ -185,7 +185,7 @@ functor Make(M : sig
                                       cols <- makeAll grid.Cols row';
                                       set colsS cols
                           in
-                              <xml><tr class={tr}>
+                              <xml><tr class={row}>
                                 <td>
                                   <dyn signal={b <- signal grid.Selection;
                                                return (if b then
@@ -213,18 +213,18 @@ functor Make(M : sig
                                              return (@mapX3 [fst3] [colMeta M.row] [snd3] [_]
                                                       (fn [nm :: Name] [t :: (Type * Type * Type)]
                                                                        [rest :: {(Type * Type * Type)}]
-                                                                       [[nm] ~ rest] data meta v =>
-                                                          <xml><td class={td}>
+                                                                       [[nm] ~ rest] dat meta v =>
+                                                          <xml><td class={data}>
                                                             <dyn signal={b <- signal ud;
                                                                          return (if b then
-                                                                                     (meta.Handlers data).Edit v
+                                                                                     (meta.Handlers dat).Edit v
                                                                                  else
-                                                                                     (meta.Handlers data).Display
+                                                                                     (meta.Handlers dat).Display
                                                                                                          v)}/>
                                                             <dyn signal={b <- signal ud;
                                                                          if b then
                                                                              valid <-
-                                                                             (meta.Handlers data).Validate v;
+                                                                             (meta.Handlers dat).Validate v;
                                                                              return (if valid then
                                                                                          <xml/>
                                                                                      else

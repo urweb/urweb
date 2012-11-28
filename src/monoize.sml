@@ -3203,7 +3203,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 fun getTag' (e, _) =
                     case e of
-                        L.EFfi ("Basis", tag) => (tag, [])
+                        L.EFfi (_, tag) => (tag, [])
                       | L.ECApp (e, t) => let
                             val (tag, ts) = getTag' e
                         in
@@ -3215,7 +3215,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                 fun getTag (e, _) =
                     case e of
-                        L.EFfiApp ("Basis", tag, [((L.ERecord [], _), _)]) => (tag, [])
+                        L.EFfiApp (_, tag, [((L.ERecord [], _), _)]) => (tag, [])
                       | L.EApp (e, (L.ERecord [], _)) => getTag' e
                       | _ => (E.errorAt loc "Non-constant XML tag";
                               Print.eprefaces' [("Expression", CorePrint.p_exp env tag)];
