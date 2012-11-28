@@ -300,7 +300,8 @@ val () = case CommandLine.arguments () of
                       Socket.listen (listen, 1);
                       loop ()
                   end)
-
+           | ["daemon", "stop"] =>
+	     (OS.FileSys.remove socket handle OS.SysErr _ => OS.Process.exit OS.Process.success) 
            | args =>
              let
                  val sock = UnixSock.Strm.socket ()
@@ -340,6 +341,4 @@ val () = case CommandLine.arguments () of
                  else
                      (OS.FileSys.remove socket;
                       raise OS.SysErr ("", NONE))
-             end handle OS.SysErr _ => case args of
-                                           ["daemon", "stop"] => (OS.FileSys.remove socket handle OS.SysErr _ => ())
-                                         | _ => OS.Process.exit (oneRun args)
+             end handle OS.SysErr _ => OS.Process.exit (oneRun args)
