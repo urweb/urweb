@@ -380,6 +380,8 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
               newline,
               string "uw_Estrings = 1;",
               newline,
+              string "uw_sql_type_annotations = 1;",
+              newline,
               string "uw_sqlsuffixString = \"::text\";",
               newline,
               string "uw_sqlsuffixChar = \"::char\";",

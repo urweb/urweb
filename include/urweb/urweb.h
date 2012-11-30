@@ -273,7 +273,7 @@ uw_Basis_string uw_Basis_unAs(uw_context, uw_Basis_string);
 
 extern char *uw_sqlfmtInt;
 extern char *uw_sqlfmtFloat;
-extern int uw_Estrings;
+extern int uw_Estrings, uw_sql_type_annotations;
 extern char *uw_sqlsuffixString;
 extern char *uw_sqlsuffixChar;
 extern char *uw_sqlsuffixBlob;

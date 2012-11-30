@@ -2415,7 +2415,7 @@ char *uw_Basis_sqlifyFloatN(uw_context ctx, uw_Basis_float *n) {
     return uw_Basis_sqlifyFloat(ctx, *n);
 }
 
-int uw_Estrings = 1;
+int uw_Estrings = 1, uw_sql_type_annotations = 1;
 char *uw_sqlsuffixString = "::text";
 char *uw_sqlsuffixChar = "::char";
 
@@ -2634,12 +2634,17 @@ char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
   if (localtime_r(&t.seconds, &stm)) {
     s = uw_malloc(ctx, TIMES_MAX);
     len = strftime(s, TIMES_MAX, TIME_FMT_PG, &stm);
-    if (t.microseconds) {
-      r = uw_malloc(ctx, len + 21);
-      sprintf(r, "'%s.%06u'::timestamp", s, t.microseconds);
+    if (uw_sql_type_annotations) {
+      if (t.microseconds) {
+        r = uw_malloc(ctx, len + 21);
+        sprintf(r, "'%s.%06u'::timestamp", s, t.microseconds);
+      } else {
+        r = uw_malloc(ctx, len + 14);
+        sprintf(r, "'%s'::timestamp", s);
+      }
     } else {
-      r = uw_malloc(ctx, len + 14);
-      sprintf(r, "'%s'::timestamp", s);
+      r = uw_malloc(ctx, len + 3);
+      sprintf(r, "'%s'", s);
     }
     return r;
   } else
