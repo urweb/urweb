@@ -883,7 +883,7 @@ con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
 val hidden : formTag string [] [Id = string, Value = string]
 val textbox : formTag string [] ([Value = string, Size = int, Placeholder = string, Source = source string, Onchange = transaction unit,
                                   Ontext = transaction unit] ++ boxAttrs)
-val password : formTag string [] ([Value = string, Size = int] ++ boxAttrs)
+val password : formTag string [] ([Value = string, Size = int, Placeholder = string] ++ boxAttrs)
 val textarea : formTag string [] ([Rows = int, Cols = int, Onchange = transaction unit,
                                    Ontext = transaction unit] ++ boxAttrs)
 

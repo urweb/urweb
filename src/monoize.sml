@@ -3602,7 +3602,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                       val (ts, fm) = tagStart "input"
 				  in
                                       ((L'.EStrcat (ts,
-                                                    (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\" />")),
+                                                    (L'.EPrim (Prim.String (" type=\"text\" name=\"" ^ name ^ "\" />")),
                                                      loc)), loc), fm)
 				  end
 				| SOME (_, src, _) =>
@@ -3674,7 +3674,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 				 val (ts, fm) = tagStart "input"
                              in
 				 ((L'.EStrcat (ts,
-                                               (L'.EPrim (Prim.String " />"), loc)),
+                                               (L'.EPrim (Prim.String " type=\"text\" />"), loc)),
                                    loc), fm)
                              end
                            | SOME (_, src, _) =>
