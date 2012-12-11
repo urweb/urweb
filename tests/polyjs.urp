@@ -1,0 +1,5 @@
+ffi polyjsFfi
+jsFunc PolyjsFfi.one=one
+jsFunc PolyjsFfi.two=two
+
+polyjs

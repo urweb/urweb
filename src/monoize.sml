@@ -4087,7 +4087,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs (x, monoType env dom, monoType env ran, e), loc), fm)
             end
-          | L.ECApp _ => poly ()
+
+          | L.ECApp (e, _) =>
+            let
+                val (e, fm) = monoExp (env, st, fm) e
+            in
+                case #1 e of
+                    L'.EFfi _ => (e, fm)
+                  | _ => poly ()
+            end
           | L.ECAbs _ => poly ()
 
           | L.EFfi mx => ((L'.EFfi mx, loc), fm)
