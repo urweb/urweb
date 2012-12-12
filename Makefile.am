@@ -1,10 +1,11 @@
 ACLOCAL_AMFLAGS = -I m4
 
-BIN      = @BIN@
-SRCLIB   = @SRCLIB@
-INCLUDE  = @INCLUDE@
-SITELISP = @SITELISP@
-VERSION  = @VERSION@
+BIN       = @BIN@
+SRCLIB    = @SRCLIB@
+INCLUDE   = @INCLUDE@
+SITELISP  = @SITELISP@
+VERSION   = @VERSION@
+MLTONARGS = @MLTONARGS@
 
 LIB_UR   = $(SRCLIB)/ur
 LIB_C    = $(SRCLIB)/c
@@ -59,7 +60,7 @@ bin/urweb: xml/entities.sml \
 		src/compiler.mlb src/urweb.mlb src/*.sig src/*.sml \
 		src/urweb.mlton.lex.sml \
 		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml
-	$(MLTON) -output $@ src/compiler.mlb
+	$(MLTON) $(MLTONARGS) -output $@ src/compiler.mlb
 
 xml/entities.sml: xml/parse xml/xhtml-lat1.ent xml/xhtml-special.ent xml/xhtml-symbol.ent
 	xml/parse >xml/entities.sml

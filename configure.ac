@@ -119,6 +119,7 @@ AC_SUBST(SRCLIB)
 AC_SUBST(INCLUDE)
 AC_SUBST(SITELISP)
 AC_SUBST(CCARGS)
+AC_SUBST(MLTONARGS)
 AC_SUBST(PGHEADER)
 AC_SUBST(MSHEADER)
 AC_SUBST(SQHEADER)
@@ -144,6 +145,7 @@ Ur/Web configuration:
   site-lisp directory: SITELISP       $SITELISP
   C compiler:          CC             $CC
   Extra CC args:       CCARGS         $CCARGS  
+  Extra MLTON args:    MLTONARGS      $MLTONARGS
   Postgres C header:   PGHEADER       $PGHEADER
   MySQL C header:      MSHEADER       $MSHEADER
   SQLite C header:     SQHEADER       $SQHEADER
