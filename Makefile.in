@@ -151,6 +151,7 @@ MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MLLEX = @MLLEX@
 MLTON = mlton
+MLTONARGS = @MLTONARGS@
 MLYACC = @MLYACC@
 MSHEADER = @MSHEADER@
 NM = @NM@
@@ -563,7 +564,7 @@ distcheck: dist
 	*.zip*) \
 	  unzip $(distdir).zip ;;\
 	esac
-	chmod -R a-w $(distdir); chmod a+w $(distdir)
+	chmod -R a-w $(distdir); chmod u+w $(distdir)
 	mkdir $(distdir)/_build
 	mkdir $(distdir)/_inst
 	chmod a-w $(distdir)
@@ -785,7 +786,7 @@ bin/urweb: xml/entities.sml \
 		src/compiler.mlb src/urweb.mlb src/*.sig src/*.sml \
 		src/urweb.mlton.lex.sml \
 		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml
-	$(MLTON) -output $@ src/compiler.mlb
+	$(MLTON) $(MLTONARGS) -output $@ src/compiler.mlb
 
 xml/entities.sml: xml/parse xml/xhtml-lat1.ent xml/xhtml-special.ent xml/xhtml-symbol.ent
 	xml/parse >xml/entities.sml
