@@ -3364,8 +3364,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                         val x =
                                                             case x of
                                                                 "Typ" => "Type"
+                                                              | "Nam" => "Name"
                                                               | "Link" => "Href"
                                                               | _ => x
+
+                                                        val x = String.translate (fn #"_" => "-"
+                                                                                   | ch => String.str ch) x
+
                                                         val xp = " " ^ lowercaseFirst x ^ "=\""
 
                                                         val (e, fm) = fooify env fm (e, t)

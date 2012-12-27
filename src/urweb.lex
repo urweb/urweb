@@ -177,6 +177,7 @@ fun unescape loc s =
 %s COMMENT STRING CHAR XML XMLTAG;
 
 id = [a-z_][A-Za-z0-9_']*;
+xmlid = [A-Za-z][A-Za-z0-9-_]*;
 cid = [A-Z][A-Za-z0-9_]*;
 ws = [\ \t\012\r];
 intconst = [0-9]+;
@@ -313,7 +314,7 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 
 <XMLTAG> {ws}+        => (lex ());
 
-<XMLTAG> {id}         => (Tokens.SYMBOL (yytext, yypos, yypos + size yytext));
+<XMLTAG> {xmlid}      => (Tokens.SYMBOL (yytext, yypos, yypos + size yytext));
 <XMLTAG> "="          => (Tokens.EQ (yypos, yypos + size yytext));
 
 <XMLTAG> {intconst}   => (case Int64.fromString yytext of

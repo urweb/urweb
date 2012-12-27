@@ -35,6 +35,12 @@ val dummy = ErrorMsg.dummySpan
 fun capitalize "" = ""
   | capitalize s = str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
+fun makeAttr s =
+    case s of
+        "type" => "Typ"
+      | "name" => "Nam"
+      | _ => capitalize (String.translate (fn ch => if ch = #"-" then "_" else str ch) s)
+
 fun entable t =
     case #1 t of
         TRecord c => c
@@ -1648,10 +1654,7 @@ attr   : SYMBOL EQ attrv                (case SYMBOL of
 					   | "dynStyle" => DynStyle attrv
 					   | _ =>
                                              let
-                                                 val sym =
-                                                     case SYMBOL of
-                                                         "type" => "Typ"
-                                                       | x => capitalize x
+                                                 val sym = makeAttr SYMBOL
                                              in
                                                  Normal ((CName sym, s (SYMBOLleft, SYMBOLright)),
                                                          if (sym = "Href" orelse sym = "Src")

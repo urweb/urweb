@@ -437,3 +437,15 @@ fun mapXiM [m ::: Type -> Type] (_ : monad m) [a] [ctx ::: {Unit}] (f : int -> a
     in
         mapXiM' 0
     end
+
+fun tabulateM [m] (_ : monad m) [a] (f : int -> m a) n =
+    let
+        fun tabulate' n acc =
+            if n <= 0 then
+                return acc
+            else
+                (v <- f (n-1);
+                 tabulate' (n-1) (v :: acc))
+    in
+        tabulate' n []
+    end

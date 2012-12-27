@@ -63,6 +63,9 @@ val all : a ::: Type -> (a -> bool) -> t a -> bool
 val app : m ::: (Type -> Type) -> monad m -> a ::: Type
           -> (a -> m unit) -> t a -> m unit
 
+val tabulateM : m ::: (Type -> Type) -> monad m -> a ::: Type
+                -> (int -> m a) -> int -> m (t a)
+
 val mapQuery : tables ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                -> [tables ~ exps] =>
     sql_query [] [] tables exps
