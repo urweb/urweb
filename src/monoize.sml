@@ -90,7 +90,12 @@ val singletons = SS.addList (SS.empty,
                               "hr",
                               "input",
                               "button",
-                              "img"])
+                              "img",
+                              "base",
+                              "meta",
+                              "param",
+                              "area",
+                              "col"])
 
 val dummyTyp = (L'.TDatatype (0, ref (L'.Enum, [])), E.dummySpan)
 
