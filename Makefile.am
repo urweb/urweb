@@ -66,7 +66,7 @@ xml/entities.sml: xml/parse xml/xhtml-lat1.ent xml/xhtml-special.ent xml/xhtml-s
 	xml/parse >xml/entities.sml
 
 xml/parse: xml/parse.sml
-	$(MLTON) xml/parse.sml
+	$(MLTON) $(MLTONARGS) xml/parse.sml
 
 install-exec-emacs:
 if USE_EMACS
