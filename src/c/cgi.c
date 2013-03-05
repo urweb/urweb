@@ -143,4 +143,4 @@ void uw_do_expunge(uw_context ctx, uw_Basis_client cli, void *data) {
 void uw_post_expunge(uw_context ctx, void *data) {
 }
 
-int uw_supports_direct_status = 1;
+int uw_supports_direct_status = 0;
