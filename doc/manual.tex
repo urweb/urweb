@@ -2456,6 +2456,7 @@ In contrast to C FFI code, JavaScript FFI functions take no extra context argume
 \item \texttt{option}-like types receive special handling similar to their handling in C.  The ``\texttt{None}'' constructor is \texttt{null}, and a use of the ``\texttt{Some}'' constructor on a value \texttt{v} is either \texttt{v}, if the underlying type doesn't need to use \texttt{null}; or \texttt{\{v:v\}} otherwise.
 \item Any other datatypes represent a non-value-carrying constructor \texttt{C} as \texttt{"C"} and an application of a constructor \texttt{C} to value \texttt{v} as \texttt{\{n:"C", v:v\}}.  This rule only applies to datatypes defined in FFI module signatures; the compiler is free to optimize the representations of other, non-\texttt{option}-like datatypes in arbitrary ways.
 \item As in the C FFI, all abstract types of program syntax are implemented with strings in JavaScript.
+\item A value of Ur type \texttt{transaction t} is represented in the same way as for \texttt{unit -> t}.
 \end{itemize}
 
 It is possible to write JavaScript FFI code that interacts with the functional-reactive structure of a document.  Here is a quick summary of some of the simpler functions to use; descriptions of fancier stuff may be added later on request (and such stuff should be considered ``undocumented features'' until then).
