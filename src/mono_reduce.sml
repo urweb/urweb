@@ -308,7 +308,7 @@ val freeInAbs = U.Exp.existsB {typ = fn _ => false,
                                              U.Exp.RelE _ => n + 1
                                            | _ => n} 0
 
-fun reduce file =
+fun reduce (file : file) =
     let
         val (timpures, impures, absCounts) =
             foldl (fn ((d, _), (timpures, impures, absCounts)) =>
@@ -366,7 +366,7 @@ fun reduce file =
                                      absCounts vis)
                             | _ => (timpures, impures, absCounts)
                       end)
-                  (IS.empty, IS.empty, IM.empty) file
+                  (IS.empty, IS.empty, IM.empty) (#1 file)
 
         val uses = U.File.fold {typ = fn (_, m) => m,
                                 exp = fn (e, m) =>

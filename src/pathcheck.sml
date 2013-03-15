@@ -110,6 +110,6 @@ fun checkDecl ((d, loc), (funcs, rels, cookies, styles)) =
           | _ => (funcs, rels, cookies, styles)
     end
 
-fun check ds = ignore (foldl checkDecl (SS.empty, SS.empty, SS.empty, SS.empty) ds)
+fun check (ds, _) = ignore (foldl checkDecl (SS.empty, SS.empty, SS.empty, SS.empty) ds)
 
 end

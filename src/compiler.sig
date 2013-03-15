@@ -116,12 +116,12 @@ signature COMPILER = sig
     val mono_shake : (Mono.file, Mono.file) phase
     val iflow : (Mono.file, Mono.file) phase
     val namejs : (Mono.file, Mono.file) phase
+    val scriptcheck : (Mono.file, Mono.file) phase
     val jscomp : (Mono.file, Mono.file) phase
     val fuse : (Mono.file, Mono.file) phase
     val pathcheck : (Mono.file, Mono.file) phase
     val sidecheck : (Mono.file, Mono.file) phase
     val cjrize : (Mono.file, Cjr.file) phase
-    val scriptcheck : (Cjr.file, Cjr.file) phase
     val prepare : (Cjr.file, Cjr.file) phase
     val checknest : (Cjr.file, Cjr.file) phase
     val sqlify : (Mono.file, Cjr.file) phase
@@ -170,6 +170,7 @@ signature COMPILER = sig
     val toIflow : (string, Mono.file) transform
     val toNamejs : (string, Mono.file) transform
     val toNamejs_untangle : (string, Mono.file) transform
+    val toScriptcheck : (string, Mono.file) transform
     val toJscomp : (string, Mono.file) transform
     val toMono_opt3 : (string, Mono.file) transform
     val toFuse : (string, Mono.file) transform
@@ -184,7 +185,6 @@ signature COMPILER = sig
     val toPathcheck : (string, Mono.file) transform
     val toSidecheck : (string, Mono.file) transform
     val toCjrize : (string, Cjr.file) transform
-    val toScriptcheck : (string, Cjr.file) transform
     val toPrepare : (string, Cjr.file) transform
     val toChecknest : (string, Cjr.file) transform
     val toSqlify : (string, Cjr.file) transform

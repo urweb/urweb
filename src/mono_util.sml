@@ -664,9 +664,9 @@ fun mapfoldB (all as {bind, ...}) =
     let
         val mfd = Decl.mapfoldB all
 
-        fun mff ctx ds =
+        fun mff ctx (ds, ps) =
             case ds of
-                nil => S.return2 nil
+                nil => S.return2 (nil, ps)
               | d :: ds' =>
                 S.bind2 (mfd ctx d,
                          fn d' =>
@@ -705,9 +705,9 @@ fun mapfoldB (all as {bind, ...}) =
                                       | DPolicy _ => ctx
                                       | DOnError _ => ctx
                             in
-                                S.map2 (mff ctx' ds',
-                                     fn ds' =>
-                                        d' :: ds')
+                                S.map2 (mff ctx' (ds', ps),
+                                     fn (ds', _) =>
+                                        (d' :: ds', ps))
                             end)
     in
         mff
@@ -741,27 +741,28 @@ fun fold {typ, exp, decl} s d =
         S.Continue (_, s) => s
       | S.Return _ => raise Fail "MonoUtil.File.fold: Impossible"
 
-val maxName = foldl (fn ((d, _) : decl, count) =>
-                        case d of
-                            DDatatype dts =>
-                            foldl (fn ((_, n, ns), count) =>
-                                      foldl (fn ((_, n', _), m) => Int.max (n', m))
-                                            (Int.max (n, count)) ns) count dts
-                          | DVal (_, n, _, _, _) => Int.max (n, count)
-                          | DValRec vis => foldl (fn ((_, n, _, _, _), count) => Int.max (n, count)) count vis
-                          | DExport _ => count
-                          | DTable _ => count
-                          | DSequence _ => count
-                          | DView _ => count
-                          | DDatabase _ => count
-                          | DJavaScript _ => count
-                          | DCookie _ => count
-                          | DStyle _ => count
-                          | DTask _ => count
-                          | DPolicy _ => count
-                          | DOnError _ => count) 0
+fun maxName (f : file) =
+    foldl (fn ((d, _) : decl, count) =>
+              case d of
+                  DDatatype dts =>
+                  foldl (fn ((_, n, ns), count) =>
+                            foldl (fn ((_, n', _), m) => Int.max (n', m))
+                                  (Int.max (n, count)) ns) count dts
+                | DVal (_, n, _, _, _) => Int.max (n, count)
+                | DValRec vis => foldl (fn ((_, n, _, _, _), count) => Int.max (n, count)) count vis
+                | DExport _ => count
+                | DTable _ => count
+                | DSequence _ => count
+                | DView _ => count
+                | DDatabase _ => count
+                | DJavaScript _ => count
+                | DCookie _ => count
+                | DStyle _ => count
+                | DTask _ => count
+                | DPolicy _ => count
+                | DOnError _ => count) 0 (#1 f)
 
-fun appLoc f =
+fun appLoc f (fl : file) =
     let
         val eal = Exp.appLoc f
 
@@ -790,7 +791,7 @@ fun appLoc f =
               | PolUpdate e1 => eal e1
               | PolSequence e1 => eal e1
     in
-        app appl
+        app appl (#1 fl)
     end
 
 end

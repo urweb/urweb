@@ -1363,12 +1363,19 @@ val toNamejs = transform namejs "namejs" o toIflow
 
 val toNamejs_untangle = transform untangle "namejs_untangle" o toNamejs
 
+val scriptcheck = {
+    func = ScriptCheck.classify,
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toScriptcheck = transform scriptcheck "scriptcheck" o toNamejs_untangle
+
 val jscomp = {
     func = JsComp.process,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toJscomp = transform jscomp "jscomp" o toNamejs_untangle
+val toJscomp = transform jscomp "jscomp" o toScriptcheck
 
 val toMono_opt3 = transform mono_opt "mono_opt3" o toJscomp
 
@@ -1410,19 +1417,12 @@ val cjrize = {
 
 val toCjrize = transform cjrize "cjrize" o toSidecheck
 
-val scriptcheck = {
-    func = ScriptCheck.classify,
-    print = CjrPrint.p_file CjrEnv.empty
-}
-
-val toScriptcheck = transform scriptcheck "scriptcheck" o toCjrize
-
 val prepare = {
     func = Prepare.prepare,
     print = CjrPrint.p_file CjrEnv.empty
 }
 
-val toPrepare = transform prepare "prepare" o toScriptcheck
+val toPrepare = transform prepare "prepare" o toCjrize
 
 val checknest = {
     func = fn f => if #supportsNestedPrepared (Settings.currentDbms ()) then f else Checknest.annotate f,

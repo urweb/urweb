@@ -694,7 +694,7 @@ fun cifyDecl ((d, loc), sm) =
       | L.DPolicy _ => (NONE, NONE, sm)
       | L.DOnError n => (SOME (L'.DOnError n, loc), NONE, sm)
 
-fun cjrize ds =
+fun cjrize (ds, sideInfo) =
     let
         val (dsF, ds, ps, sm) = foldl (fn (d, (dsF, ds, ps, sm)) =>
                                           let
@@ -722,6 +722,13 @@ fun cjrize ds =
                                               (dsF, ds, ps, Sm.clearDeclares sm)
                                           end)
                                       ([], [], [], Sm.empty) ds
+
+        val sideInfo = foldl (fn ((n, mode), mp) => IM.insert (mp, n, mode)) IM.empty sideInfo
+
+        val ps = map (fn (ek, s, n, ts, t, _, b) =>
+                         (ek, s, n, ts, t,
+                          getOpt (IM.find (sideInfo, n), L'.ServerOnly),
+                          b)) ps
     in
         (List.revAppend (dsF, rev ds),
          ps)

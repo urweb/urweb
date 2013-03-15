@@ -1795,7 +1795,7 @@ fun evalExp env (e as (_, loc)) k =
 
 datatype var_source = Input of int | SubInput of int | Unknown
 
-fun check file =
+fun check (file : file) =
     let
         val () = (St.reset ();
                   rfuns := IM.empty)
@@ -1810,7 +1810,7 @@ fun check file =
         val exptd = foldl (fn ((d, _), exptd) =>
                               case d of
                                   DExport (_, _, n, _, _, _) => IS.add (exptd, n)
-                                | _ => exptd) IS.empty file
+                                | _ => exptd) IS.empty (#1 file)
 
         fun decl (d, loc) =
             case d of
@@ -2071,7 +2071,7 @@ fun check file =
                                         
               | _ => ()
     in
-        app decl file
+        app decl (#1 file)
     end
 
 val check = fn file =>

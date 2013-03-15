@@ -530,7 +530,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                           p_policy env p]
       | DOnError _ => string "ONERROR"
                           
-fun p_file env file =
+fun p_file env (file, _) =
     let
         val (pds, _) = ListUtil.foldlMap (fn (d, env) =>
                                              (p_decl env d,

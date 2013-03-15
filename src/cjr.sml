@@ -128,10 +128,7 @@ datatype decl' =
 
 withtype decl = decl' located
 
-datatype sidedness =
-         ServerOnly
-       | ServerAndPull
-       | ServerAndPullAndPush
+datatype sidedness = datatype Mono.sidedness
 
 datatype effect = datatype Export.effect
 datatype export_kind = datatype Export.export_kind

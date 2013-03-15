@@ -61,7 +61,7 @@ exception CantEmbed of typ
 
 fun inString {needle, haystack} = String.isSubstring needle haystack
 
-fun process file =
+fun process (file : file) =
     let
         val (someTs, nameds) =
             foldl (fn ((DVal (_, n, t, e, _), _), (someTs, nameds)) => (someTs, IM.insert (nameds, n, e))
@@ -77,7 +77,7 @@ fun process file =
                                      someTs) someTs dts,
                        nameds)
                     | (_, state) => state)
-                  (IM.empty, IM.empty) file
+                  (IM.empty, IM.empty) (#1 file)
 
         fun str loc s = (EPrim (Prim.String s), loc)
 
@@ -1304,7 +1304,7 @@ fun process file =
                         listInjectors = TM.empty,
                         decoders = IM.empty,
                         maxName = U.File.maxName file + 1}
-                       file
+                       (#1 file)
 
         val inf = TextIO.openIn (OS.Path.joinDirFile {dir = Settings.libJs (), file = "urweb.js"})
         fun lines acc =
@@ -1334,7 +1334,7 @@ fun process file =
                 ""
     in
         TextIO.closeIn inf;
-        (DJavaScript script, ErrorMsg.dummySpan) :: ds
+        ((DJavaScript script, ErrorMsg.dummySpan) :: ds, #2 file)
     end
 
 end

@@ -41,7 +41,7 @@ type free = {
      exp : IS.set
 }
 
-fun shake file =
+fun shake (file : file) =
     let
         val (cdef, edef) = foldl (fn ((DDatatype dts, _), (cdef, edef)) =>
                                      (foldl (fn ((_, n, xncs), cdef) => IM.insert (cdef, n, xncs)) cdef dts, edef)
@@ -60,7 +60,7 @@ fun shake file =
                                    | ((DTask _, _), acc) => acc
                                    | ((DPolicy _, _), acc) => acc
                                    | ((DOnError _, _), acc) => acc)
-                                 (IM.empty, IM.empty) file
+                                 (IM.empty, IM.empty) (#1 file)
 
         fun typ (c, s) =
             case c of
@@ -130,7 +130,7 @@ fun shake file =
                         usedVars st e1
                     end
                   | ((DOnError n, _), (page_cs, page_es)) => (page_cs, IS.add (page_es, n))
-                  | (_, st) => st) (IS.empty, IS.empty) file
+                  | (_, st) => st) (IS.empty, IS.empty) (#1 file)
 
         val s = {con = page_cs, exp = page_es}
 
@@ -145,20 +145,20 @@ fun shake file =
                                  NONE => raise Fail "MonoShake: Couldn't find 'val'"
                                | SOME (t, e) => shakeExp s e) s page_es
     in
-        List.filter (fn (DDatatype dts, _) => List.exists (fn (_, n, _) => IS.member (#con s, n)) dts
-                      | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
-                      | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
-                      | (DExport _, _) => true
-                      | (DTable _, _) => true
-                      | (DSequence _, _) => true
-                      | (DView _, _) => true
-                      | (DDatabase _, _) => true
-                      | (DJavaScript _, _) => true
-                      | (DCookie _, _) => true
-                      | (DStyle _, _) => true
-                      | (DTask _, _) => true
-                      | (DPolicy _, _) => true
-                      | (DOnError _, _) => true) file
+        (List.filter (fn (DDatatype dts, _) => List.exists (fn (_, n, _) => IS.member (#con s, n)) dts
+                       | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
+                       | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
+                       | (DExport _, _) => true
+                       | (DTable _, _) => true
+                       | (DSequence _, _) => true
+                       | (DView _, _) => true
+                       | (DDatabase _, _) => true
+                       | (DJavaScript _, _) => true
+                       | (DCookie _, _) => true
+                       | (DStyle _, _) => true
+                       | (DTask _, _) => true
+                       | (DPolicy _, _) => true
+                       | (DOnError _, _) => true) (#1 file), #2 file)
     end
 
 end

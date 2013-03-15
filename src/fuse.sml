@@ -144,9 +144,9 @@ fun fuse file =
                  (funcs, maxName))
             end
 
-        val (file, _) = ListUtil.foldlMap doDecl (IM.empty, U.File.maxName file + 1) file
+        val (ds, _) = ListUtil.foldlMap doDecl (IM.empty, U.File.maxName file + 1) (#1 file)
     in
-        file
+        (ds, #2 file)
     end
 
 end

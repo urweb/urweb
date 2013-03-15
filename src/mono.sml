@@ -157,6 +157,11 @@ datatype decl' =
 
 withtype decl = decl' located
 
-type file = decl list
+datatype sidedness =
+         ServerOnly
+       | ServerAndPull
+       | ServerAndPullAndPush
+
+type file = decl list * (int * sidedness) list
 
 end

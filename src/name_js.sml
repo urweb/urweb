@@ -72,7 +72,7 @@ fun squish vs = U.Exp.mapB {typ = fn x => x,
 
 fun rewrite file =
     let
-        val (file, _) = ListUtil.foldlMapConcat (fn (d, nextName) =>
+        val (ds, _) = ListUtil.foldlMapConcat (fn (d, nextName) =>
                                                     let
                                                         val (d, (nextName, newDs)) =
                                                             U.Decl.foldMapB {typ = fn x => x,
@@ -143,9 +143,9 @@ fun rewrite file =
                                                                       DValRec vis => [(DValRec (vis @ newDs), #2 d)]
                                                                     | _ => List.revAppend (map (fn vi => (DVal vi, #2 d)) newDs, [d]),
                                                          nextName)
-                                                    end) (U.File.maxName file + 1) file
+                                                    end) (U.File.maxName file + 1) (#1 file)
     in
-        file
+        (ds, #2 file)
     end
 
 end

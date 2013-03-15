@@ -43,7 +43,7 @@ fun exp (e, s) =
 
       | _ => s
 
-fun untangle file =
+fun untangle (file : file) =
     let
         fun decl (dAll as (d, loc)) =
             case d of
@@ -208,7 +208,7 @@ fun untangle file =
                 end
               | _ => [dAll]
     in
-        ListUtil.mapConcat decl file
+        (ListUtil.mapConcat decl (#1 file), #2 file)
     end
 
 end

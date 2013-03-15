@@ -27,6 +27,6 @@
 
 signature SCRIPT_CHECK = sig
 
-    val classify : Cjr.file -> Cjr.file
+    val classify : Mono.file -> Mono.file
 
 end
