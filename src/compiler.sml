@@ -1452,7 +1452,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
         val proto = Settings.currentProtocol ()
 
         val lib = if Settings.getStaticLinking () then
-                      " " ^ !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a"
+                      " -static " ^ !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a"
                   else
                       "-L" ^ !Settings.configLib ^ " " ^ #linkDynamic proto ^ " -lurweb"
 
@@ -1468,8 +1468,13 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
 
         val linker = Option.getOpt (linker, Config.ccompiler ^ " -Werror" ^ opt ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " " ^ Config.pthreadLibs)
 
+        val ssl = if Settings.getStaticLinking () then
+                      Config.openssl ^ " -ldl -lz"
+                  else
+                      Config.openssl
+
         val link = linker
-                   ^ " " ^ lib ^ " " ^ escapeFilename oname ^ " -lm " ^ Config.openssl ^ " " ^ libs ^ " -o " ^ escapeFilename ename
+                   ^ " " ^ lib ^ " " ^ escapeFilename oname ^ " -lm " ^ ssl ^ " " ^ libs ^ " -o " ^ escapeFilename ename
 
         val (compile, link) =
             if profile then
