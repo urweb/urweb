@@ -17,7 +17,7 @@ SUBDIRS = src/c
 
 .PHONY: smlnj mlton package reauto
 
-smlnj: src/urweb.cm
+smlnj: src/urweb.cm xml/entities.sml
 mlton: bin/urweb
 
 clean-local:

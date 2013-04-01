@@ -1,4 +1,4 @@
-(* Copyright (c) 2012, Adam Chlipala
+(* Copyright (c) 2012-2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -72,6 +72,28 @@ fun squish vs = U.Exp.mapB {typ = fn x => x,
 
 fun rewrite file =
     let
+        fun isTricky' dontName e =
+            case e of
+                ENamed n => IS.member (dontName, n)
+              | EFfiApp ("Basis", "sigString", _) => true
+              | _ => false
+
+        fun isTricky dontName = U.Decl.exists {typ = fn _ => false,
+                                               exp = isTricky' dontName,
+                                               decl = fn _ => false}
+
+        fun isTrickyE dontName = U.Exp.exists {typ = fn _ => false,
+                                               exp = isTricky' dontName}
+
+        val dontName = foldl (fn (d, dontName) =>
+                                 if isTricky dontName d then
+                                     case #1 d of
+                                         DVal (_, n, _, _, _) => IS.add (dontName, n)
+                                       | DValRec vis => foldl (fn ((_, n, _, _, _), dontName) => IS.add (dontName, n)) dontName vis
+                                       | _ => dontName
+                                 else
+                                     dontName) IS.empty (#1 file)
+
         val (ds, _) = ListUtil.foldlMapConcat (fn (d, nextName) =>
                                                     let
                                                         val (d, (nextName, newDs)) =
@@ -96,7 +118,7 @@ fun rewrite file =
                                                                                                            EApp (e, arg) => isTrulySimple arg andalso isAlreadySimple e
                                                                                                          | _ => isTrulySimple e
                                                                                                in
-                                                                                                   if isAlreadySimple e' then
+                                                                                                   if isAlreadySimple e' orelse isTrickyE dontName e' then
                                                                                                        (e, st)
                                                                                                    else
                                                                                                        let

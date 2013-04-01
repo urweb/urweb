@@ -507,13 +507,14 @@ fun process (file : file) =
                                 0 => s
                               | _ => jsifyStringMulti (n - 1, jsifyString s)
 
-                        fun deStrcat level (all as (e, _)) =
+                        fun deStrcat level (all as (e, loc)) =
                             case e of
                                 EPrim (Prim.String s) => jsifyStringMulti (level, s)
                               | EStrcat (e1, e2) => deStrcat level e1 ^ deStrcat level e2
                               | EFfiApp ("Basis", "jsifyString", [(e, _)]) => "\"" ^ deStrcat (level + 1) e ^ "\""
-                              | _ => (Print.prefaces "deStrcat" [("e", MonoPrint.p_exp MonoEnv.empty all)];
-                                      raise Fail "Jscomp: deStrcat")
+                              | _ => (ErrorMsg.errorAt loc "Unexpected non-constant JavaScript code";
+                                      Print.prefaces "deStrcat" [("e", MonoPrint.p_exp MonoEnv.empty all)];
+                                      "")
 
                         val quoteExp = quoteExp loc
                     in

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -653,6 +653,25 @@ fun foldMapB {typ, exp, decl, bind} ctx s d =
                    bind = bind} ctx d s of
         S.Continue v => v
       | S.Return _ => raise Fail "MonoUtil.Decl.foldMapB: Impossible"
+
+fun exists {typ, exp, decl} k =
+    case mapfold {typ = fn c => fn () =>
+                                    if typ c then
+                                        S.Return ()
+                                    else
+                                        S.Continue (c, ()),
+                  exp = fn e => fn () =>
+                                    if exp e then
+                                        S.Return ()
+                                    else
+                                        S.Continue (e, ()),
+                  decl = fn d => fn () =>
+                                    if decl d then
+                                        S.Return ()
+                                    else
+                                        S.Continue (d, ())} k () of
+        S.Return _ => true
+      | S.Continue _ => false
 
 end
 

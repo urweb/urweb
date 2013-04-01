@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -117,6 +117,10 @@ structure Decl : sig
                     decl : 'context * Mono.decl' * 'state -> Mono.decl' * 'state,
                     bind : 'context * binder -> 'context}
                    -> 'context -> 'state -> Mono.decl -> Mono.decl * 'state
+
+    val exists : {typ : Mono.typ' -> bool,
+                  exp : Mono.exp' -> bool,
+                  decl : Mono.decl' -> bool} -> Mono.decl -> bool
 end
 
 structure File : sig
