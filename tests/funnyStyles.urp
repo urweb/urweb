@@ -1,0 +1,4 @@
+rewrite style FunnyStyles/booboo mixed_rule-applied
+rewrite all FunnyStyles/*
+
+funnyStyles

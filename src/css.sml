@@ -157,7 +157,7 @@ fun summarize file =
                                      (ECApp (
                                       (EFfi ("Basis", "tag"),
                                        _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
-                              (ECon (_, _, _, SOME (ENamed class, _)), _)), _),
+                              (ENamed class, _)), _),
                              _), _),
                             _), _),
                            _), _),
