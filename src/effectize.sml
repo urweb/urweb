@@ -1,4 +1,4 @@
-(* Copyright (c) 2009-2010, Adam Chlipala
+(* Copyright (c) 2009-2010, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,7 +46,7 @@ fun effectize file =
                 EFfi f => effectful f
               | EFfiApp (m, x, _) => effectful (m, x)
               | ENamed n => IM.inDomain (evs, n)
-              | EServerCall (n, _, _) => IM.inDomain (evs, n)
+              | EServerCall (n, _, _, _) => IM.inDomain (evs, n)
               | _ => false
 
         fun couldWriteOnload evs = U.Exp.exists {kind = fn _ => false,
@@ -69,7 +69,7 @@ fun effectize file =
         fun exp writers readers pushers e =
             case e of
                 ENamed n => IM.inDomain (pushers, n)
-              | EServerCall (n, _, _) => IM.inDomain (writers, n) andalso IM.inDomain (readers, n)
+              | EServerCall (n, _, _, _) => IM.inDomain (writers, n) andalso IM.inDomain (readers, n)
               | _ => false
 
         fun couldWriteWithRpc writers readers pushers = U.Exp.exists {kind = fn _ => false,
@@ -80,7 +80,7 @@ fun effectize file =
             case e of
                 EFfi ("Basis", "getCookie") => true
               | ENamed n => IM.inDomain (evs, n)
-              | EServerCall (n, _, _) => IM.inDomain (evs, n)
+              | EServerCall (n, _, _, _) => IM.inDomain (evs, n)
               | _ => false
 
         fun couldReadCookie evs = U.Exp.exists {kind = fn _ => false,

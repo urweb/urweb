@@ -2157,6 +2157,12 @@ $$\begin{array}{l}
   \mt{val} \; \mt{rpc} : \mt{t} ::: \mt{Type} \to \mt{transaction} \; \mt{t} \to \mt{transaction} \; \mt{t}
 \end{array}$$
 
+There is an alternate form that uses $\mt{None}$ to indicate that an error occurred during RPC processing, rather than raising an exception to abort this branch of control flow.
+
+$$\begin{array}{l}
+  \mt{val} \; \mt{tryRpc} : \mt{t} ::: \mt{Type} \to \mt{transaction} \; \mt{t} \to \mt{transaction} \; (\mt{option} \; \mt{t})
+\end{array}$$
+
 \subsubsection{Asynchronous Message-Passing}
 
 To support asynchronous, ``server push'' delivery of messages to clients, any client that might need to receive an asynchronous message is assigned a unique ID.  These IDs may be retrieved both on the client and on the server, during execution of code related to a client.

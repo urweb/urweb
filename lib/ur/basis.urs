@@ -206,6 +206,8 @@ val spawn : transaction unit -> transaction unit
 val sleep : int -> transaction unit
 
 val rpc : t ::: Type -> transaction t -> transaction t
+val tryRpc : t ::: Type -> transaction t -> transaction (option t)
+(* Returns [None] on error condition. *)
 
 
 (** Channels *)

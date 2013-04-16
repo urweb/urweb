@@ -1,4 +1,4 @@
-(* Copyright (c) 2009, 2012, Adam Chlipala
+(* Copyright (c) 2009, 2012-2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,15 +42,22 @@ type state = {
 
 fun frob file =
     let
-        val rpcBaseIds = foldl (fn ((d, _), rpcIds) =>
-                                   case d of
-                                       DVal (_, n, _, (EFfi ("Basis", "rpc"), _), _) => IS.add (rpcIds, n)
-                                     | DVal (_, n, _, (ENamed n', _), _) => if IS.member (rpcIds, n') then
-                                                                                IS.add (rpcIds, n)
-                                                                            else
-                                                                                rpcIds
-                                     | _ => rpcIds)
-                               IS.empty file
+        val (rpcBaseIds, trpcBaseIds) =
+            foldl (fn ((d, _), (rpcIds, trpcIds)) =>
+                      case d of
+                          DVal (_, n, _, (EFfi ("Basis", "rpc"), _), _) =>
+                          (IS.add (rpcIds, n), trpcIds)
+                        | DVal (_, n, _, (EFfi ("Basis", "tryRpc"), _), _) =>
+                          (rpcIds, IS.add (trpcIds, n))
+                        | DVal (_, n, _, (ENamed n', _), _) =>
+                          if IS.member (rpcIds, n') then
+                              (IS.add (rpcIds, n), trpcIds)
+                          else if IS.member (trpcIds, n') then
+                              (rpcIds, IS.add (trpcIds, n))
+                          else
+                              (rpcIds, trpcIds)
+                        | _ => (rpcIds, trpcIds))
+                  (IS.empty, IS.empty) file
 
         val tfuncs = foldl
                      (fn ((d, _), tfuncs) =>
@@ -89,7 +96,7 @@ fun frob file =
                       | EApp (e1, e2) => getApp (#1 e1, e2 :: args)
                       | _ => NONE
 
-                fun newRpc (trans : exp, st : state) =
+                fun newRpc (trans : exp, st : state, fm) =
                     case getApp (#1 trans, []) of
                         NONE => (ErrorMsg.errorAt (#2 trans)
                                                   "RPC code doesn't use a named function or transaction";
@@ -114,16 +121,19 @@ fun frob file =
                                 val st = {exported = exported,
                                           export_decls = export_decls}
 
-                                val e' = EServerCall (n, args, ran)
+                                val e' = EServerCall (n, args, ran, fm)
                             in
                                 (e', st)
                             end
             in
                 case e of
-                    EApp ((ECApp ((EFfi ("Basis", "rpc"), _), ran), _), trans) => newRpc (trans, st)
+                    EApp ((ECApp ((EFfi ("Basis", "rpc"), _), ran), _), trans) => newRpc (trans, st, None)
+                  | EApp ((ECApp ((EFfi ("Basis", "tryRpc"), _), ran), _), trans) => newRpc (trans, st, Error)
                   | EApp ((ECApp ((ENamed n, _), ran), _), trans) =>
                     if IS.member (rpcBaseIds, n) then
-                        newRpc (trans, st)
+                        newRpc (trans, st, None)
+                    else if IS.member (trpcBaseIds, n) then
+                        newRpc (trans, st, Error)
                     else
                         (e, st)
 

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2010, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -186,7 +186,7 @@ fun shake file =
             in
                 case e of
                     ENamed n => check n
-                  | EServerCall (n, _, _) => check n
+                  | EServerCall (n, _, _, _) => check n
                   | _ => s
             end
 

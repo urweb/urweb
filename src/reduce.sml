@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2011, Adam Chlipala
+(* Copyright (c) 2008-2011, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -804,7 +804,7 @@ fun kindConAndExp (namedC, namedE) =
                                     (ELet (x, t, e1', exp (UnknownE :: env) e2), loc)
                             end
 
-                          | EServerCall (n, es, t) => (EServerCall (n, map (exp env) es, con env t), loc)
+                          | EServerCall (n, es, t, fm) => (EServerCall (n, map (exp env) es, con env t, fm), loc)
             in
                 (*if dangling (edepth' (deKnown env)) r then
                     (Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty all),

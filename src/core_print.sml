@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2011, Adam Chlipala
+(* Copyright (c) 2008-2011, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -446,12 +446,12 @@ fun p_exp' par env (e, _) =
                                     newline,
                                     p_exp (E.pushERel env x t) e2]
 
-      | EServerCall (n, es, _) => box [string "Server(",
-                                       p_enamed env n,
-                                       string ",",
-                                       space,
-                                       p_list (p_exp env) es,
-                                       string ")"]
+      | EServerCall (n, es, _, _) => box [string "Server(",
+                                          p_enamed env n,
+                                          string ",",
+                                          space,
+                                          p_list (p_exp env) es,
+                                          string ")"]
 
       | EKAbs (x, e) => box [string x,
                              space,

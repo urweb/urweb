@@ -1,4 +1,4 @@
-(* Copyright (c) 2010, Adam Chlipala
+(* Copyright (c) 2010, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -260,7 +260,7 @@ fun summarize file =
                         in
                             (merge' (sm1, sm2), classes)
                         end
-                      | EServerCall (_, es, _) => expList (es, classes)
+                      | EServerCall (_, es, _, _) => expList (es, classes)
 
                 and expList (es, classes) = foldl (fn (e, (sm, classes)) =>
                                                       let

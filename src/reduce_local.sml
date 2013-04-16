@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2010, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -353,7 +353,7 @@ fun exp env (all as (e, loc)) =
 
       | ELet (x, t, e1, e2) => (ELet (x, con env t, exp env e1, exp (Unknown :: env) e2), loc)
 
-      | EServerCall (n, es, t) => (EServerCall (n, map (exp env) es, con env t), loc)
+      | EServerCall (n, es, t, fm) => (EServerCall (n, map (exp env) es, con env t, fm), loc)
 
 fun reduce file =
     let

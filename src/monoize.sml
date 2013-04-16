@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2012, Adam Chlipala
+(* Copyright (c) 2008-2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -4188,7 +4188,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ELet (x, t', e1, e2), loc), fm)
             end
 
-          | L.EServerCall (n, es, t) =>
+          | L.EServerCall (n, es, t, fmode) =>
             let
                 val t = monoType env t
                 val (_, ft, _, name) = Env.lookupENamed env n
@@ -4218,7 +4218,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                           else
                               L'.ReadOnly
 
-                val e = (L'.EServerCall (call, t, eff), loc)
+                val e = (L'.EServerCall (call, t, eff, fmode), loc)
                 val e = liftExpInExp 0 e
                 val e = (L'.EAbs ("_", unit, unit, e), loc)
             in

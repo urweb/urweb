@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -86,6 +86,8 @@ datatype pat' =
 
 withtype pat = pat' located
 
+datatype failure_mode = datatype Settings.failure_mode
+
 datatype exp' =
          EPrim of Prim.t
        | ERel of int
@@ -115,7 +117,7 @@ datatype exp' =
 
        | ELet of string * con * exp * exp
 
-       | EServerCall of int * exp list * con
+       | EServerCall of int * exp list * con * failure_mode
 
 withtype exp = exp' located
 

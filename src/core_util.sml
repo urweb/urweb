@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2010, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -439,6 +439,14 @@ fun pCompare ((p1, _), (p2, _)) =
                   join (String.compare (x1, x2),
                         fn () => pCompare (p1, p2))) (xps1, xps2)
 
+fun fmCompare (fm1, fm2) =
+    case (fm1, fm2) of
+        (None, None) => EQUAL
+      | (None, _) => LESS
+      | (_, None) => GREATER
+
+      | (Error, Error) => EQUAL
+
 fun compare ((e1, _), (e2, _)) =
     case (e1, e2) of
         (EPrim p1, EPrim p2) => Prim.compare (p1, p2)
@@ -547,9 +555,10 @@ fun compare ((e1, _), (e2, _)) =
       | (ELet _, _) => LESS
       | (_, ELet _) => GREATER
 
-      | (EServerCall (n1, es1, _), EServerCall (n2, es2, _)) =>
+      | (EServerCall (n1, es1, _, fm1), EServerCall (n2, es2, _, fm2)) =>
         join (Int.compare (n1, n2),
-              fn () => joinL compare (es1, es2))
+           fn () => join (fmCompare (fm1, fm2),
+                       fn () => joinL compare (es1, es2)))
       | (EServerCall _, _) => LESS
       | (_, EServerCall _) => GREATER
 
@@ -738,12 +747,12 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                           fn e2' =>
                                              (ELet (x, t', e1', e2'), loc))))
 
-              | EServerCall (n, es, t) =>
+              | EServerCall (n, es, t, fm) =>
                 S.bind2 (ListUtil.mapfold (mfe ctx) es,
                       fn es' =>
                          S.map2 (mfc ctx t,
                               fn t' =>
-                                 (EServerCall (n, es', t'), loc)))
+                                 (EServerCall (n, es', t', fm), loc)))
 
               | EKAbs (x, e) =>
                 S.map2 (mfe (bind (ctx, RelK x)) e,

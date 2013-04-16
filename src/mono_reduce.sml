@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -515,7 +515,7 @@ fun reduce (file : file) =
                       | ESignalBind (e1, e2) => summarize d e1 @ summarize d e2
                       | ESignalSource e => summarize d e
 
-                      | EServerCall (e, _, _) => summarize d e @ [Unsure]
+                      | EServerCall (e, _, _, _) => summarize d e @ [Unsure]
                       | ERecv (e, _) => summarize d e @ [Unsure]
                       | ESleep e => summarize d e @ [Unsure]
                       | ESpawn e => summarize d e @ [Unsure]

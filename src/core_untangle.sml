@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -48,7 +48,7 @@ fun exp thisGroup (e, s) =
         case e of
             ENamed n => try n
           | EClosure (n, _) => try n
-          | EServerCall (n, _, _) => try n
+          | EServerCall (n, _, _, _) => try n
           | _ => s
     end
 

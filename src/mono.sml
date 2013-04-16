@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2010, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -120,7 +120,7 @@ datatype exp' =
        | ESignalBind of exp * exp
        | ESignalSource of exp
                               
-       | EServerCall of exp * typ * effect
+       | EServerCall of exp * typ * effect * failure_mode
        | ERecv of exp * typ
        | ESleep of exp
        | ESpawn of exp

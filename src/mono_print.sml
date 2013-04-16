@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -357,7 +357,7 @@ fun p_exp' par env (e, _) =
                                 p_exp env e,
                                 string ")"]
 
-      | EServerCall (n, _, _) => box [string "Server(",
+      | EServerCall (n, _, _, _) => box [string "Server(",
                                       p_exp env n,
                                       string ")"]
       | ERecv (n, _) => box [string "Recv(",

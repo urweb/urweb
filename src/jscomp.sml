@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2012, Adam Chlipala
+(* Copyright (c) 2008-2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -930,10 +930,21 @@ fun process (file : file) =
                                  st)
                             end
 
-                          | EServerCall (e, t, eff) =>
+                          | EServerCall (e, t, eff, fm) =>
                             let
                                 val (e, st) = jsE inner (e, st)
                                 val (unurl, st) = unurlifyExp loc (t, st)
+                                val lastArg = case fm of
+                                                  None => "null"
+                                                | Error =>
+                                                  let
+                                                      val isN = if isNullable t then
+                                                                    "true"
+                                                                else
+                                                                    "false"
+                                                  in
+                                                    "cons({c:\"c\",v:" ^ isN ^ "},null)"
+                                                  end
                             in
                                 (strcat [str ("{c:\"f\",f:rc,a:cons({c:\"c\",v:\""
                                               ^ Settings.getUrlPrefix ()
@@ -944,7 +955,7 @@ fun process (file : file) =
                                               ^ (case eff of
                                                      ReadCookieWrite => "true"
                                                    | _ => "false")
-                                              ^ "},null)))))}")],
+                                              ^ "}," ^ lastArg ^ ")))))}")],
                                  st)
                             end
 
@@ -1231,11 +1242,11 @@ fun process (file : file) =
                      ((ESignalSource e, loc), st)
                  end
                  
-               | EServerCall (e1, t, ef) =>
+               | EServerCall (e1, t, ef, fm) =>
                  let
                      val (e1, st) = exp outer (e1, st)
                  in
-                     ((EServerCall (e1, t, ef), loc), st)
+                     ((EServerCall (e1, t, ef, fm), loc), st)
                  end
                | ERecv (e1, t) =>
                  let

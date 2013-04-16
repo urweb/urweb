@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2012, Adam Chlipala
+(* Copyright (c) 2008-2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -205,7 +205,7 @@ fun calcConstArgs enclosingFunctions e =
               | EWrite e1 => ca depth e1
               | EClosure (_, es) => foldl (fn (e, d) => Int.min (ca depth e, d)) maxInt es
               | ELet (_, _, e1, e2) => Int.min (ca depth e1, ca (depth + 1) e2)
-              | EServerCall (_, es, _) => foldl (fn (e, d) => Int.min (ca depth e, d)) maxInt es
+              | EServerCall (_, es, _, _) => foldl (fn (e, d) => Int.min (ca depth e, d)) maxInt es
 
         fun enterAbs depth e =
             case #1 e of
@@ -348,11 +348,11 @@ fun specialize' (funcs, specialized) file =
                         in
                             ((ELet (x, t, e1, e2), loc), st)
                         end
-                      | EServerCall (n, es, t) =>
+                      | EServerCall (n, es, t, fm) =>
                         let
                             val (es, st) = ListUtil.foldlMap (fn (e, st) => exp (env, e, st)) st es
                         in
-                            ((EServerCall (n, es, t), loc), st)
+                            ((EServerCall (n, es, t, fm), loc), st)
                         end
             in
                 case getApp e of
