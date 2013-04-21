@@ -1,4 +1,4 @@
-(* Copyright (c) 2010, Adam Chlipala
+(* Copyright (c) 2010, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1249,7 +1249,8 @@ type 'a doQuery = {
 
 fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
     let
-        fun default () = ErrorMsg.errorAt loc "Information flow checker can't parse SQL query"
+        fun default () = (ErrorMsg.errorAt loc "Information flow checker can't parse SQL query";
+                          Print.preface ("Query", MonoPrint.p_exp MonoEnv.empty e))
     in
         case parse query e of
             NONE => default ()
@@ -1795,16 +1796,103 @@ fun evalExp env (e as (_, loc)) k =
 
 datatype var_source = Input of int | SubInput of int | Unknown
 
+structure U = MonoUtil
+
+fun mliftExpInExp by =
+    U.Exp.mapB {typ = fn t => t,
+                exp = fn bound => fn e =>
+                                     case e of
+                                         ERel xn =>
+                                         if xn < bound then
+                                             e
+                                         else
+                                             ERel (xn + by)
+                                       | _ => e,
+                bind = fn (bound, U.Exp.RelE _) => bound + 1
+                        | (bound, _) => bound}
+
+fun nameSubexps k (e : Mono.exp) =
+    let
+        fun numParams (e : Mono.exp) =
+            case #1 e of
+                EStrcat (e1, e2) => numParams e1 + numParams e2
+              | EPrim (Prim.String _) => 0
+              | _ => 1
+
+        val nps = numParams e
+
+        fun getParams (e : Mono.exp) x =
+            case #1 e of
+                EStrcat (e1, e2) =>
+                let
+                    val (ps1, e1') = getParams e1 x
+                    val (ps2, e2') = getParams e2 (x - length ps1)
+                in
+                    (ps2 @ ps1, (EStrcat (e1', e2'), #2 e))
+                end
+              | EPrim (Prim.String _) => ([], e)
+              | _ =>
+                let
+                    val (e', k) =
+                        case #1 e of
+                            EFfiApp (m, f, [(e', t)]) =>
+                            if Settings.isEffectful (m, f) orelse Settings.isBenignEffectful (m, f) then
+                                (e, fn x => x)
+                            else
+                                (e', fn e' => (EFfiApp (m, f, [(e', t)]), #2 e))
+                          | ECase (e', ps as
+                                          [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, NONE), _),
+                                            (EPrim (Prim.String "TRUE"), _)),
+                                           ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, NONE), _),
+                                            (EPrim (Prim.String "FALSE"), _))], q) =>
+                            (e', fn e' => (ECase (e', ps, q), #2 e))
+                          | _ => (e, fn x => x)
+                in
+                    ([e'], k (ERel x, #2 e))
+                end
+
+        val (ps, e') = getParams e (nps - 1)
+
+        val string = (TFfi ("Basis", "string"), #2 e)
+
+        val (e', _) = foldl (fn (p, (e', liftBy)) =>
+                                ((ELet ("p" ^ Int.toString liftBy,
+                                        string,
+                                        mliftExpInExp liftBy 0 p,
+                                        e'), #2 e), liftBy - 1)) (k (nps, e'), nps - 1) ps
+    in
+        #1 e'
+    end
+
+val namer = MonoUtil.File.map {typ = fn t => t,
+                               exp = fn e =>
+                                        case e of
+                                            EDml (e, fm) =>
+                                            nameSubexps (fn (_, e') => (EDml (e', fm), #2 e)) e
+                                          | EQuery {exps, tables, state, query, body, initial} =>
+                                            nameSubexps (fn (liftBy, e') =>
+                                                            (EQuery {exps = exps,
+                                                                     tables = tables,
+                                                                     state = state,
+                                                                     query = e',
+                                                                     body = mliftExpInExp liftBy 2 body,
+                                                                     initial = mliftExpInExp liftBy 0 initial},
+                                                             #2 query)) query
+                                          | _ => e,
+                                     decl = fn d => d}
+
 fun check (file : file) =
     let
         val () = (St.reset ();
                   rfuns := IM.empty)
 
+        (*val () = Print.preface ("FilePre", MonoPrint.p_file MonoEnv.empty file)*)
         val file = MonoReduce.reduce file
         val file = MonoOpt.optimize file
         val file = Fuse.fuse file
         val file = MonoOpt.optimize file
         val file = MonoShake.shake file
+        val file = namer file
         (*val () = Print.preface ("File", MonoPrint.p_file MonoEnv.empty file)*)
 
         val exptd = foldl (fn ((d, _), exptd) =>
@@ -2077,13 +2165,16 @@ fun check (file : file) =
 val check = fn file =>
                let
                    val oldInline = Settings.getMonoInline ()
+                   val oldFull = !MonoReduce.fullMode
                in
                    (Settings.setMonoInline (case Int.maxInt of
                                                 NONE => 1000000
                                               | SOME n => n);
+                    MonoReduce.fullMode := true;
                     check file;
                     Settings.setMonoInline oldInline)
                    handle ex => (Settings.setMonoInline oldInline;
+                                 MonoReduce.fullMode := oldFull;
                                  raise ex)
                end
 

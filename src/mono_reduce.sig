@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, 2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,5 +34,7 @@ signature MONO_REDUCE = sig
     val subExpInExp : int * Mono.exp -> Mono.exp -> Mono.exp
 
     val impure : Mono.exp -> bool
+
+    val fullMode : bool ref
 
 end

@@ -31,6 +31,8 @@ structure MonoReduce :> MONO_REDUCE = struct
 
 open Mono
 
+val fullMode = ref false
+
 structure E = MonoEnv
 structure U = MonoUtil
 
@@ -531,27 +533,27 @@ fun reduce (file : file) =
                         simpleImpure (timpures, impures) env e andalso impure e
                         andalso not (List.null (summarize ~1 e))
 
+        fun passive (e : exp) =
+            case #1 e of
+                EPrim _ => true
+              | ERel _ => true
+              | ENamed _ => true
+              | ECon (_, _, NONE) => true
+              | ECon (_, _, SOME e) => passive e
+              | ENone _ => true
+              | ESome (_, e) => passive e
+              | EFfi _ => true
+              | EAbs _ => true
+              | ERecord xets => List.all (passive o #2) xets
+              | EField (e, _) => passive e
+              | _ => false
+
         fun exp env e =
             let
                 (*val () = Print.prefaces "exp" [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan))]*)
 
                 fun doLet (x, t, e', b) =
                     let
-                        fun passive (e : exp) =
-                            case #1 e of
-                                EPrim _ => true
-                              | ERel _ => true
-                              | ENamed _ => true
-                              | ECon (_, _, NONE) => true
-                              | ECon (_, _, SOME e) => passive e
-                              | ENone _ => true
-                              | ESome (_, e) => passive e
-                              | EFfi _ => true
-                              | EAbs _ => true
-                              | ERecord xets => List.all (passive o #2) xets
-                              | EField (e, _) => passive e
-                              | _ => false
-
                         fun doSub () =
                             let
                                 val r = subExpInExp (0, e') b
@@ -630,7 +632,7 @@ fun reduce (file : file) =
                                 else
                                     e
                             end
-                        else if countFree 0 0 b > 1 andalso not (passive e') then
+                        else if countFree 0 0 b > 1 andalso not (!fullMode) andalso not (passive e') then
                             e
                         else
                             trySub ()
@@ -653,7 +655,7 @@ fun reduce (file : file) =
                         ((*Print.prefaces "Considering" [("e1", MonoPrint.p_exp (E.pushERel env x t NONE) e1),
                                                        ("e2", MonoPrint.p_exp env e2),
                                                        ("sub", MonoPrint.p_exp env (reduceExp env (subExpInExp (0, e2) e1)))];*)
-                         if impure env e2 orelse countFree 0 0 e1 > 1 then
+                         if impure env e2 orelse (not (!fullMode) andalso countFree 0 0 e1 > 1) then
                              #1 (reduceExp env (ELet (x, t, e2, e1), loc))
                          else
                              #1 (reduceExp env (subExpInExp (0, e2) e1)))
