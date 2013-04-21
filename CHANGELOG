@@ -1,4 +1,19 @@
 ========
+20130421
+========
+
+- Allow any FFI module to declare new HTML tags
+- Ignore polymorphism in JavaScript calls to custom FFI functions, allowing a
+  kind of simple dynamic typing (unsafe, of course)
+- Add some name-mangling rules to allow XML attribute 'name' and attributes with
+  dashes
+- New Basis members: pow and tryRpc
+- Add 'placeholder' attribute for <password>
+- New standard library functions: Option.unsafeGet
+- Add ./configure MLTONARGS option for MLTON arguments
+- Bug fixes and documentation improvements
+
+========
 20120925
 ========
 
