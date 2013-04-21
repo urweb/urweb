@@ -152,7 +152,8 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
 \item \texttt{limit class num} sets a resource usage limit for generated applications.  The limit \texttt{class} will be set to the non-negative integer \texttt{num}.  The classes are:
   \begin{itemize}
   \item \texttt{cleanup}: maximum number of cleanup operations (e.g., entries recording the need to deallocate certain temporary objects) that may be active at once per request
-  \item \texttt{database}: maximum size of database files (currently only used by SQLite)
+  \item \texttt{clients}: maximum number of simultaneous connections to one application by web clients waiting for new asynchronous messages sent with \texttt{Basis.send}
+  \item \texttt{database}: maximum size of a database file (currently only used by SQLite, which interprets the parameter as a number of pages, where page size is itself a quantity configurable in SQLite)
   \item \texttt{deltas}: maximum number of messages sendable in a single request handler with \texttt{Basis.send}
   \item \texttt{globals}: maximum number of global variables that FFI libraries may set in a single request context
   \item \texttt{headers}: maximum size (in bytes) of per-request buffer used to hold HTTP headers for generated pages
@@ -261,6 +262,8 @@ sqlite3 path/to/database/file <app.sql
 \item \texttt{-dumpSource}: When compilation fails, output to stderr the complete source code of the last intermediate program before the compilation phase that signaled the error.  (Warning: these outputs can be very long and aren't especially optimized for readability!)
 
 \item \texttt{-limit class num}: Equivalent to the \texttt{limit} directive from \texttt{.urp} files
+
+\item \texttt{-moduleOf FILENAME}: Prints the Ur/Web module name corresponding to source file \texttt{FILENAME}, exiting immediately afterward.
 
 \item \texttt{-output FILENAME}: Set where the application executable is written.
 
