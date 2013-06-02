@@ -564,16 +564,19 @@ fun reduce (file : file) =
                                 #1 (reduceExp env r)
                             end
 
-                        fun trySub () =
+                        fun trySub pure =
                             ((*Print.prefaces "trySub"
                                             [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan))];*)
                              case t of
                                  (TFfi ("Basis", "string"), _) => doSub ()
                                | (TSignal _, _) => e
                                | _ =>
-                                 case e' of
-                                     (ECase _, _) => e
-                                   | _ => doSub ())
+                                 if pure then
+                                     doSub ()
+                                 else
+                                     case e' of
+                                         (ECase _, _) => e
+                                       | _ => doSub ())
                     in
                         if impure env e' then
                             let
@@ -628,14 +631,14 @@ fun reduce (file : file) =
                                               | _ => false))
                                    andalso countFree 0 0 b = 1
                                    andalso not (freeInAbs b) then
-                                    trySub ()
+                                    trySub (List.null effs_e')
                                 else
                                     e
                             end
                         else if countFree 0 0 b > 1 andalso not (!fullMode) andalso not (passive e') then
                             e
                         else
-                            trySub ()
+                            trySub true
                     end
 
                 val r =
