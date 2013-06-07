@@ -564,19 +564,16 @@ fun reduce (file : file) =
                                 #1 (reduceExp env r)
                             end
 
-                        fun trySub pure =
+                        fun trySub () =
                             ((*Print.prefaces "trySub"
                                             [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan))];*)
                              case t of
                                  (TFfi ("Basis", "string"), _) => doSub ()
                                | (TSignal _, _) => e
                                | _ =>
-                                 if pure then
-                                     doSub ()
-                                 else
-                                     case e' of
-                                         (ECase _, _) => e
-                                       | _ => doSub ())
+                                 case e' of
+                                     (ECase _, _) => e
+                                   | _ => doSub ())
                     in
                         if impure env e' then
                             let
@@ -631,14 +628,14 @@ fun reduce (file : file) =
                                               | _ => false))
                                    andalso countFree 0 0 b = 1
                                    andalso not (freeInAbs b) then
-                                    trySub (List.null effs_e')
+                                    trySub ()
                                 else
                                     e
                             end
                         else if countFree 0 0 b > 1 andalso not (!fullMode) andalso not (passive e') then
                             e
                         else
-                            trySub true
+                            trySub ()
                     end
 
                 val r =
@@ -669,11 +666,14 @@ fun reduce (file : file) =
                                 case result of
                                     (TFun (dom, result), loc) =>
                                     let
-                                        fun safe (e, _) =
-                                            case e of
-                                                EAbs _ => true
-                                              | EError _ => true
-                                              | _ => false
+                                        fun safe e =
+                                            List.all (fn UseRel => true
+                                                       | Abort => true
+                                                       | _ => false) (summarize 0 e)
+
+                                        fun p_events' es = Print.box [Print.PD.string "{",
+                                                                      p_events es,
+                                                                      Print.PD.string "}"]
                                     in
                                         if List.all (safe o #2) pes then
                                             EAbs ("y", dom, result,
@@ -682,7 +682,10 @@ fun reduce (file : file) =
                                                                   (p, swapExpVarsPat (0, patBinds p) e)
                                                                 | (p, (EError (e, (TFun (_, t), _)), loc)) =>
                                                                   (p, (EError (e, t), loc))
-                                                                | _ => raise Fail "MonoReduce ECase") pes,
+                                                                | (p, e) =>
+                                                                  (p, (EApp (liftExpInExp (patBinds p) e,
+                                                                             (ERel (patBinds p), loc)), loc)))
+                                                              pes,
                                                           {disc = disc, result = result}), loc))
                                         else
                                             e
