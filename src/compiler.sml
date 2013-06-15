@@ -1410,12 +1410,19 @@ val sidecheck = {
 
 val toSidecheck = transform sidecheck "sidecheck" o toPathcheck
 
+val sigcheck = {
+    func = SigCheck.check,
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toSigcheck = transform sigcheck "sigcheck" o toSidecheck
+
 val cjrize = {
     func = Cjrize.cjrize,
     print = CjrPrint.p_file CjrEnv.empty
 }
 
-val toCjrize = transform cjrize "cjrize" o toSidecheck
+val toCjrize = transform cjrize "cjrize" o toSigcheck
 
 val prepare = {
     func = Prepare.prepare,

@@ -200,6 +200,9 @@ pathcheck.sml
 sidecheck.sig
 sidecheck.sml
 
+sigcheck.sig
+sigcheck.sml
+
 cjr.sml
 
 postgres.sig

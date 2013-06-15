@@ -121,6 +121,7 @@ signature COMPILER = sig
     val fuse : (Mono.file, Mono.file) phase
     val pathcheck : (Mono.file, Mono.file) phase
     val sidecheck : (Mono.file, Mono.file) phase
+    val sigcheck : (Mono.file, Mono.file) phase
     val cjrize : (Mono.file, Cjr.file) phase
     val prepare : (Cjr.file, Cjr.file) phase
     val checknest : (Cjr.file, Cjr.file) phase
@@ -184,6 +185,7 @@ signature COMPILER = sig
     val toMono_shake3 : (string, Mono.file) transform
     val toPathcheck : (string, Mono.file) transform
     val toSidecheck : (string, Mono.file) transform
+    val toSigcheck : (string, Mono.file) transform
     val toCjrize : (string, Cjr.file) transform
     val toPrepare : (string, Cjr.file) transform
     val toChecknest : (string, Cjr.file) transform
