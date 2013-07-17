@@ -161,7 +161,7 @@ fun effectize file =
                          ()
                      else
                          ErrorMsg.errorAt loc ("A handler (" ^ s
-                                               ^ ") accessible via GET could cause side effects; try accessing it only via forms or removing it from the signature of its containing module");
+                                               ^ ") accessible via GET could cause side effects; try accessing it only via forms or removing it from the signature of the main program module");
                  ((DExport (Link, n, IM.inDomain (pushers, n)), #2 d), evs))
               | DExport (Action _, n, _) =>
                 ((DExport (Action (if IM.inDomain (writers, n) then
