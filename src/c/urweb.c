@@ -2451,7 +2451,7 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
       if (isprint((int)c))
         *s2++ = c;
       else if (uw_Estrings) {
-        sprintf(s2, "\\%03o", c);
+        sprintf(s2, "\\%03o", (unsigned char)c);
         s2 += 4;
       }
       else
@@ -2494,7 +2494,7 @@ uw_Basis_string uw_Basis_sqlifyChar(uw_context ctx, uw_Basis_char c) {
     if (isprint((int)c))
       *s2++ = c;
     else if (uw_Estrings) {
-      sprintf(s2, "\\%03o", c);
+      sprintf(s2, "\\%03o", (unsigned char)c);
       s2 += 4;
     }
     else
