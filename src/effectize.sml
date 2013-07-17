@@ -160,8 +160,8 @@ fun effectize file =
                      if Settings.isSafeGet s then
                          ()
                      else
-                         ErrorMsg.errorAt loc ("A handler (" ^ s
-                                               ^ ") accessible via GET could cause side effects; try accessing it only via forms or removing it from the signature of the main program module");
+                         ErrorMsg.errorAt loc ("A handler (URI prefix \"" ^ s
+                                               ^ "\") accessible via GET could cause side effects; try accessing it only via forms, removing it from the signature of the main program module, or whitelisting it with the 'safeGet' .urp directive");
                  ((DExport (Link, n, IM.inDomain (pushers, n)), #2 d), evs))
               | DExport (Action _, n, _) =>
                 ((DExport (Action (if IM.inDomain (writers, n) then
