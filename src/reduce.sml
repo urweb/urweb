@@ -558,7 +558,7 @@ fun kindConAndExp (namedC, namedE) =
                                     (ELet (x, t, e1', exp (UnknownE :: env') (EApp (e2', E.liftExpInExp 0 e2), loc)), loc)
 
                                   | EAbs (x, dom, _, b) =>
-                                    if count b <= 1 orelse passive e2 orelse ESpecialize.functionInside dom then
+                                    if count b <= 1 orelse passive e2 orelse ESpecialize.functionInside IS.empty dom then
                                         let
                                             val r = exp (KnownE e2 :: env') b
                                         in
@@ -798,7 +798,7 @@ fun kindConAndExp (namedC, namedE) =
 
                                 val t = con env t
                             in
-                                if notFfi t andalso (passive e1' orelse count e2 <= 1 orelse ESpecialize.functionInside t) then
+                                if notFfi t andalso (passive e1' orelse count e2 <= 1 orelse ESpecialize.functionInside IS.empty t) then
                                     exp (KnownE e1 :: env) e2
                                 else
                                     (ELet (x, t, e1', exp (UnknownE :: env) e2), loc)

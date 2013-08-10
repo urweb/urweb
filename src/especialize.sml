@@ -122,18 +122,20 @@ type state = {
 
 fun default (_, x, st) = (x, st)
 
-val functionInside = U.Con.exists {kind = fn _ => false,
-                                   con = fn TFun _ => true
-                                          | TCFun _ => true
-                                          | CFfi ("Basis", "transaction") => true
-                                          | CFfi ("Basis", "eq") => true
-                                          | CFfi ("Basis", "num") => true
-                                          | CFfi ("Basis", "ord") => true
-                                          | CFfi ("Basis", "show") => true
-                                          | CFfi ("Basis", "read") => true
-                                          | CFfi ("Basis", "sql_injectable_prim") => true
-                                          | CFfi ("Basis", "sql_injectable") => true
-                                          | _ => false}
+fun functionInside known =
+    U.Con.exists {kind = fn _ => false,
+                  con = fn TFun _ => true
+                         | TCFun _ => true
+                         | CFfi ("Basis", "transaction") => true
+                         | CFfi ("Basis", "eq") => true
+                         | CFfi ("Basis", "num") => true
+                         | CFfi ("Basis", "ord") => true
+                         | CFfi ("Basis", "show") => true
+                         | CFfi ("Basis", "read") => true
+                         | CFfi ("Basis", "sql_injectable_prim") => true
+                         | CFfi ("Basis", "sql_injectable") => true
+                         | CNamed n => IS.member (known, n)
+                         | _ => false}
 
 fun getApp (e, _) =
     case e of
@@ -216,8 +218,28 @@ fun calcConstArgs enclosingFunctions e =
     end
 
 
+fun optionExists p opt =
+    case opt of
+	NONE => false
+      | SOME v => p v
+
 fun specialize' (funcs, specialized) file =
     let
+	val known = foldl (fn (d, known) =>
+			      case #1 d of
+				  DCon (_, n, _, c) =>
+				  if functionInside known c then
+				      IS.add (known, n)
+				  else
+				      known
+				| DDatatype dts =>
+				  if List.exists (List.exists (optionExists (functionInside known) o #3) o #4) dts then
+				      foldl (fn (dt, known) => IS.add (known, #2 dt)) known dts
+				  else
+				      known
+				| _ => known)
+		    IS.empty file
+
         fun bind (env, b) =
             case b of
                 U.Decl.RelE xt => xt :: env
@@ -382,7 +404,7 @@ fun specialize' (funcs, specialized) file =
                                         (TFun (dom, ran), e :: xs') =>
                                         if constArgs > 0 then
                                             let
-                                                val fi = functionInside dom
+                                                val fi = functionInside known dom
                                             in
                                                 if initialPart orelse fi then
                                                     findSplit av (not fi andalso initialPart,

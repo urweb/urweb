@@ -29,6 +29,6 @@ signature ESPECIALIZE = sig
 
     val specialize : Core.file -> Core.file
 
-    val functionInside : Core.con -> bool
+    val functionInside : IntBinarySet.set -> Core.con -> bool
 
 end
