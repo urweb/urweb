@@ -162,7 +162,7 @@ and explifySgn (sgn, loc) =
         L.SgnConst sgis => (L'.SgnConst (List.mapPartial explifySgi sgis), loc)
       | L.SgnVar n => (L'.SgnVar n, loc)
       | L.SgnFun (m, n, dom, ran) => (L'.SgnFun (m, n, explifySgn dom, explifySgn ran), loc)
-      | L.SgnWhere (sgn, x, c) => (L'.SgnWhere (explifySgn sgn, x, explifyCon c), loc)
+      | L.SgnWhere (sgn, ms, x, c) => (L'.SgnWhere (explifySgn sgn, ms, x, explifyCon c), loc)
       | L.SgnProj x => (L'.SgnProj x, loc)
       | L.SgnError => raise Fail ("explifySgn: SgnError at " ^ EM.spanToString loc)
 

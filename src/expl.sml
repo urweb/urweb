@@ -125,7 +125,7 @@ and sgn' =
     SgnConst of sgn_item list
   | SgnVar of int
   | SgnFun of string * int * sgn * sgn
-  | SgnWhere of sgn * string * con
+  | SgnWhere of sgn * string list * string * con
   | SgnProj of int * string list * string
 
 withtype sgn_item = sgn_item' located

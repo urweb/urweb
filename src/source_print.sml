@@ -505,17 +505,19 @@ and p_sgn (sgn, _) =
                                       string ":",
                                       space,
                                       p_sgn sgn']
-      | SgnWhere (sgn, x, c) => box [p_sgn sgn,
-                                     space,
-                                     string "where",
-                                     space,
-                                     string "con",
-                                     space,
-                                     string x,
-                                     space,
-                                     string "=",
-                                     space,
-                                     p_con c]
+      | SgnWhere (sgn, ms, x, c) => box [p_sgn sgn,
+					 space,
+					 string "where",
+					 space,
+					 string "con",
+					 space,
+					 p_list_sep (string ".")
+						    string (ms @ [x]),
+					 string x,
+					 space,
+					 string "=",
+					 space,
+					 p_con c]
       | SgnProj (m, ms, x) => p_list_sep (string ".") string (m :: ms @ [x])
                                    
 

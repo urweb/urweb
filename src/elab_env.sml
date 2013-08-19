@@ -1126,26 +1126,44 @@ and hnormSgn env (all as (sgn, loc)) =
                 NONE => raise Fail "ElabEnv.hnormSgn: projectSgn failed"
               | SOME sgn => hnormSgn env sgn
         end
-      | SgnWhere (sgn, x, c) =>
-        case #1 (hnormSgn env sgn) of
-            SgnError => (SgnError, loc)
-          | SgnConst sgis =>
-            let
-                fun traverse (pre, post) =
-                    case post of
-                        [] => raise Fail "ElabEnv.hnormSgn: Can't reduce 'where' [1]"
-                      | (sgi as (SgiConAbs (x', n, k), loc)) :: rest =>
-                        if x = x' then
-                            List.revAppend (pre, (SgiCon (x', n, k, c), loc) :: rest)
-                        else
-                            traverse (sgi :: pre, rest)
-                      | sgi :: rest => traverse (sgi :: pre, rest)
+      | SgnWhere (sgn, ms, x, c) =>
+	let
+	    fun rewrite (sgn, ms) =
+		case #1 (hnormSgn env sgn) of
+		    SgnError => (SgnError, loc)
+		  | SgnConst sgis =>
+		    let
+			fun traverse (ms, pre, post) =
+			    case post of
+				[] => raise Fail "ElabEnv.hnormSgn: Can't reduce 'where' [1]"
 
-                val sgis = traverse ([], sgis)
-            in
-                (SgnConst sgis, loc)
-            end
-          | _ => raise Fail "ElabEnv.hnormSgn: Can't reduce 'where' [2]"
+			      | (sgi as (SgiConAbs (x', n, k), loc)) :: rest =>
+				if List.null ms andalso x = x' then
+				    List.revAppend (pre, (SgiCon (x', n, k, c), loc) :: rest)
+				else
+				    traverse (ms, sgi :: pre, rest)
+
+			      | (sgi as (SgiStr (x', n, sgn'), loc)) :: rest =>
+				(case ms of
+				     [] => traverse (ms, sgi :: pre, rest)
+				   | x :: ms' =>
+				     if x = x' then
+					 List.revAppend (pre,
+							 (SgiStr (x', n,
+								  rewrite (sgn', ms')), loc) :: rest)
+				     else
+					 traverse (ms, sgi :: pre, rest))
+
+			      | sgi :: rest => traverse (ms, sgi :: pre, rest)
+					       
+			val sgis = traverse (ms, [], sgis)
+		    in
+			(SgnConst sgis, loc)
+		    end
+		  | _ => raise Fail "ElabEnv.hnormSgn: Can't reduce 'where' [2]"
+	in
+	    rewrite (sgn, ms)
+	end
 
 fun manifest (m, ms, loc) =
     foldl (fn (m, str) => (StrProj (str, m), loc)) (StrVar m, loc) ms

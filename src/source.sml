@@ -100,7 +100,7 @@ and sgn' =
     SgnConst of sgn_item list
   | SgnVar of string
   | SgnFun of string * sgn * sgn
-  | SgnWhere of sgn * string * con
+  | SgnWhere of sgn * string list * string * con
   | SgnProj of string * string list * string
 
 and pat' =

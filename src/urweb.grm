@@ -802,8 +802,8 @@ sgntm  : SIG sgis END                   (SgnConst sgis, s (SIGleft, ENDright))
                                                                  List.take (ms, length ms - 1),
                                                                  List.nth (ms, length ms - 1)),
                                          s (mpathleft, mpathright))
-       | sgntm WHERE CON SYMBOL EQ cexp (SgnWhere (sgntm, SYMBOL, cexp), s (sgntmleft, cexpright))
-       | sgntm WHERE LTYPE SYMBOL EQ cexp(SgnWhere (sgntm, SYMBOL, cexp), s (sgntmleft, cexpright))
+       | sgntm WHERE CON path EQ cexp   (SgnWhere (sgntm, #1 path, #2 path, cexp), s (sgntmleft, cexpright))
+       | sgntm WHERE LTYPE path EQ cexp (SgnWhere (sgntm, #1 path, #2 path, cexp), s (sgntmleft, cexpright))
        | LPAREN sgn RPAREN              (sgn)
 
 cexpO  :                                (NONE)

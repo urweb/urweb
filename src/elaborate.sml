@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2012, Adam Chlipala
+(* Copyright (c) 2008-2013, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -2640,8 +2640,9 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
          let
              val (sgn', gs') = elabSgn (env, denv) sgn
              val (env', n) = E.pushStrNamed env x sgn'
+             val denv' = dopenConstraints (loc, env', denv) {str = x, strs = []}
          in
-             ([(L'.SgiStr (x, n, sgn'), loc)], (env', denv, gs' @ gs))
+             ([(L'.SgiStr (x, n, sgn'), loc)], (env', denv', gs' @ gs))
          end
 
        | L.SgiSgn (x, sgn) =>
@@ -2798,26 +2799,33 @@ and elabSgn (env, denv) (sgn, loc) =
         in
             ((L'.SgnFun (m, n, dom', ran'), loc), gs1 @ gs2)
         end
-      | L.SgnWhere (sgn, x, c) =>
+      | L.SgnWhere (sgn, ms, x, c) =>
         let
             val (sgn', ds1) = elabSgn (env, denv) sgn
             val (c', ck, ds2) = elabCon (env, denv) c
-        in
-            case #1 (hnormSgn env sgn') of
-                L'.SgnError => (sgnerror, [])
-              | L'.SgnConst sgis =>
-                if List.exists (fn (L'.SgiConAbs (x', _, k), _) =>
-                                   x' = x andalso
-                                   (unifyKinds env k ck
-                                    handle KUnify x => sgnError env (WhereWrongKind x);
-                                    true)
-                                 | _ => false) sgis then
-                    ((L'.SgnWhere (sgn', x, c'), loc), ds1 @ ds2)
-                else
-                    (sgnError env (UnWhereable (sgn', x));
-                     (sgnerror, []))
-              | _ => (sgnError env (UnWhereable (sgn', x));
-                      (sgnerror, []))
+
+	    fun checkPath (ms, sgn') =
+		case #1 (hnormSgn env sgn') of
+		    L'.SgnConst sgis =>
+                    List.exists (fn (L'.SgiConAbs (x', _, k), _) =>
+                                    List.null ms andalso x' = x andalso
+                                    (unifyKinds env k ck
+				     handle KUnify x => sgnError env (WhereWrongKind x);
+				     true)
+				  | (L'.SgiStr (x', _, sgn''), _) =>
+				    (case ms of
+					 [] => false
+				       | m :: ms' =>
+					 m = x' andalso
+					 checkPath (ms', sgn''))
+                                  | _ => false) sgis
+		  | _ => false
+	in
+	    if checkPath (ms, sgn') then
+                ((L'.SgnWhere (sgn', ms, x, c'), loc), ds1 @ ds2)
+            else
+                (sgnError env (UnWhereable (sgn', x));
+                 (sgnerror, []))
         end
       | L.SgnProj (m, ms, x) =>
         (case E.lookupStr env m of
@@ -3593,6 +3601,24 @@ and wildifyStr env (str, sgn) =
                          (case (decompileCon env f, decompileCon env x) of
                               (SOME f, SOME x) => SOME (L.CApp (f, x), loc)
                             | _ => NONE)
+
+		       | L'.CTuple cs =>
+			 let
+			     val cs' = foldr (fn (c, cs') =>
+						 case cs' of
+						     NONE => NONE
+						   | SOME cs' =>
+						     case decompileCon env c of
+							 NONE => NONE
+						       | SOME c' => SOME (c' :: cs'))
+				       (SOME []) cs
+			 in
+			     case cs' of
+				 NONE => NONE
+			       | SOME cs' => SOME (L.CTuple cs', loc)
+			 end
+
+		       | L'.CMap _ => SOME (L.CMap, loc)
 
                        | c => (Print.preface ("WTF?", p_con env (c, loc)); NONE)
 

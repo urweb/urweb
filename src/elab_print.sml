@@ -680,17 +680,17 @@ and p_sgn env (sgn, _) =
                                          string ":",
                                          space,
                                          p_sgn (E.pushStrNamedAs env x n sgn) sgn']
-      | SgnWhere (sgn, x, c) => box [p_sgn env sgn,
-                                     space,
-                                     string "where",
-                                     space,
-                                     string "con",
-                                     space,
-                                     string x,
-                                     space,
-                                     string "=",
-                                     space,
-                                     p_con env c]
+      | SgnWhere (sgn, ms, x, c) => box [p_sgn env sgn,
+					 space,
+					 string "where",
+					 space,
+					 string "con",
+					 space,
+					 p_list_sep (string ".") string (ms @ [x]),
+					 space,
+					 string "=",
+					 space,
+					 p_con env c]
       | SgnProj (m1, ms, x) =>
         let
             val m1x = #1 (E.lookupStrNamed env m1)

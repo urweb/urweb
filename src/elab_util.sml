@@ -759,12 +759,12 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                     fn s2' =>
                                        (SgnFun (m, n, s1', s2'), loc)))
               | SgnProj _ => S.return2 sAll
-              | SgnWhere (sgn, x, c) =>
+              | SgnWhere (sgn, ms, x, c) =>
                 S.bind2 (sg ctx sgn,
                       fn sgn' =>
                          S.map2 (con ctx c,
                               fn c' =>
-                                 (SgnWhere (sgn', x, c'), loc)))
+                                 (SgnWhere (sgn', ms, x, c'), loc)))
               | SgnError => S.return2 sAll
     in
         sg
@@ -1248,7 +1248,7 @@ and maxNameSgn (sgn, _) =
         SgnConst sgis => foldl (fn (sgi, count) => Int.max (maxNameSgi sgi, count)) 0 sgis
       | SgnVar n => n
       | SgnFun (_, n, dom, ran) => Int.max (n, Int.max (maxNameSgn dom, maxNameSgn ran))
-      | SgnWhere (sgn, _, _) => maxNameSgn sgn
+      | SgnWhere (sgn, _, _, _) => maxNameSgn sgn
       | SgnProj (n, _, _) => n
       | SgnError => 0
 
