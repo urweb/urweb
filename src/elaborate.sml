@@ -3553,11 +3553,16 @@ and wildifyStr env (str, sgn) =
                        | L'.KFun _ => NONE
 
                  fun maybeHnorm env c =
-                     hnormCon env c
-                     handle E.UnboundNamed _ => c
+		     hnormCon env c
+		     handle E.UnboundNamed _ => c
 
-                 fun decompileCon env (c as (_, loc)) =
-                     case #1 (maybeHnorm env c) of
+                 fun decompileCon env c =
+		     case decompileCon' env c of
+			 SOME v => SOME v
+		       | NONE => decompileCon' env (maybeHnorm env c)
+
+		 and decompileCon' env (c as (_, loc)) =
+                     case #1 c of
                          L'.CRel i =>
                          let
                              val (s, _) = E.lookupCRel env i
@@ -3619,6 +3624,10 @@ and wildifyStr env (str, sgn) =
 			 end
 
 		       | L'.CMap _ => SOME (L.CMap, loc)
+		       | L'.TRecord c =>
+			 (case decompileCon env c of
+			      NONE => NONE
+			    | SOME c' => SOME (L.TRecord c', loc))
 
                        | c => (Print.preface ("WTF?", p_con env (c, loc)); NONE)
 
