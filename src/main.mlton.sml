@@ -61,11 +61,14 @@ fun oneRun args =
             case args of
                 [] => ()
               | "-version" :: rest => 
-	        printVersion ()
+                  printVersion ()
               | "-numeric-version" :: rest =>
-	        printNumericVersion ()
+                  printNumericVersion ()
               | "-css" :: rest =>
                 (css := true;
+                 doArgs rest)
+              | "-ccompiler" :: ccomp :: rest =>
+                (Settings.setCCompiler ccomp;
                  doArgs rest)
               | "-demo" :: prefix :: rest =>
                 (demo := SOME (prefix, false);

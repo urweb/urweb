@@ -256,4 +256,7 @@ signature SETTINGS = sig
 
     val setTimeFormat : string -> unit
     val getTimeFormat : unit -> string
+
+	val getCCompiler : unit -> string
+	val setCCompiler : string -> unit
 end

@@ -33,6 +33,11 @@ val configSrcLib = ref Config.srclib
 val configInclude = ref Config.includ
 val configSitelisp = ref Config.sitelisp
 
+val configCCompiler = ref Config.ccompiler
+
+fun getCCompiler () = !configCCompiler
+fun setCCompiler cc = configCCompiler := cc
+
 fun libUr () = OS.Path.joinDirFile {dir = !configSrcLib,
                                     file = "ur"}
 fun libC () = OS.Path.joinDirFile {dir = !configSrcLib,
