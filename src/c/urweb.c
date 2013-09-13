@@ -2509,7 +2509,7 @@ uw_Basis_string uw_Basis_sqlifyChar(uw_context ctx, uw_Basis_char c) {
 
 char *uw_sqlsuffixBlob = "::bytea";
 
-uw_Basis_string uw_Basis_sqlifyBlob(uw_context ctx, uw_Basis_blob b) {
+uw_Basis_string uw_Basis_sqlifyBlob_old(uw_context ctx, uw_Basis_blob b) {
   char *r, *s2;
   size_t i;
 
@@ -2553,6 +2553,29 @@ uw_Basis_string uw_Basis_sqlifyBlob(uw_context ctx, uw_Basis_blob b) {
   *s2++ = '\'';
   strcpy(s2, uw_sqlsuffixBlob);
   ctx->heap.front = s2 + 1 + strlen(uw_sqlsuffixBlob);
+  return r;
+}
+
+int uw_Xstrings = 1;
+
+uw_Basis_string uw_Basis_sqlifyBlob(uw_context ctx, uw_Basis_blob b) {
+  char *r, *s2;
+  size_t i;
+
+  uw_check_heap(ctx, b.size * 2 + 3 + uw_Xstrings);
+
+  r = s2 = ctx->heap.front;
+  *s2++ = 'X';
+  *s2++ = '\'';
+
+  for (i = 0; i < b.size; ++i) {
+    char c = b.data[i];
+    sprintf(s2, "%02X", c);
+    s2 += 2;
+  }
+
+  *s2++ = '\'';
+  ctx->heap.front = s2 + 1;
   return r;
 }
 
