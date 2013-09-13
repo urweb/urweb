@@ -1,0 +1,6 @@
+database dbname=dbupload
+sql dbupload.sql
+allow mime *
+rewrite all Dbupload/*
+
+dbupload

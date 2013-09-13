@@ -2509,73 +2509,49 @@ uw_Basis_string uw_Basis_sqlifyChar(uw_context ctx, uw_Basis_char c) {
 
 char *uw_sqlsuffixBlob = "::bytea";
 
-uw_Basis_string uw_Basis_sqlifyBlob_old(uw_context ctx, uw_Basis_blob b) {
-  char *r, *s2;
-  size_t i;
-
-  uw_check_heap(ctx, b.size * 5 + 3 + uw_Estrings + strlen(uw_sqlsuffixBlob));
-
-  r = s2 = ctx->heap.front;
-  if (uw_Estrings)
-    *s2++ = 'E';
-  *s2++ = '\'';
-
-  for (i = 0; i < b.size; ++i) {
-    char c = b.data[i];
-
-    switch (c) {
-    case '\'':
-      if (uw_Estrings)
-        strcpy(s2, "\\'");
-      else
-        strcpy(s2, "''");
-      s2 += 2;
-      break;
-    case '\\':
-      if (uw_Estrings) {
-        strcpy(s2, "\\\\\\\\");
-        s2 += 4;
-      } else
-        *s2++ = '\\';
-      break;
-    default:
-      if (isprint((int)c))
-        *s2++ = c;
-      else if (uw_Estrings) {
-        sprintf(s2, "\\\\%03o", c);
-        s2 += 5;
-      }
-      else
-        uw_error(ctx, FATAL, "Non-printable character %u in blob to SQLify", c);
-    }
-  }
-
-  *s2++ = '\'';
-  strcpy(s2, uw_sqlsuffixBlob);
-  ctx->heap.front = s2 + 1 + strlen(uw_sqlsuffixBlob);
-  return r;
-}
-
-int uw_Xstrings = 1;
-
 uw_Basis_string uw_Basis_sqlifyBlob(uw_context ctx, uw_Basis_blob b) {
   char *r, *s2;
   size_t i;
 
-  uw_check_heap(ctx, b.size * 2 + 3 + uw_Xstrings);
+  uw_check_heap(ctx, b.size * 5 + 4 + strlen(uw_sqlsuffixBlob));
 
   r = s2 = ctx->heap.front;
-  *s2++ = 'X';
+  if (uw_Estrings)
+    *s2++ = 'E';
+  else
+    *s2++ = 'X';
   *s2++ = '\'';
 
   for (i = 0; i < b.size; ++i) {
-    char c = b.data[i];
-    sprintf(s2, "%02X", c);
-    s2 += 2;
-  }
+    unsigned char c = b.data[i];
+
+    if (uw_Estrings) {
+      switch (c) {
+      case '\'':
+        strcpy(s2, "\\'");
+        s2 += 2;
+        break;
+      case '\\':
+        strcpy(s2, "\\\\\\\\");
+        s2 += 4;
+        break;
+      default:
+        if (isprint((int)c))
+          *s2++ = c;
+        else {
+          sprintf(s2, "\\\\%03o", c);
+          s2 += 5;
+        }
+      }
+    } else {
+      sprintf(s2, "%02X", c);
+      s2 += 2;
+    }
+  }    
 
   *s2++ = '\'';
-  ctx->heap.front = s2 + 1;
+  strcpy(s2, uw_sqlsuffixBlob);
+  ctx->heap.front = s2 + 1 + strlen(uw_sqlsuffixBlob);
   return r;
 }
 
