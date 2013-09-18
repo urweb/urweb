@@ -56,6 +56,8 @@ fun oneRun args =
 		               raise Code OS.Process.success)
         fun printNumericVersion () = (print (Config.versionNumber ^ "\n");
 			              raise Code OS.Process.success)
+        fun printCCompiler () = (print ((Settings.getCCompiler ()) ^ "\n");
+			              raise Code OS.Process.success)
 
         fun doArgs args =
             case args of
@@ -67,6 +69,8 @@ fun oneRun args =
               | "-css" :: rest =>
                 (css := true;
                  doArgs rest)
+              | "-print-ccompiler" :: rest =>
+                  printCCompiler ()
               | "-ccompiler" :: ccomp :: rest =>
                 (Settings.setCCompiler ccomp;
                  doArgs rest)
