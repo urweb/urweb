@@ -917,7 +917,10 @@ structure SM = BinaryMapFn(struct
                            end)
 
 val moduleRoots = ref ([] : (string * string) list)
-fun addModuleRoot (k, v) = moduleRoots := (k, v) :: !moduleRoots
+fun addModuleRoot (k, v) = moduleRoots :=
+                           (OS.Path.mkAbsolute {path = k,
+                                                relativeTo = OS.FileSys.getDir ()},
+                            v) :: !moduleRoots
 
 structure SK = struct
 type ord_key = string
@@ -998,7 +1001,7 @@ val parse = {
 
                           val ds = #func parseUr ur
                           val d = (Source.DStr (mname, sgnO, if !Elaborate.incremental then SOME (if Time.> (urt, urst) then urt else urst) else NONE,
-                                                (Source.StrConst ds, loc)), loc)
+                                                (Source.StrConst ds, loc), false), loc)
 
                           val fname = OS.Path.mkCanonical fname
                           val d = case List.find (fn (root, name) =>
@@ -1014,7 +1017,7 @@ val parse = {
                                           val pieces = map capitalize pieces
                                           val full = String.concatWith "." pieces
 
-                                          fun makeD prefix pieces =
+                                          fun makeD first prefix pieces =
                                               case pieces of
                                                   [] => (ErrorMsg.error "Empty module path";
                                                          (Source.DStyle "Boo", loc))
@@ -1056,7 +1059,7 @@ val parse = {
                                                                                          else
                                                                                              (Source.StrVar part, loc)
                                                                            in
-                                                                               (Source.DStr (part, NONE, NONE, imp),
+                                                                               (Source.DStr (part, NONE, NONE, imp, false),
                                                                                 loc) :: ds
                                                                            end
                                                                        else
@@ -1066,9 +1069,10 @@ val parse = {
                                                       (Source.DStr (piece, NONE, NONE,
                                                                     (Source.StrConst (if old then
                                                                                           simOpen ()
-                                                                                          @ [makeD this pieces]
+                                                                                          @ [makeD false this pieces]
                                                                                       else
-                                                                                          [makeD this pieces]), loc)),
+                                                                                          [makeD false this pieces]),
+                                                                     loc), first andalso old),
                                                        loc)
                                                   end
                                       in
@@ -1077,7 +1081,7 @@ val parse = {
                                           else
                                               ();
                                           
-                                          makeD "" pieces
+                                          makeD true "" pieces
                                           before ignore (foldl (fn (new, path) =>
                                                                    let
                                                                        val new' = case path of
@@ -1131,10 +1135,17 @@ val parse = {
                       val ds = case onError of
                                    NONE => ds
                                  | SOME v => ds @ [(Source.DOnError v, loc)]
+
+                      fun dummy fname = {file = Settings.libFile fname,
+                                         first = ErrorMsg.dummyPos,
+                                         last = ErrorMsg.dummyPos}
+
+                      val used = SM.insert (SM.empty, "Basis", dummy "basis.urs")
+                      val used = SM.insert (used, "Top", dummy "top.urs")
                   in
                       ignore (List.foldl (fn (d, used) =>
                                              case #1 d of
-                                                 Source.DStr (x, _, _, _) =>
+                                                 Source.DStr (x, _, _, _, false) =>
                                                  (case SM.find (used, x) of
                                                       SOME loc =>
                                                       (ErrorMsg.error ("Duplicate top-level module name " ^ x);
@@ -1143,7 +1154,7 @@ val parse = {
                                                        used)
                                                     | NONE =>
                                                       SM.insert (used, x, #2 d))
-                                               | _ => used) SM.empty ds);
+                                               | _ => used) used ds);
                       ds
                   end handle Empty => ds
               end,

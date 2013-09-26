@@ -571,15 +571,15 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
        | FUN valis                      ([(DValRec valis, s (FUNleft, valisright))])
 
        | SIGNATURE CSYMBOL EQ sgn       ([(DSgn (CSYMBOL, sgn), s (SIGNATUREleft, sgnright))])
-       | STRUCTURE CSYMBOL EQ str       ([(DStr (CSYMBOL, NONE, NONE, str), s (STRUCTUREleft, strright))])
-       | STRUCTURE CSYMBOL COLON sgn EQ str ([(DStr (CSYMBOL, SOME sgn, NONE, str), s (STRUCTUREleft, strright))])
+       | STRUCTURE CSYMBOL EQ str       ([(DStr (CSYMBOL, NONE, NONE, str, false), s (STRUCTUREleft, strright))])
+       | STRUCTURE CSYMBOL COLON sgn EQ str ([(DStr (CSYMBOL, SOME sgn, NONE, str, false), s (STRUCTUREleft, strright))])
        | FUNCTOR CSYMBOL LPAREN CSYMBOL COLON sgn RPAREN EQ str
                                         ([(DStr (CSYMBOL1, NONE, NONE,
-                                                 (StrFun (CSYMBOL2, sgn1, NONE, str), s (FUNCTORleft, strright))),
+                                                 (StrFun (CSYMBOL2, sgn1, NONE, str), s (FUNCTORleft, strright)), false),
                                            s (FUNCTORleft, strright))])
        | FUNCTOR CSYMBOL LPAREN CSYMBOL COLON sgn RPAREN COLON sgn EQ str
                                         ([(DStr (CSYMBOL1, NONE, NONE,
-                                                 (StrFun (CSYMBOL2, sgn1, SOME sgn2, str), s (FUNCTORleft, strright))),
+                                                 (StrFun (CSYMBOL2, sgn1, SOME sgn2, str), s (FUNCTORleft, strright)), false),
                                            s (FUNCTORleft, strright))])
        | OPEN mpath                     (case mpath of
                                              [] => raise Fail "Impossible mpath parse [1]"
@@ -593,7 +593,7 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                                          foldl (fn (m, str) => (StrProj (str, m), loc))
                                                          (StrVar m, loc) ms
                                          in
-                                             [(DStr ("anon", NONE, NONE, (StrApp (m, str), loc)), loc),
+                                             [(DStr ("anon", NONE, NONE, (StrApp (m, str), loc), false), loc),
                                               (DOpen ("anon", []), loc)]
                                          end)
        | OPEN CONSTRAINTS mpath         (case mpath of

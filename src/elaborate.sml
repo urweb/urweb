@@ -3679,7 +3679,7 @@ and wildifyStr env (str, sgn) =
                                    L.DCon (x, _, _) => ndelCon (nd, x)
                                  | L.DVal (x, _, _) => ndelVal (nd, x)
                                  | L.DOpen _ => nempty
-                                 | L.DStr (x, _, _, (L.StrConst ds', _)) =>
+                                 | L.DStr (x, _, _, (L.StrConst ds', _), _) =>
                                    (case SM.find (nmods nd, x) of
                                         NONE => nd
                                       | SOME (env, nd') => naddMod (nd, x, (env, removeUsed (nd', ds'))))
@@ -3748,11 +3748,11 @@ and wildifyStr env (str, sgn) =
 
                          val ds = ds @ ds'
                      in
-                         map (fn d as (L.DStr (x, s, tm, (L.StrConst ds', loc')), loc) =>
+                         map (fn d as (L.DStr (x, s, tm, (L.StrConst ds', loc'), r), loc) =>
                                  (case SM.find (nmods nd, x) of
                                       NONE => d
                                     | SOME (env, nd') =>
-                                      (L.DStr (x, s, tm, (L.StrConst (extend (env, nd', ds')), loc')), loc))
+                                      (L.DStr (x, s, tm, (L.StrConst (extend (env, nd', ds')), loc'), r), loc))
                                | d => d) ds
                      end
              in
@@ -3963,7 +3963,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     ([(L'.DSgn (x, n, sgn'), loc)], (env', denv, enD gs' @ gs))
                 end
 
-              | L.DStr (x, sgno, tmo, str) =>
+              | L.DStr (x, sgno, tmo, str, _) =>
                 (case ModDb.lookup dAll of
                      SOME d =>
                      let
@@ -4535,7 +4535,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
 
         val d = (L.DStr ("Top", SOME (L.SgnConst topSgn, ErrorMsg.dummySpan),
                          SOME (if Time.< (top_tm, basis_tm) then basis_tm else top_tm),
-                         (L.StrConst topStr, ErrorMsg.dummySpan)), ErrorMsg.dummySpan)
+                         (L.StrConst topStr, ErrorMsg.dummySpan), false), ErrorMsg.dummySpan)
         val (top_n, env', topSgn, topStr) =
             case (if !incremental then ModDb.lookup d else NONE) of
                 NONE =>

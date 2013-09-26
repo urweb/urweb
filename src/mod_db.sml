@@ -126,7 +126,7 @@ fun insert (d, tm) =
 
 fun lookup (d : Source.decl) =
     case #1 d of
-        Source.DStr (x, _, SOME tm, _) =>
+        Source.DStr (x, _, SOME tm, _, _) =>
         (case SM.find (!byName, x) of
              NONE => NONE
            | SOME r =>

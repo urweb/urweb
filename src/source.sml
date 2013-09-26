@@ -154,7 +154,7 @@ datatype decl' =
        | DVal of string * con option * exp
        | DValRec of (string * con option * exp) list
        | DSgn of string * sgn
-       | DStr of string * sgn option * Time.time option * str
+       | DStr of string * sgn option * Time.time option * str * bool (* did this module come from the '-root' directive? *)
        | DFfiStr of string * sgn * Time.time option
        | DOpen of string * string list
        | DConstraint of con * con
