@@ -3184,6 +3184,7 @@ fun p_file env (ds, ps) =
                 DVal (_, _, _, e) => expDb e
               | DFun (_, _, _, _, e) => expDb e
               | DFunRec vis => List.exists (expDb o #5) vis
+              | DTask (_, _, _, e) => expDb e
               | _ => false
 
         val () = if not hasDb andalso List.exists declDb ds then
