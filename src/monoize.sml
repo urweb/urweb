@@ -282,6 +282,8 @@ fun monoType env =
                     end
                   | L.CApp ((L.CFfi ("Basis", "propagation_mode"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "dml") =>
+                    (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_subset"), _), _), _), _) =>
                     (L'.TRecord [], loc)
