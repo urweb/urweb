@@ -775,6 +775,7 @@ val redirect : t ::: Type -> url -> transaction t
 type id
 val fresh : transaction id
 val giveFocus : id -> transaction unit
+val show_id : show id
 
 val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ [Dyn]] => unit
           -> tag [Signal = signal (xml ([Dyn] ++ ctx) use bind)] ([Dyn] ++ ctx) [] use bind
