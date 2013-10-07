@@ -751,6 +751,7 @@ con tr = [Dyn] ++ tr'
 con xhtml = xml html
 con page = xhtml [] []
 con xbody = xml body [] []
+con xhead = xml head [] []
 con xtable = xml tabl [] []
 con xtr = xml tr [] []
 con xform = xml form [] []
