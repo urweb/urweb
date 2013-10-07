@@ -976,6 +976,19 @@ val td : other ::: {Unit} -> [other ~ [Body, Tr]] => unit
   -> tag ([Colspan = int, Rowspan = int] ++ tableAttrs)
          ([Tr] ++ other) ([Body] ++ other) [] []
 
+(** Definition lists *)
+
+val dl : other ::: {Unit} -> [other ~ [Body,Dl]]
+  => unit
+  -> tag [] ([Body] ++ other) ([Dl] ++ other) [] []
+
+val dt : other ::: {Unit} -> [other ~ [Body,Dl]]
+  => unit
+  -> tag [] ([Dl] ++ other) ([Body] ++ other) [] []
+
+val dd : other ::: {Unit} -> [other ~ [Body,Dl]]
+  => unit
+  -> tag [] ([Dl] ++ other) ([Body] ++ other) [] []
 
 (** Aborting *)
 
