@@ -471,6 +471,8 @@ struct uw_context {
   int amInitializing;
 
   char error_message[ERROR_BUF_LEN];
+
+  int usedSig, needsResig;
 };
 
 size_t uw_headers_max = SIZE_MAX;
@@ -545,6 +547,9 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
   ctx->nextId = 0;
 
   ctx->amInitializing = 0;
+
+  ctx->usedSig = 0;
+  ctx->needsResig = 0;
 
   return ctx;
 }
@@ -624,6 +629,8 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->queryString = NULL;
   ctx->nextId = 0;
   ctx->amInitializing = 0;
+  ctx->usedSig = 0;
+  ctx->needsResig = 0;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -3083,6 +3090,11 @@ uw_Basis_string uw_Basis_get_cookie(uw_context ctx, uw_Basis_string c) {
   return NULL;
 }
 
+static void set_cookie(uw_context ctx) {
+  if (ctx->usedSig)
+    ctx->needsResig = 1;
+}
+
 uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v, uw_Basis_time *expires, uw_Basis_bool secure) {
   uw_write_header(ctx, "Set-Cookie: ");
   uw_write_header(ctx, c);
@@ -3105,6 +3117,7 @@ uw_unit uw_Basis_set_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_str
   if (secure)
     uw_write_header(ctx, "; secure");
   uw_write_header(ctx, "\r\n");
+  set_cookie(ctx);
 
   return uw_unit_v;
 }
@@ -3115,6 +3128,7 @@ uw_unit uw_Basis_clear_cookie(uw_context ctx, uw_Basis_string prefix, uw_Basis_s
   uw_write_header(ctx, "=; path=");
   uw_write_header(ctx, prefix);
   uw_write_header(ctx, "; " THE_PAST "\r\n");
+  set_cookie(ctx);
 
   return uw_unit_v;
 }
@@ -3192,8 +3206,32 @@ int uw_rollback(uw_context ctx, int will_retry) {
 
 static const char begin_xhtml[] = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">";
 
+extern int uw_hash_blocksize;
+
+static const char sig_intro[] = "<input type=\"hidden\" name=\"Sig\" value=\"";
+
+static char *find_sig(char *haystack) {
+  int i;
+  char *s = strstr(haystack, sig_intro);
+
+  if (!s || strlen(haystack) - (s - haystack) - (sizeof sig_intro - 1) < uw_hash_blocksize*2+1)
+    return NULL;
+  
+  s += sizeof sig_intro - 1;
+
+  for (i = 0; i < uw_hash_blocksize*2; ++i)
+    if (!isxdigit((int)s[i]))
+      return NULL;
+
+  if (s[i] != '"')
+    return NULL;
+
+  return s;
+}
+
 void uw_commit(uw_context ctx) {
   int i;
+  char *sig;
 
   if (uw_has_error(ctx)) {
     uw_rollback(ctx, 0);
@@ -3314,6 +3352,18 @@ void uw_commit(uw_context ctx) {
         memcpy(start + 6, ctx->script_header, lenH);
         memcpy(start + 6 + lenH, "</head>", 7);
       }
+    }
+  }
+
+  if (ctx->needsResig) {
+    sig = find_sig(ctx->page.start);
+    if (sig) {
+      char *realsig = ctx->app->cookie_sig(ctx);
+
+      do {
+        memcpy(sig, realsig, 2*uw_hash_blocksize);
+        sig = find_sig(sig);
+      } while (sig);
     }
   }
 }
@@ -3561,8 +3611,6 @@ uw_Basis_string uw_unnull(uw_Basis_string s) {
   return s ? s : "";
 }
 
-extern int uw_hash_blocksize;
-
 uw_Basis_string uw_Basis_makeSigString(uw_context ctx, uw_Basis_string sig) {
   uw_Basis_string r = uw_malloc(ctx, 2 * uw_hash_blocksize + 1);
   int i;
@@ -3591,6 +3639,7 @@ int uw_streq(uw_Basis_string s1, uw_Basis_string s2) {
 }
 
 uw_Basis_string uw_Basis_sigString(uw_context ctx, uw_unit u) {
+  ctx->usedSig = 1;
   return ctx->app->cookie_sig(ctx);
 }
 
