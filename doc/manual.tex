@@ -231,6 +231,8 @@ Some other command-line parameters are accepted:
 \begin{itemize}
 \item \texttt{-boot}: Run Ur/Web from a build tree (and not from a system install).  This is useful if you're testing the compiler and don't want to install it.  It forces generation of statically linked executables.
 
+\item \texttt{-ccompiler <PROGRAM>}: Select an alternative C compiler to call with command lines in compiling Ur/Web applications.  (It's possible to set the default compiler as part of the \texttt{configure} process, but it may sometimes be useful to override the default.)
+
 \item \texttt{-db <DBSTRING>}: Set database connection information, using the format expected by Postgres's \texttt{PQconnectdb()}, which is \texttt{name1=value1 ... nameN=valueN}.  The same format is also parsed and used to discover connection parameters for MySQL and SQLite.  The only significant settings for MySQL are \texttt{host}, \texttt{hostaddr}, \texttt{port}, \texttt{dbname}, \texttt{user}, and \texttt{password}.  The only significant setting for SQLite is \texttt{dbname}, which is interpreted as the filesystem path to the database.  Additionally, when using SQLite, a database string may be just a file path.
 
 \item \texttt{-dbms [postgres|mysql|sqlite]}: Sets the database backend to use.
@@ -270,6 +272,8 @@ sqlite3 path/to/database/file <app.sql
 \item \texttt{-path NAME VALUE}: Set the value of path variable \texttt{\$NAME} to \texttt{VALUE}, for use in \texttt{.urp} files.
 
 \item \texttt{-prefix PREFIX}: Equivalent to the \texttt{prefix} directive from \texttt{.urp} files
+
+\item \texttt{-print-ccompiler}: Print the C compiler being used.
 
 \item \texttt{-protocol [http|cgi|fastcgi|static]}: Set the protocol that the generated application speaks.
   \begin{itemize}
