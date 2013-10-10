@@ -143,7 +143,7 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
 \item \texttt{coreInline TREESIZE} sets how many nodes the AST of a function definition may have before the optimizer stops trying hard to inline calls to that function.  (This is one of two options for one of two intermediate languages within the compiler.)
 \item \texttt{database DBSTRING} sets the string to pass to libpq to open a database connection.
 \item \texttt{debug} saves some intermediate C files, which is mostly useful to help in debugging the compiler itself.
-\item \texttt{effectful Module.ident} registers an FFI function or transaction as having side effects.  The optimizer avoids removing, moving, or duplicating calls to such functions.  Every effectful FFI function must be registered, or the optimizer may make invalid transformations.  (Note that merely assigning a function a \texttt{transaction}-based type does not mark it as effectful in this way!)
+\item \texttt{effectful Module.ident} registers an FFI function or transaction as having side effects.  The optimizer avoids removing, moving, or duplicating calls to such functions.  This is the default behavior for \texttt{transaction}-based types.
 \item \texttt{exe FILENAME} sets the filename to which to write the output executable.  The default for file \texttt{P.urp} is \texttt{P.exe}.  
 \item \texttt{ffi FILENAME} reads the file \texttt{FILENAME.urs} to determine the interface to a new FFI module.  The name of the module is calculated from \texttt{FILENAME} in the same way as for normal source files.  See the files \texttt{include/urweb.h} and \texttt{src/c/urweb.c} for examples of C headers and implementations for FFI modules.  In general, every type or value \texttt{Module.ident} becomes \texttt{uw\_Module\_ident} in C.
 \item \texttt{include FILENAME} adds \texttt{FILENAME} to the list of files to be \texttt{\#include}d in C sources.  This is most useful for interfacing with new FFI modules.
@@ -2383,7 +2383,7 @@ It is most convenient to encapsulate an FFI binding with a new \texttt{.urp} fil
 \begin{itemize}
 \item \texttt{clientOnly Module.ident} registers a value as being allowed only in client-side code.
 \item \texttt{clientToServer Module.ident} declares a type as OK to marshal between clients and servers.  By default, abstract FFI types are not allowed to be marshalled, since your library might be maintaining invariants that the simple serialization code doesn't check.
-\item \texttt{effectful Module.ident} registers a function that can have side effects.  It is important to remember to use this directive for each such function, or else the optimizer might change program semantics.  (Note that merely assigning a function a \texttt{transaction}-based type does not mark it as effectful in this way!)
+\item \texttt{effectful Module.ident} registers a function that can have side effects.  This is the default for \texttt{transaction}-based types, and, actually, this directive is mostly present for legacy compatibility reasons, since it used to be required explicitly for each \texttt{transaction}al function.
 \item \texttt{ffi FILE.urs} names the file giving your library's signature.  You can include multiple such files in a single \texttt{.urp} file, and each file \texttt{mod.urp} defines an FFI module \texttt{Mod}.
 \item \texttt{include FILE} requests inclusion of a C header file.
 \item \texttt{jsFunc Module.ident=name} gives a mapping from an Ur name for a value to a JavaScript name.

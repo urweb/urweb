@@ -73,6 +73,7 @@ signature SETTINGS = sig
 
     (* Which FFI functions have side effects? *)
     val setEffectful : ffi list -> unit
+    val addEffectful : ffi -> unit
     val isEffectful : ffi -> bool
 
     (* Which FFI functions should not have their calls removed or reordered, but cause no lasting effects? *)
