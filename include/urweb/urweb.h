@@ -351,8 +351,6 @@ void uw_isPost(uw_context);
 uw_Basis_bool uw_Basis_currentUrlHasPost(uw_context);
 uw_Basis_bool uw_Basis_currentUrlHasQueryString(uw_context);
 
-void uw_cutErrorLocation(char *);
-
 uw_Basis_string uw_Basis_fresh(uw_context);
 
 uw_Basis_float uw_Basis_floatFromInt(uw_context, uw_Basis_int);

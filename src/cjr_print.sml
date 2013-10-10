@@ -1617,8 +1617,11 @@ and p_exp' par tail env (e, loc) =
              string "tmp;",
              newline,
              string "uw_error(ctx, FATAL, \"",
-             string (ErrorMsg.spanToString loc),
-             string ": %s\", ",
+             string (if Settings.getDebug () then
+                         ErrorMsg.spanToString loc ^ ": "
+                     else
+                         ""),
+             string "%s\", ",
              p_exp' false false env e,
              string ");",
              newline,
@@ -3515,11 +3518,6 @@ fun p_file env (ds, ps) =
                  NONE => box []
                | SOME n => box [string "static void uw_onError(uw_context ctx, char *msg) {",
                                 newline,
-                                if Settings.getDebug () then
-                                    box []
-                                else
-                                    box [string "uw_cutErrorLocation(msg);",
-                                         newline],
                                 if !hasJs then
                                     box [string "uw_set_script_header(ctx, \"",
                                          string allScripts,

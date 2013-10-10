@@ -4103,16 +4103,6 @@ void uw_mayReturnIndirectly(uw_context ctx) {
   ctx->allowed_to_return_indirectly = 1;
 }
 
-void uw_cutErrorLocation(char *s) {
-  char *s2;
-
-  s2 = strstr(s, ": ");
-  if (s2 == NULL || strcspn(s, "<&") < s2 - s)
-    return;
-
-  memmove(s, s2+2, strlen(s2+2)+1);
-}
-
 uw_Basis_string uw_Basis_fresh(uw_context ctx) {
   int len;
   char *r;
