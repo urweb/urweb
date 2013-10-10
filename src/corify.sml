@@ -796,7 +796,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
         end
 
       | L.DFfiStr (m, n, (sgn, _)) =>
-        (print ("~~~" ^ m ^ "\n"); case sgn of
+        (case sgn of
              L.SgnConst sgis =>
              let
                  val (ds, cmap, conmap, st, _) =
@@ -943,8 +943,6 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                              | L'.CApp ((L'.CFfi ("Basis", "transaction"), _), _) => true
                                              | _ => false
                                    in
-                                       Print.epreface (x, CorePrint.p_con CoreEnv.empty c);
-
                                        if isTransactional c then
                                            let
                                                val ffi = (m, x)
