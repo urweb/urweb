@@ -127,18 +127,20 @@ static unsigned long long stackSize;
 
 int pthread_create_big(pthread_t *outThread, void *foo, void *threadFunc, void *arg)
 {
-  int err;
-  pthread_attr_t stackSizeAttribute;
-
-  err = pthread_attr_init(&stackSizeAttribute);
-  if (err) return err; 
-
   if (stackSize > 0) {
+    int err;
+    pthread_attr_t stackSizeAttribute;
+
+    err = pthread_attr_init(&stackSizeAttribute);
+    if (err) return err;
+
     err = pthread_attr_setstacksize(&stackSizeAttribute, stackSize);
     if (err) return err;
-  }
 
-  return pthread_create(outThread, &stackSizeAttribute, threadFunc, arg);
+    return pthread_create(outThread, &stackSizeAttribute, threadFunc, arg);
+  } else {
+    return pthread_create(outThread, NULL, threadFunc, arg);
+  }
 }
 
 void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_logger log_debug) {
