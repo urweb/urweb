@@ -4002,6 +4002,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                  end
 
                          val (env', n) = E.pushStrNamed env x sgn'
+
                          val denv' =
                              case #1 str' of
                                  L'.StrConst _ => dopenConstraints (loc, env', denv) {str = x, strs = []}
@@ -4581,16 +4582,12 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
 
         val (ds', env') = dopen env' {str = top_n, strs = [], sgn = topSgn}
 
-        fun elabDecl' (d, (env, gs)) =
-            let
-                val () = resetKunif ()
-                val () = resetCunif ()
-                val (ds, (env', _, gs)) = elabDecl (d, (env, D.empty, gs))
-            in
-                (ds, (env', gs))
-            end
+        fun elabDecl' x =
+            (resetKunif ();
+             resetCunif ();
+             elabDecl x)
 
-        val (file, (env'', gs)) = ListUtil.foldlMapConcat elabDecl' (env', []) file
+        val (file, (env'', _, gs)) = ListUtil.foldlMapConcat elabDecl' (env', D.empty, []) file
 
         fun oneSummaryRound () =
             if ErrorMsg.anyErrors () then
