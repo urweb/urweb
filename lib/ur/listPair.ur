@@ -34,13 +34,13 @@ fun all [a] [b] f =
         all'
     end
 
-fun map2 [a] [b] [c] (f : a -> b -> c) =
+fun mp [a] [b] [c] (f : a -> b -> c) =
     let
-        fun map2' ls1 ls2 =
+        fun map' ls1 ls2 =
             case (ls1, ls2) of
                 ([], []) => []
-              | (x1 :: ls1, x2 :: ls2) => f x1 x2 :: map2' ls1 ls2
+              | (x1 :: ls1, x2 :: ls2) => f x1 x2 :: map' ls1 ls2
               | _ => error <xml>ListPair.map2: Unequal list lengths</xml>
     in
-        map2'
+        map'
     end

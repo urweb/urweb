@@ -6,5 +6,5 @@ val mapX : a ::: Type -> b ::: Type -> ctx ::: {Unit}
 
 val all : a ::: Type -> b ::: Type -> (a -> b -> bool) -> list a -> list b -> bool
 
-val map2 : a ::: Type -> b ::: Type -> c ::: Type
-           -> (a -> b -> c) -> list a -> list b -> list c
+val mp : a ::: Type -> b ::: Type -> c ::: Type
+         -> (a -> b -> c) -> list a -> list b -> list c
