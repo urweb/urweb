@@ -1,0 +1,6 @@
+val x = 1 :: 2 :: []
+val y = 3 :: 4 :: []
+
+fun main () : transaction page = return <xml>
+  {[ListPair.map2 plus x y]}
+</xml>
