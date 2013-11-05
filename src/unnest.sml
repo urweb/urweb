@@ -171,6 +171,8 @@ type state = {
 
 fun kind (_, k, st) = (k, st)
 
+val basis = ref 0
+
 fun exp ((ks, ts), e as old, st : state) =
     case e of
         ELet (eds, e, t) =>
@@ -185,6 +187,21 @@ fun exp ((ks, ts), e as old, st : state) =
                 in
                     liftExpInExp (~by) (length subs) e
                 end
+
+            fun functionInside (t : con) =
+                case #1 t of
+                    TFun _ => true
+                  | CApp ((CModProj (basis', [], "transaction"), _), _) => basis' = !basis
+                  | _ => false
+
+            val eds = map (fn ed =>
+                              case #1 ed of
+                                  EDVal ((PVar (x, _), _), t, e) =>
+                                  if functionInside t then
+                                      (EDValRec [(x, t, E.liftExpInExp 0 e)], #2 ed)
+                                  else
+                                      ed
+                                | _ => ed) eds
 
             val (eds, (ts, maxName, ds, subs, by)) =
                 ListUtil.foldlMapConcat
@@ -422,6 +439,7 @@ fun unnest file =
                     in
                         ([(DStr (x, n, sgn, str), loc)], st)
                     end
+                  | DFfiStr ("Basis", n, _) => (basis := n; default ())
                   | DFfiStr _ => default ()
                   | DConstraint _ => default ()
                   | DExport _ => default ()
