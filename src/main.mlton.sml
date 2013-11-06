@@ -58,6 +58,8 @@ fun oneRun args =
 			              raise Code OS.Process.success)
         fun printCCompiler () = (print ((Settings.getCCompiler ()) ^ "\n");
 			              raise Code OS.Process.success)
+        fun printCInclude () = (print ((Config.includ) ^ "\n");
+			              raise Code OS.Process.success)
 
         fun doArgs args =
             case args of
@@ -71,6 +73,8 @@ fun oneRun args =
                  doArgs rest)
               | "-print-ccompiler" :: rest =>
                   printCCompiler ()
+              | "-print-cinclude" :: rest =>
+                  printCInclude ()
               | "-ccompiler" :: ccomp :: rest =>
                 (Settings.setCCompiler ccomp;
                  doArgs rest)
