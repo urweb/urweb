@@ -8,8 +8,9 @@ fun main () : transaction page =
       <dyn signal={s <- signal s; return <xml>{[s]}</xml>}/><br/>
       <dyn signal={s <- signal s; if s = "" then return <xml>Init</xml> else error <xml>Crapky</xml>}/><br/>
       <dyn signal={s <- signal s; return <xml>"{[s]}"</xml>}/><br/>
+      <button onclick={fn _ => debug "88"}/><br/>
 
-      <ctextbox source={txt}/> <button onclick={s' <- get txt; set s s'; set txt ""}/>
+      <ctextbox source={txt}/> <button onclick={fn _ => s' <- get txt; set s s'; set txt ""}/>
 
       <hr/>
 
