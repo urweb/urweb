@@ -619,6 +619,11 @@ A signature item $\mt{table} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Bas
 
 In this section, we give a declarative presentation of Ur's typing rules and related judgments.  Inference is the subject of the next section; here, we assume that an oracle has filled in all wildcards with concrete values.
 
+The notations used here are the standard ones of programming language semantics.  They are probably the most effective way to convey this information.  At the same time, most Ur/Web users can probably get by \emph{without} knowing the contents of this section!  If you're interested in diving into the details of Ur typing but are unfamiliar with ``inference rule notation,'' I recommend the following book:
+\begin{quote}
+  Benjamin C. Pierce, \emph{Types and Programming Languages}, MIT Press, 2002.
+\end{quote}
+
 Since there is significant mutual recursion among the judgments, we introduce them all before beginning to give rules.  We use the same variety of contexts throughout this section, implicitly introducing new sorts of context entries as needed.
 \begin{itemize}
 \item $\Gamma \vdash \kappa$ expresses kind well-formedness.
