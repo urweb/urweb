@@ -115,4 +115,5 @@ reauto:
 	automake --add-missing --force-missing --copy
 	autoreconf
 
-EXTRA_DIST = demo/* doc/* lib/js/* lib/ur/* src/* src/coq/* xml/*
+EXTRA_DIST = demo/* doc/* lib/js/* lib/ur/* xml/* \
+	src/coq/* src/*.sig src/*.sml src/*.mlb src/*.sml.in src/elisp/* src/*.cm src/sources src/*.grm src/*.lex
