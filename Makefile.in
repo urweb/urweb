@@ -243,6 +243,7 @@ LIB_UR = $(SRCLIB)/ur
 LIB_C = $(SRCLIB)/c
 LIB_JS = $(SRCLIB)/js
 SUBDIRS = src/c
+EXTRA_DIST = demo/* doc/* lib/js/* lib/ur/* src/* src/coq/* xml/*
 all: all-recursive
 
 .SUFFIXES:

@@ -114,3 +114,5 @@ reauto:
 	libtoolize -cf
 	automake --add-missing --force-missing --copy
 	autoreconf
+
+EXTRA_DIST = demo/* doc/* lib/js/* lib/ur/* src/* src/coq/* xml/*
