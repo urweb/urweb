@@ -1492,7 +1492,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
                       Config.openssl
 
         val link = linker
-                   ^ " " ^ lib ^ " " ^ escapeFilename oname ^ " -lm " ^ ssl ^ " " ^ libs ^ " -o " ^ escapeFilename ename
+                   ^ " " ^ escapeFilename oname ^ " " ^ lib ^ " -lm " ^ ssl ^ " " ^ libs ^ " -o " ^ escapeFilename ename
 
         val (compile, link) =
             if profile then
