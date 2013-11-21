@@ -117,4 +117,4 @@ reauto:
 
 EXTRA_DIST = demo/* doc/* lib/js/* lib/ur/* xml/* \
 	src/c/*.h src/coq/* src/*.sig src/*.sml src/*.mlb src/*.sml.in src/elisp/* src/*.cm src/sources src/*.grm src/*.lex \
-	CHANGELOG LICENSE *.ebuild include/urweb/*.h
+	CHANGELOG LICENSE *.ebuild include/urweb/*.h bin
