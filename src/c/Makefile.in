@@ -71,20 +71,24 @@ am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
 am__installdirs = "$(DESTDIR)$(libdir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
-liburweb_la_LIBADD =
+am__DEPENDENCIES_1 =
+liburweb_la_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_liburweb_la_OBJECTS = memmem.lo openssl.lo urweb.lo request.lo \
 	queue.lo
 liburweb_la_OBJECTS = $(am_liburweb_la_OBJECTS)
-liburweb_cgi_la_LIBADD =
+liburweb_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(liburweb_la_LDFLAGS) $(LDFLAGS) -o $@
+liburweb_cgi_la_DEPENDENCIES = liburweb.la
 am_liburweb_cgi_la_OBJECTS = cgi.lo
 liburweb_cgi_la_OBJECTS = $(am_liburweb_cgi_la_OBJECTS)
-liburweb_fastcgi_la_LIBADD =
+liburweb_fastcgi_la_DEPENDENCIES = liburweb.la
 am_liburweb_fastcgi_la_OBJECTS = fastcgi.lo
 liburweb_fastcgi_la_OBJECTS = $(am_liburweb_fastcgi_la_OBJECTS)
-liburweb_http_la_LIBADD =
+liburweb_http_la_DEPENDENCIES = liburweb.la
 am_liburweb_http_la_OBJECTS = http.lo
 liburweb_http_la_OBJECTS = $(am_liburweb_http_la_OBJECTS)
-liburweb_static_la_LIBADD =
+liburweb_static_la_DEPENDENCIES = liburweb.la
 am_liburweb_static_la_OBJECTS = static.lo
 liburweb_static_la_OBJECTS = $(am_liburweb_static_la_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/include/urweb
@@ -247,8 +251,14 @@ liburweb_http_la_SOURCES = http.c
 liburweb_cgi_la_SOURCES = cgi.c
 liburweb_fastcgi_la_SOURCES = fastcgi.c
 liburweb_static_la_SOURCES = static.c
-AM_CPPFLAGS = -I../../include/urweb @OPENSSL_INCLUDES@
-AM_CFLAGS = -Wimplicit -Wall -Werror -Wno-format-security -Wno-deprecated-declarations
+AM_CPPFLAGS = -I../../include/urweb $(OPENSSL_INCLUDES)
+AM_CFLAGS = -Wimplicit -Wall -Werror -Wno-format-security -Wno-deprecated-declarations $(PTHREAD_CFLAGS)
+liburweb_la_LDFLAGS = $(AM_LDFLAGS) $(OPENSSL_LDFLAGS)
+liburweb_la_LIBADD = $(PTHREAD_LIBS) -lm $(OPENSSL_LIBS)
+liburweb_http_la_LIBADD = liburweb.la
+liburweb_cgi_la_LIBADD = liburweb.la
+liburweb_fastcgi_la_LIBADD = liburweb.la
+liburweb_static_la_LIBADD = liburweb.la
 all: all-am
 
 .SUFFIXES:
@@ -315,7 +325,7 @@ clean-libLTLIBRARIES:
 	  rm -f "$${dir}/so_locations"; \
 	done
 liburweb.la: $(liburweb_la_OBJECTS) $(liburweb_la_DEPENDENCIES) 
-	$(LINK) -rpath $(libdir) $(liburweb_la_OBJECTS) $(liburweb_la_LIBADD) $(LIBS)
+	$(liburweb_la_LINK) -rpath $(libdir) $(liburweb_la_OBJECTS) $(liburweb_la_LIBADD) $(LIBS)
 liburweb_cgi.la: $(liburweb_cgi_la_OBJECTS) $(liburweb_cgi_la_DEPENDENCIES) 
 	$(LINK) -rpath $(libdir) $(liburweb_cgi_la_OBJECTS) $(liburweb_cgi_la_LIBADD) $(LIBS)
 liburweb_fastcgi.la: $(liburweb_fastcgi_la_OBJECTS) $(liburweb_fastcgi_la_DEPENDENCIES) 
