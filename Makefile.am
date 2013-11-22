@@ -63,7 +63,7 @@ bin/urweb: xml/entities.sml \
 	$(MLTON) $(MLTONARGS) -output $@ src/compiler.mlb
 
 xml/entities.sml: xml/parse xml/xhtml-lat1.ent xml/xhtml-special.ent xml/xhtml-symbol.ent
-	xml/parse >xml/entities.sml
+	$^ > $@
 
 xml/parse: xml/parse.sml
 	$(MLTON) $(MLTONARGS) xml/parse.sml

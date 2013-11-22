@@ -67,9 +67,7 @@ fun main () =
     in
         print "structure Entities = struct\n";
         print "\tval all =\n";
-        doFile "xml/xhtml-lat1.ent";
-        doFile "xml/xhtml-special.ent";
-        doFile "xml/xhtml-symbol.ent";
+        app doFile (CommandLine.arguments ());
         print "\t[]\n";
         print "end\n"
     end
