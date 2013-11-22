@@ -26,7 +26,7 @@ clean-local:
 	rm -rf .cm src/.cm
 
 src/urweb.cm: src/prefix.cm src/sources
-	cat $^ > $@
+	cat $^ | sed -e 's/$$(SRC)\///g' > $@
 
 src/urweb.mlb: src/prefix.mlb src/sources src/suffix.mlb
 	sed -e 's/^\(.*\).grm$$/$$(BUILD)\/\1.mlton.grm.sig:\1.mlton.grm.sml/' -e 'y/:/\n/' \
@@ -110,10 +110,7 @@ package:
 	hg archive -t tgz -X tests "/tmp/urweb-$(VERSION).tgz"
 
 reauto:
-	-autoreconf
-	libtoolize -cf
-	automake --add-missing --force-missing --copy
-	autoreconf
+	./autogen.sh
 
 EXTRA_DIST = demo doc lib/js lib/ur xml \
 	src/coq src/*.sig src/*.sml src/*.mlb src/config.sml.in src/elisp src/*.cm src/sources src/*.grm src/*.lex \
