@@ -21,7 +21,7 @@ smlnj: src/urweb.cm xml/entities.sml
 mlton: bin/urweb
 
 clean-local:
-	rm -f src/*.mlton.grm.* src/*.mlton.lex.* \
+	rm -f bin/urweb src/urweb.mlton.* \
 		src/urweb.cm src/urweb.mlb xml/parse xml/entities.sml
 	rm -rf .cm src/.cm
 
