@@ -1,236 +1,236 @@
-config.sig
+$(SRC)/config.sig
 config.sml
 
-search.sig
-search.sml
+$(SRC)/search.sig
+$(SRC)/search.sml
 
-list_util.sig
-list_util.sml
+$(SRC)/list_util.sig
+$(SRC)/list_util.sml
 
-order.sig
-order.sml
+$(SRC)/order.sig
+$(SRC)/order.sml
 
-errormsg.sig
-errormsg.sml
+$(SRC)/errormsg.sig
+$(SRC)/errormsg.sml
 
-print.sig
-print.sml
+$(SRC)/print.sig
+$(SRC)/print.sml
 
-settings.sig
-settings.sml
+$(SRC)/settings.sig
+$(SRC)/settings.sml
 
-http.sig
-http.sml
+$(SRC)/http.sig
+$(SRC)/http.sml
 
-cgi.sig
-cgi.sml
+$(SRC)/cgi.sig
+$(SRC)/cgi.sml
 
-fastcgi.sig
-fastcgi.sml
+$(SRC)/fastcgi.sig
+$(SRC)/fastcgi.sml
 
-static.sig
-static.sml
+$(SRC)/static.sig
+$(SRC)/static.sml
 
-prim.sig
-prim.sml
+$(SRC)/prim.sig
+$(SRC)/prim.sml
 
-mysql.sig
-mysql.sml
+$(SRC)/mysql.sig
+$(SRC)/mysql.sml
 
-sqlite.sig
-sqlite.sml
+$(SRC)/sqlite.sig
+$(SRC)/sqlite.sml
 
-datatype_kind.sml
+$(SRC)/datatype_kind.sml
 
-export.sig
-export.sml
+$(SRC)/export.sig
+$(SRC)/export.sml
 
-source.sml
+$(SRC)/source.sml
 
-utf8.sig
-utf8.sml
+$(SRC)/utf8.sig
+$(SRC)/utf8.sml
 
 ../xml/entities.sml
 
 urweb.grm
 urweb.lex
 
-source_print.sig
-source_print.sml
+$(SRC)/source_print.sig
+$(SRC)/source_print.sml
 
-elab.sml
+$(SRC)/elab.sml
 
-elab_util.sig
-elab_util.sml
+$(SRC)/elab_util.sig
+$(SRC)/elab_util.sml
 
-elab_env.sig
-elab_env.sml
+$(SRC)/elab_env.sig
+$(SRC)/elab_env.sml
 
-elab_print.sig
-elab_print.sml
+$(SRC)/elab_print.sig
+$(SRC)/elab_print.sml
 
-elab_ops.sig
-elab_ops.sml
+$(SRC)/elab_ops.sig
+$(SRC)/elab_ops.sml
 
-disjoint.sig
-disjoint.sml
+$(SRC)/disjoint.sig
+$(SRC)/disjoint.sml
 
-elab_err.sig
-elab_err.sml
+$(SRC)/elab_err.sig
+$(SRC)/elab_err.sml
 
-mod_db.sig
-mod_db.sml
+$(SRC)/mod_db.sig
+$(SRC)/mod_db.sml
 
-elaborate.sig
-elaborate.sml
+$(SRC)/elaborate.sig
+$(SRC)/elaborate.sml
 
-unnest.sig
-unnest.sml
+$(SRC)/unnest.sig
+$(SRC)/unnest.sml
 
-termination.sig
-termination.sml
+$(SRC)/termination.sig
+$(SRC)/termination.sml
 
-expl.sml
+$(SRC)/expl.sml
 
-expl_util.sig
-expl_util.sml
+$(SRC)/expl_util.sig
+$(SRC)/expl_util.sml
 
-expl_env.sig
-expl_env.sml
+$(SRC)/expl_env.sig
+$(SRC)/expl_env.sml
 
-expl_print.sig
-expl_print.sml
+$(SRC)/expl_print.sig
+$(SRC)/expl_print.sml
 
-explify.sig
-explify.sml
+$(SRC)/explify.sig
+$(SRC)/explify.sml
 
-core.sml
+$(SRC)/core.sml
 
-core_util.sig
-core_util.sml
+$(SRC)/core_util.sig
+$(SRC)/core_util.sml
 
-core_env.sig
-core_env.sml
+$(SRC)/core_env.sig
+$(SRC)/core_env.sml
 
-core_print.sig
-core_print.sml
+$(SRC)/core_print.sig
+$(SRC)/core_print.sml
 
-corify.sig
-corify.sml
+$(SRC)/corify.sig
+$(SRC)/corify.sml
 
-reduce_local.sig
-reduce_local.sml
+$(SRC)/reduce_local.sig
+$(SRC)/reduce_local.sml
 
-shake.sig
-shake.sml
+$(SRC)/shake.sig
+$(SRC)/shake.sml
 
-core_untangle.sig
-core_untangle.sml
+$(SRC)/core_untangle.sig
+$(SRC)/core_untangle.sml
 
-especialize.sig
-especialize.sml
+$(SRC)/especialize.sig
+$(SRC)/especialize.sml
 
-reduce.sig
-reduce.sml
+$(SRC)/reduce.sig
+$(SRC)/reduce.sml
 
-unpoly.sig
-unpoly.sml
+$(SRC)/unpoly.sig
+$(SRC)/unpoly.sml
 
-specialize.sig
-specialize.sml
+$(SRC)/specialize.sig
+$(SRC)/specialize.sml
 
-rpcify.sig
-rpcify.sml
+$(SRC)/rpcify.sig
+$(SRC)/rpcify.sml
 
-tag.sig
-tag.sml
+$(SRC)/tag.sig
+$(SRC)/tag.sml
 
-effectize.sig
-effectize.sml
+$(SRC)/effectize.sig
+$(SRC)/effectize.sml
 
-marshalcheck.sig
-marshalcheck.sml
+$(SRC)/marshalcheck.sig
+$(SRC)/marshalcheck.sml
 
-css.sig
-css.sml
+$(SRC)/css.sig
+$(SRC)/css.sml
 
-mono.sml
+$(SRC)/mono.sml
 
-mono_util.sig
-mono_util.sml
+$(SRC)/mono_util.sig
+$(SRC)/mono_util.sml
 
-mono_env.sig
-mono_env.sml
+$(SRC)/mono_env.sig
+$(SRC)/mono_env.sml
 
-mono_print.sig
-mono_print.sml
+$(SRC)/mono_print.sig
+$(SRC)/mono_print.sml
 
-monoize.sig
-monoize.sml
+$(SRC)/monoize.sig
+$(SRC)/monoize.sml
 
-mono_reduce.sig
-mono_reduce.sml
+$(SRC)/mono_reduce.sig
+$(SRC)/mono_reduce.sml
 
-mono_opt.sig
-mono_opt.sml
+$(SRC)/mono_opt.sig
+$(SRC)/mono_opt.sml
 
-untangle.sig
-untangle.sml
+$(SRC)/untangle.sig
+$(SRC)/untangle.sml
 
-mono_shake.sig
-mono_shake.sml
+$(SRC)/mono_shake.sig
+$(SRC)/mono_shake.sml
 
-fuse.sig
-fuse.sml
+$(SRC)/fuse.sig
+$(SRC)/fuse.sml
 
-sql.sml
+$(SRC)/sql.sml
 
-iflow.sig
-iflow.sml
+$(SRC)/iflow.sig
+$(SRC)/iflow.sml
 
-name_js.sig
-name_js.sml
+$(SRC)/name_js.sig
+$(SRC)/name_js.sml
 
-jscomp.sig
-jscomp.sml
+$(SRC)/jscomp.sig
+$(SRC)/jscomp.sml
 
-pathcheck.sig
-pathcheck.sml
+$(SRC)/pathcheck.sig
+$(SRC)/pathcheck.sml
 
-sidecheck.sig
-sidecheck.sml
+$(SRC)/sidecheck.sig
+$(SRC)/sidecheck.sml
 
-sigcheck.sig
-sigcheck.sml
+$(SRC)/sigcheck.sig
+$(SRC)/sigcheck.sml
 
-cjr.sml
+$(SRC)/cjr.sml
 
-postgres.sig
-postgres.sml
+$(SRC)/postgres.sig
+$(SRC)/postgres.sml
 
-cjr_env.sig
-cjr_env.sml
+$(SRC)/cjr_env.sig
+$(SRC)/cjr_env.sml
 
-cjr_print.sig
-cjr_print.sml
+$(SRC)/cjr_print.sig
+$(SRC)/cjr_print.sml
 
-cjrize.sig
-cjrize.sml
+$(SRC)/cjrize.sig
+$(SRC)/cjrize.sml
 
-scriptcheck.sig
-scriptcheck.sml
+$(SRC)/scriptcheck.sig
+$(SRC)/scriptcheck.sml
 
-prepare.sig
-prepare.sml
+$(SRC)/prepare.sig
+$(SRC)/prepare.sml
 
-checknest.sig
-checknest.sml
+$(SRC)/checknest.sig
+$(SRC)/checknest.sml
 
-compiler.sig
-compiler.sml
+$(SRC)/compiler.sig
+$(SRC)/compiler.sml
 
-demo.sig
-demo.sml
+$(SRC)/demo.sig
+$(SRC)/demo.sml
 
-tutorial.sig
-tutorial.sml
+$(SRC)/tutorial.sig
+$(SRC)/tutorial.sml

@@ -26,14 +26,12 @@ clean-local:
 	rm -rf .cm src/.cm
 
 src/urweb.cm: src/prefix.cm src/sources
-	cat src/prefix.cm src/sources \
-	>src/urweb.cm
+	cat $^ > $@
 
 src/urweb.mlb: src/prefix.mlb src/sources src/suffix.mlb
-	cat src/prefix.mlb src/sources src/suffix.mlb \
-	| sed -e 's/^\(.*\).grm$$/\1.mlton.grm.sig:\1.mlton.grm.sml/' -e 'y/:/\n/' \
-		-e 's/^\(.*\).lex$$/\1.mlton.lex.sml/' \
-	>$@
+	sed -e 's/^\(.*\).grm$$/$$(BUILD)\/\1.mlton.grm.sig:\1.mlton.grm.sml/' -e 'y/:/\n/' \
+		-e 's/^\(.*\).lex$$/$$(BUILD)\/\1.mlton.lex.sml/' \
+	$^ > $@
 
 src/urweb.mlton.lex: src/urweb.lex
 	cp $< $@
@@ -56,34 +54,36 @@ MLTON = mlton
 #	MLTON += -profile $(PROFILE)
 #endif
 
-bin/urweb: xml/entities.sml \
-		src/compiler.mlb src/urweb.mlb src/*.sig src/*.sml \
+bin/urweb: src/compiler.mlb xml/entities.sml \
+		src/urweb.mlb $(srcdir)/src/*.sig $(srcdir)/src/*.sml src/config.sml \
 		src/urweb.mlton.lex.sml \
 		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml
-	$(MLTON) $(MLTONARGS) -output $@ src/compiler.mlb
+	mkdir -p bin
+	$(MLTON) $(MLTONARGS) -mlb-path-var 'SRC $(abs_srcdir)/src' -mlb-path-var 'BUILD $(abs_builddir)/src' -output $@ $<
 
 xml/entities.sml: xml/parse xml/xhtml-lat1.ent xml/xhtml-special.ent xml/xhtml-symbol.ent
 	$^ > $@
 
 xml/parse: xml/parse.sml
-	$(MLTON) $(MLTONARGS) xml/parse.sml
+	mkdir -p xml
+	$(MLTON) $(MLTONARGS) -output $@ $<
 
 install-exec-emacs:
 if USE_EMACS
 	mkdir -p $(DESTDIR)$(SITELISP)
-	cp src/elisp/*.el $(DESTDIR)$(SITELISP)/
+	cp $(srcdir)/src/elisp/*.el $(DESTDIR)$(SITELISP)/
 endif
 
 install-exec-local-main:
 	mkdir -p $(DESTDIR)$(BIN)
 	install bin/urweb $(DESTDIR)$(BIN)/
 	mkdir -p $(DESTDIR)$(LIB_UR)
-	cp lib/ur/*.urs $(DESTDIR)$(LIB_UR)/
-	cp lib/ur/*.ur $(DESTDIR)$(LIB_UR)/
+	cp $(srcdir)/lib/ur/*.urs $(DESTDIR)$(LIB_UR)/
+	cp $(srcdir)/lib/ur/*.ur $(DESTDIR)$(LIB_UR)/
 	mkdir -p $(DESTDIR)$(LIB_JS)
-	cp lib/js/*.js $(DESTDIR)$(LIB_JS)/
+	cp $(srcdir)/lib/js/*.js $(DESTDIR)$(LIB_JS)/
 	mkdir -p $(DESTDIR)$(INCLUDE)
-	cp include/urweb/*.h $(DESTDIR)$(INCLUDE)/
+	cp $(srcdir)/include/urweb/*.h $(DESTDIR)$(INCLUDE)/
 
 install-exec-local: install-exec-local-main install-exec-emacs
 	-ldconfig
