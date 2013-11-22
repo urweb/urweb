@@ -72,4 +72,5 @@ syntax: regexp
 ^src/c/Makefile$
 ^libtool$
 ^include/urweb/config.h$
+^include/urweb/config.h.in$
 ^include/urweb/stamp-h1$
