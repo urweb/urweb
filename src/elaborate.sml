@@ -2629,7 +2629,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
              checkCon env' ce' cet cst;
 
              ([(L'.SgiConAbs (x', hidden_n, cstK), loc),
-               (L'.SgiConstraint (visible, hidden), loc),
+               (L'.SgiConstraint ((L'.CConcat (pkey, visible), loc), hidden), loc),
                (L'.SgiVal (x, n, ct), loc)], (env', denv, gs''' @ gs'' @ gs' @ gs))
          end
 
@@ -3631,7 +3631,7 @@ and wildifyStr env (str, sgn) =
 			      NONE => NONE
 			    | SOME c' => SOME (L.TRecord c', loc))
 
-                       | c => (Print.preface ("WTF?", p_con env (c, loc)); NONE)
+                       | c => ((*Print.preface ("WTF?", p_con env (c, loc));*) NONE)
 
                  fun buildNeeded env sgis =
                      #1 (foldl (fn ((sgi, loc), (nd, env')) =>
@@ -4860,6 +4860,8 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
             ModDb.revert ()
         else
             ();
+
+        (*Print.preface("File", ElabPrint.p_file env file);*)
         
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan)
         :: ds
