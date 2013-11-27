@@ -19,7 +19,7 @@
 
 extern uw_app uw_application;
 
-int uw_backlog = 10;
+int uw_backlog = SOMAXCONN;
 
 static char *get_header(void *data, const char *h) {
   char *s = data;
