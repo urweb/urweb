@@ -1282,6 +1282,10 @@ void uw_memstats(uw_context ctx) {
   printf("Heap: %lu/%lu\n", (unsigned long)uw_buffer_used(&ctx->heap), (unsigned long)uw_buffer_avail(&ctx->heap));
 }
 
+int uw_pagelen(uw_context ctx) {
+  return ctx->page.front - ctx->page.start;
+}
+
 int uw_send(uw_context ctx, int sock) {
   int n = uw_really_send(sock, ctx->outHeaders.start, ctx->outHeaders.front - ctx->outHeaders.start);
 
