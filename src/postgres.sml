@@ -768,13 +768,19 @@ fun dmlCommon {loc, dml, mode} =
               string "}",
               newline,
               case mode of
-                  Settings.Error => box [string "PQclear(res);",
+                  Settings.Error => box [string "{",
+                                         newline,
+                                         string "char *sqlstate = uw_strdup(ctx, PQresultErrorField(res, PG_DIAG_SQLSTATE));",
+                                         newline,
+                                         string "PQclear(res);",
                                          newline,
                                          string "uw_error(ctx, FATAL, \"",
                                          string (ErrorMsg.spanToString loc),
-                                         string ": DML failed:\\n%s\\n%s\", ",
+                                         string ": DML failed:\\n%s\\n%s: %s\", ",
                                          dml,
-                                         string ", PQerrorMessage(conn));"]
+                                         string ", sqlstate, PQerrorMessage(conn));",
+                                         newline,
+                                         string "}"]
                 | Settings.None => box [string "uw_set_error_message(ctx, PQerrorMessage(conn));",
                                         newline,
                                         newline,
