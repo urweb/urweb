@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <signal.h>
@@ -20,6 +21,7 @@
 extern uw_app uw_application;
 
 int uw_backlog = SOMAXCONN;
+static int keepalive = 0;
 
 static char *get_header(void *data, const char *h) {
   char *s = data;
@@ -70,18 +72,21 @@ static void *worker(void *data) {
   int me = *(int *)data;
   uw_context ctx = uw_request_new_context(me, &uw_application, NULL, log_error, log_debug);
   size_t buf_size = 2;
-  char *buf = malloc(buf_size);
+  char *buf = malloc(buf_size), *back = buf;
   uw_request_context rc = uw_new_request_context();
+  int sock = 0;
 
   while (1) {
-    char *back = buf;
-    int sock = uw_dequeue();
+    if (sock == 0) {
+      back = buf;
+      sock = uw_dequeue();
+    }
 
     printf("Handling connection with thread #%d.\n", me);
 
     while (1) {
       int r;
-      char *method, *path, *query_string, *headers, *body, *s, *s2;
+      char *method, *path, *query_string, *headers, *body, *after, *s, *s2;
 
       if (back - buf == buf_size - 1) {
         char *new_buf;
@@ -95,11 +100,15 @@ static void *worker(void *data) {
 
       if (r < 0) {
         fprintf(stderr, "Recv failed\n");
+        close(sock);
+        sock = 0;
         break;
       }
 
       if (r == 0) {
         printf("Connection closed.\n");
+        close(sock);
+        sock = 0;
         break;
       }
 
@@ -108,6 +117,7 @@ static void *worker(void *data) {
 
       if ((body = strstr(buf, "\r\n\r\n"))) {
         request_result rr;
+        int should_keepalive = 0;
 
         body[0] = body[1] = 0;
         body += 4;
@@ -117,6 +127,8 @@ static void *worker(void *data) {
 
           if (sscanf(s + 18, "%d\r\n", &clen) != 1) {
             fprintf(stderr, "Malformed Content-Length header\n");
+            close(sock);
+            sock = 0;
             break;
           }
 
@@ -138,19 +150,24 @@ static void *worker(void *data) {
             if (r < 0) {
               fprintf(stderr, "Recv failed\n");
               close(sock);
+              sock = 0;
               goto done;
             }
 
             if (r == 0) {
               fprintf(stderr, "Connection closed.\n");
               close(sock);
+              sock = 0;
               goto done;
             }
 
             back += r;
             *back = 0;      
           }
-        }
+
+          after = body + clen;
+        } else
+          after = body;
 
         body[-4] = '\r';
         body[-3] = '\n';
@@ -158,6 +175,7 @@ static void *worker(void *data) {
         if (!(s = strstr(buf, "\r\n"))) {
           fprintf(stderr, "No newline in request\n");
           close(sock);
+          sock = 0;
           goto done;
         }
 
@@ -171,6 +189,7 @@ static void *worker(void *data) {
         if (!s) {
           fprintf(stderr, "No first space in HTTP command\n");
           close(sock);
+          sock = 0;
           goto done;
         }
         path = s;
@@ -204,18 +223,36 @@ static void *worker(void *data) {
                         on_success, on_failure,
                         NULL, log_error, log_debug,
                         sock, uw_really_send, close);
+
         if (rr != KEEP_OPEN) {
           char clen[100];
 
-          uw_write_header(ctx, "Connection: close\r\n");
+          if (keepalive) {
+            char *connection = uw_Basis_requestHeader(ctx, "Connection");
+
+            should_keepalive = !(connection && !strcmp(connection, "close"));
+          }
+
+          if (!should_keepalive)
+            uw_write_header(ctx, "Connection: close\r\n");
+
           sprintf(clen, "Content-length: %d\r\n", uw_pagelen(ctx));
           uw_write_header(ctx, clen);
           uw_send(ctx, sock);
         }
 
-        if (rr == SERVED || rr == FAILED)
-          close(sock);
-        else if (rr != KEEP_OPEN)
+        if (rr == SERVED || rr == FAILED) {
+          if (should_keepalive) {
+            // In case any other requests are queued up, shift
+            // unprocessed part of buffer to front.
+            int kept = back - after;
+            memmove(buf, after, kept);
+            back = buf + kept;
+          } else {
+            close(sock);
+            sock = 0;
+          }
+        } else if (rr != KEEP_OPEN)
           fprintf(stderr, "Illegal uw_request return code: %d\n", rr);
 
         break;
@@ -230,7 +267,7 @@ static void *worker(void *data) {
 }
 
 static void help(char *cmd) {
-  printf("Usage: %s [-p <port>] [-a <IP address>] [-t <thread count>]\n", cmd);
+  printf("Usage: %s [-p <port>] [-a <IP address>] [-t <thread count>] [-k]\nThe '-k' option turns on HTTP keepalive.\n", cmd);
 }
 
 static void sigint(int signum) {
@@ -254,7 +291,7 @@ int main(int argc, char *argv[]) {
   my_addr.sin_addr.s_addr = INADDR_ANY; // auto-fill with my IP
   memset(my_addr.sin_zero, '\0', sizeof my_addr.sin_zero);
 
-  while ((opt = getopt(argc, argv, "hp:a:t:")) != -1) {
+  while ((opt = getopt(argc, argv, "hp:a:t:k")) != -1) {
     switch (opt) {
     case '?':
       fprintf(stderr, "Unknown command-line option");
@@ -289,6 +326,10 @@ int main(int argc, char *argv[]) {
         help(argv[0]);
         return 1;
       }
+      break;
+
+    case 'k':
+      keepalive = 1;
       break;
 
     default:
@@ -357,6 +398,11 @@ int main(int argc, char *argv[]) {
     }
 
     printf("Accepted connection.\n");
+
+    if (keepalive) {
+      int flag = 1; 
+      setsockopt(new_fd, IPPROTO_TCP, TCP_NODELAY, (char *) &flag, sizeof(int));
+    }
 
     uw_enqueue(new_fd);
   }
