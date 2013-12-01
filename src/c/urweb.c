@@ -4092,7 +4092,7 @@ failure_kind uw_begin_onError(uw_context ctx, char *msg) {
       else
         uw_write_header(ctx, "Status: ");
       uw_write_header(ctx, "500 Internal Server Error\r\n");
-      uw_write_header(ctx, "Content-type: text/html\r\n\r\n");
+      uw_write_header(ctx, "Content-type: text/html\r\n");
       uw_write(ctx, begin_xhtml);
       ctx->app->on_error(ctx, msg);
       uw_write(ctx, "</html>");
