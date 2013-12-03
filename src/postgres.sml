@@ -376,7 +376,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
          newline,
          box [string "uw_sqlfmtInt = \"%lld::int8%n\";",
               newline,
-              string "uw_sqlfmtFloat = \"%g::float8%n\";",
+              string "uw_sqlfmtFloat = \"%.16g::float8%n\";",
               newline,
               string "uw_Estrings = 1;",
               newline,

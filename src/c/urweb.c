@@ -1622,7 +1622,7 @@ char *uw_Basis_attrifyFloat(uw_context ctx, uw_Basis_float n) {
   int len;
   uw_check_heap(ctx, FLOATS_MAX);
   result = ctx->heap.front;
-  sprintf(result, "%g%n", n, &len);
+  sprintf(result, "%.16g%n", n, &len);
   ctx->heap.front += len+1;
   return result;
 }
@@ -2406,7 +2406,7 @@ char *uw_Basis_sqlifyIntN(uw_context ctx, uw_Basis_int *n) {
     return uw_Basis_sqlifyInt(ctx, *n);
 }
 
-char *uw_sqlfmtFloat = "%g::float8%n";
+char *uw_sqlfmtFloat = "%.16g::float8%n";
 
 char *uw_Basis_sqlifyFloat(uw_context ctx, uw_Basis_float n) {
   int len;

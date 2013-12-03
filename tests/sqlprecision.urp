@@ -1,0 +1,5 @@
+database dbname=test
+rewrite url Sqlprecision/*
+sql sqlprecision.sql
+
+sqlprecision
