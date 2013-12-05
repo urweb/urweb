@@ -175,6 +175,7 @@ val datetimeDay : time -> int
 val datetimeHour : time -> int
 val datetimeMinute: time -> int
 val datetimeSecond : time -> int
+val datetimeDayOfWeek : time -> int
 
 
 (** * Encryption *)

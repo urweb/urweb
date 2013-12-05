@@ -3894,6 +3894,11 @@ uw_Basis_int uw_Basis_datetimeSecond(uw_context ctx, uw_Basis_time time) {
   return tm.tm_sec;
 }
 
+uw_Basis_int uw_Basis_datetimeDayOfWeek(uw_context ctx, uw_Basis_time time) {
+  struct tm tm;
+  gmtime_r(&time.seconds, &tm);
+  return tm.tm_wday;
+}
 
 
 void *uw_get_global(uw_context ctx, char *name) {

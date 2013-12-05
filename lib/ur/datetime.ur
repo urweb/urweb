@@ -7,6 +7,18 @@ type datetime = {
      Second : int
 }
 
+datatype day_of_week = Sunday | Monday | Tuesday | Wednesday | Thursday |
+         Friday | Saturday
+
+val show = mkShow (fn dow => case dow of
+                                 Sunday => "Sunday"
+                               | Monday => "Monday"
+                               | Tuesday => "Tuesday"
+                               | Wednesday => "Wednesday"
+                               | Thursday => "Thursday"
+                               | Friday => "Friday"
+                               | Saturday => "Saturday")
+
 fun toTime dt : time = fromDatetime dt.Year dt.Month dt.Day
                                     dt.Hour dt.Minute dt.Second
 
