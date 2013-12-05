@@ -3851,6 +3851,51 @@ uw_Basis_int uw_Basis_toSeconds(uw_context ctx, uw_Basis_time tm) {
   return tm.seconds;
 }
 
+uw_Basis_time uw_Basis_fromDatetime(uw_context ctx, uw_Basis_int year, uw_Basis_int month, uw_Basis_int day, uw_Basis_int hour, uw_Basis_int minute, uw_Basis_int second) {
+  struct tm tm = { .tm_year = year - 1900, .tm_mon = month, .tm_mday = day,
+                   .tm_hour = hour, .tm_min = minute, .tm_sec = second };
+  uw_Basis_time r = { timegm(&tm) };
+  return r;
+}
+
+uw_Basis_int uw_Basis_datetimeYear(uw_context ctx, uw_Basis_time time) {
+  struct tm tm;
+  gmtime_r(&time.seconds, &tm);
+  return tm.tm_year + 1900;
+}
+
+uw_Basis_int uw_Basis_datetimeMonth(uw_context ctx, uw_Basis_time time) {
+  struct tm tm;
+  gmtime_r(&time.seconds, &tm);
+  return tm.tm_mon;
+}
+
+uw_Basis_int uw_Basis_datetimeDay(uw_context ctx, uw_Basis_time time) {
+  struct tm tm;
+  gmtime_r(&time.seconds, &tm);
+  return tm.tm_mday;
+}
+
+uw_Basis_int uw_Basis_datetimeHour(uw_context ctx, uw_Basis_time time) {
+  struct tm tm;
+  gmtime_r(&time.seconds, &tm);
+  return tm.tm_hour;
+}
+
+uw_Basis_int uw_Basis_datetimeMinute(uw_context ctx, uw_Basis_time time) {
+  struct tm tm;
+  gmtime_r(&time.seconds, &tm);
+  return tm.tm_min;
+}
+
+uw_Basis_int uw_Basis_datetimeSecond(uw_context ctx, uw_Basis_time time) {
+  struct tm tm;
+  gmtime_r(&time.seconds, &tm);
+  return tm.tm_sec;
+}
+
+
+
 void *uw_get_global(uw_context ctx, char *name) {
   int i;
 

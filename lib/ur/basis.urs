@@ -167,6 +167,15 @@ val diffInMilliseconds : time -> time -> int
 val timef : string -> time -> string (* Uses strftime() format string *)
 val readUtc : string -> option time
 
+(* Takes a year, month, day, hour, minute, second. *)
+val fromDatetime : int -> int -> int -> int -> int -> int -> time
+val datetimeYear : time -> int
+val datetimeMonth : time -> int
+val datetimeDay : time -> int
+val datetimeHour : time -> int
+val datetimeMinute: time -> int
+val datetimeSecond : time -> int
+
 
 (** * Encryption *)
 
