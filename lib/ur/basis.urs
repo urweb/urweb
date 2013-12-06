@@ -782,6 +782,9 @@ val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ [Dyn]] =
 val active : unit
              -> tag [Code = transaction xbody] body [] [] []
 
+val activeHead : unit
+             -> tag [Code = transaction xhead] head [] [] []
+
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
 val link : unit -> tag [Id = id, Rel = string, Typ = string, Href = url, Media = string] head [] [] []
