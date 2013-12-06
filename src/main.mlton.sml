@@ -56,10 +56,10 @@ fun oneRun args =
 		               raise Code OS.Process.success)
         fun printNumericVersion () = (print (Config.versionNumber ^ "\n");
 			              raise Code OS.Process.success)
-        fun printCCompiler () = (print ((Settings.getCCompiler ()) ^ "\n");
-			              raise Code OS.Process.success)
-        fun printCInclude () = (print ((Config.includ) ^ "\n");
-			              raise Code OS.Process.success)
+        fun printCCompiler () = (print (Settings.getCCompiler () ^ "\n");
+			         raise Code OS.Process.success)
+        fun printCInclude () = (print (Config.includ ^ "\n");
+			        raise Code OS.Process.success)
 
         fun doArgs args =
             case args of
