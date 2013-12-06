@@ -215,6 +215,7 @@ fun monoType env =
 
                   | L.CFfi ("Basis", "unit") => (L'.TRecord [], loc)
                   | L.CFfi ("Basis", "page") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "xhead") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "xbody") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "xtable") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "xtr") => (L'.TFfi ("Basis", "string"), loc)
