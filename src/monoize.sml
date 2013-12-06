@@ -3604,9 +3604,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         (case attrs of
 			     [("Code", e, _)] =>
 			     ((L'.EStrcat
-                                   ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">active(execD(")), loc),
+                                   ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">execD(")), loc),
                                     (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
-                                                 (L'.EPrim (Prim.String ("))</script>")), loc)), loc)), loc),
+                                                 (L'.EPrim (Prim.String (")</script>")), loc)), loc)), loc),
 			      fm)
                            | _ => raise Fail "Monoize: Bad <activeHead> attributes")
 

@@ -783,7 +783,7 @@ val active : unit
              -> tag [Code = transaction xbody] body [] [] []
 
 val activeHead : unit
-             -> tag [Code = transaction xhead] head [] [] []
+             -> tag [Code = transaction unit] head [] [] []
 
 val head : unit -> tag [] html head [] []
 val title : unit -> tag [] head [] [] []
