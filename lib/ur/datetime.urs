@@ -5,7 +5,7 @@ datatype month = January | February | March | April | May | June | July |
          August | September | October | November | December
 
 
-type datetime = {
+type t = {
      Year : int,
      Month : month,
      Day : int,
@@ -23,8 +23,8 @@ val intToDayOfWeek : int -> day_of_week
 val monthToInt : month -> int
 val intToMonth : int -> month
 
-val toTime : datetime -> time
-val fromTime : time -> datetime
-val format : string -> datetime -> string
-val dayOfWeek : datetime -> day_of_week
-val now : transaction datetime
+val toTime : t -> time
+val fromTime : time -> t
+val format : string -> t -> string
+val dayOfWeek : t -> day_of_week
+val now : transaction t
