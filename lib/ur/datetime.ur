@@ -93,7 +93,7 @@ val eq_month = mkEq (fn a b => monthToInt a = monthToInt b)
 fun toTime dt : time = fromDatetime dt.Year (monthToInt dt.Month) dt.Day
                                     dt.Hour dt.Minute dt.Second
 
-fun fromTime t : datetime = {
+fun fromTime t : t = {
     Year = datetimeYear t,
     Month = intToMonth (datetimeMonth t),
     Day = datetimeDay t,
@@ -116,6 +116,6 @@ fun dayOfWeek dt : day_of_week =
       | n => error <xml>Illegal day of week {[n]}</xml>
 
 
-val now : transaction datetime =
+val now : transaction t =
     n <- now;
     return (fromTime n)
