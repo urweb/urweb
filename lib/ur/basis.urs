@@ -782,7 +782,7 @@ val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ [Dyn]] =
 val active : unit
              -> tag [Code = transaction xbody] body [] [] []
 
-val activeHead : unit
+val script : unit
              -> tag [Code = transaction unit] head [] [] []
 
 val head : unit -> tag [] html head [] []

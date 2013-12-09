@@ -2103,6 +2103,14 @@ $$\begin{array}{l}
   \mt{val} \; \mt{stopPropagation} : \mt{transaction} \; \mt{unit}
 \end{array}$$
 
+Finally, here is an HTML tag to leave a marker in the \cd{<head>} of a document asking for some side-effecting code to be run.  This pattern is \emph{much} less common in Ur/Web applications than in normal HTML/JavaScript applications; see Section \ref{signals} for the more idiomatic, functional way of manipulating the visible page.
+
+$$\begin{array}{l}
+  \mt{val} \; \mt{script} : \mt{unit} \to \mt{tag} \; [\mt{Code} = \mt{transaction} \; \mt{unit}] \; \mt{head} \; [] \; [] \; []
+\end{array}$$
+
+Note that the Ur/Web version of \cd{<script>} is used like \cd{<script code=\{...\}/>}, rather than \cd{<script>...</script>}.
+
 \subsubsection{Node IDs}
 
 There is an abstract type of node IDs that may be assigned to \cd{id} attributes of most HTML tags.
