@@ -102,6 +102,9 @@ fun fromTime t : t = {
     Second = datetimeSecond t
 }
 
+val ord_datetime = mkOrd { Lt = fn a b => toTime a < toTime b,
+                           Le = fn a b => toTime a <= toTime b }
+
 fun format fmt dt : string = timef fmt (toTime dt)
 
 fun dayOfWeek dt : day_of_week =
@@ -115,7 +118,27 @@ fun dayOfWeek dt : day_of_week =
       | 6 => Saturday
       | n => error <xml>Illegal day of week {[n]}</xml>
 
-
 val now : transaction t =
     n <- now;
     return (fromTime n)
+
+(* Normalize a datetime. This will convert, e.g., January 32nd into February
+   1st. *)
+
+fun normalize dt = fromTime (toTime dt)
+fun addToField [nm :: Name] [rest ::: {Type}] [[nm] ~ rest]
+               (delta : int) (r : $([nm = int] ++ rest))
+    : $([nm = int] ++ rest) =
+      (r -- nm) ++ {nm = r.nm + delta}
+
+
+(* Functions for adding to a datetime. There is no addMonths or addYears since
+   it's not clear what should be done; what's 1 month after January 31, or 1
+   year after February 29th?
+
+   These can't all be defined in terms of addSeconds because of leap seconds. *)
+
+fun addSeconds n dt = normalize (addToField [#Second] n dt)
+fun addMinutes n dt = normalize (addToField [#Minute] n dt)
+fun addHours n dt = normalize (addToField [#Hour] n dt)
+fun addDays n dt = normalize (addToField [#Day] n dt)
