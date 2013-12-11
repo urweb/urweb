@@ -4023,9 +4023,13 @@ uw_Basis_unit uw_Basis_debug(uw_context ctx, uw_Basis_string s) {
   return uw_unit_v;
 }
 
+static pthread_mutex_t rand_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 uw_Basis_int uw_Basis_rand(uw_context ctx) {
   uw_Basis_int ret;
+  pthread_mutex_lock(&rand_mutex);
   int r = RAND_bytes((unsigned char *)&ret, sizeof ret);
+  pthread_mutex_unlock(&rand_mutex);
   
   if (r)
     return abs(ret);
