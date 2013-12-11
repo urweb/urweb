@@ -2079,6 +2079,8 @@ and p_exp' par tail env (e, loc) =
                  newline,
                  string "int dummy = (uw_begin_region(ctx), 0);",
                  newline,
+                 string "uw_ensure_transaction(ctx);",
+                 newline,
                  
                  case prepared of
                      NONE =>
@@ -2140,6 +2142,8 @@ and p_exp' par tail env (e, loc) =
                               p_exp' false false env dml,
                               string ";",
                               newline,
+                              string "uw_ensure_transaction(ctx);",
+                              newline,
                               newline,
                               #dml (Settings.currentDbms ()) (loc, mode)]
                | SOME {id, dml = dml'} =>
@@ -2159,8 +2163,10 @@ and p_exp' par tail env (e, loc) =
                                                        string ";"])
                                       inputs,
                           newline,
+                          string "uw_ensure_transaction(ctx);",
                           newline,
-
+                          newline,
+                          
                           #dmlPrepared (Settings.currentDbms ()) {loc = loc,
                                                                   id = id,
                                                                   dml = dml',
@@ -2184,6 +2190,8 @@ and p_exp' par tail env (e, loc) =
              newline,
              string "uw_Basis_int n;",
              newline,
+             string "uw_ensure_transaction(ctx);",
+             newline,
 
              case prepared of
                  NONE => #nextval (Settings.currentDbms ()) {loc = loc,
@@ -2203,6 +2211,8 @@ and p_exp' par tail env (e, loc) =
 
       | ESetval {seq, count} =>
         box [string "({",
+             newline,
+             string "uw_ensure_transaction(ctx);",
              newline,
 
              #setval (Settings.currentDbms ()) {loc = loc,

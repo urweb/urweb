@@ -431,6 +431,7 @@ struct uw_context {
   unsigned long long source_count;
 
   void *db;
+  int transaction_started;
 
   jmp_buf jmp_buf;
 
@@ -507,6 +508,7 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
   ctx->sz_inputs = ctx->n_subinputs = ctx->used_subinputs = 0;
 
   ctx->db = NULL;
+  ctx->transaction_started = 0;
 
   ctx->regions = NULL;
 
@@ -631,6 +633,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->amInitializing = 0;
   ctx->usedSig = 0;
   ctx->needsResig = 0;
+  ctx->transaction_started = 0;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -766,14 +769,18 @@ void uw_login(uw_context ctx) {
 failure_kind uw_begin(uw_context ctx, char *path) {
   int r = setjmp(ctx->jmp_buf);
 
-  if (r == 0) {
-    if (ctx->app->db_begin(ctx))
-      uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
-
+  if (r == 0)
     ctx->app->handle(ctx, path);
-  }
 
   return r;
+}
+
+void uw_ensure_transaction(uw_context ctx) {
+  if (!ctx->transaction_started) {
+    if (ctx->app->db_begin(ctx))
+      uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
+    ctx->transaction_started = 1;
+  }
 }
 
 uw_Basis_client uw_Basis_self(uw_context ctx) {
@@ -3205,7 +3212,7 @@ int uw_rollback(uw_context ctx, int will_retry) {
     if (ctx->transactionals[i].free)
       ctx->transactionals[i].free(ctx->transactionals[i].data, will_retry);
 
-  return ctx->app ? ctx->app->db_rollback(ctx) : 0;
+  return (ctx->app && ctx->transaction_started) ? ctx->app->db_rollback(ctx) : 0;
 }
 
 static const char begin_xhtml[] = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">";
@@ -3262,7 +3269,7 @@ void uw_commit(uw_context ctx) {
         }
       }
 
-  if (ctx->app->db_commit(ctx)) {
+  if (ctx->transaction_started && ctx->app->db_commit(ctx)) {
     uw_set_error_message(ctx, "Error running SQL COMMIT");
     return;
   }
@@ -3453,6 +3460,7 @@ failure_kind uw_initialize(uw_context ctx) {
   if (r == 0) {
     if (ctx->app->db_begin(ctx))
       uw_error(ctx, FATAL, "Error running SQL BEGIN");
+    ctx->transaction_started = 1;
     ctx->app->initializer(ctx);
     if (ctx->app->db_commit(ctx))
       uw_error(ctx, FATAL, "Error running SQL COMMIT");
@@ -4037,6 +4045,7 @@ failure_kind uw_runCallback(uw_context ctx, void (*callback)(uw_context)) {
   if (r == 0) {
     if (ctx->app->db_begin(ctx))
       uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
+    ctx->transaction_started = 1;
 
     callback(ctx);
   }
@@ -4085,6 +4094,7 @@ failure_kind uw_begin_onError(uw_context ctx, char *msg) {
     if (r == 0) {
       if (ctx->app->db_begin(ctx))
         uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
+      ctx->transaction_started = 1;
 
       uw_buffer_reset(&ctx->outHeaders);
       if (on_success[0])

@@ -37,6 +37,7 @@ void uw_set_on_success(char *);
 void uw_set_headers(struct uw_context *, char *(*get_header)(void *, const char *), void *get_header_data);
 void uw_set_env(struct uw_context *, char *(*get_env)(void *, const char *), void *get_env_data);
 failure_kind uw_begin(struct uw_context *, char *path);
+void uw_ensure_transaction(struct uw_context *);
 failure_kind uw_begin_onError(struct uw_context *, char *msg);
 void uw_login(struct uw_context *);
 void uw_commit(struct uw_context *);

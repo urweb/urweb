@@ -260,7 +260,9 @@ static void *worker(void *data) {
             close(sock);
             sock = 0;
           }
-        } else if (rr != KEEP_OPEN)
+        } else if (rr == KEEP_OPEN)
+          sock = 0;
+        else
           fprintf(stderr, "Illegal uw_request return code: %d\n", rr);
 
         break;
