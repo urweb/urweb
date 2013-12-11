@@ -21,7 +21,7 @@
 extern uw_app uw_application;
 
 int uw_backlog = SOMAXCONN;
-static int keepalive = 0;
+static int keepalive = 0, quiet = 0;
 
 static char *get_header(void *data, const char *h) {
   char *s = data;
@@ -62,10 +62,12 @@ static void log_error(void *data, const char *fmt, ...) {
 }
 
 static void log_debug(void *data, const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
+  if (!quiet) {
+    va_list ap;
+    va_start(ap, fmt);
 
-  vprintf(fmt, ap);
+    vprintf(fmt, ap);
+  }
 }
 
 static void *worker(void *data) {
@@ -82,7 +84,8 @@ static void *worker(void *data) {
       sock = uw_dequeue();
     }
 
-    printf("Handling connection with thread #%d.\n", me);
+    if (!quiet)
+      printf("Handling connection with thread #%d.\n", me);
 
     while (1) {
       int r;
@@ -99,14 +102,16 @@ static void *worker(void *data) {
       r = recv(sock, back, buf_size - 1 - (back - buf), 0);
 
       if (r < 0) {
-        fprintf(stderr, "Recv failed\n");
+        if (!quiet)
+          fprintf(stderr, "Recv failed\n");
         close(sock);
         sock = 0;
         break;
       }
 
       if (r == 0) {
-        printf("Connection closed.\n");
+        if (!quiet)
+          printf("Connection closed.\n");
         close(sock);
         sock = 0;
         break;
@@ -148,14 +153,16 @@ static void *worker(void *data) {
             r = recv(sock, back, buf_size - 1 - (back - buf), 0);
 
             if (r < 0) {
-              fprintf(stderr, "Recv failed\n");
+              if (!quiet)
+                fprintf(stderr, "Recv failed\n");
               close(sock);
               sock = 0;
               goto done;
             }
 
             if (r == 0) {
-              fprintf(stderr, "Connection closed.\n");
+              if (!quiet)
+                fprintf(stderr, "Connection closed.\n");
               close(sock);
               sock = 0;
               goto done;
@@ -218,7 +225,8 @@ static void *worker(void *data) {
         uw_set_headers(ctx, get_header, headers);
         uw_set_env(ctx, get_env, NULL);
 
-        printf("Serving URI %s....\n", path);
+        if (!quiet)
+          printf("Serving URI %s....\n", path);
         rr = uw_request(rc, ctx, method, path, query_string, body, back - body,
                         on_success, on_failure,
                         NULL, log_error, log_debug,
@@ -267,7 +275,7 @@ static void *worker(void *data) {
 }
 
 static void help(char *cmd) {
-  printf("Usage: %s [-p <port>] [-a <IP address>] [-t <thread count>] [-k]\nThe '-k' option turns on HTTP keepalive.\n", cmd);
+  printf("Usage: %s [-p <port>] [-a <IP address>] [-t <thread count>] [-k] [-q]\nThe '-k' option turns on HTTP keepalive.\nThe '-q' option turns off some chatter on stdout.\n", cmd);
 }
 
 static void sigint(int signum) {
@@ -291,10 +299,10 @@ int main(int argc, char *argv[]) {
   my_addr.sin_addr.s_addr = INADDR_ANY; // auto-fill with my IP
   memset(my_addr.sin_zero, '\0', sizeof my_addr.sin_zero);
 
-  while ((opt = getopt(argc, argv, "hp:a:t:k")) != -1) {
+  while ((opt = getopt(argc, argv, "hp:a:t:kq")) != -1) {
     switch (opt) {
     case '?':
-      fprintf(stderr, "Unknown command-line option");
+      fprintf(stderr, "Unknown command-line option\n");
       help(argv[0]);
       return 1;
 
@@ -330,6 +338,10 @@ int main(int argc, char *argv[]) {
 
     case 'k':
       keepalive = 1;
+      break;
+
+    case 'q':
+      quiet = 1;
       break;
 
     default:
@@ -369,7 +381,8 @@ int main(int argc, char *argv[]) {
 
   sin_size = sizeof their_addr;
 
-  printf("Listening on port %d....\n", uw_port);
+  if (!quiet)
+    printf("Listening on port %d....\n", uw_port);
 
   {
     pthread_t thread;
@@ -397,7 +410,8 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    printf("Accepted connection.\n");
+    if (!quiet)
+      printf("Accepted connection.\n");
 
     if (keepalive) {
       int flag = 1; 
