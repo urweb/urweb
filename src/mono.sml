@@ -93,7 +93,7 @@ datatype exp' =
        | EStrcat of exp * exp
 
        | EError of exp * typ
-       | EReturnBlob of {blob : exp, mimeType : exp, t : typ}
+       | EReturnBlob of {blob : exp option, mimeType : exp, t : typ}
        | ERedirect of exp * typ
 
        | EWrite of exp

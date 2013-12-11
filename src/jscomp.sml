@@ -1118,12 +1118,18 @@ fun process (file : file) =
                  in
                      ((EError (e, t), loc), st)
                  end
-               | EReturnBlob {blob, mimeType, t} =>
+               | EReturnBlob {blob = NONE, mimeType, t} =>
+                 let
+                     val (mimeType, st) = exp outer (mimeType, st)
+                 in
+                     ((EReturnBlob {blob = NONE, mimeType = mimeType, t = t}, loc), st)
+                 end
+               | EReturnBlob {blob = SOME blob, mimeType, t} =>
                  let
                      val (blob, st) = exp outer (blob, st)
                      val (mimeType, st) = exp outer (mimeType, st)
                  in
-                     ((EReturnBlob {blob = blob, mimeType = mimeType, t = t}, loc), st)
+                     ((EReturnBlob {blob = SOME blob, mimeType = mimeType, t = t}, loc), st)
                  end
                | ERedirect (e, t) =>
                  let

@@ -261,14 +261,20 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                             S.map2 (mft t,
                                     fn t' =>
                                        (EError (e', t'), loc)))
-              | EReturnBlob {blob, mimeType, t} =>
+              | EReturnBlob {blob = NONE, mimeType, t} =>
+                S.bind2 (mfe ctx mimeType,
+                      fn mimeType' =>
+                         S.map2 (mft t,
+                              fn t' =>
+                                 (EReturnBlob {blob = NONE, mimeType = mimeType', t = t'}, loc)))
+              | EReturnBlob {blob = SOME blob, mimeType, t} =>
                 S.bind2 (mfe ctx blob,
                          fn blob' =>
                             S.bind2 (mfe ctx mimeType,
                                   fn mimeType' =>
                                      S.map2 (mft t,
                                           fn t' =>
-                                             (EReturnBlob {blob = blob', mimeType = mimeType', t = t'}, loc))))
+                                             (EReturnBlob {blob = SOME blob', mimeType = mimeType', t = t'}, loc))))
               | ERedirect (e, t) =>
                 S.bind2 (mfe ctx e,
                          fn e' =>
@@ -495,7 +501,8 @@ fun appLoc f =
                | ECase (e1, pes, _) => (appl e1; app (appl o #2) pes)
                | EStrcat (e1, e2) => (appl e1; appl e2)
                | EError (e1, _) => appl e1
-               | EReturnBlob {blob = e1, mimeType = e2, ...} => (appl e1; appl e2)
+               | EReturnBlob {blob = NONE, mimeType = e2, ...} => appl e2
+               | EReturnBlob {blob = SOME e1, mimeType = e2, ...} => (appl e1; appl e2)
                | ERedirect (e1, _) => appl e1
                | EWrite e1 => appl e1
                | ESeq (e1, e2) => (appl e1; appl e2)

@@ -1628,7 +1628,7 @@ and p_exp' par tail env (e, loc) =
              string "tmp;",
              newline,
              string "})"]
-      | EReturnBlob {blob, mimeType, t} =>
+      | EReturnBlob {blob = SOME blob, mimeType, t} =>
         box [string "({",
              newline,
              string "uw_Basis_blob",
@@ -1654,6 +1654,27 @@ and p_exp' par tail env (e, loc) =
              string "tmp;",
              newline,
              string "uw_return_blob(ctx, blob, mimeType);",
+             newline,
+             string "tmp;",
+             newline,
+             string "})"]
+      | EReturnBlob {blob = NONE, mimeType, t} =>
+        box [string "({",
+             newline,
+             string "uw_Basis_string",
+             space,
+             string "mimeType",
+             space,
+             string "=",
+             space,
+             p_exp' false false env mimeType,
+             string ";",
+             newline,
+             p_typ env t,
+             space,
+             string "tmp;",
+             newline,
+             string "uw_return_blob_from_page(ctx, mimeType);",
              newline,
              string "tmp;",
              newline,
@@ -3180,7 +3201,8 @@ fun p_file env (ds, ps) =
               | EField (e, _) => expDb e
               | ECase (e, pes, _) => expDb e orelse List.exists (expDb o #2) pes
               | EError (e, _) => expDb e
-              | EReturnBlob {blob = e1, mimeType = e2, ...} => expDb e1 orelse expDb e2
+              | EReturnBlob {blob = NONE, mimeType = e2, ...} => expDb e2
+              | EReturnBlob {blob = SOME e1, mimeType = e2, ...} => expDb e1 orelse expDb e2
               | ERedirect (e, _) => expDb e
               | EWrite e => expDb e
               | ESeq (e1, e2) => expDb e1 orelse expDb e2

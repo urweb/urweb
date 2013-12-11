@@ -201,7 +201,14 @@ fun prepExp (e as (_, loc), st) =
 
       | EReturnBlob {blob, mimeType, t} =>
         let
-            val (blob, st) = prepExp (blob, st)
+            val (blob, st) = case blob of
+                                 NONE => (blob, st)
+                               | SOME blob =>
+                                 let
+                                     val (b, st) = prepExp (blob, st)
+                                 in
+                                     (SOME b, st)
+                                 end
             val (mimeType, st) = prepExp (mimeType, st)
         in
             ((EReturnBlob {blob = blob, mimeType = mimeType, t = t}, loc), st)

@@ -4053,6 +4053,24 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.EError ((L'.ERel 0, loc), t), loc)), loc),
                  fm)
             end
+          | L.EApp (
+            (L.ECApp ((L.EFfi ("Basis", "returnBlob"), _), t), _),
+            (L.EFfiApp ("Basis", "textBlob", [(e, _)]), _)) =>
+            let
+                val t = monoType env t
+                val un = (L'.TRecord [], loc)
+                val (e, fm) = monoExp (env, st, fm) e
+            in
+                ((L'.EAbs ("mt", (L'.TFfi ("Basis", "string"), loc), (L'.TFun (un, t), loc),
+                           (L'.EAbs ("_", un, t,
+                                     (L'.ESeq ((L'.EFfiApp ("Basis", "clear_page", []), loc),
+                                               (L'.ESeq ((L'.EWrite (liftExpInExp 0 (liftExpInExp 0 e)), loc),
+                                                         (L'.EReturnBlob {blob = NONE,
+                                                                          mimeType = (L'.ERel 1, loc),
+                                                                          t = t}, loc)), loc)), loc)), loc)),
+                  loc),
+                 fm)
+            end
           | L.ECApp ((L.EFfi ("Basis", "returnBlob"), _), t) =>
             let
                 val t = monoType env t
@@ -4062,7 +4080,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.TFun ((L'.TFfi ("Basis", "string"), loc), (L'.TFun (un, t), loc)), loc),
                            (L'.EAbs ("mt", (L'.TFfi ("Basis", "string"), loc), (L'.TFun (un, t), loc),
                                      (L'.EAbs ("_", un, t,
-                                               (L'.EReturnBlob {blob = (L'.ERel 2, loc),
+                                               (L'.EReturnBlob {blob = SOME (L'.ERel 2, loc),
                                                                 mimeType = (L'.ERel 1, loc),
                                                                 t = t}, loc)), loc)), loc)), loc),
                  fm)

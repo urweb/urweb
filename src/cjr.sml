@@ -78,7 +78,7 @@ datatype exp' =
        | ECase of exp * (pat * exp) list * { disc : typ, result : typ }
 
        | EError of exp * typ
-       | EReturnBlob of {blob : exp, mimeType : exp, t : typ}
+       | EReturnBlob of {blob : exp option, mimeType : exp, t : typ}
        | ERedirect of exp * typ
 
        | EWrite of exp

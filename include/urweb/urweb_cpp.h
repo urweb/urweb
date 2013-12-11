@@ -209,6 +209,7 @@ uw_Basis_string uw_Basis_requestHeader(struct uw_context *, uw_Basis_string);
 
 void uw_write_header(struct uw_context *, uw_Basis_string);
 void uw_clear_headers(struct uw_context *);
+void uw_Basis_clear_page(struct uw_context *);
 
 uw_Basis_string uw_Basis_get_cookie(struct uw_context *, uw_Basis_string c);
 uw_unit uw_Basis_set_cookie(struct uw_context *, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v, uw_Basis_time *expires, uw_Basis_bool secure);
@@ -255,6 +256,7 @@ uw_Basis_postBody uw_getPostBody(struct uw_context *);
 
 void uw_mayReturnIndirectly(struct uw_context *);
 __attribute__((noreturn)) void uw_return_blob(struct uw_context *, uw_Basis_blob, uw_Basis_string mimeType);
+__attribute__((noreturn)) void uw_return_blob_from_page(struct uw_context *, uw_Basis_string mimeType);
 __attribute__((noreturn)) void uw_redirect(struct uw_context *, uw_Basis_string url);
 
 uw_Basis_time uw_Basis_now(struct uw_context *);

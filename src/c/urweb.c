@@ -1351,6 +1351,10 @@ void uw_clear_headers(uw_context ctx) {
   uw_buffer_reset(&ctx->outHeaders);
 }
 
+void uw_Basis_clear_page(uw_context ctx) {
+  uw_buffer_reset(&ctx->page);
+}
+
 static void uw_check_script(uw_context ctx, size_t extra) {
   ctx_uw_buffer_check(ctx, "script", &ctx->script, extra);
 }
@@ -3727,6 +3731,36 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   if (oldh) uw_write_header(ctx, oldh);
 
   ctx_uw_buffer_append(ctx, "page", &ctx->page, b.data, b.size);
+
+  for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
+    cl->func(cl->arg);
+
+  ctx->cleanup_front = ctx->cleanup;
+
+  longjmp(ctx->jmp_buf, RETURN_INDIRECTLY);
+}
+
+__attribute__((noreturn)) void uw_return_blob_from_page(uw_context ctx, uw_Basis_string mimeType) {
+  cleanup *cl;
+  int len;
+  char *oldh;
+
+  if (!ctx->allowed_to_return_indirectly)
+    uw_error(ctx, FATAL, "Tried to return a blob from an RPC");
+
+  ctx->returning_indirectly = 1;
+  oldh = old_headers(ctx);
+  uw_buffer_reset(&ctx->outHeaders);
+
+  uw_write_header(ctx, on_success);
+  uw_write_header(ctx, "Content-Type: ");
+  uw_write_header(ctx, mimeType);
+  uw_write_header(ctx, "\r\nContent-Length: ");
+  ctx_uw_buffer_check(ctx, "headers", &ctx->outHeaders, INTS_MAX);
+  sprintf(ctx->outHeaders.front, "%lu%n", (unsigned long)uw_buffer_used(&ctx->page), &len);
+  ctx->outHeaders.front += len;
+  uw_write_header(ctx, "\r\n");
+  if (oldh) uw_write_header(ctx, oldh);
 
   for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
     cl->func(cl->arg);
