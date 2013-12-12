@@ -1347,6 +1347,10 @@ void uw_write_header(uw_context ctx, uw_Basis_string s) {
   ctx->outHeaders.front += len;
 }
 
+int uw_has_contentLength(uw_context ctx) {
+  return strstr(ctx->outHeaders.start, "Content-length: ") != NULL;
+}
+
 void uw_clear_headers(uw_context ctx) {
   uw_buffer_reset(&ctx->outHeaders);
 }
@@ -3723,7 +3727,7 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   uw_write_header(ctx, on_success);
   uw_write_header(ctx, "Content-Type: ");
   uw_write_header(ctx, mimeType);
-  uw_write_header(ctx, "\r\nContent-Length: ");
+  uw_write_header(ctx, "\r\nContent-length: ");
   ctx_uw_buffer_check(ctx, "headers", &ctx->outHeaders, INTS_MAX);
   sprintf(ctx->outHeaders.front, "%lu%n", (unsigned long)b.size, &len);
   ctx->outHeaders.front += len;
@@ -3755,7 +3759,7 @@ __attribute__((noreturn)) void uw_return_blob_from_page(uw_context ctx, uw_Basis
   uw_write_header(ctx, on_success);
   uw_write_header(ctx, "Content-Type: ");
   uw_write_header(ctx, mimeType);
-  uw_write_header(ctx, "\r\nContent-Length: ");
+  uw_write_header(ctx, "\r\nContent-length: ");
   ctx_uw_buffer_check(ctx, "headers", &ctx->outHeaders, INTS_MAX);
   sprintf(ctx->outHeaders.front, "%lu%n", (unsigned long)uw_buffer_used(&ctx->page), &len);
   ctx->outHeaders.front += len;

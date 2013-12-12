@@ -209,6 +209,7 @@ uw_Basis_string uw_Basis_requestHeader(struct uw_context *, uw_Basis_string);
 
 void uw_write_header(struct uw_context *, uw_Basis_string);
 void uw_clear_headers(struct uw_context *);
+int uw_has_contentLength(struct uw_context *);
 void uw_Basis_clear_page(struct uw_context *);
 
 uw_Basis_string uw_Basis_get_cookie(struct uw_context *, uw_Basis_string c);

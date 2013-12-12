@@ -233,8 +233,6 @@ static void *worker(void *data) {
                         sock, uw_really_send, close);
 
         if (rr != KEEP_OPEN) {
-          char clen[100];
-
           if (keepalive) {
             char *connection = uw_Basis_requestHeader(ctx, "Connection");
 
@@ -244,8 +242,13 @@ static void *worker(void *data) {
           if (!should_keepalive)
             uw_write_header(ctx, "Connection: close\r\n");
 
-          sprintf(clen, "Content-length: %d\r\n", uw_pagelen(ctx));
-          uw_write_header(ctx, clen);
+          if (!uw_has_contentLength(ctx)) {
+            char clen[100];
+
+            sprintf(clen, "Content-length: %d\r\n", uw_pagelen(ctx));
+            uw_write_header(ctx, clen);
+          }
+
           uw_send(ctx, sock);
         }
 
