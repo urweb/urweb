@@ -3001,10 +3001,17 @@ fun p_file env (ds, ps) =
 
                 fun couldWrite ek =
                     case ek of
-                        Link => false
+                        Link _ => false
                       | Action ef => ef = ReadCookieWrite
                       | Rpc ef => ef = ReadCookieWrite
                       | Extern _ => false
+
+                fun couldWriteDb ek =
+                    case ek of
+                        Link ef => ef <> ReadOnly
+                      | Action ef => ef <> ReadOnly
+                      | Rpc ef => ef <> ReadOnly
+                      | Extern ef => ef <> ReadOnly
 
                 val s =
                     case Settings.getUrlPrefix () of
@@ -3091,6 +3098,10 @@ fun p_file env (ds, ps) =
                                     end,
                                     string "\");",
                                     newline]),
+                     string "uw_set_could_write_db(ctx, ",
+                     string (if couldWriteDb ek then "1" else "0"),
+                     string ");",
+                     newline,
                      string "uw_set_needs_push(ctx, ",
                      string (case side of
                                  ServerAndPullAndPush => "1"

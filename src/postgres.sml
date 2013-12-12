@@ -402,11 +402,11 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
          newline,
          newline,
 
-         string "static int uw_db_begin(uw_context ctx) {",
+         string "static int uw_db_begin(uw_context ctx, int could_write) {",
          newline,
          string "PGconn *conn = uw_get_db(ctx);",
          newline,
-         string "PGresult *res = PQexec(conn, \"BEGIN ISOLATION LEVEL SERIALIZABLE\");",
+         string "PGresult *res = PQexec(conn, could_write ? \"BEGIN ISOLATION LEVEL SERIALIZABLE\" : \"BEGIN ISOLATION LEVEL SERIALIZABLE, READ ONLY\");",
          newline,
          newline,
          string "if (res == NULL) return 1;",

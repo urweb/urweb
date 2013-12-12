@@ -145,7 +145,7 @@ fun exp env (e, s) =
                                                        end
                                                in
                                                    case x of
-                                                       (CName "Link", _) => tagIt' (Link, "Link")
+                                                       (CName "Link", _) => tagIt' (Link ReadWrite, "Link")
                                                      | (CName "Action", _) => tagIt' (Action ReadWrite, "Action")
                                                      | _ => ((x, e, t), s)
                                                end)
@@ -180,7 +180,7 @@ fun exp env (e, s) =
 
           | EFfiApp ("Basis", "url", [(e, t)]) =>
             let
-                val (e, s) = tagIt (e, Link, "Url", s)
+                val (e, s) = tagIt (e, Link ReadWrite, "Url", s)
             in
                 (EFfiApp ("Basis", "url", [(e, t)]), s)
             end
@@ -201,7 +201,7 @@ fun exp env (e, s) =
                 case eo of
                     SOME (EAbs (_, _, _, (EFfiApp ("Basis", "url", [((ERel 0, _), t)]), _)), _) =>
                     let
-                        val (e, s) = tagIt (e', Link, "Url", s)
+                        val (e, s) = tagIt (e', Link ReadWrite, "Url", s)
                     in
                         (EFfiApp ("Basis", "url", [(e, t)]), s)
                     end

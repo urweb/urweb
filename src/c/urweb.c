@@ -441,7 +441,7 @@ struct uw_context {
 
   const char *script_header;
 
-  int needs_push, needs_sig;
+  int needs_push, needs_sig, could_write_db;
 
   size_t n_deltas, used_deltas;
   delta *deltas;
@@ -517,6 +517,7 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
   ctx->script_header = "";
   ctx->needs_push = 0;
   ctx->needs_sig = 0;
+  ctx->could_write_db = 1;
 
   ctx->source_count = 0;
 
@@ -777,7 +778,7 @@ failure_kind uw_begin(uw_context ctx, char *path) {
 
 void uw_ensure_transaction(uw_context ctx) {
   if (!ctx->transaction_started) {
-    if (ctx->app->db_begin(ctx))
+    if (ctx->app->db_begin(ctx, ctx->could_write_db))
       uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
     ctx->transaction_started = 1;
   }
@@ -1189,6 +1190,10 @@ void uw_set_needs_push(uw_context ctx, int n) {
 
 void uw_set_needs_sig(uw_context ctx, int n) {
   ctx->needs_sig = n;
+}
+
+void uw_set_could_write_db(uw_context ctx, int n) {
+  ctx->could_write_db = n;
 }
 
 
@@ -3466,9 +3471,7 @@ failure_kind uw_initialize(uw_context ctx) {
   int r = setjmp(ctx->jmp_buf);
 
   if (r == 0) {
-    if (ctx->app->db_begin(ctx))
-      uw_error(ctx, FATAL, "Error running SQL BEGIN");
-    ctx->transaction_started = 1;
+    uw_ensure_transaction(ctx);
     ctx->app->initializer(ctx);
     if (ctx->app->db_commit(ctx))
       uw_error(ctx, FATAL, "Error running SQL COMMIT");
@@ -4085,9 +4088,7 @@ failure_kind uw_runCallback(uw_context ctx, void (*callback)(uw_context)) {
   int r = setjmp(ctx->jmp_buf);
 
   if (r == 0) {
-    if (ctx->app->db_begin(ctx))
-      uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
-    ctx->transaction_started = 1;
+    uw_ensure_transaction(ctx);
 
     callback(ctx);
   }
@@ -4134,9 +4135,7 @@ failure_kind uw_begin_onError(uw_context ctx, char *msg) {
 
   if (ctx->app->on_error) {
     if (r == 0) {
-      if (ctx->app->db_begin(ctx))
-        uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
-      ctx->transaction_started = 1;
+      uw_ensure_transaction(ctx);
 
       uw_buffer_reset(&ctx->outHeaders);
       if (on_success[0])

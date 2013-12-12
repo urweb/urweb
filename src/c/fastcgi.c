@@ -632,8 +632,7 @@ void uw_copy_client_data(void *dst, void *src) {
 }
 
 void uw_do_expunge(uw_context ctx, uw_Basis_client cli, void *data) {
-  if (uw_get_app(ctx)->db_begin(ctx))
-    uw_error(ctx, FATAL, "Error running SQL BEGIN");
+  uw_ensure_transaction(ctx);
   uw_get_app(ctx)->expunger(ctx, cli);
   uw_commit(ctx);
 }

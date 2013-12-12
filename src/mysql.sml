@@ -577,7 +577,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
              newline,
              newline,
 
-             string "static int uw_db_begin(uw_context ctx) {",
+             string "static int uw_db_begin(uw_context ctx, int could_write) {",
              newline,
              string "uw_conn *conn = uw_get_db(ctx);",
              newline,
