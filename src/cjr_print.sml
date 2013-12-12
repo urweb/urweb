@@ -3072,8 +3072,10 @@ fun p_file env (ds, ps) =
                                              newline]
                             | _ => [string "uw_write_header(ctx, \"Content-type: text/html; charset=utf-8\\r\\n\");",
                                     newline,
-                                    string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
-                                    newline,
+                                    case side of
+                                        ServerOnly => box []
+                                      | _ => box [string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
+                                                  newline],
                                     string "uw_write(ctx, begin_xhtml);",
                                     newline,
                                     string "uw_mayReturnIndirectly(ctx);",
