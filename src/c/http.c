@@ -73,7 +73,7 @@ static void log_debug(void *data, const char *fmt, ...) {
 static void *worker(void *data) {
   int me = *(int *)data;
   uw_context ctx = uw_request_new_context(me, &uw_application, NULL, log_error, log_debug);
-  size_t buf_size = 2;
+  size_t buf_size = 1024;
   char *buf = malloc(buf_size), *back = buf;
   uw_request_context rc = uw_new_request_context();
   int sock = 0;
@@ -99,28 +99,32 @@ static void *worker(void *data) {
         buf = new_buf;
       }
 
-      r = recv(sock, back, buf_size - 1 - (back - buf), 0);
-
-      if (r < 0) {
-        if (!quiet)
-          fprintf(stderr, "Recv failed\n");
-        close(sock);
-        sock = 0;
-        break;
-      }
-
-      if (r == 0) {
-        if (!quiet)
-          printf("Connection closed.\n");
-        close(sock);
-        sock = 0;
-        break;
-      }
-
-      back += r;
       *back = 0;
+      body = strstr(buf, "\r\n\r\n");
+      if (body == NULL) {
+        r = recv(sock, back, buf_size - 1 - (back - buf), 0);
 
-      if ((body = strstr(buf, "\r\n\r\n"))) {
+        if (r < 0) {
+          if (!quiet)
+            fprintf(stderr, "Recv failed\n");
+          close(sock);
+          sock = 0;
+          break;
+        }
+
+        if (r == 0) {
+          if (!quiet)
+            printf("Connection closed.\n");
+          close(sock);
+          sock = 0;
+          break;
+        }
+
+        back += r;
+        *back = 0;
+      }
+
+      if (body != NULL || (body = strstr(buf, "\r\n\r\n"))) {
         request_result rr;
         int should_keepalive = 0;
 
@@ -213,6 +217,11 @@ static void *worker(void *data) {
 
         s = headers;
         while ((s2 = strchr(s, '\r'))) {
+          if (s2 == s) {
+            *s = 0;
+            break;
+          }
+
           s = s2;
 
           if (s[1] == 0)

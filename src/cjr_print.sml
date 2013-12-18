@@ -3364,7 +3364,7 @@ fun p_file env (ds, ps) =
                       newline,
                       string "static void uw_db_init(uw_context ctx) { };",
                       newline,
-                      string "static int uw_db_begin(uw_context ctx) { return 0; };",
+                      string "static int uw_db_begin(uw_context ctx, int could_write) { return 0; };",
                       newline,
                       string "static void uw_db_close(uw_context ctx) { };",
                       newline,
