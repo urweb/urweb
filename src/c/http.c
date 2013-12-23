@@ -447,9 +447,10 @@ void uw_copy_client_data(void *dst, void *src) {
 }
 
 void uw_do_expunge(uw_context ctx, uw_Basis_client cli, void *data) {
-  uw_ensure_transaction(ctx);
-  uw_get_app(ctx)->expunger(ctx, cli);
-  uw_commit(ctx);
+  do {
+    uw_ensure_transaction(ctx);
+    uw_get_app(ctx)->expunger(ctx, cli);
+  } while (uw_commit(ctx) && (uw_rollback(ctx, 1), 1));
 }
 
 void uw_post_expunge(uw_context ctx, void *data) {

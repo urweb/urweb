@@ -116,8 +116,10 @@ static void *periodic_loop(void *data) {
           return NULL;
     } while (r == UNLIMITED_RETRY || (r == BOUNDED_RETRY && retries_left > 0));
 
-    if (r != FATAL && r != BOUNDED_RETRY)
-      uw_commit(ctx);
+    if (r != FATAL && r != BOUNDED_RETRY) {
+      if (uw_commit(ctx))
+	r = UNLIMITED_RETRY;
+    }
 
     sleep(p->pdic.period);
   };

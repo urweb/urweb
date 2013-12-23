@@ -3253,13 +3253,13 @@ static char *find_sig(char *haystack) {
   return s;
 }
 
-void uw_commit(uw_context ctx) {
+int uw_commit(uw_context ctx) {
   int i;
   char *sig;
 
   if (uw_has_error(ctx)) {
     uw_rollback(ctx, 0);
-    return;
+    return 0;
   }
 
   for (i = ctx->used_transactionals-1; i >= 0; --i)
@@ -3268,7 +3268,7 @@ void uw_commit(uw_context ctx) {
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
         if (uw_has_error(ctx)) {
           uw_rollback(ctx, 0);
-          return;
+          return 0;
         }
       }
 
@@ -3278,13 +3278,26 @@ void uw_commit(uw_context ctx) {
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
         if (uw_has_error(ctx)) {
           uw_rollback(ctx, 0);
-          return;
+          return 0;
         }
       }
 
-  if (ctx->transaction_started && ctx->app->db_commit(ctx)) {
-    uw_set_error_message(ctx, "Error running SQL COMMIT");
-    return;
+  if (ctx->transaction_started) {
+    int code =ctx->app->db_commit(ctx);
+
+    if (code) {
+      if (code == -1) {
+	uw_rollback(ctx, 1);
+	return 1;
+      }
+
+      for (i = ctx->used_transactionals-1; i >= 0; --i)
+	if (ctx->transactionals[i].free)
+	  ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
+
+      uw_set_error_message(ctx, "Error running SQL COMMIT");
+      return 0;
+    }
   }
 
   for (i = 0; i < ctx->used_deltas; ++i) {
@@ -3390,6 +3403,8 @@ void uw_commit(uw_context ctx) {
       } while (sig);
     }
   }
+
+  return 0;
 }
 
 
