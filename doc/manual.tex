@@ -2194,7 +2194,7 @@ $$\begin{array}{l}
   \mt{val} \; \mt{self} : \mt{transaction} \; \mt{client}
 \end{array}$$
 
-\emph{Channels} are the means of message-passing.  Each channel is created in the context of a client and belongs to that client; no other client may receive the channel's messages.  Each channel type includes the type of values that may be sent over the channel.  Sending and receiving are asynchronous, in the sense that a client need not be ready to receive a message right away.  Rather, sent messages may queue up, waiting to be processed.
+\emph{Channels} are the means of message-passing.  Each channel is created in the context of a client and belongs to that client; no other client may receive the channel's messages.  Note that here \emph{client} has a technical Ur/Web meaning so that it describes only \emph{single page views}, so a user following a traditional link within an application will remove the ability for \emph{any} code to receive messages on the channels associated with the previous client.  Each channel type includes the type of values that may be sent over the channel.  Sending and receiving are asynchronous, in the sense that a client need not be ready to receive a message right away.  Rather, sent messages may queue up, waiting to be processed.
 
 $$\begin{array}{l}
   \mt{con} \; \mt{channel} :: \mt{Type} \to \mt{Type} \\
