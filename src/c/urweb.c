@@ -3283,13 +3283,11 @@ int uw_commit(uw_context ctx) {
       }
 
   if (ctx->transaction_started) {
-    int code =ctx->app->db_commit(ctx);
+    int code = ctx->app->db_commit(ctx);
 
     if (code) {
-      if (code == -1) {
-	uw_rollback(ctx, 1);
+      if (code == -1)
 	return 1;
-      }
 
       for (i = ctx->used_transactionals-1; i >= 0; --i)
 	if (ctx->transactionals[i].free)
