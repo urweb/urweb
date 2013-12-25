@@ -3225,7 +3225,11 @@ int uw_rollback(uw_context ctx, int will_retry) {
     if (ctx->transactionals[i].free)
       ctx->transactionals[i].free(ctx->transactionals[i].data, will_retry);
 
-  return (ctx->app && ctx->transaction_started) ? ctx->app->db_rollback(ctx) : 0;
+  if (ctx->app && ctx->transaction_started) {
+    ctx->transaction_started = 0;
+    return ctx->app->db_rollback(ctx);
+  } else
+    return 0;
 }
 
 static const char begin_xhtml[] = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">";
@@ -3461,8 +3465,8 @@ void uw_prune_clients(uw_context ctx) {
         prev->next = next;
       else
         clients_used = next;
-      uw_reset(ctx);
       while (fk == UNLIMITED_RETRY) {
+        uw_reset(ctx);
         fk = uw_expunge(ctx, c->id, c->data);
         if (fk == UNLIMITED_RETRY)
           printf("Unlimited retry during expunge: %s\n", uw_error_message(ctx));

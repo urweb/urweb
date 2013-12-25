@@ -632,10 +632,11 @@ void uw_copy_client_data(void *dst, void *src) {
 }
 
 void uw_do_expunge(uw_context ctx, uw_Basis_client cli, void *data) {
-  do {
-    uw_ensure_transaction(ctx);
-    uw_get_app(ctx)->expunger(ctx, cli);
-  } while (uw_commit(ctx) && (uw_rollback(ctx, 1), 1));
+  uw_ensure_transaction(ctx);
+  uw_get_app(ctx)->expunger(ctx, cli);
+
+  if (uw_commit(ctx))
+    uw_error(ctx, UNLIMITED_RETRY, "Rerunning expunge transaction");
 }
 
 void uw_post_expunge(uw_context ctx, void *data) {
