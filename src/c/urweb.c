@@ -634,7 +634,6 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->amInitializing = 0;
   ctx->usedSig = 0;
   ctx->needsResig = 0;
-  ctx->transaction_started = 0;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -648,6 +647,7 @@ void uw_reset(uw_context ctx) {
     memset(ctx->inputs, 0, ctx->app->inputs_len * sizeof(input));
   memset(ctx->subinputs, 0, ctx->n_subinputs * sizeof(input));
   ctx->used_subinputs = ctx->hasPostBody = ctx->isPost = 0;
+  ctx->transaction_started = 0;
 }
 
 failure_kind uw_begin_init(uw_context ctx) {
