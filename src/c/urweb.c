@@ -734,36 +734,34 @@ void uw_push_cleanup(uw_context ctx, void (*func)(void *), void *arg) {
 char *uw_Basis_htmlifyString(uw_context, const char *);
 
 void uw_login(uw_context ctx) {
-  if (ctx->needs_push) {
-    char *id_s, *pass_s;
+  char *id_s, *pass_s;
 
-    if ((id_s = uw_Basis_requestHeader(ctx, "UrWeb-Client"))
-        && (pass_s = uw_Basis_requestHeader(ctx, "UrWeb-Pass"))) {
-      unsigned id = atoi(id_s);
-      int pass = atoi(pass_s);
-      client *c = find_client(id);
+  if ((id_s = uw_Basis_requestHeader(ctx, "UrWeb-Client"))
+      && (pass_s = uw_Basis_requestHeader(ctx, "UrWeb-Pass"))) {
+    unsigned id = atoi(id_s);
+    int pass = atoi(pass_s);
+    client *c = find_client(id);
 
-      if (c == NULL)
-        uw_error(ctx, FATAL, "Unknown client ID in HTTP headers (%s, %s)", uw_Basis_htmlifyString(ctx, id_s), uw_Basis_htmlifyString(ctx, pass_s));
-      else {
-        use_client(c);
-        ctx->client = c;
-
-        if (c->mode != USED)
-          uw_error(ctx, FATAL, "Stale client ID (%u) in subscription request", id);
-        if (c->pass != pass)
-          uw_error(ctx, FATAL, "Wrong client password (%u, %d) in subscription request", id, pass);
-      }
-    } else {
-      client *c = new_client();
-
-      if (c == NULL)
-        uw_error(ctx, FATAL, "Limit exceeded on number of message-passing clients");
-
+    if (c == NULL)
+      uw_error(ctx, FATAL, "Unknown client ID in HTTP headers (%s, %s)", uw_Basis_htmlifyString(ctx, id_s), uw_Basis_htmlifyString(ctx, pass_s));
+    else {
       use_client(c);
-      uw_copy_client_data(c->data, ctx->client_data);
       ctx->client = c;
+
+      if (c->mode != USED)
+        uw_error(ctx, FATAL, "Stale client ID (%u) in subscription request", id);
+      if (c->pass != pass)
+        uw_error(ctx, FATAL, "Wrong client password (%u, %d) in subscription request", id, pass);
     }
+  } else if (ctx->needs_push) {
+    client *c = new_client();
+
+    if (c == NULL)
+      uw_error(ctx, FATAL, "Limit exceeded on number of message-passing clients");
+
+    use_client(c);
+    uw_copy_client_data(c->data, ctx->client_data);
+    ctx->client = c;
   }
 }
 
