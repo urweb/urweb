@@ -267,7 +267,7 @@ static void *worker(void *data) {
             // unprocessed part of buffer to front.
             int kept = back - after;
 
-            if (/kept == 0) {
+            if (kept == 0) {
               // No pipelining going on here.
               // We'd might as well try to switch to a different connection,
               // while we wait for more input on this one.
