@@ -266,8 +266,18 @@ static void *worker(void *data) {
             // In case any other requests are queued up, shift
             // unprocessed part of buffer to front.
             int kept = back - after;
-            memmove(buf, after, kept);
-            back = buf + kept;
+
+            if (/kept == 0) {
+              // No pipelining going on here.
+              // We'd might as well try to switch to a different connection,
+              // while we wait for more input on this one.
+              uw_enqueue(sock);
+              sock = 0;
+            } else {
+              // More input!  Move it to the front and continue in this loop.
+              memmove(buf, after, kept);
+              back = buf + kept;
+            }
           } else {
             close(sock);
             sock = 0;
