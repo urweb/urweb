@@ -4442,7 +4442,13 @@ fun monoDecl (env, fm) (all as (d, loc)) =
 
                 val un = (L'.TRecord [], loc)
                 val t = if MonoUtil.Exp.exists {typ = fn _ => false,
-                                                exp = fn L'.EFfiApp ("Basis", "periodic", _) => true
+                                                exp = fn L'.EFfiApp ("Basis", "periodic", _) =>
+                                                         (if #persistent (Settings.currentProtocol ()) then
+                                                              ()
+                                                          else
+                                                              E.errorAt (#2 e1)
+                                                                        ("Periodic tasks aren't allowed in the selected protocol (" ^ #name (Settings.currentProtocol ()) ^ ").");
+                                                          true)
                                                        | _ => false} e1 then
                             (L'.TFfi ("Basis", "int"), loc)
                         else
