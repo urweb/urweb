@@ -430,19 +430,19 @@ int main(int argc, char *argv[]) {
     int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
 
     if (new_fd < 0) {
-      fprintf(stderr, "Socket accept failed\n");
-      return 1;
+      if (!quiet)
+        fprintf(stderr, "Socket accept failed\n");
+    } else {
+      if (!quiet)
+        printf("Accepted connection.\n");
+
+      if (keepalive) {
+        int flag = 1; 
+        setsockopt(new_fd, IPPROTO_TCP, TCP_NODELAY, (char *) &flag, sizeof(int));
+      }
+
+      uw_enqueue(new_fd);
     }
-
-    if (!quiet)
-      printf("Accepted connection.\n");
-
-    if (keepalive) {
-      int flag = 1; 
-      setsockopt(new_fd, IPPROTO_TCP, TCP_NODELAY, (char *) &flag, sizeof(int));
-    }
-
-    uw_enqueue(new_fd);
   }
 }
 
