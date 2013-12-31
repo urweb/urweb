@@ -474,6 +474,9 @@ struct uw_context {
   char error_message[ERROR_BUF_LEN];
 
   int usedSig, needsResig;
+
+  char *output_buffer;
+  size_t output_buffer_size;
 };
 
 size_t uw_headers_max = SIZE_MAX;
@@ -554,6 +557,9 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
   ctx->usedSig = 0;
   ctx->needsResig = 0;
 
+  ctx->output_buffer = malloc(1);
+  ctx->output_buffer_size = 1;
+
   return ctx;
 }
 
@@ -611,6 +617,8 @@ void uw_free(uw_context ctx) {
     if (ctx->globals[i].free)
       ctx->globals[i].free(ctx->globals[i].data);
   free(ctx->globals);
+
+  free(ctx->output_buffer);
 
   free(ctx);
 }
@@ -1297,17 +1305,20 @@ int uw_pagelen(uw_context ctx) {
 }
 
 int uw_send(uw_context ctx, int sock) {
-  int n = uw_really_send(sock, ctx->outHeaders.start, ctx->outHeaders.front - ctx->outHeaders.start);
+  size_t target_length = (ctx->outHeaders.front - ctx->outHeaders.start) + 2 + (ctx->page.front - ctx->page.start);
 
-  if (n < 0)
-    return n;
+  if (ctx->output_buffer_size < target_length) {
+    do {
+      ctx->output_buffer_size *= 2;
+    } while (ctx->output_buffer_size < target_length);
+    ctx->output_buffer = realloc(ctx->output_buffer, ctx->output_buffer_size);
+  }
 
-  n = uw_really_send(sock, "\r\n", 2);
+  memcpy(ctx->output_buffer, ctx->outHeaders.start, ctx->outHeaders.front - ctx->outHeaders.start);
+  memcpy(ctx->output_buffer + (ctx->outHeaders.front - ctx->outHeaders.start), "\r\n", 2);
+  memcpy(ctx->output_buffer + (ctx->outHeaders.front - ctx->outHeaders.start) + 2, ctx->page.start, ctx->page.front - ctx->page.start);
 
-  if (n < 0)
-    return n;
-
-  return uw_really_send(sock, ctx->page.start, ctx->page.front - ctx->page.start);
+  return uw_really_send(sock, ctx->output_buffer, target_length);
 }
 
 int uw_print(uw_context ctx, int fd) {
