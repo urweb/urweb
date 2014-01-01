@@ -187,7 +187,10 @@ val benignBase = basis ["get_cookie",
                         "preventDefault",
                         "stopPropagation",
                         "fresh",
-                        "giveFocus"]
+                        "giveFocus",
+                        "currentUrlHasPost",
+                        "currentUrlHasQueryString",
+                        "currentUrl"]
 
 val benign = ref benignBase
 fun setBenignEffectful ls = benign := S.addList (benignBase, ls)
