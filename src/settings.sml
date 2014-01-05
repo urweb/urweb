@@ -696,4 +696,24 @@ val timeFormat = ref "%c"
 fun setTimeFormat v = timeFormat := v
 fun getTimeFormat () = !timeFormat
 
+fun lowercase s =
+    case s of
+        "" => ""
+      | _ => str (Char.toLower (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+
+fun capitalize s =
+    case s of
+        "" => ""
+      | _ => str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+
+val mangle = ref true
+fun setMangleSql x = mangle := x
+fun mangleSqlTable s = if !mangle then "uw_" ^ capitalize s
+                       else if #name (currentDbms ()) = "mysql" then capitalize s
+                       else "\"" ^ lowercase s ^ "\""
+fun mangleSql s = if !mangle then "uw_" ^ s
+                  else if #name (currentDbms ()) = "mysql" then lowercase s
+                  else "\"" ^ lowercase s ^ "\""
+fun mangleSqlCatalog s = if !mangle then "uw_" ^ s else lowercase s
+
 end

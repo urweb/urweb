@@ -258,6 +258,11 @@ signature SETTINGS = sig
     val setTimeFormat : string -> unit
     val getTimeFormat : unit -> string
 
-	val getCCompiler : unit -> string
-	val setCCompiler : string -> unit
+    val getCCompiler : unit -> string
+    val setCCompiler : string -> unit
+
+    val setMangleSql : bool -> unit
+    val mangleSql : string -> string
+    val mangleSqlCatalog : string -> string
+    val mangleSqlTable : string -> string
 end

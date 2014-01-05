@@ -864,6 +864,7 @@ fun parseUrp' accLibs fname =
                                    | "alwaysInline" => Settings.addAlwaysInline arg
                                    | "noXsrfProtection" => Settings.addNoXsrfProtection arg
                                    | "timeFormat" => Settings.setTimeFormat arg
+                                   | "noMangleSql" => Settings.setMangleSql false
 
                                    | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                                  read ()

@@ -76,7 +76,11 @@ val ident = String.translate (fn #"'" => "PRIME"
 fun checkRel (table, checkNullable) (s, xts) =
     let
         val sl = CharVector.map Char.toLower s
-        val both = "table_name IN ('" ^ sl ^ "', '" ^ s ^ "')"
+        val sl = if size sl > 1 andalso String.sub (sl, 0) = #"\"" then
+                     String.substring (sl, 1, size sl - 2)
+                 else
+                     sl
+        val both = "LOWER(table_name) = ('" ^ sl ^ "')"
 
         val q = "SELECT COUNT(*) FROM information_schema." ^ table ^ " WHERE " ^ both
 
@@ -85,14 +89,17 @@ fun checkRel (table, checkNullable) (s, xts) =
                                 " AND (",
                                 case String.concatWith " OR "
                                                        (map (fn (x, t) =>
-                                                                String.concat ["(column_name IN ('uw_",
-                                                                               CharVector.map
-                                                                                   Char.toLower (ident x),
-                                                                               "', 'uw_",
-                                                                               ident x,
-                                                                               "') AND data_type = '",
-                                                                               p_sql_type_base t,
-                                                                               "'",
+                                                                String.concat ["(LOWER(column_name) = '",
+                                                                               Settings.mangleSqlCatalog
+                                                                                   (CharVector.map
+                                                                                        Char.toLower (ident x)),
+                                                                               "' AND data_type ",
+                                                                               case p_sql_type_base t of
+                                                                                   "bigint" =>
+                                                                                   "IN ('bigint', 'int')"
+                                                                                 | "longtext" =>
+                                                                                   "IN ('longtext', 'varchar')"
+                                                                                 | s => "= '" ^ s ^ "'",
                                                                                if checkNullable then
                                                                                    (" AND is_nullable = '"
                                                                                     ^ (if isNotNull t then
@@ -109,7 +116,7 @@ fun checkRel (table, checkNullable) (s, xts) =
 
         val q'' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE ",
                                  both,
-                                 " AND column_name LIKE 'uw_%'"]
+                                 " AND LOWER(column_name) LIKE '", Settings.mangleSqlCatalog "%'"]
     in
         box [string "if (mysql_query(conn->conn, \"",
              string q,
@@ -174,7 +181,7 @@ fun checkRel (table, checkNullable) (s, xts) =
                   string "mysql_close(conn->conn);",
                   newline,
                   string "uw_error(ctx, FATAL, \"Table '",
-                  string s,
+                  string sl,
                   string "' does not exist.\");",
                   newline],
              string "}",
@@ -249,7 +256,7 @@ fun checkRel (table, checkNullable) (s, xts) =
                   string "mysql_close(conn->conn);",
                   newline,
                   string "uw_error(ctx, FATAL, \"Table '",
-                  string s,
+                  string sl,
                   string "' has the wrong column types.\");",
                   newline],
              string "}",
@@ -324,7 +331,7 @@ fun checkRel (table, checkNullable) (s, xts) =
                   string "mysql_close(conn->conn);",
                   newline,
                   string "uw_error(ctx, FATAL, \"Table '",
-                  string s,
+                  string sl,
                   string "' has extra columns.\");",
                   newline],
              string "}",
@@ -1201,15 +1208,21 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
              box []]
 
 fun dmlCommon {loc, dml, mode} =
-    box [string "if (mysql_stmt_execute(stmt)) ",
-         case mode of
-             Settings.Error => box [string "uw_error(ctx, FATAL, \"",
-                                    string (ErrorMsg.spanToString loc),
-                                    string ": Error executing DML: %s\\n%s\", ",
-                                    dml,
-                                    string ", mysql_error(conn->conn));"]
-           | Settings.None => string "uw_set_error_message(ctx, mysql_error(conn->conn));",
-         newline,
+    box [string "if (mysql_stmt_execute(stmt)) {",
+         box [string "if (mysql_errno(conn->conn) == 1213)",
+              newline,
+              box [string "uw_error(ctx, UNLIMITED_RETRY, \"Deadlock detected\");",
+                   newline],
+              newline,
+              case mode of
+                  Settings.Error => box [string "uw_error(ctx, FATAL, \"",
+                                         string (ErrorMsg.spanToString loc),
+                                         string ": Error executing DML: %s\\n%s\", ",
+                                         dml,
+                                         string ", mysql_error(conn->conn));"]
+                | Settings.None => string "uw_set_error_message(ctx, mysql_error(conn->conn));",
+              newline],
+         string "}",
          newline]
 
 fun dml (loc, mode) =
