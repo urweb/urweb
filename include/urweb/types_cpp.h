@@ -102,6 +102,8 @@ typedef struct {
   uw_periodic *periodics; // 0-terminated array
 
   uw_Basis_string time_format;
+
+  int is_html5;
 } uw_app;
 
 #define ERROR_BUF_LEN 1024

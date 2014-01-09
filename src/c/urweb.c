@@ -3241,7 +3241,8 @@ int uw_rollback(uw_context ctx, int will_retry) {
     return 0;
 }
 
-static const char begin_xhtml[] = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">";
+const char uw_begin_xhtml[] = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">";
+const char uw_begin_html5[] = "<!DOCTYPE html><html>";
 
 extern int uw_hash_blocksize;
 
@@ -3331,11 +3332,14 @@ int uw_commit(uw_context ctx) {
   uw_check(ctx, 1);
   *ctx->page.front = 0;
 
-  if (!ctx->returning_indirectly && !strncmp(ctx->page.start, begin_xhtml, sizeof begin_xhtml - 1)) {
+  if (!ctx->returning_indirectly
+      && (ctx->app->is_html5
+          ? !strncmp(ctx->page.start, uw_begin_html5, sizeof uw_begin_html5 - 1)
+          : !strncmp(ctx->page.start, uw_begin_xhtml, sizeof uw_begin_xhtml - 1))) {
     char *s;
 
     // Splice script data into appropriate part of page, also adding <head> if needed.
-    s = ctx->page.start + sizeof begin_xhtml - 1;
+    s = ctx->page.start + (ctx->app->is_html5 ? sizeof uw_begin_html5 - 1 : sizeof uw_begin_xhtml - 1);
     s = strchr(s, '<');
     if (s == NULL) {
       // Weird.  Document has no tags!
@@ -4170,7 +4174,7 @@ failure_kind uw_begin_onError(uw_context ctx, char *msg) {
         uw_write_header(ctx, "Status: ");
       uw_write_header(ctx, "500 Internal Server Error\r\n");
       uw_write_header(ctx, "Content-type: text/html\r\n");
-      uw_write(ctx, begin_xhtml);
+      uw_write(ctx, ctx->app->is_html5 ? uw_begin_html5 : uw_begin_xhtml);
       ctx->app->on_error(ctx, msg);
       uw_write(ctx, "</html>");
     }

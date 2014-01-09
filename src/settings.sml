@@ -716,4 +716,8 @@ fun mangleSql s = if !mangle then "uw_" ^ s
                   else "\"" ^ lowercase s ^ "\""
 fun mangleSqlCatalog s = if !mangle then "uw_" ^ s else lowercase s
 
+val html5 = ref false
+fun setIsHtml5 b = html5 := b
+fun getIsHtml5 () = !html5
+
 end

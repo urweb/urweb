@@ -3083,7 +3083,11 @@ fun p_file env (ds, ps) =
                                         ServerOnly => box []
                                       | _ => box [string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
                                                   newline],
-                                    string "uw_write(ctx, begin_xhtml);",
+                                    string ("uw_write(ctx, uw_begin_" ^
+                                            (if Settings.getIsHtml5 () then
+                                                 "html5"
+                                             else
+                                                 "xhtml") ^ ");"),
                                     newline,
                                     string "uw_mayReturnIndirectly(ctx);",
                                     newline,
@@ -3374,9 +3378,6 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
-             string "static const char begin_xhtml[] = \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" ?>\\n<!DOCTYPE html PUBLIC \\\"-//W3C//DTD XHTML 1.0 Transitional//EN\\\" \\\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\\\">\\n<html xmlns=\\\"http://www.w3.org/1999/xhtml\\\" xml:lang=\\\"en\\\" lang=\\\"en\\\">\";",
-             newline,
-             newline,
 
              p_list_sep newline (fn x => x) pds,
              newline,
@@ -3588,7 +3589,8 @@ fun p_file env (ds, ps) =
                          "uw_handle",
                          "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime", "uw_check_requestHeader", "uw_check_responseHeader", "uw_check_envVar",
                          case onError of NONE => "NULL" | SOME _ => "uw_onError", "my_periodics",
-                         "\"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\""],
+                         "\"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\"",
+                         if Settings.getIsHtml5 () then "1" else "0"],
              string "};",
              newline]
     end

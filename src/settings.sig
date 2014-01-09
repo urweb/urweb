@@ -265,4 +265,7 @@ signature SETTINGS = sig
     val mangleSql : string -> string
     val mangleSqlCatalog : string -> string
     val mangleSqlTable : string -> string
+
+    val setIsHtml5 : bool -> unit
+    val getIsHtml5 : unit -> bool
 end
