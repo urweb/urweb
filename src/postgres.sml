@@ -68,7 +68,7 @@ fun checkRel (table, checkNullable) (s, xts) =
                  else
                      sl
 
-        val q = "SELECT COUNT(*) FROM information_schema." ^ table ^ " WHERE LOWER(table_name) = '"
+        val q = "SELECT COUNT(*) FROM information_schema." ^ table ^ " WHERE table_name = '"
                 ^ sl ^ "'"
 
         val q' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '",
