@@ -710,10 +710,10 @@ val mangle = ref true
 fun setMangleSql x = mangle := x
 fun mangleSqlTable s = if !mangle then "uw_" ^ capitalize s
                        else if #name (currentDbms ()) = "mysql" then capitalize s
-                       else "\"" ^ lowercase s ^ "\""
+                       else lowercase s
 fun mangleSql s = if !mangle then "uw_" ^ s
                   else if #name (currentDbms ()) = "mysql" then lowercase s
-                  else "\"" ^ lowercase s ^ "\""
+                  else lowercase s
 fun mangleSqlCatalog s = if !mangle then "uw_" ^ s else lowercase s
 
 val html5 = ref false
