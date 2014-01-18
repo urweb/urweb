@@ -64,7 +64,7 @@ apt-get install mlton libssl-dev
 
 To build programs that access SQL databases, you also need one of these client libraries for supported backends.
 \begin{verbatim}
-apt-get install libpq-dev libmysqlclient15-dev libsqlite3-dev
+apt-get install libpq-dev libmysqlclient-dev libsqlite3-dev
 \end{verbatim}
 
 It is also possible to access the modules of the Ur/Web compiler interactively, within Standard ML of New Jersey.  To install the prerequisites in Debian testing:
@@ -77,7 +77,7 @@ To begin an interactive session with the Ur compiler modules, run \texttt{make s
 To run an SQL-backed application with a backend besides SQLite, you will probably want to install one of these servers.
 
 \begin{verbatim}
-apt-get install postgresql-8.4 mysql-server-5.1
+apt-get install postgresql mysql-server
 \end{verbatim}
 
 To use the Emacs mode, you must have a modern Emacs installed.  We assume that you already know how to do this, if you're in the business of looking for an Emacs mode.  The demo generation facility of the compiler will also call out to Emacs to syntax-highlight code, and that process depends on the \texttt{htmlize} module, which can be installed in Debian testing via:
