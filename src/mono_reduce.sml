@@ -101,7 +101,8 @@ fun impure (e, _) =
       | ECase (e, pes, _) => impure e orelse List.exists (fn (_, e) => impure e) pes
 
       | EError _ => true
-      | EReturnBlob {blob = e1, mimeType = e2, ...} => impure e1 orelse impure e2
+      | EReturnBlob {blob = NONE, mimeType = e2, ...} => impure e2
+      | EReturnBlob {blob = SOME e1, mimeType = e2, ...} => impure e1 orelse impure e2
       | ERedirect (e, _) => impure e
 
       | EStrcat (e1, e2) => impure e1 orelse impure e2
@@ -492,7 +493,8 @@ fun reduce (file : file) =
                       | EStrcat (e1, e2) => summarize d e1 @ summarize d e2
 
                       | EError (e, _) => summarize d e @ [Abort]
-                      | EReturnBlob {blob = e1, mimeType = e2, ...} => summarize d e1 @ summarize d e2 @ [Abort]
+                      | EReturnBlob {blob = NONE, mimeType = e2, ...} => summarize d e2 @ [Abort]
+                      | EReturnBlob {blob = SOME e1, mimeType = e2, ...} => summarize d e1 @ summarize d e2 @ [Abort]
                       | ERedirect (e, _) => summarize d e @ [Abort]
 
                       | EWrite e => summarize d e @ [WritePage]

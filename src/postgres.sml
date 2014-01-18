@@ -63,6 +63,10 @@ fun p_sql_type_base t =
 fun checkRel (table, checkNullable) (s, xts) =
     let
         val sl = CharVector.map Char.toLower s
+        val sl = if size sl > 1 andalso String.sub (sl, 0) = #"\"" then
+                     String.substring (sl, 1, size sl - 2)
+                 else
+                     sl
 
         val q = "SELECT COUNT(*) FROM information_schema." ^ table ^ " WHERE table_name = '"
                 ^ sl ^ "'"
@@ -72,12 +76,15 @@ fun checkRel (table, checkNullable) (s, xts) =
                                 "' AND (",
                                 case String.concatWith " OR "
                                                        (map (fn (x, t) =>
-                                                                String.concat ["(column_name = 'uw_",
-                                                                               CharVector.map
-                                                                                   Char.toLower (ident x),
+                                                                String.concat ["(LOWER(column_name) = '",
+                                                                               Settings.mangleSqlCatalog
+                                                                                   (CharVector.map
+                                                                                        Char.toLower (ident x)),
                                                                                (case p_sql_type_base t of
                                                                                     "bigint" =>
-                                                                                    "' AND data_type IN ('bigint', 'numeric')"
+                                                                                    "' AND data_type IN ('bigint', 'numeric', 'integer')"
+                                                                                  | "text" =>
+                                                                                    "' AND data_type IN ('text', 'character varying')"                                                                          
                                                                                   | t =>
                                                                                     String.concat ["' AND data_type = '",
                                                                                                    t,
@@ -98,7 +105,7 @@ fun checkRel (table, checkNullable) (s, xts) =
 
         val q'' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '",
                                  sl,
-                                 "' AND column_name LIKE 'uw_%'"]
+                                 "' AND LOWER(column_name) LIKE '", Settings.mangleSqlCatalog "%'"]
     in
         box [string "res = PQexec(conn, \"",
              string q,
@@ -140,7 +147,7 @@ fun checkRel (table, checkNullable) (s, xts) =
                   string "PQfinish(conn);",
                   newline,
                   string "uw_error(ctx, FATAL, \"Table '",
-                  string s,
+                  string sl,
                   string "' does not exist.\");",
                   newline],
              string "}",
@@ -191,7 +198,7 @@ fun checkRel (table, checkNullable) (s, xts) =
                   string "PQfinish(conn);",
                   newline,
                   string "uw_error(ctx, FATAL, \"Table '",
-                  string s,
+                  string sl,
                   string "' has the wrong column types.\");",
                   newline],
              string "}",
@@ -243,7 +250,7 @@ fun checkRel (table, checkNullable) (s, xts) =
                   string "PQfinish(conn);",
                   newline,
                   string "uw_error(ctx, FATAL, \"Table '",
-                  string s,
+                  string sl,
                   string "' has extra columns.\");",
                   newline],
              string "}",
@@ -402,11 +409,11 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
          newline,
          newline,
 
-         string "static int uw_db_begin(uw_context ctx) {",
+         string "static int uw_db_begin(uw_context ctx, int could_write) {",
          newline,
          string "PGconn *conn = uw_get_db(ctx);",
          newline,
-         string "PGresult *res = PQexec(conn, \"BEGIN ISOLATION LEVEL SERIALIZABLE\");",
+         string "PGresult *res = PQexec(conn, could_write ? \"BEGIN ISOLATION LEVEL SERIALIZABLE\" : \"BEGIN ISOLATION LEVEL SERIALIZABLE, READ ONLY\");",
          newline,
          newline,
          string "if (res == NULL) return 1;",
@@ -438,7 +445,23 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
          newline,
          newline,
          string "if (PQresultStatus(res) != PGRES_COMMAND_OK) {",
-         box [string "PQclear(res);",
+         box [string "if (!strcmp(PQresultErrorField(res, PG_DIAG_SQLSTATE), \"40001\")) {",
+              box [newline,
+                   string "PQclear(res);",
+                   newline,
+                   string "return -1;",
+                   newline],
+              string "}",
+              newline,
+              string "if (!strcmp(PQresultErrorField(res, PG_DIAG_SQLSTATE), \"40P01\")) {",
+              box [newline,
+                   string "PQclear(res);",
+                   newline,
+                   string "return -1;",
+                   newline],
+              string "}",
+              newline,
+	      string "PQclear(res);",
               newline,
               string "return 1;",
               newline],

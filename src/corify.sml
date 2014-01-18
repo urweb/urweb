@@ -1046,7 +1046,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                                                                 | _ => false) args then
                                                                L'.Extern L'.ReadCookieWrite
                                                            else
-                                                               L'.Link
+                                                               L'.Link L'.ReadCookieWrite
                                          in
                                              ((L.DVal ("wrap_" ^ s, 0, tf, e), loc) :: wds,
                                               (fn st =>

@@ -431,6 +431,7 @@ struct uw_context {
   unsigned long long source_count;
 
   void *db;
+  int transaction_started;
 
   jmp_buf jmp_buf;
 
@@ -440,7 +441,7 @@ struct uw_context {
 
   const char *script_header;
 
-  int needs_push, needs_sig;
+  int needs_push, needs_sig, could_write_db;
 
   size_t n_deltas, used_deltas;
   delta *deltas;
@@ -473,6 +474,9 @@ struct uw_context {
   char error_message[ERROR_BUF_LEN];
 
   int usedSig, needsResig;
+
+  char *output_buffer;
+  size_t output_buffer_size;
 };
 
 size_t uw_headers_max = SIZE_MAX;
@@ -507,6 +511,7 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
   ctx->sz_inputs = ctx->n_subinputs = ctx->used_subinputs = 0;
 
   ctx->db = NULL;
+  ctx->transaction_started = 0;
 
   ctx->regions = NULL;
 
@@ -515,6 +520,7 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
   ctx->script_header = "";
   ctx->needs_push = 0;
   ctx->needs_sig = 0;
+  ctx->could_write_db = 1;
 
   ctx->source_count = 0;
 
@@ -550,6 +556,9 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
 
   ctx->usedSig = 0;
   ctx->needsResig = 0;
+
+  ctx->output_buffer = malloc(1);
+  ctx->output_buffer_size = 1;
 
   return ctx;
 }
@@ -609,6 +618,8 @@ void uw_free(uw_context ctx) {
       ctx->globals[i].free(ctx->globals[i].data);
   free(ctx->globals);
 
+  free(ctx->output_buffer);
+
   free(ctx);
 }
 
@@ -644,6 +655,7 @@ void uw_reset(uw_context ctx) {
     memset(ctx->inputs, 0, ctx->app->inputs_len * sizeof(input));
   memset(ctx->subinputs, 0, ctx->n_subinputs * sizeof(input));
   ctx->used_subinputs = ctx->hasPostBody = ctx->isPost = 0;
+  ctx->transaction_started = 0;
 }
 
 failure_kind uw_begin_init(uw_context ctx) {
@@ -730,50 +742,52 @@ void uw_push_cleanup(uw_context ctx, void (*func)(void *), void *arg) {
 char *uw_Basis_htmlifyString(uw_context, const char *);
 
 void uw_login(uw_context ctx) {
-  if (ctx->needs_push) {
-    char *id_s, *pass_s;
+  char *id_s, *pass_s;
 
-    if ((id_s = uw_Basis_requestHeader(ctx, "UrWeb-Client"))
-        && (pass_s = uw_Basis_requestHeader(ctx, "UrWeb-Pass"))) {
-      unsigned id = atoi(id_s);
-      int pass = atoi(pass_s);
-      client *c = find_client(id);
+  if ((id_s = uw_Basis_requestHeader(ctx, "UrWeb-Client"))
+      && (pass_s = uw_Basis_requestHeader(ctx, "UrWeb-Pass"))) {
+    unsigned id = atoi(id_s);
+    int pass = atoi(pass_s);
+    client *c = find_client(id);
 
-      if (c == NULL)
-        uw_error(ctx, FATAL, "Unknown client ID in HTTP headers (%s, %s)", uw_Basis_htmlifyString(ctx, id_s), uw_Basis_htmlifyString(ctx, pass_s));
-      else {
-        use_client(c);
-        ctx->client = c;
-
-        if (c->mode != USED)
-          uw_error(ctx, FATAL, "Stale client ID (%u) in subscription request", id);
-        if (c->pass != pass)
-          uw_error(ctx, FATAL, "Wrong client password (%u, %d) in subscription request", id, pass);
-      }
-    } else {
-      client *c = new_client();
-
-      if (c == NULL)
-        uw_error(ctx, FATAL, "Limit exceeded on number of message-passing clients");
-
+    if (c == NULL)
+      uw_error(ctx, FATAL, "Unknown client ID in HTTP headers (%s, %s)", uw_Basis_htmlifyString(ctx, id_s), uw_Basis_htmlifyString(ctx, pass_s));
+    else {
       use_client(c);
-      uw_copy_client_data(c->data, ctx->client_data);
       ctx->client = c;
+
+      if (c->mode != USED)
+        uw_error(ctx, FATAL, "Stale client ID (%u) in subscription request", id);
+      if (c->pass != pass)
+        uw_error(ctx, FATAL, "Wrong client password (%u, %d) in subscription request", id, pass);
     }
+  } else if (ctx->needs_push) {
+    client *c = new_client();
+
+    if (c == NULL)
+      uw_error(ctx, FATAL, "Limit exceeded on number of message-passing clients");
+
+    use_client(c);
+    uw_copy_client_data(c->data, ctx->client_data);
+    ctx->client = c;
   }
 }
 
 failure_kind uw_begin(uw_context ctx, char *path) {
   int r = setjmp(ctx->jmp_buf);
 
-  if (r == 0) {
-    if (ctx->app->db_begin(ctx))
-      uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
-
+  if (r == 0)
     ctx->app->handle(ctx, path);
-  }
 
   return r;
+}
+
+void uw_ensure_transaction(uw_context ctx) {
+  if (!ctx->transaction_started) {
+    if (ctx->app->db_begin(ctx, ctx->could_write_db))
+      uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
+    ctx->transaction_started = 1;
+  }
 }
 
 uw_Basis_client uw_Basis_self(uw_context ctx) {
@@ -1184,6 +1198,10 @@ void uw_set_needs_sig(uw_context ctx, int n) {
   ctx->needs_sig = n;
 }
 
+void uw_set_could_write_db(uw_context ctx, int n) {
+  ctx->could_write_db = n;
+}
+
 
 static void uw_buffer_check_ctx(uw_context ctx, const char *kind, uw_buffer *b, size_t extra, const char *desc) {
   if (b->back - b->front < extra) {
@@ -1287,17 +1305,20 @@ int uw_pagelen(uw_context ctx) {
 }
 
 int uw_send(uw_context ctx, int sock) {
-  int n = uw_really_send(sock, ctx->outHeaders.start, ctx->outHeaders.front - ctx->outHeaders.start);
+  size_t target_length = (ctx->outHeaders.front - ctx->outHeaders.start) + 2 + (ctx->page.front - ctx->page.start);
 
-  if (n < 0)
-    return n;
+  if (ctx->output_buffer_size < target_length) {
+    do {
+      ctx->output_buffer_size *= 2;
+    } while (ctx->output_buffer_size < target_length);
+    ctx->output_buffer = realloc(ctx->output_buffer, ctx->output_buffer_size);
+  }
 
-  n = uw_really_send(sock, "\r\n", 2);
+  memcpy(ctx->output_buffer, ctx->outHeaders.start, ctx->outHeaders.front - ctx->outHeaders.start);
+  memcpy(ctx->output_buffer + (ctx->outHeaders.front - ctx->outHeaders.start), "\r\n", 2);
+  memcpy(ctx->output_buffer + (ctx->outHeaders.front - ctx->outHeaders.start) + 2, ctx->page.start, ctx->page.front - ctx->page.start);
 
-  if (n < 0)
-    return n;
-
-  return uw_really_send(sock, ctx->page.start, ctx->page.front - ctx->page.start);
+  return uw_really_send(sock, ctx->output_buffer, target_length);
 }
 
 int uw_print(uw_context ctx, int fd) {
@@ -1340,8 +1361,16 @@ void uw_write_header(uw_context ctx, uw_Basis_string s) {
   ctx->outHeaders.front += len;
 }
 
+int uw_has_contentLength(uw_context ctx) {
+  return strstr(ctx->outHeaders.start, "Content-length: ") != NULL;
+}
+
 void uw_clear_headers(uw_context ctx) {
   uw_buffer_reset(&ctx->outHeaders);
+}
+
+void uw_Basis_clear_page(uw_context ctx) {
+  uw_buffer_reset(&ctx->page);
 }
 
 static void uw_check_script(uw_context ctx, size_t extra) {
@@ -3205,10 +3234,15 @@ int uw_rollback(uw_context ctx, int will_retry) {
     if (ctx->transactionals[i].free)
       ctx->transactionals[i].free(ctx->transactionals[i].data, will_retry);
 
-  return ctx->app ? ctx->app->db_rollback(ctx) : 0;
+  if (ctx->app && ctx->transaction_started) {
+    ctx->transaction_started = 0;
+    return ctx->app->db_rollback(ctx);
+  } else
+    return 0;
 }
 
-static const char begin_xhtml[] = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">";
+const char uw_begin_xhtml[] = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\">";
+const char uw_begin_html5[] = "<!DOCTYPE html><html>";
 
 extern int uw_hash_blocksize;
 
@@ -3233,13 +3267,13 @@ static char *find_sig(char *haystack) {
   return s;
 }
 
-void uw_commit(uw_context ctx) {
+int uw_commit(uw_context ctx) {
   int i;
   char *sig;
 
   if (uw_has_error(ctx)) {
     uw_rollback(ctx, 0);
-    return;
+    return 0;
   }
 
   for (i = ctx->used_transactionals-1; i >= 0; --i)
@@ -3248,7 +3282,7 @@ void uw_commit(uw_context ctx) {
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
         if (uw_has_error(ctx)) {
           uw_rollback(ctx, 0);
-          return;
+          return 0;
         }
       }
 
@@ -3258,13 +3292,24 @@ void uw_commit(uw_context ctx) {
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
         if (uw_has_error(ctx)) {
           uw_rollback(ctx, 0);
-          return;
+          return 0;
         }
       }
 
-  if (ctx->app->db_commit(ctx)) {
-    uw_set_error_message(ctx, "Error running SQL COMMIT");
-    return;
+  if (ctx->transaction_started) {
+    int code = ctx->app->db_commit(ctx);
+
+    if (code) {
+      if (code == -1)
+	return 1;
+
+      for (i = ctx->used_transactionals-1; i >= 0; --i)
+	if (ctx->transactionals[i].free)
+	  ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
+
+      uw_set_error_message(ctx, "Error running SQL COMMIT");
+      return 0;
+    }
   }
 
   for (i = 0; i < ctx->used_deltas; ++i) {
@@ -3287,11 +3332,14 @@ void uw_commit(uw_context ctx) {
   uw_check(ctx, 1);
   *ctx->page.front = 0;
 
-  if (!ctx->returning_indirectly && !strncmp(ctx->page.start, begin_xhtml, sizeof begin_xhtml - 1)) {
+  if (!ctx->returning_indirectly
+      && (ctx->app->is_html5
+          ? !strncmp(ctx->page.start, uw_begin_html5, sizeof uw_begin_html5 - 1)
+          : !strncmp(ctx->page.start, uw_begin_xhtml, sizeof uw_begin_xhtml - 1))) {
     char *s;
 
     // Splice script data into appropriate part of page, also adding <head> if needed.
-    s = ctx->page.start + sizeof begin_xhtml - 1;
+    s = ctx->page.start + (ctx->app->is_html5 ? sizeof uw_begin_html5 - 1 : sizeof uw_begin_xhtml - 1);
     s = strchr(s, '<');
     if (s == NULL) {
       // Weird.  Document has no tags!
@@ -3370,6 +3418,8 @@ void uw_commit(uw_context ctx) {
       } while (sig);
     }
   }
+
+  return 0;
 }
 
 
@@ -3428,8 +3478,8 @@ void uw_prune_clients(uw_context ctx) {
         prev->next = next;
       else
         clients_used = next;
-      uw_reset(ctx);
       while (fk == UNLIMITED_RETRY) {
+        uw_reset(ctx);
         fk = uw_expunge(ctx, c->id, c->data);
         if (fk == UNLIMITED_RETRY)
           printf("Unlimited retry during expunge: %s\n", uw_error_message(ctx));
@@ -3451,8 +3501,7 @@ failure_kind uw_initialize(uw_context ctx) {
   int r = setjmp(ctx->jmp_buf);
 
   if (r == 0) {
-    if (ctx->app->db_begin(ctx))
-      uw_error(ctx, FATAL, "Error running SQL BEGIN");
+    uw_ensure_transaction(ctx);
     ctx->app->initializer(ctx);
     if (ctx->app->db_commit(ctx))
       uw_error(ctx, FATAL, "Error running SQL COMMIT");
@@ -3711,7 +3760,7 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   uw_write_header(ctx, on_success);
   uw_write_header(ctx, "Content-Type: ");
   uw_write_header(ctx, mimeType);
-  uw_write_header(ctx, "\r\nContent-Length: ");
+  uw_write_header(ctx, "\r\nContent-length: ");
   ctx_uw_buffer_check(ctx, "headers", &ctx->outHeaders, INTS_MAX);
   sprintf(ctx->outHeaders.front, "%lu%n", (unsigned long)b.size, &len);
   ctx->outHeaders.front += len;
@@ -3719,6 +3768,36 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   if (oldh) uw_write_header(ctx, oldh);
 
   ctx_uw_buffer_append(ctx, "page", &ctx->page, b.data, b.size);
+
+  for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
+    cl->func(cl->arg);
+
+  ctx->cleanup_front = ctx->cleanup;
+
+  longjmp(ctx->jmp_buf, RETURN_INDIRECTLY);
+}
+
+__attribute__((noreturn)) void uw_return_blob_from_page(uw_context ctx, uw_Basis_string mimeType) {
+  cleanup *cl;
+  int len;
+  char *oldh;
+
+  if (!ctx->allowed_to_return_indirectly)
+    uw_error(ctx, FATAL, "Tried to return a blob from an RPC");
+
+  ctx->returning_indirectly = 1;
+  oldh = old_headers(ctx);
+  uw_buffer_reset(&ctx->outHeaders);
+
+  uw_write_header(ctx, on_success);
+  uw_write_header(ctx, "Content-Type: ");
+  uw_write_header(ctx, mimeType);
+  uw_write_header(ctx, "\r\nContent-length: ");
+  ctx_uw_buffer_check(ctx, "headers", &ctx->outHeaders, INTS_MAX);
+  sprintf(ctx->outHeaders.front, "%lu%n", (unsigned long)uw_buffer_used(&ctx->page), &len);
+  ctx->outHeaders.front += len;
+  uw_write_header(ctx, "\r\n");
+  if (oldh) uw_write_header(ctx, oldh);
 
   for (cl = ctx->cleanup; cl < ctx->cleanup_front; ++cl)
     cl->func(cl->arg);
@@ -4031,9 +4110,13 @@ uw_Basis_unit uw_Basis_debug(uw_context ctx, uw_Basis_string s) {
   return uw_unit_v;
 }
 
+static pthread_mutex_t rand_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 uw_Basis_int uw_Basis_rand(uw_context ctx) {
   uw_Basis_int ret;
+  pthread_mutex_lock(&rand_mutex);
   int r = RAND_bytes((unsigned char *)&ret, sizeof ret);
+  pthread_mutex_unlock(&rand_mutex);
   
   if (r)
     return abs(ret);
@@ -4085,8 +4168,7 @@ failure_kind uw_runCallback(uw_context ctx, void (*callback)(uw_context)) {
   int r = setjmp(ctx->jmp_buf);
 
   if (r == 0) {
-    if (ctx->app->db_begin(ctx))
-      uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
+    uw_ensure_transaction(ctx);
 
     callback(ctx);
   }
@@ -4133,8 +4215,7 @@ failure_kind uw_begin_onError(uw_context ctx, char *msg) {
 
   if (ctx->app->on_error) {
     if (r == 0) {
-      if (ctx->app->db_begin(ctx))
-        uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
+      uw_ensure_transaction(ctx);
 
       uw_buffer_reset(&ctx->outHeaders);
       if (on_success[0])
@@ -4143,7 +4224,7 @@ failure_kind uw_begin_onError(uw_context ctx, char *msg) {
         uw_write_header(ctx, "Status: ");
       uw_write_header(ctx, "500 Internal Server Error\r\n");
       uw_write_header(ctx, "Content-type: text/html\r\n");
-      uw_write(ctx, begin_xhtml);
+      uw_write(ctx, ctx->app->is_html5 ? uw_begin_html5 : uw_begin_xhtml);
       ctx->app->on_error(ctx, msg);
       uw_write(ctx, "</html>");
     }

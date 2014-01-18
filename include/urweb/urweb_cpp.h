@@ -37,9 +37,11 @@ void uw_set_on_success(char *);
 void uw_set_headers(struct uw_context *, char *(*get_header)(void *, const char *), void *get_header_data);
 void uw_set_env(struct uw_context *, char *(*get_env)(void *, const char *), void *get_env_data);
 failure_kind uw_begin(struct uw_context *, char *path);
+void uw_ensure_transaction(struct uw_context *);
 failure_kind uw_begin_onError(struct uw_context *, char *msg);
 void uw_login(struct uw_context *);
-void uw_commit(struct uw_context *);
+int uw_commit(struct uw_context *);
+// ^-- returns nonzero if the transaction should be restarted
 int uw_rollback(struct uw_context *, int will_retry);
 
 __attribute__((noreturn)) void uw_error(struct uw_context *, failure_kind, const char *fmt, ...);
@@ -85,6 +87,7 @@ uw_Basis_string uw_Basis_maybe_onunload(struct uw_context *, uw_Basis_string);
 
 void uw_set_needs_push(struct uw_context *, int);
 void uw_set_needs_sig(struct uw_context *, int);
+void uw_set_could_write_db(struct uw_context *, int);
 
 char *uw_Basis_htmlifyInt(struct uw_context *, uw_Basis_int);
 char *uw_Basis_htmlifyFloat(struct uw_context *, uw_Basis_float);
@@ -208,6 +211,8 @@ uw_Basis_string uw_Basis_requestHeader(struct uw_context *, uw_Basis_string);
 
 void uw_write_header(struct uw_context *, uw_Basis_string);
 void uw_clear_headers(struct uw_context *);
+int uw_has_contentLength(struct uw_context *);
+void uw_Basis_clear_page(struct uw_context *);
 
 uw_Basis_string uw_Basis_get_cookie(struct uw_context *, uw_Basis_string c);
 uw_unit uw_Basis_set_cookie(struct uw_context *, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v, uw_Basis_time *expires, uw_Basis_bool secure);
@@ -254,6 +259,7 @@ uw_Basis_postBody uw_getPostBody(struct uw_context *);
 
 void uw_mayReturnIndirectly(struct uw_context *);
 __attribute__((noreturn)) void uw_return_blob(struct uw_context *, uw_Basis_blob, uw_Basis_string mimeType);
+__attribute__((noreturn)) void uw_return_blob_from_page(struct uw_context *, uw_Basis_string mimeType);
 __attribute__((noreturn)) void uw_redirect(struct uw_context *, uw_Basis_string url);
 
 uw_Basis_time uw_Basis_now(struct uw_context *);
@@ -378,5 +384,7 @@ uw_Basis_string uw_Basis_fieldName(struct uw_context *, uw_Basis_postField);
 uw_Basis_string uw_Basis_fieldValue(struct uw_context *, uw_Basis_postField);
 uw_Basis_string uw_Basis_remainingFields(struct uw_context *, uw_Basis_postField);
 uw_Basis_postField *uw_Basis_firstFormField(struct uw_context *, uw_Basis_string);
+
+extern const char uw_begin_xhtml[], uw_begin_html5[];
 
 #endif

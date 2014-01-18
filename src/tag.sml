@@ -41,9 +41,9 @@ structure SM = BinaryMapFn(struct
 fun kind (k, s) = (k, s)
 fun con (c, s) = (c, s)
 
-fun both (loc, f) = (ErrorMsg.errorAt loc ("Function " ^ f ^ " needed for both a link and a form");
+fun both (loc, f) = (ErrorMsg.errorAt loc ("Function " ^ f ^ " needed for multiple modes (link, form, RPC handler).");
                      TextIO.output (TextIO.stdErr,
-                                    "Make sure that the signature of the containing module hides any form handlers.\n"))
+                                    "Make sure that the signature of the containing module hides any form/RPC handlers.\n"))
 
 fun exp env (e, s) =
     let
@@ -145,7 +145,7 @@ fun exp env (e, s) =
                                                        end
                                                in
                                                    case x of
-                                                       (CName "Link", _) => tagIt' (Link, "Link")
+                                                       (CName "Link", _) => tagIt' (Link ReadCookieWrite, "Link")
                                                      | (CName "Action", _) => tagIt' (Action ReadWrite, "Action")
                                                      | _ => ((x, e, t), s)
                                                end)
@@ -180,7 +180,7 @@ fun exp env (e, s) =
 
           | EFfiApp ("Basis", "url", [(e, t)]) =>
             let
-                val (e, s) = tagIt (e, Link, "Url", s)
+                val (e, s) = tagIt (e, Link ReadCookieWrite, "Url", s)
             in
                 (EFfiApp ("Basis", "url", [(e, t)]), s)
             end
@@ -201,7 +201,7 @@ fun exp env (e, s) =
                 case eo of
                     SOME (EAbs (_, _, _, (EFfiApp ("Basis", "url", [((ERel 0, _), t)]), _)), _) =>
                     let
-                        val (e, s) = tagIt (e', Link, "Url", s)
+                        val (e, s) = tagIt (e', Link ReadCookieWrite, "Url", s)
                     in
                         (EFfiApp ("Basis", "url", [(e, t)]), s)
                     end

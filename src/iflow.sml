@@ -1587,7 +1587,8 @@ fun evalExp env (e as (_, loc)) k =
                 evalExp env e2 (fn e2 =>
                                    k (Func (Other "cat", [e1, e2]))))
           | EError (e, _) => evalExp env e (fn e => St.send (e, loc))
-          | EReturnBlob {blob = b, mimeType = m, ...} =>
+          | EReturnBlob {blob = NONE, ...} => raise Fail "Iflow doesn't support blob optimization"
+          | EReturnBlob {blob = SOME b, mimeType = m, ...} =>
             evalExp env b (fn b =>
                               (St.send (b, loc);
                                evalExp env m
@@ -2060,8 +2061,10 @@ fun check (file : file) =
                             end
                           | EStrcat (e1, e2) => (EStrcat (doExp env e1, doExp env e2), loc)
                           | EError (e1, t) => (EError (doExp env e1, t), loc)
-                          | EReturnBlob {blob = b, mimeType = m, t} =>
-                            (EReturnBlob {blob = doExp env b, mimeType = doExp env m, t = t}, loc)
+                          | EReturnBlob {blob = NONE, mimeType = m, t} =>
+                            (EReturnBlob {blob = NONE, mimeType = doExp env m, t = t}, loc)
+                          | EReturnBlob {blob = SOME b, mimeType = m, t} =>
+                            (EReturnBlob {blob = SOME (doExp env b), mimeType = doExp env m, t = t}, loc)
                           | ERedirect (e1, t) => (ERedirect (doExp env e1, t), loc)
                           | EWrite e1 => (EWrite (doExp env e1), loc)
                           | ESeq (e1, e2) => (ESeq (doExp env e1, doExp env e2), loc)

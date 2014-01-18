@@ -1628,7 +1628,7 @@ and p_exp' par tail env (e, loc) =
              string "tmp;",
              newline,
              string "})"]
-      | EReturnBlob {blob, mimeType, t} =>
+      | EReturnBlob {blob = SOME blob, mimeType, t} =>
         box [string "({",
              newline,
              string "uw_Basis_blob",
@@ -1654,6 +1654,27 @@ and p_exp' par tail env (e, loc) =
              string "tmp;",
              newline,
              string "uw_return_blob(ctx, blob, mimeType);",
+             newline,
+             string "tmp;",
+             newline,
+             string "})"]
+      | EReturnBlob {blob = NONE, mimeType, t} =>
+        box [string "({",
+             newline,
+             string "uw_Basis_string",
+             space,
+             string "mimeType",
+             space,
+             string "=",
+             space,
+             p_exp' false false env mimeType,
+             string ";",
+             newline,
+             p_typ env t,
+             space,
+             string "tmp;",
+             newline,
+             string "uw_return_blob_from_page(ctx, mimeType);",
              newline,
              string "tmp;",
              newline,
@@ -2079,6 +2100,8 @@ and p_exp' par tail env (e, loc) =
                  newline,
                  string "int dummy = (uw_begin_region(ctx), 0);",
                  newline,
+                 string "uw_ensure_transaction(ctx);",
+                 newline,
                  
                  case prepared of
                      NONE =>
@@ -2140,6 +2163,8 @@ and p_exp' par tail env (e, loc) =
                               p_exp' false false env dml,
                               string ";",
                               newline,
+                              string "uw_ensure_transaction(ctx);",
+                              newline,
                               newline,
                               #dml (Settings.currentDbms ()) (loc, mode)]
                | SOME {id, dml = dml'} =>
@@ -2159,8 +2184,10 @@ and p_exp' par tail env (e, loc) =
                                                        string ";"])
                                       inputs,
                           newline,
+                          string "uw_ensure_transaction(ctx);",
                           newline,
-
+                          newline,
+                          
                           #dmlPrepared (Settings.currentDbms ()) {loc = loc,
                                                                   id = id,
                                                                   dml = dml',
@@ -2184,6 +2211,8 @@ and p_exp' par tail env (e, loc) =
              newline,
              string "uw_Basis_int n;",
              newline,
+             string "uw_ensure_transaction(ctx);",
+             newline,
 
              case prepared of
                  NONE => #nextval (Settings.currentDbms ()) {loc = loc,
@@ -2203,6 +2232,8 @@ and p_exp' par tail env (e, loc) =
 
       | ESetval {seq, count} =>
         box [string "({",
+             newline,
+             string "uw_ensure_transaction(ctx);",
              newline,
 
              #setval (Settings.currentDbms ()) {loc = loc,
@@ -2970,10 +3001,17 @@ fun p_file env (ds, ps) =
 
                 fun couldWrite ek =
                     case ek of
-                        Link => false
+                        Link _ => false
                       | Action ef => ef = ReadCookieWrite
                       | Rpc ef => ef = ReadCookieWrite
                       | Extern _ => false
+
+                fun couldWriteDb ek =
+                    case ek of
+                        Link ef => ef <> ReadOnly
+                      | Action ef => ef <> ReadOnly
+                      | Rpc ef => ef <> ReadOnly
+                      | Extern ef => ef <> ReadOnly
 
                 val s =
                     case Settings.getUrlPrefix () of
@@ -3041,9 +3079,15 @@ fun p_file env (ds, ps) =
                                              newline]
                             | _ => [string "uw_write_header(ctx, \"Content-type: text/html; charset=utf-8\\r\\n\");",
                                     newline,
-                                    string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
-                                    newline,
-                                    string "uw_write(ctx, begin_xhtml);",
+                                    case side of
+                                        ServerOnly => box []
+                                      | _ => box [string "uw_write_header(ctx, \"Content-script-type: text/javascript\\r\\n\");",
+                                                  newline],
+                                    string ("uw_write(ctx, uw_begin_" ^
+                                            (if Settings.getIsHtml5 () then
+                                                 "html5"
+                                             else
+                                                 "xhtml") ^ ");"),
                                     newline,
                                     string "uw_mayReturnIndirectly(ctx);",
                                     newline,
@@ -3058,6 +3102,10 @@ fun p_file env (ds, ps) =
                                     end,
                                     string "\");",
                                     newline]),
+                     string "uw_set_could_write_db(ctx, ",
+                     string (if couldWriteDb ek then "1" else "0"),
+                     string ");",
+                     newline,
                      string "uw_set_needs_push(ctx, ",
                      string (case side of
                                  ServerAndPullAndPush => "1"
@@ -3170,7 +3218,8 @@ fun p_file env (ds, ps) =
               | EField (e, _) => expDb e
               | ECase (e, pes, _) => expDb e orelse List.exists (expDb o #2) pes
               | EError (e, _) => expDb e
-              | EReturnBlob {blob = e1, mimeType = e2, ...} => expDb e1 orelse expDb e2
+              | EReturnBlob {blob = NONE, mimeType = e2, ...} => expDb e2
+              | EReturnBlob {blob = SOME e1, mimeType = e2, ...} => expDb e1 orelse expDb e2
               | ERedirect (e, _) => expDb e
               | EWrite e => expDb e
               | ESeq (e1, e2) => expDb e1 orelse expDb e2
@@ -3319,7 +3368,7 @@ fun p_file env (ds, ps) =
                       newline,
                       string "static void uw_db_init(uw_context ctx) { };",
                       newline,
-                      string "static int uw_db_begin(uw_context ctx) { return 0; };",
+                      string "static int uw_db_begin(uw_context ctx, int could_write) { return 0; };",
                       newline,
                       string "static void uw_db_close(uw_context ctx) { };",
                       newline,
@@ -3329,9 +3378,6 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
-             string "static const char begin_xhtml[] = \"<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\" ?>\\n<!DOCTYPE html PUBLIC \\\"-//W3C//DTD XHTML 1.0 Transitional//EN\\\" \\\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\\\">\\n<html xmlns=\\\"http://www.w3.org/1999/xhtml\\\" xml:lang=\\\"en\\\" lang=\\\"en\\\">\";",
-             newline,
-             newline,
 
              p_list_sep newline (fn x => x) pds,
              newline,
@@ -3543,7 +3589,8 @@ fun p_file env (ds, ps) =
                          "uw_handle",
                          "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime", "uw_check_requestHeader", "uw_check_responseHeader", "uw_check_envVar",
                          case onError of NONE => "NULL" | SOME _ => "uw_onError", "my_periodics",
-                         "\"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\""],
+                         "\"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\"",
+                         if Settings.getIsHtml5 () then "1" else "0"],
              string "};",
              newline]
     end

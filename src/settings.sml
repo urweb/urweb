@@ -187,7 +187,10 @@ val benignBase = basis ["get_cookie",
                         "preventDefault",
                         "stopPropagation",
                         "fresh",
-                        "giveFocus"]
+                        "giveFocus",
+                        "currentUrlHasPost",
+                        "currentUrlHasQueryString",
+                        "currentUrl"]
 
 val benign = ref benignBase
 fun setBenignEffectful ls = benign := S.addList (benignBase, ls)
@@ -299,8 +302,10 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("isblank", "isBlank"),
                           ("isspace", "isSpace"),
                           ("isxdigit", "isXdigit"),
+                          ("isprint", "isPrint"),
                           ("tolower", "toLower"),
                           ("toupper", "toUpper"),
+                          ("ord", "ord"),
 
                           ("checkUrl", "checkUrl"),
                           ("bless", "bless"),
@@ -690,5 +695,29 @@ fun checkNoXsrfProtection s = SS.member (!noXsrfProtection, s)
 val timeFormat = ref "%c"
 fun setTimeFormat v = timeFormat := v
 fun getTimeFormat () = !timeFormat
+
+fun lowercase s =
+    case s of
+        "" => ""
+      | _ => str (Char.toLower (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+
+fun capitalize s =
+    case s of
+        "" => ""
+      | _ => str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+
+val mangle = ref true
+fun setMangleSql x = mangle := x
+fun mangleSqlTable s = if !mangle then "uw_" ^ capitalize s
+                       else if #name (currentDbms ()) = "mysql" then capitalize s
+                       else lowercase s
+fun mangleSql s = if !mangle then "uw_" ^ s
+                  else if #name (currentDbms ()) = "mysql" then lowercase s
+                  else lowercase s
+fun mangleSqlCatalog s = if !mangle then "uw_" ^ s else lowercase s
+
+val html5 = ref false
+fun setIsHtml5 b = html5 := b
+fun getIsHtml5 () = !html5
 
 end

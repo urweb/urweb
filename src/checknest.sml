@@ -56,7 +56,8 @@ fun expUses globals =
               | ECase (e, pes, _) => foldl (fn ((_, e), s) => IS.union (eu e, s)) (eu e) pes
 
               | EError (e, _) => eu e
-              | EReturnBlob {blob, mimeType, ...} => IS.union (eu blob, eu mimeType)
+              | EReturnBlob {blob = NONE, mimeType, ...} => eu mimeType
+              | EReturnBlob {blob = SOME blob, mimeType, ...} => IS.union (eu blob, eu mimeType)
               | ERedirect (e, _) => eu e
 
               | EWrite e => eu e
@@ -118,7 +119,8 @@ fun annotateExp globals =
               | ECase (e, pes, ts) => (ECase (ae e, map (fn (p, e) => (p, ae e)) pes, ts), loc)
 
               | EError (e, t) => (EError (ae e, t), loc)
-              | EReturnBlob {blob, mimeType, t} => (EReturnBlob {blob = ae blob, mimeType = ae mimeType, t = t}, loc)
+              | EReturnBlob {blob = NONE, mimeType, t} => (EReturnBlob {blob = NONE, mimeType = ae mimeType, t = t}, loc)
+              | EReturnBlob {blob = SOME blob, mimeType, t} => (EReturnBlob {blob = SOME (ae blob), mimeType = ae mimeType, t = t}, loc)
               | ERedirect (e, t) => (ERedirect (ae e, t), loc)
 
               | EWrite e => (EWrite (ae e), loc)

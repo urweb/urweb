@@ -36,7 +36,7 @@ datatype effect =
        | ReadWrite
 
 datatype export_kind =
-         Link
+         Link of effect
        | Action of effect
        | Rpc of effect
        | Extern of effect
@@ -49,7 +49,7 @@ fun p_effect ef =
 
 fun p_export_kind ck =
     case ck of
-        Link => string "link"
+        Link ef => box [string "link(", p_effect ef, string ")"]
       | Action ef => box [string "action(", p_effect ef, string ")"]
       | Rpc ef => box [string "rpc(", p_effect ef, string ")"]
       | Extern ef => box [string "extern(", p_effect ef, string ")"]

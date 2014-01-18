@@ -76,7 +76,11 @@ val ident = String.translate (fn #"'" => "PRIME"
 fun checkRel (table, checkNullable) (s, xts) =
     let
         val sl = CharVector.map Char.toLower s
-        val both = "table_name IN ('" ^ sl ^ "', '" ^ s ^ "')"
+        val sl = if size sl > 1 andalso String.sub (sl, 0) = #"\"" then
+                     String.substring (sl, 1, size sl - 2)
+                 else
+                     sl
+        val both = "LOWER(table_name) = ('" ^ sl ^ "')"
 
         val q = "SELECT COUNT(*) FROM information_schema." ^ table ^ " WHERE " ^ both
 
@@ -85,14 +89,17 @@ fun checkRel (table, checkNullable) (s, xts) =
                                 " AND (",
                                 case String.concatWith " OR "
                                                        (map (fn (x, t) =>
-                                                                String.concat ["(column_name IN ('uw_",
-                                                                               CharVector.map
-                                                                                   Char.toLower (ident x),
-                                                                               "', 'uw_",
-                                                                               ident x,
-                                                                               "') AND data_type = '",
-                                                                               p_sql_type_base t,
-                                                                               "'",
+                                                                String.concat ["(LOWER(column_name) = '",
+                                                                               Settings.mangleSqlCatalog
+                                                                                   (CharVector.map
+                                                                                        Char.toLower (ident x)),
+                                                                               "' AND data_type ",
+                                                                               case p_sql_type_base t of
+                                                                                   "bigint" =>
+                                                                                   "IN ('bigint', 'int')"
+                                                                                 | "longtext" =>
+                                                                                   "IN ('longtext', 'varchar')"
+                                                                                 | s => "= '" ^ s ^ "'",
                                                                                if checkNullable then
                                                                                    (" AND is_nullable = '"
                                                                                     ^ (if isNotNull t then
@@ -109,7 +116,7 @@ fun checkRel (table, checkNullable) (s, xts) =
 
         val q'' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE ",
                                  both,
-                                 " AND column_name LIKE 'uw_%'"]
+                                 " AND LOWER(column_name) LIKE '", Settings.mangleSqlCatalog "%'"]
     in
         box [string "if (mysql_query(conn->conn, \"",
              string q,
@@ -174,7 +181,7 @@ fun checkRel (table, checkNullable) (s, xts) =
                   string "mysql_close(conn->conn);",
                   newline,
                   string "uw_error(ctx, FATAL, \"Table '",
-                  string s,
+                  string sl,
                   string "' does not exist.\");",
                   newline],
              string "}",
@@ -249,7 +256,7 @@ fun checkRel (table, checkNullable) (s, xts) =
                   string "mysql_close(conn->conn);",
                   newline,
                   string "uw_error(ctx, FATAL, \"Table '",
-                  string s,
+                  string sl,
                   string "' has the wrong column types.\");",
                   newline],
              string "}",
@@ -324,7 +331,7 @@ fun checkRel (table, checkNullable) (s, xts) =
                   string "mysql_close(conn->conn);",
                   newline,
                   string "uw_error(ctx, FATAL, \"Table '",
-                  string s,
+                  string sl,
                   string "' has extra columns.\");",
                   newline],
              string "}",
@@ -529,7 +536,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                | SOME n => string (Int.toString n),
              string ", ",
              stringOf unix_socket,
-             string ", 0) == NULL) {",
+             string ", CLIENT_MULTI_STATEMENTS) == NULL) {",
              newline,
              box [string "char msg[1024];",
                   newline,
@@ -543,6 +550,23 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                   string "\"Connection to MySQL server failed: %s\", msg);"],
              newline,
              string "}",
+             newline,
+             newline,
+             string "if (mysql_set_character_set(mysql, \"utf8\")) {",
+             newline,
+             box [string "char msg[1024];",
+                  newline,
+                  string "strncpy(msg, mysql_error(mysql), 1024);",
+                  newline,
+                  string "msg[1023] = 0;",
+                  newline,
+                  string "mysql_close(mysql);",
+                  newline,
+                  string "uw_error(ctx, FATAL, ",
+                  string "\"Error setting UTF-8 character set for MySQL connection: %s\", msg);"],
+             newline,
+             string "}",
+             newline,
              newline,
              string "conn = calloc(1, sizeof(uw_conn));",
              newline,
@@ -577,14 +601,12 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
              newline,
              newline,
 
-             string "static int uw_db_begin(uw_context ctx) {",
+             string "static int uw_db_begin(uw_context ctx, int could_write) {",
              newline,
              string "uw_conn *conn = uw_get_db(ctx);",
              newline,
              newline,
-             string "return mysql_query(conn->conn, \"SET TRANSACTION ISOLATION LEVEL SERIALIZABLE\")",
-             newline,
-             string "  || mysql_query(conn->conn, \"BEGIN\");",
+             string "return mysql_query(conn->conn, \"SET TRANSACTION ISOLATION LEVEL SERIALIZABLE; BEGIN\") ? 1 : (mysql_next_result(conn->conn), 0);",
              newline,
              string "}",
              newline,
@@ -847,11 +869,20 @@ fun queryCommon {loc, query, cols, doCols} =
          newline,
          newline,
 
-         string "if (mysql_stmt_execute(stmt)) uw_error(ctx, FATAL, \"",
-         string (ErrorMsg.spanToString loc),
-         string ": Error executing query: %s\\n%s\", ",
-         query,
-         string ", mysql_error(conn->conn));",
+         string "if (mysql_stmt_execute(stmt)) {",
+         newline,
+         box [string "if (mysql_errno(conn->conn) == 1213)",
+              newline,
+              box [string "uw_error(ctx, UNLIMITED_RETRY, \"Deadlock detected\");",
+                   newline],
+              newline,
+              string "uw_error(ctx, FATAL, \"",
+              string (ErrorMsg.spanToString loc),
+              string ": Error executing query: %s\\n%s\", ",
+              query,
+              string ", mysql_error(conn->conn));",
+              newline],
+         string "}",
          newline,
          newline,
 
@@ -1201,15 +1232,21 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
              box []]
 
 fun dmlCommon {loc, dml, mode} =
-    box [string "if (mysql_stmt_execute(stmt)) ",
-         case mode of
-             Settings.Error => box [string "uw_error(ctx, FATAL, \"",
-                                    string (ErrorMsg.spanToString loc),
-                                    string ": Error executing DML: %s\\n%s\", ",
-                                    dml,
-                                    string ", mysql_error(conn->conn));"]
-           | Settings.None => string "uw_set_error_message(ctx, mysql_error(conn->conn));",
-         newline,
+    box [string "if (mysql_stmt_execute(stmt)) {",
+         box [string "if (mysql_errno(conn->conn) == 1213)",
+              newline,
+              box [string "uw_error(ctx, UNLIMITED_RETRY, \"Deadlock detected\");",
+                   newline],
+              newline,
+              case mode of
+                  Settings.Error => box [string "uw_error(ctx, FATAL, \"",
+                                         string (ErrorMsg.spanToString loc),
+                                         string ": Error executing DML: %s\\n%s\", ",
+                                         dml,
+                                         string ", mysql_error(conn->conn));"]
+                | Settings.None => string "uw_set_error_message(ctx, mysql_error(conn->conn));",
+              newline],
+         string "}",
          newline]
 
 fun dml (loc, mode) =

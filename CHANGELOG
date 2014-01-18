@@ -1,4 +1,16 @@
 ========
+20131231
+========
+
+- Performance optimizations for Ur/Web's standalone HTTP servers
+- New command-line options for those servers: '-k' and '-q'
+- New HTML pseudo-tag: <script>
+- Trying to recv() from a different client's channel now triggers a run-time
+  error.
+- New compiler command-line argument: -print-cinclude
+- Bug fixes and improvements to optimizations, error messages, and documentation
+
+========
 20131124
 ========
 

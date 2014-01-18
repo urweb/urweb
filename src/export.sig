@@ -33,7 +33,7 @@ datatype effect =
        | ReadWrite
 
 datatype export_kind =
-         Link
+         Link of effect
        | Action of effect
        | Rpc of effect
        | Extern of effect

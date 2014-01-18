@@ -82,7 +82,7 @@ typedef struct {
   void (*expunger)(struct uw_context *, uw_Basis_client);
 
   void (*db_init)(struct uw_context *);
-  int (*db_begin)(struct uw_context *);
+  int (*db_begin)(struct uw_context *, int could_write);
   int (*db_commit)(struct uw_context *);
   int (*db_rollback)(struct uw_context *);
   void (*db_close)(struct uw_context *);
@@ -102,6 +102,8 @@ typedef struct {
   uw_periodic *periodics; // 0-terminated array
 
   uw_Basis_string time_format;
+
+  int is_html5;
 } uw_app;
 
 #define ERROR_BUF_LEN 1024
