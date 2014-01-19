@@ -45,7 +45,7 @@ fun simpleTypeImpure tsyms =
                    | TDatatype (n, _) => IS.member (tsyms, n)
                    | _ => false)
 
-fun simpleImpure (tsyms, syms) =
+fun simpleImpure isGlobal (tsyms, syms) =
     U.Exp.existsB {typ = fn _ => false,
                    exp = fn (env, e) =>
                             case e of
@@ -65,7 +65,7 @@ fun simpleImpure (tsyms, syms) =
                                 in
                                     simpleTypeImpure tsyms t
                                 end
-                              | EApp _ => true
+                              | EApp _ => not isGlobal
                               | _ => false,
                    bind = fn (env, b) =>
                              case b of
@@ -326,7 +326,7 @@ fun reduce (file : file) =
                                           case #1 e of
                                               ENamed n => IM.find (absCounts, n)
                                             | EApp (e, arg) =>
-                                              if simpleImpure (timpures, impures) env arg then
+                                              if simpleImpure true (timpures, impures) env arg then
                                                   NONE
                                               else
                                                   (case remaining e of
@@ -353,14 +353,14 @@ fun reduce (file : file) =
                                absCounts)
                             | DVal (_, n, _, e, _) =>
                               (timpures,
-                               if simpleImpure (timpures, impures) E.empty e then
+                               if simpleImpure true (timpures, impures) E.empty e then
                                    IS.add (impures, n)
                                else
                                    impures,
                                IM.insert (absCounts, n, countAbs E.empty e))
                             | DValRec vis =>
                               (timpures,
-                               if List.exists (fn (_, _, _, e, _) => simpleImpure (timpures, impures) E.empty e) vis then
+                               if List.exists (fn (_, _, _, e, _) => simpleImpure true (timpures, impures) E.empty e) vis then
                                    foldl (fn ((_, n, _, _, _), impures) =>
                                              IS.add (impures, n)) impures vis
                                else
@@ -533,7 +533,7 @@ fun reduce (file : file) =
             end
 
         val impure = fn env => fn e =>
-                        simpleImpure (timpures, impures) env e andalso impure e
+                        simpleImpure false (timpures, impures) env e andalso impure e
                         andalso not (List.null (summarize ~1 e))
 
         fun passive (e : exp) =
