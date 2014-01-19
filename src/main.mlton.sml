@@ -133,6 +133,9 @@ fun oneRun args =
               | "-static" :: rest =>
                 (Settings.setStaticLinking true;
                  doArgs rest)
+              | "-stop" :: phase :: rest =>
+                (Compiler.setStop phase;
+                 doArgs rest)
               | "-path" :: name :: path :: rest =>
                 (Compiler.addPath (name, path);
                  doArgs rest)

@@ -86,6 +86,9 @@ val doIflow = ref false
 
 val doDumpSource = ref (fn () => ())
 
+val stop = ref (NONE : string option)
+fun setStop s = stop := SOME s
+
 fun transform (ph : ('src, 'dst) phase) name = {
     func = fn input => let
                   val () = if !debug then
@@ -101,6 +104,10 @@ fun transform (ph : ('src, 'dst) phase) name = {
                   if ErrorMsg.anyErrors () then
                       (!doDumpSource ();
                        doDumpSource := (fn () => ());
+                       NONE)
+                  else if !stop = SOME name then
+                      (Print.eprint (#print ph v);
+                       ErrorMsg.error ("Stopped compilation after phase " ^ name);
                        NONE)
                   else
                       (if !dumpSource then
