@@ -65,6 +65,7 @@ fun simpleImpure (tsyms, syms) =
                                 in
                                     simpleTypeImpure tsyms t
                                 end
+                              | EApp _ => true
                               | _ => false,
                    bind = fn (env, b) =>
                              case b of
