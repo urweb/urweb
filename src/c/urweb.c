@@ -847,7 +847,7 @@ static void adjust_input(input *x, input *old_start, input *new_start, size_t le
     break;
   default:
     break;
-  }  
+  }
 }
 
 size_t uw_subinputs_max = SIZE_MAX;
@@ -1863,12 +1863,12 @@ uw_unit uw_Basis_urlifyInt_w(uw_context ctx, uw_Basis_int n) {
 uw_unit uw_Basis_urlifyChannel_w(uw_context ctx, uw_Basis_channel chn) {
   if (ctx->client != NULL && chn.cli == ctx->client->id) {
     int len;
-    
+
     uw_check(ctx, INTS_MAX + 1);
     sprintf(ctx->page.front, "%u%n", chn.chn, &len);
     ctx->page.front += len;
   }
-    
+
   return uw_unit_v;
 }
 
@@ -1929,11 +1929,11 @@ uw_unit uw_Basis_urlifyBool_w(uw_context ctx, uw_Basis_bool b) {
 
 uw_unit uw_Basis_urlifySource_w(uw_context ctx, uw_Basis_source src) {
   int len;
-    
+
   uw_check(ctx, 2 * INTS_MAX + 2);
   sprintf(ctx->page.front, "%d/%llu%n", src.context, src.source, &len);
   ctx->page.front += len;
-    
+
   return uw_unit_v;
 }
 
@@ -2024,7 +2024,7 @@ static uw_Basis_string uw_unurlifyString_to(int fromClient, uw_context ctx, char
 uw_Basis_bool uw_Basis_unurlifyBool(uw_context ctx, char **s) {
   char *new_s = uw_unurlify_advance(*s);
   uw_Basis_bool r;
-  
+
   if (*s[0] == 0 || !strcmp(*s, "0") || !strcmp(*s, "off"))
     r = uw_Basis_False;
   else
@@ -2085,7 +2085,7 @@ uw_unit uw_Basis_htmlifyInt_w(uw_context ctx, uw_Basis_int n) {
   uw_check(ctx, INTS_MAX);
   sprintf(ctx->page.front, "%lld%n", n, &len);
   ctx->page.front += len;
-  
+
   return uw_unit_v;
 }
 
@@ -2149,7 +2149,7 @@ uw_unit uw_Basis_jsifyInt_w(uw_context ctx, uw_Basis_int n) {
   uw_check(ctx, INTS_MAX);
   sprintf(ctx->page.front, "%lld%n", (uw_Basis_int)n, &len);
   ctx->page.front += len;
-  
+
   return uw_unit_v;
 }
 
@@ -2253,7 +2253,7 @@ uw_unit uw_Basis_htmlifySource_w(uw_context ctx, uw_Basis_source src) {
   uw_check(ctx, 2 * INTS_MAX + 1);
   sprintf(ctx->page.front, "s%d_%llu%n", src.context, src.source, &len);
   ctx->page.front += len;
-  
+
   return uw_unit_v;
 }
 
@@ -2363,7 +2363,7 @@ uw_Basis_string uw_Basis_substring(uw_context ctx, uw_Basis_string s, uw_Basis_i
     r[len] = 0;
     return r;
   }
-    
+
 }
 
 uw_Basis_string uw_Basis_str1(uw_context ctx, uw_Basis_char ch) {
@@ -2587,7 +2587,7 @@ uw_Basis_string uw_Basis_sqlifyBlob(uw_context ctx, uw_Basis_blob b) {
       sprintf(s2, "%02X", c);
       s2 += 2;
     }
-  }    
+  }
 
   *s2++ = '\'';
   strcpy(s2, uw_sqlsuffixBlob);
@@ -3254,7 +3254,7 @@ static char *find_sig(char *haystack) {
 
   if (!s || strlen(haystack) - (s - haystack) - (sizeof sig_intro - 1) < uw_hash_blocksize*2+1)
     return NULL;
-  
+
   s += sizeof sig_intro - 1;
 
   for (i = 0; i < uw_hash_blocksize*2; ++i)
@@ -3667,7 +3667,7 @@ uw_Basis_string uw_unnull(uw_Basis_string s) {
 uw_Basis_string uw_Basis_makeSigString(uw_context ctx, uw_Basis_string sig) {
   uw_Basis_string r = uw_malloc(ctx, 2 * uw_hash_blocksize + 1);
   int i;
-  
+
   for (i = 0; i < uw_hash_blocksize; ++i)
     sprintf(&r[2*i], "%.02X", ((unsigned char *)sig)[i]);
 
@@ -3885,7 +3885,7 @@ uw_Basis_string uw_Basis_mstrcat(uw_context ctx, ...) {
   va_list ap;
   size_t len = 1;
   char *s, *r, *s2;
-  
+
   va_start(ap, ctx);
   for (s = va_arg(ap, char*); s; s = va_arg(ap, char*))
     len += strlen(s);
@@ -4117,7 +4117,7 @@ uw_Basis_int uw_Basis_rand(uw_context ctx) {
   pthread_mutex_lock(&rand_mutex);
   int r = RAND_bytes((unsigned char *)&ret, sizeof ret);
   pthread_mutex_unlock(&rand_mutex);
-  
+
   if (r)
     return abs(ret);
   else
