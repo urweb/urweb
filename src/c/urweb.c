@@ -3939,43 +3939,43 @@ uw_Basis_time uw_Basis_fromDatetime(uw_context ctx, uw_Basis_int year, uw_Basis_
 
 uw_Basis_int uw_Basis_datetimeYear(uw_context ctx, uw_Basis_time time) {
   struct tm tm;
-  gmtime_r(&time.seconds, &tm);
+  localtime_r(&time.seconds, &tm);
   return tm.tm_year + 1900;
 }
 
 uw_Basis_int uw_Basis_datetimeMonth(uw_context ctx, uw_Basis_time time) {
   struct tm tm;
-  gmtime_r(&time.seconds, &tm);
+  localtime_r(&time.seconds, &tm);
   return tm.tm_mon;
 }
 
 uw_Basis_int uw_Basis_datetimeDay(uw_context ctx, uw_Basis_time time) {
   struct tm tm;
-  gmtime_r(&time.seconds, &tm);
+  localtime_r(&time.seconds, &tm);
   return tm.tm_mday;
 }
 
 uw_Basis_int uw_Basis_datetimeHour(uw_context ctx, uw_Basis_time time) {
   struct tm tm;
-  gmtime_r(&time.seconds, &tm);
+  localtime_r(&time.seconds, &tm);
   return tm.tm_hour;
 }
 
 uw_Basis_int uw_Basis_datetimeMinute(uw_context ctx, uw_Basis_time time) {
   struct tm tm;
-  gmtime_r(&time.seconds, &tm);
+  localtime_r(&time.seconds, &tm);
   return tm.tm_min;
 }
 
 uw_Basis_int uw_Basis_datetimeSecond(uw_context ctx, uw_Basis_time time) {
   struct tm tm;
-  gmtime_r(&time.seconds, &tm);
+  localtime_r(&time.seconds, &tm);
   return tm.tm_sec;
 }
 
 uw_Basis_int uw_Basis_datetimeDayOfWeek(uw_context ctx, uw_Basis_time time) {
   struct tm tm;
-  gmtime_r(&time.seconds, &tm);
+  localtime_r(&time.seconds, &tm);
   return tm.tm_wday;
 }
 
