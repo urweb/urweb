@@ -202,4 +202,7 @@ signature COMPILER = sig
 
     val moduleOf : string -> string
 
+    val setStop : string -> unit
+    (* Stop compilation after this phase. *)
+
 end

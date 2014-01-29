@@ -873,8 +873,9 @@
                                              | _ => false}
 
          val (others1, others2) = eatMatching (fn (c1, c2) =>
-                                                  not (hasUnifs c1 andalso hasUnifs c2)
-                                                  andalso consEq env loc (c1, c2)) (#others s1, #others s2)
+                                                  c1 = c2
+                                                  orelse (not (hasUnifs c1 andalso hasUnifs c2)
+                                                          andalso consEq env loc (c1, c2))) (#others s1, #others s2)
          (*val () = eprefaces "Summaries3" [("#1", p_summary env {fields = fs1, unifs = unifs1, others = others1}),
                                           ("#2", p_summary env {fields = fs2, unifs = unifs2, others = others2})]*)
 
