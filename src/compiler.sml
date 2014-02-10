@@ -869,6 +869,7 @@ fun parseUrp' accLibs fname =
                                           NONE => ErrorMsg.error ("invalid mono inline level '" ^ arg ^ "'")
                                         | SOME n => Settings.setMonoInline n)
                                    | "alwaysInline" => Settings.addAlwaysInline arg
+                                   | "neverInline" => Settings.addNeverInline arg
                                    | "noXsrfProtection" => Settings.addNoXsrfProtection arg
                                    | "timeFormat" => Settings.setTimeFormat arg
                                    | "noMangleSql" => Settings.setMangleSql false
