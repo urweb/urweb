@@ -4481,9 +4481,28 @@ and elabStr (env, denv) (str, loc) =
                  case #1 (hnormSgn env ran) of
                      L'.SgnError => (strerror, sgnerror, [])
                    | L'.SgnConst sgis =>
-                     ((L'.StrApp (str1', str2'), loc),
-                      (L'.SgnConst ((L'.SgiStr (m, n, selfifyAt env {str = str2', sgn = sgn2}), loc) :: sgis), loc),
-                      gs1 @ gs2)
+                     let
+                         (* This code handles a tricky case that led to a very nasty bug.
+                          * An invariant about signatures of elaborated modules is that no
+                          * identifier that could appear directly in a program is defined
+                          * twice.  We add "?" in front of identifiers where necessary to
+                          * maintain the invariant, but the code below, to extend a functor
+                          * body with a binding for the functor argument, wasn't written
+                          * with the invariant in mind.  Luckily for us, references to
+                          * an identifier later within a signature work by globally
+                          * unique index, so we just need to change the string name in the
+                          * new declaration. *)
+                         val m =
+                             if List.exists (fn (L'.SgiStr (x, _, _), _) => x = m
+                                              | _ => false) sgis then
+                                 "?" ^ m
+                             else
+                                 m
+                     in
+                         ((L'.StrApp (str1', str2'), loc),
+                          (L'.SgnConst ((L'.SgiStr (m, n, selfifyAt env {str = str2', sgn = sgn2}), loc) :: sgis), loc),
+                          gs1 @ gs2)
+                     end
                    | _ => raise Fail "Unable to hnormSgn in functor application")
               | _ => (strError env (NotFunctor sgn1);
                       (strerror, sgnerror, []))
