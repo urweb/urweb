@@ -395,10 +395,11 @@ fun reduce (file : file) =
         fun mayInline (n, e, t, s) =
             case IM.find (uses, n) of
                 NONE => false
-              | SOME count => count <= 1
-                              orelse size e <= Settings.getMonoInline ()
-                              orelse functionInside t
-                              orelse Settings.checkAlwaysInline s
+              | SOME count => not (Settings.checkNeverInline s)
+                              andalso (count <= 1
+                                       orelse size e <= Settings.getMonoInline ()
+                                       orelse functionInside t
+                                       orelse Settings.checkAlwaysInline s)
 
         fun summarize d (e, _) =
             let

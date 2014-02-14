@@ -252,6 +252,9 @@ signature SETTINGS = sig
     val addAlwaysInline : string -> unit
     val checkAlwaysInline : string -> bool
 
+    val addNeverInline : string -> unit
+    val checkNeverInline : string -> bool
+
     val addNoXsrfProtection : string -> unit
     val checkNoXsrfProtection : string -> bool
 

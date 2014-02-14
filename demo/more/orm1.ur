@@ -40,7 +40,7 @@ fun action () =
                                                       | Some r => <xml>{[r.B]}</xml>}
       </li></xml>) lsS}
     </body></xml>
-    
+
 fun main () = return <xml><body>
   <form><submit action={action}/></form>
 </body></xml>

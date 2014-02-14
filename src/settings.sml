@@ -688,6 +688,10 @@ val alwaysInline = ref SS.empty
 fun addAlwaysInline s = alwaysInline := SS.add (!alwaysInline, s)
 fun checkAlwaysInline s = SS.member (!alwaysInline, s)
 
+val neverInline = ref SS.empty
+fun addNeverInline s = neverInline := SS.add (!neverInline, s)
+fun checkNeverInline s = SS.member (!neverInline, s)
+
 val noXsrfProtection = ref SS.empty
 fun addNoXsrfProtection s = noXsrfProtection := SS.add (!noXsrfProtection, s)
 fun checkNoXsrfProtection s = SS.member (!noXsrfProtection, s)
