@@ -849,7 +849,7 @@ fun reduce file =
                                       con = fn (_, n) => n,
                                       exp = fn (_, n) => n + 1} 0
 
-        fun mayInline (polyC, n, t, e) =
+        fun mayInline (polyC, n, t, e, s) =
             let
                 fun isPolicy t =
                     case #1 t of
@@ -857,6 +857,7 @@ fun reduce file =
                       | TFun (_, t) => isPolicy t
                       | _ => false
             in
+                not (Settings.checkNeverInline s) andalso
                 case IM.find (uses, n) of
                     NONE => false
                   | SOME count => count <= 1
@@ -907,7 +908,7 @@ fun reduce file =
                     ((DVal (x, n, t, e, s), loc),
                      (polyC,
                       namedC,
-                      if mayInline (polyC, n, t, e) then
+                      if mayInline (polyC, n, t, e, s) then
                           IM.insert (namedE, n, e)
                       else
                           namedE))
