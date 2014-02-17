@@ -80,7 +80,7 @@ fun checkRel (table, checkNullable) (s, xts) =
                      String.substring (sl, 1, size sl - 2)
                  else
                      sl
-        val both = "LOWER(table_name) = ('" ^ sl ^ "')"
+        val both = "table_name = '" ^ sl ^ "'"
 
         val q = "SELECT COUNT(*) FROM information_schema." ^ table ^ " WHERE " ^ both
 
