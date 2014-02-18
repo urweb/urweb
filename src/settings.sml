@@ -331,6 +331,16 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("toMilliseconds", "toMilliseconds"),
                           ("diffInMilliseconds", "diffInMilliseconds"),
 
+                          ("fromDatetime", "fromDatetime"),
+                          ("datetimeYear", "datetimeYear"),
+                          ("datetimeMonth", "datetimeMonth"),
+                          ("datetimeDay", "datetimeDay"),
+                          ("datetimeHour", "datetimeHour"),
+                          ("datetimeMinute", "datetimeMinute"),
+                          ("datetimeSecond", "datetimeSecond"),
+                          ("datetimeDayOfWeek", "datetimeDayOfWeek"),
+
+
                           ("onClick", "uw_onClick"),
                           ("onDblclick", "uw_onDblclick"),
                           ("onKeydown", "uw_onKeydown"),
