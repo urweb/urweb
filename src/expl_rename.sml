@@ -422,6 +422,20 @@ fun rename {NextId, FormalName, FormalId, Body = all as (str, loc)} =
             val (st, n) = St.bind (st, FormalId)
                      
             val (ds, st) = ListUtil.foldlMapConcat dupDecl st ds
+
+            (* Revenge of the functor parameter renamer!
+             * See comment in elaborate.sml for the start of the saga.
+             * We need to alpha-rename the argument to allow sufficient shadowing in the body. *)
+
+            fun mungeName m =
+                if List.exists (fn (DStr (x, _, _, _), _) => x = m
+                                 | _ => false) ds then
+                    mungeName ("?" ^ m)
+                else
+                    m
+
+            val FormalName = mungeName FormalName
+
             val ds = (DStr (FormalName, n, (SgnConst [], loc), (StrVar FormalId, loc)), loc) :: ds
         in
             (St.next st, (StrConst ds, loc))

@@ -4455,16 +4455,6 @@ and elabStr (env, denv) (str, loc) =
                         subSgn env' loc actual ran';
                         (ran', gs)
                     end
-
-            (* Later compiler phases are simplified by alpha-varying
-             * the functor formal argument here, if the same name
-             * will be defined independently in the functor body. *)
-            fun ensureUnused m =
-                case E.projectStr env' {sgn = actual, str = (L'.StrVar 0, loc), field = m} of
-                    NONE => m
-                  | SOME _ => ensureUnused ("?" ^ m)
-
-            val m = ensureUnused m
         in
             ((L'.StrFun (m, n, dom', formal, str'), loc),
              (L'.SgnFun (m, n, dom', formal), loc),
