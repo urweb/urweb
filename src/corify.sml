@@ -99,6 +99,7 @@ structure St : sig
     val lookupConstructorByNameOpt : t -> string -> L'.patCon option
     val lookupConstructorByName : t -> string -> L'.patCon
     val lookupConstructorById : t -> int -> L'.patCon
+    val lookupConstructorByIdOpt : t -> int -> L'.patCon option
                                             
     datatype core_val =
              ENormal of int
@@ -319,6 +320,9 @@ fun lookupConstructorById ({constructors, ...} : t) n =
     case IM.find (constructors, n) of
         NONE => raise Fail "Corify.St.lookupConstructorById"
       | SOME x => x
+
+fun lookupConstructorByIdOpt ({constructors, ...} : t) n =
+    IM.find (constructors, n)
 
 fun lookupConstructorByNameOpt ({current, ...} : t) x =
     case current of
@@ -743,6 +747,18 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                               end) xncs
         in
             ((L'.DCon (x, n, k', cBase), loc) :: cds, st)
+        end
+      | L.DVal (x, n, t, e as (L.ENamed n', _)) =>
+        let
+            val st =
+                case St.lookupConstructorByIdOpt st n' of
+                    SOME pc => St.bindConstructorAs st x n pc
+                  | _ => st
+
+            val (st, n) = St.bindVal st x n
+            val s = doRestify Settings.Url (mods, x)
+        in
+            ([(L'.DVal (x, n, corifyCon st t, corifyExp st e, s), loc)], st)
         end
       | L.DVal (x, n, t, e) =>
         let

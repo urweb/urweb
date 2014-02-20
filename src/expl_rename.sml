@@ -252,6 +252,12 @@ fun dupDecl (all as (d, loc), st) =
         end
       | DDatatype dts =>
         let
+            val d = (DDatatype (map (fn (x, n, xs, cns) =>
+                                        (x, n, xs,
+                                         map (fn (x, n, co) =>
+                                                 (x, n, Option.map (renameCon st) co)) cns)) dts),
+                     loc)
+
             val (dts', st) = ListUtil.foldlMap (fn ((x, n, xs, cns), st) =>
                                                    let
                                                        val (st, n') = St.bind (st, n)
@@ -268,12 +274,6 @@ fun dupDecl (all as (d, loc), st) =
                                                        ((x, n, length xs, n', cns'), st)
                                                    end) st dts
 
-            val d = (DDatatype (map (fn (x, n, xs, cns) =>
-                                        (x, n, xs,
-                                         map (fn (x, n, co) =>
-                                                 (x, n, Option.map (renameCon st) co)) cns)) dts),
-                     loc)
-
             val env = E.declBinds E.empty d
         in
             (d
@@ -287,6 +287,10 @@ fun dupDecl (all as (d, loc), st) =
         end
       | DDatatypeImp (x, n, n', xs, x', xs', cns) =>
         let
+            val d = (DDatatypeImp (x, n, n', xs, x', xs',
+                                   map (fn (x, n, co) =>
+                                           (x, n, Option.map (renameCon st) co)) cns), loc)
+
             val (cns', st) = ListUtil.foldlMap
                                  (fn ((x, n, _), st) =>
                                      let
@@ -297,10 +301,6 @@ fun dupDecl (all as (d, loc), st) =
                                      end) st cns
 
             val (st, n') = St.bind (st, n)
-
-            val d = (DDatatypeImp (x, n, n', xs, x', xs',
-                                   map (fn (x, n, co) =>
-                                           (x, n, Option.map (renameCon st) co)) cns), loc)
 
             val env = E.declBinds E.empty d
         in
