@@ -64,7 +64,10 @@ fun alloc () =
     in
         count := r + 1;
         r
-end
+    end
+
+fun getCounter () = !count
+fun setCounter n = count := n
 
 end
 
@@ -107,11 +110,13 @@ structure St : sig
 
     val bindStr : t -> string -> int -> t -> t
     val lookupStrById : t -> int -> t
+    val lookupStrByIdOpt : t -> int -> t option
     val lookupStrByName : string * t -> t
     val lookupStrByNameOpt : string * t -> t option
 
     val bindFunctor : t -> string -> int -> string -> int -> L.str -> t
     val lookupFunctorById : t -> int -> string * int * L.str
+    val lookupFunctorByIdOpt : t -> int -> (string * int * L.str) option
     val lookupFunctorByName : string * t -> string * int * L.str
 end = struct
 
@@ -399,6 +404,11 @@ fun lookupStrById ({basis, strs, ...} : t) n =
         NONE => raise Fail ("Corify.St.lookupStrById(" ^ Int.toString n ^ ")")
       | SOME f => dummy (basis, f)
 
+fun lookupStrByIdOpt ({basis, strs, ...} : t) n =
+    case IM.find (strs, n) of
+        NONE => NONE
+      | SOME f => SOME (dummy (basis, f))
+
 fun lookupStrByName (m, {basis, current = FNormal {strs, ...}, ...} : t) =
     (case SM.find (strs, m) of
          NONE => raise Fail "Corify.St.lookupStrByName [1]"
@@ -434,6 +444,9 @@ fun lookupFunctorById ({funs, ...} : t) n =
     case IM.find (funs, n) of
         NONE => raise Fail "Corify.St.lookupFunctorById"
       | SOME v => v
+
+fun lookupFunctorByIdOpt ({funs, ...} : t) n =
+    IM.find (funs, n)
 
 fun lookupFunctorByName (m, {current = FNormal {funs, ...}, ...} : t) =
     (case SM.find (funs, m) of
@@ -780,6 +793,11 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
         in
             ([], st)
         end
+
+      | L.DStr (x, n, _, (L.StrVar n', _)) =>
+        (case St.lookupFunctorByIdOpt st n' of
+             SOME (arg, dom, body) => ([], St.bindFunctor st x n arg dom body)
+           | NONE => ([], St.bindStr st x n (St.lookupStrById st n')))
 
       | L.DStr (x, n, _, str) =>
         let
@@ -1130,7 +1148,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                       ([], st))
         end
 
-and corifyStr mods ((str, _), st) =
+and corifyStr mods ((str, loc), st) =
     case str of
         L.StrConst ds =>
         let
@@ -1162,6 +1180,20 @@ and corifyStr mods ((str, _), st) =
                   | _ => raise Fail "Corify of fancy functor application [2]"
 
             val (xa, na, body) = unwind str1
+
+            (* An important step to make sure that nested functors
+             * "close under their environments": *)
+            val (next, body') = ExplRename.rename {NextId = getCounter (),
+                                                   FormalName = xa,
+                                                   FormalId = na,
+                                                   Body = body}
+
+            (*val () = Print.prefaces ("RENAME " ^ ErrorMsg.spanToString loc)
+                     [("FROM", ExplPrint.p_str ExplEnv.empty body),
+                      ("TO", ExplPrint.p_str ExplEnv.empty body')]*)
+            val body = body'
+
+            val () = setCounter next
 
             val (ds1, {inner = inner', outer}) = corifyStr mods (str2, st)
 

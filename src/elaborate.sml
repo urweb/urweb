@@ -4295,7 +4295,8 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
 
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)
     in
-        (*prefaces "/elabDecl" [("d", SourcePrint.p_decl dAll)];*)
+        (*prefaces "/elabDecl" [("d", SourcePrint.p_decl dAll),
+                              ("d'", p_list_sep PD.newline (ElabPrint.p_decl env) (#1 r))];*)
         r
     end
 
@@ -4454,6 +4455,16 @@ and elabStr (env, denv) (str, loc) =
                         subSgn env' loc actual ran';
                         (ran', gs)
                     end
+
+            (* Later compiler phases are simplified by alpha-varying
+             * the functor formal argument here, if the same name
+             * will be defined independently in the functor body. *)
+            fun ensureUnused m =
+                case E.projectStr env' {sgn = actual, str = (L'.StrVar 0, loc), field = m} of
+                    NONE => m
+                  | SOME _ => ensureUnused ("?" ^ m)
+
+            val m = ensureUnused m
         in
             ((L'.StrFun (m, n, dom', formal, str'), loc),
              (L'.SgnFun (m, n, dom', formal), loc),
@@ -4491,13 +4502,22 @@ and elabStr (env, denv) (str, loc) =
                           * with the invariant in mind.  Luckily for us, references to
                           * an identifier later within a signature work by globally
                           * unique index, so we just need to change the string name in the
-                          * new declaration. *)
-                         val m =
+                          * new declaration.
+                          *
+                          * ~~~ A few days later.... ~~~
+                          * This is trickier than I thought!  We might need to add
+                          * arbitarily many question marks before the module name to
+                          * avoid a clash, since some other code might depend on
+                          * question-mark identifiers generated previously by this
+                          * very code fragment. *)
+                         fun mungeName m =
                              if List.exists (fn (L'.SgiStr (x, _, _), _) => x = m
                                               | _ => false) sgis then
-                                 "?" ^ m
+                                 mungeName ("?" ^ m)
                              else
                                  m
+
+                         val m = mungeName m
                      in
                          ((L'.StrApp (str1', str2'), loc),
                           (L'.SgnConst ((L'.SgiStr (m, n, selfifyAt env {str = str2', sgn = sgn2}), loc) :: sgis), loc),

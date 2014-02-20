@@ -115,6 +115,9 @@ $(SRC)/core_env.sml
 $(SRC)/core_print.sig
 $(SRC)/core_print.sml
 
+$(SRC)/expl_rename.sig
+$(SRC)/expl_rename.sml
+
 $(SRC)/corify.sig
 $(SRC)/corify.sml
 

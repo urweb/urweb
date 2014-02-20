@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,15 +25,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature EXPL_PRINT = sig
-    val p_kind : ExplEnv.env -> Expl.kind Print.printer
-    val p_con : ExplEnv.env -> Expl.con Print.printer
-    val p_exp : ExplEnv.env -> Expl.exp Print.printer
-    val p_decl : ExplEnv.env -> Expl.decl Print.printer
-    val p_sgn_item : ExplEnv.env -> Expl.sgn_item Print.printer
-    val p_str : ExplEnv.env -> Expl.str Print.printer
-    val p_file : ExplEnv.env -> Expl.file Print.printer
+(* To simplify Corify, it helps to apply a particular kind of renaming to functor
+ * bodies, so that nested functors refer only to fresh names.  The payoff is that
+ * we can then implement applications of those nested functors by evaluating their
+ * bodies in arbitrary later contexts, even where identifiers defined in the
+ * outer functor body may have been shadowed. *)
 
-    val debug : bool ref
+signature EXPL_RENAME = sig
+
+    val rename : {NextId : int,
+                  FormalName : string,
+                  FormalId : int,
+                  Body : Expl.str} -> int * Expl.str
+
 end
-

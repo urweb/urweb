@@ -124,6 +124,13 @@ fun oneRun args =
               | "-dumpSource" :: rest =>
                 (Compiler.dumpSource := true;
                  doArgs rest)
+              | "-dumpVerboseSource" :: rest =>
+                (Compiler.dumpSource := true;
+                 ElabPrint.debug := true;
+                 ExplPrint.debug := true;
+                 CorePrint.debug := true;
+                 MonoPrint.debug := true;
+                 doArgs rest)
               | "-output" :: s :: rest =>
                 (Settings.setExe (SOME s);
                  doArgs rest)
