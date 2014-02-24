@@ -865,6 +865,8 @@ val ul : bodyTag boxAttrs
 
 val hr : bodyTag boxAttrs
 
+val pre : bodyTag boxAttrs
+
 val a : bodyTag ([Link = transaction page, Href = url, Target = string, Rel = string] ++ boxAttrs)
 
 val img : bodyTag ([Alt = string, Src = url, Width = int, Height = int,
