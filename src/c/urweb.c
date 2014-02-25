@@ -3049,27 +3049,39 @@ uw_Basis_blob uw_Basis_stringToBlob_error(uw_context ctx, uw_Basis_string s, siz
 
   uw_check_heap(ctx, len);
 
-  while (*s) {
-    if (s[0] == '\\') {
-      if (s[1] == '\\') {
-        *r++ = '\\';
-        s += 2;
-      } else if (isdigit((int)s[1]) && isdigit((int)s[2]) && isdigit((int)s[3])) {
-        *r++ = (s[1] - '0') * 8 * 8 + ((s[2] - '0') * 8) + (s[3] - '0');
-        s += 4;
-      }
-      else {
-        *r++ = '\\';
+  if (s[0] == '\\' && s[1] == 'x') {
+    s += 2;
+
+    while (*s) {
+      int n;
+      sscanf(s, "%02x", &n);
+      *r++ = n;
+      s += 2;
+    }
+  } else {
+    while (*s) {
+      if (s[0] == '\\') {
+        if (s[1] == '\\') {
+          *r++ = '\\';
+          s += 2;
+        } else if (isdigit((int)s[1]) && isdigit((int)s[2]) && isdigit((int)s[3])) {
+          *r++ = (s[1] - '0') * 8 * 8 + ((s[2] - '0') * 8) + (s[3] - '0');
+          s += 4;
+        }
+        else {
+          *r++ = '\\';
+          ++s;
+        }
+      } else {
+        *r++ = s[0];
         ++s;
       }
-    } else {
-      *r++ = s[0];
-      ++s;
     }
   }
 
   b.size = r - ctx->heap.front;
   ctx->heap.front = r;
+
   return b;
 }
 
