@@ -60,8 +60,10 @@ static void log_error(void *data, const char *fmt, ...) {
 static void log_debug(void *data, const char *fmt, ...) {
 }
 
+static uw_loggers ls = {NULL, log_error, log_debug};
+
 int main(int argc, char *argv[]) {
-  uw_context ctx = uw_request_new_context(0, &uw_application, NULL, log_error, log_debug);
+  uw_context ctx = uw_request_new_context(0, &uw_application, &ls);
   uw_request_context rc = uw_new_request_context();
   request_result rr;
   char *method = getenv("REQUEST_METHOD"),
@@ -108,7 +110,7 @@ int main(int argc, char *argv[]) {
   uw_set_on_success("");
   uw_set_headers(ctx, get_header, NULL);
   uw_set_env(ctx, get_env, NULL);
-  uw_request_init(&uw_application, NULL, log_error, log_debug);
+  uw_request_init(&uw_application, &ls);
 
   body[body_pos] = 0;
   rr = uw_request(rc, ctx, method, path, query_string, body, body_pos,

@@ -106,6 +106,12 @@ typedef struct {
   int is_html5;
 } uw_app;
 
+typedef struct {
+  /* uw_app *app; */
+  void *logger_data;
+  uw_logger log_error, log_debug;
+} uw_loggers;
+
 #define ERROR_BUF_LEN 1024
 
 typedef struct {

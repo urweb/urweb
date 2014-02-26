@@ -12,6 +12,7 @@
 #include <pthread.h>
 
 #include "urweb.h"
+#include "request.h"
 
 #define MAX_RETRIES 5
 
@@ -32,8 +33,11 @@ static int try_rollback(uw_context ctx, int will_retry, void *logger_data, uw_lo
   return r;
 }
 
-uw_context uw_request_new_context(int id, uw_app *app, void *logger_data, uw_logger log_error, uw_logger log_debug) {
-  uw_context ctx = uw_init(id, logger_data, log_debug);
+uw_context uw_request_new_context(int id, uw_app *app, uw_loggers *ls) {
+  void *logger_data = ls->logger_data;
+  uw_logger log_debug = ls->log_debug;
+  uw_logger log_error = ls->log_error;
+  uw_context ctx = uw_init(id, ls);
   int retries_left = MAX_RETRIES;
   uw_set_app(ctx, app);
 
@@ -78,20 +82,15 @@ static void *ticker(void *data) {
 }
 
 typedef struct {
-  uw_app *app;
-  void *logger_data;
-  uw_logger log_error, log_debug;
-} loggers;
-
-typedef struct {
   int id;
-  loggers *ls;
+  uw_loggers *ls;
   uw_periodic pdic;
+  uw_app *app;
 } periodic;
 
 static void *periodic_loop(void *data) {
   periodic *p = (periodic *)data;
-  uw_context ctx = uw_request_new_context(p->id, p->ls->app, p->ls->logger_data, p->ls->log_error, p->ls->log_debug);
+  uw_context ctx = uw_request_new_context(p->id, p->app, p->ls);
 
   if (!ctx)
     exit(1);
@@ -145,13 +144,16 @@ int pthread_create_big(pthread_t *outThread, void *foo, void *threadFunc, void *
   }
 }
 
-void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_logger log_debug) {
+void uw_request_init(uw_app *app, uw_loggers* ls) {
   uw_context ctx;
   failure_kind fk;
   uw_periodic *ps;
-  loggers *ls = malloc(sizeof(loggers));
   int id;
   char *stackSize_s;
+
+  uw_logger log_debug = ls->log_debug;
+  uw_logger log_error = ls->log_error;
+  void* logger_data = ls->logger_data;
 
   if ((stackSize_s = getenv("URWEB_STACK_SIZE")) != NULL && stackSize_s[0] != 0) {
     stackSize = atoll(stackSize_s);
@@ -161,11 +163,6 @@ void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_log
       exit(1);
     }
   }
-
-  ls->app = app;
-  ls->logger_data = logger_data;
-  ls->log_error = log_error;
-  ls->log_debug = log_debug;
 
   uw_global_init();
   uw_app_init(app);
@@ -179,7 +176,7 @@ void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_log
     }
   }
 
-  ctx = uw_request_new_context(0, app, logger_data, log_error, log_debug);
+  ctx = uw_request_new_context(0, app, ls);
 
   if (!ctx)
     exit(1);
@@ -205,6 +202,7 @@ void uw_request_init(uw_app *app, void *logger_data, uw_logger log_error, uw_log
     arg->id = id++;
     arg->ls = ls;
     arg->pdic = *ps;
+    arg->app = app;
     
     if (pthread_create_big(&thread, NULL, periodic_loop, arg)) {
       fprintf(stderr, "Error creating periodic thread\n");
@@ -240,7 +238,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
                           void (*on_success)(uw_context), void (*on_failure)(uw_context),
                           void *logger_data, uw_logger log_error, uw_logger log_debug,
                           int sock,
-                          int (*send)(int sockfd, const void *buf, size_t len),
+                          int (*send)(int sockfd, const void *buf, ssize_t len),
                           int (*close)(int fd)) {
   int retries_left = MAX_RETRIES;
   failure_kind fk;
@@ -588,8 +586,8 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
 }
 
 void *client_pruner(void *data) {
-  loggers *ls = (loggers *)data;
-  uw_context ctx = uw_request_new_context(0, ls->app, ls->logger_data, ls->log_error, ls->log_debug);
+  pruner_data *pd = (pruner_data *)data;
+  uw_context ctx = uw_request_new_context(0, pd->app, pd->loggers);
 
   if (!ctx)
     exit(1);

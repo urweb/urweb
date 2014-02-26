@@ -460,8 +460,7 @@ struct uw_context {
 
   void *client_data;
 
-  void *logger_data;
-  uw_logger log_debug;
+  uw_loggers *loggers;
 
   int isPost, hasPostBody;
   uw_Basis_postBody postBody;
@@ -484,7 +483,7 @@ size_t uw_page_max = SIZE_MAX;
 size_t uw_heap_max = SIZE_MAX;
 size_t uw_script_max = SIZE_MAX;
 
-uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
+uw_context uw_init(int id, uw_loggers *lg) {
   uw_context ctx = malloc(sizeof(struct uw_context));
 
   ctx->app = NULL;
@@ -543,8 +542,7 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
 
   ctx->client_data = uw_init_client_data();
 
-  ctx->logger_data = logger_data;
-  ctx->log_debug = log_debug;
+  ctx->loggers = lg;
 
   ctx->isPost = ctx->hasPostBody = 0;
 
@@ -594,6 +592,11 @@ void uw_set_db(uw_context ctx, void *db) {
 
 void *uw_get_db(uw_context ctx) {
   return ctx->db;
+}
+
+
+uw_loggers* uw_get_loggers(struct uw_context *ctx) {
+  return ctx->loggers;
 }
 
 void uw_free(uw_context ctx) {
@@ -4118,8 +4121,8 @@ uw_Basis_int uw_Basis_naughtyDebug(uw_context ctx, uw_Basis_string s) {
 }
 
 uw_Basis_unit uw_Basis_debug(uw_context ctx, uw_Basis_string s) {
-  if (ctx->log_debug)
-    ctx->log_debug(ctx->logger_data, "%s\n", s);
+  if (ctx->loggers->log_debug)
+    ctx->loggers->log_debug(ctx->loggers->logger_data, "%s\n", s);
   else
     fprintf(stderr, "%s\n", s);
   return uw_unit_v;

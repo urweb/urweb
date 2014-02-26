@@ -324,7 +324,8 @@ int fastcgi_send_normal(int sock, const void *buf, ssize_t len) {
 static void *worker(void *data) {
   FCGI_Input *in = fastcgi_input();
   FCGI_Output *out = fastcgi_output();
-  uw_context ctx = uw_request_new_context(*(int *)data, &uw_application, out, log_error, log_debug);
+  uw_loggers ls = {out, log_error, log_debug};
+  uw_context ctx = uw_request_new_context(*(int *)data, &uw_application, &ls);
   uw_request_context rc = uw_new_request_context();
   headers hs;
   size_t body_size = 0;
@@ -514,7 +515,7 @@ static void sigint(int signum) {
   exit(0);
 }
 
-static loggers ls = {&uw_application, NULL, log_error, log_debug};
+static uw_loggers ls = {NULL, log_error, log_debug};
 
 int main(int argc, char *argv[]) {
   // The skeleton for this function comes from Beej's sockets tutorial.
@@ -563,7 +564,7 @@ int main(int argc, char *argv[]) {
   }
 
   uw_set_on_success("");
-  uw_request_init(&uw_application, NULL, log_error, log_debug);
+  uw_request_init(&uw_application, &ls);
 
   names = calloc(nthreads, sizeof(int));
 
@@ -572,7 +573,11 @@ int main(int argc, char *argv[]) {
   {
     pthread_t thread;
 
-    if (pthread_create_big(&thread, NULL, client_pruner, &ls)) {
+    pruner_data *pd = (pruner_data *)malloc(sizeof(pruner_data));
+    pd->app = &uw_application;
+    pd->loggers = &ls;
+
+    if (pthread_create_big(&thread, NULL, client_pruner, pd)) {
       fprintf(stderr, "Error creating pruner thread\n");
       return 1;
     }

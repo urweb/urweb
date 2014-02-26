@@ -7,12 +7,14 @@
 
 extern uw_app uw_application;
 
-static void log_debug(void *data, const char *fmt, ...) {
+static void log_(void *data, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
   vprintf(fmt, ap);
 }
+
+static uw_loggers loggers = {NULL, log_, log_};
 
 int main(int argc, char *argv[]) {
   uw_context ctx;
@@ -23,7 +25,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
  
-  ctx = uw_init(0, NULL, log_debug);
+  ctx = uw_init(0, &loggers);
   uw_set_app(ctx, &uw_application);
   uw_initialize(ctx);
 
