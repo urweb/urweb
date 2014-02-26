@@ -1586,6 +1586,9 @@ uw_Basis_source uw_Basis_new_client_source(uw_context ctx, uw_Basis_string s) {
   int len;
   size_t s_len = strlen(s);
 
+  if(ctx->id < 0)
+    uw_error(ctx, FATAL, "Attempt to create client source using inappropriate context");
+
   uw_check_script(ctx, 15 + 2 * INTS_MAX + s_len);
   sprintf(ctx->script.front, "s%d_%llu=sc(exec(%n", ctx->id, ctx->source_count, &len);
   ctx->script.front += len;
