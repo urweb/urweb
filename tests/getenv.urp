@@ -1,0 +1,3 @@
+allow env USER
+
+getenv

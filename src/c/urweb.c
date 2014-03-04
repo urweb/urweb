@@ -3669,7 +3669,10 @@ uw_unit uw_Basis_setHeader(uw_context ctx, uw_Basis_string name, uw_Basis_string
 }
 
 uw_Basis_string uw_Basis_getenv(uw_context ctx, uw_Basis_string name) {
-  return ctx->get_env(ctx->get_env_data, name);
+  if (ctx->get_env)
+    return ctx->get_env(ctx->get_env_data, name);
+  else
+    return NULL;
 }
 
 uw_Basis_string uw_unnull(uw_Basis_string s) {
