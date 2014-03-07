@@ -3672,7 +3672,7 @@ uw_Basis_string uw_Basis_getenv(uw_context ctx, uw_Basis_string name) {
   if (ctx->get_env)
     return ctx->get_env(ctx->get_env_data, name);
   else
-    return NULL;
+    return getenv(name);
 }
 
 uw_Basis_string uw_unnull(uw_Basis_string s) {
