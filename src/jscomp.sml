@@ -41,6 +41,8 @@ structure TM = BinaryMapFn(struct
                            val compare = U.Typ.compare
                            end)
 
+val explainEmbed = ref false
+
 type state = {
      decls : (string * int * (string * int * typ option) list) list,
      script : string list,
@@ -267,7 +269,12 @@ fun process (file : file) =
                          ((EApp ((ENamed n', loc), e), loc), st)
                      end)
 
-              | _ => ((*Print.prefaces "Can't embed" [("t", MonoPrint.p_typ MonoEnv.empty t)];*)
+              | _ => (if !explainEmbed then
+                          Print.prefaces "Can't embed" [("loc", Print.PD.string (ErrorMsg.spanToString loc)),
+                                                        ("e", MonoPrint.p_exp MonoEnv.empty e),
+                                                        ("t", MonoPrint.p_typ MonoEnv.empty t)]
+                      else
+                          ();
                       raise CantEmbed t)
 
         fun unurlifyExp loc (t : typ, st) =
@@ -400,6 +407,9 @@ fun process (file : file) =
 
                 fun jsE inner (e as (_, loc), st) =
                     let
+                        (*val () = Print.prefaces "jsExp" [("e", MonoPrint.p_exp MonoEnv.empty e),
+                                                         ("loc", Print.PD.string (ErrorMsg.spanToString loc))]*)
+
                         val str = str loc
 
                         fun patCon pc =

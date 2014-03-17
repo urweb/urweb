@@ -174,6 +174,9 @@ fun oneRun args =
                      else
                          Settings.addLimit (class, n);
                  doArgs rest)
+              | "-explainEmbed" :: rest =>
+                (JsComp.explainEmbed := true;
+                 doArgs rest)
               | arg :: rest =>
                 (if size arg > 0 andalso String.sub (arg, 0) = #"-" then
                      raise Fail ("Unknown flag " ^ arg)
