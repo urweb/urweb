@@ -1438,19 +1438,19 @@ val sigcheck = {
 
 val toSigcheck = transform sigcheck "sigcheck" o toSidecheck
 
-val sqlcache = {
-    func = (fn file => (Sql.go file; file)),
+val sqlCache = {
+    func = SqlCache.go,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toSqlcache = transform sqlcache "sqlcache" o toSigcheck
+val toSqlCache = transform sqlCache "sqlCache" o toSigcheck
 
 val cjrize = {
     func = Cjrize.cjrize,
     print = CjrPrint.p_file CjrEnv.empty
 }
 
-val toCjrize = transform cjrize "cjrize" o toSqlcache
+val toCjrize = transform cjrize "cjrize" o toSqlCache
 
 val prepare = {
     func = Prepare.prepare,

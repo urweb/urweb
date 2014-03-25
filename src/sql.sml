@@ -2,7 +2,7 @@ structure Sql = struct
 
 open Mono
 
-val debug = ref true (*false*)
+val debug = ref false
 
 type lvar = int
 
@@ -424,82 +424,5 @@ datatype querydml =
        | Dml of dml
 
 val querydml = log "querydml" (altL [wrap dml Dml, wrap query Query])
-
-(* New stuff. *)
-
-fun subExps' (exp' : Mono.exp') =
-    case exp' of
-        ECon (_,_,SOME exp) => [exp]
-      | ESome (_,exp) => [exp]
-      | EFfiApp (_,_,xs) => map #1 xs
-      | EApp (exp1,exp2) => [exp1, exp2]
-      | EAbs (_,_,_,exp) => [exp]
-      | EUnop (_,exp) => [exp]
-      | EBinop (_,_,exp1,exp2) => [exp1, exp2]
-      | ERecord xs => map #2 xs
-      | EField (exp,_) => [exp]
-      | ECase (exp,xs,_) => exp :: map #2 xs
-      | EStrcat (exp1,exp2) => [exp1,exp2]
-      | EError (exp,_) => [exp]
-      | EReturnBlob {blob=NONE, mimeType, ...} => [mimeType]
-      | EReturnBlob {blob=SOME exp, mimeType, ...} => [exp, mimeType]
-      | ERedirect (exp,_) => [exp]
-      | EWrite exp => [exp]
-      | ESeq (exp1,exp2) => [exp1, exp2]
-      | ELet (_,_,exp1,exp2) => [exp1, exp2]
-      | EClosure (_,xs) => xs
-      | EQuery {query, body, initial, ...} => [query, body, initial]
-      | EDml (exp,_) => [exp]
-      | ENextval exp => [exp]
-      | ESetval (exp1,exp2) => [exp1, exp2]
-      | EUnurlify (exp,_,_) => [exp]
-      | EJavaScript (_,exp) => [exp]
-      | ESignalReturn exp => [exp]
-      | ESignalBind (exp1,exp2) => [exp1, exp2]
-      | ESignalSource exp => [exp]
-      | EServerCall (exp,_,_,_) => [exp]
-      | ERecv (exp,_) => [exp]
-      | ESleep exp => [exp]
-      | ESpawn exp => [exp]
-      | _ => []
-
-val subExps : Mono.exp -> Mono.exp list = subExps' o #1
-
-fun println str = print (str ^ "\n")
-fun printlnExp exp = (Print.print (MonoPrint.p_exp MonoEnv.empty exp); println "")
-
-fun tablesRead (Query1 {From=tablePairs, ...}) = map #1 tablePairs
-  | tablesRead (Union (q1,q2)) = tablesRead q1 @ tablesRead q2
-
-fun tableTouched (Insert (tab,_)) = tab
-  | tableTouched (Delete (tab,_)) = tab
-  | tableTouched (Update (tab,_,_)) = tab
-
-fun goExp (exp : Mono.exp) =
-    case #1 exp of
-        EQuery {query=e, ...} => (
-         case parse query e of
-             SOME q => println ("Query reads from " ^ String.concatWith ", " (tablesRead q))
-           | NONE => println "Couldn't parse query";
-         printlnExp exp; println "")
-      | EDml (e,_) => (
-          case parse dml e of
-              SOME d => println ("DML touches " ^ tableTouched d)
-            | NONE => println "Couldn't parse DML";
-          printlnExp exp; println "")
-      | ENextval _ => (printlnExp exp; println "")
-      | ESetval _ => (printlnExp exp; println "")
-      (* Recurse down the syntax tree. *)
-      | _ => app goExp (subExps exp)
-
-fun goDecl (decl : decl) =
-    case #1 decl of
-        DVal (_,_,_,exp,_) => goExp exp
-      | DValRec xs => app (goExp o #4) xs
-      | _ => ()
-
-fun goFile (file : file) = app goDecl (#1 file)
-
-fun go file = (println "Doing SQL analysis.\n"; goFile file; ())
 
 end

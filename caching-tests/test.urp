@@ -1,0 +1,6 @@
+database dbname=test
+safeGet Test/flush01
+safeGet Test/flush10
+safeGet Test/flush11
+
+test
