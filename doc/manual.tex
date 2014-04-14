@@ -2488,12 +2488,12 @@ In contrast to C FFI code, JavaScript FFI functions take no extra context argume
 
 \begin{itemize}
 \item Integers, floats, strings, characters, and booleans are represented in the usual JavaScript way.
-\item Ur functions are represented in an unspecified way.  This means that you should not rely on any details of function representation.  Named FFI functions are represented as JavaScript functions with as many arguments as their Ur types specify.  To call a non-FFI function \texttt{f} on argument \texttt{x}, run \texttt{execF(f, x)}.  To lift a normal JavaScript function \cd{f} into an Ur/Web JavaScript function, run \cd{flift(f)}.
+\item Ur functions are represented in an unspecified way.  This means that you should not rely on any details of function representation.  Named FFI functions are represented as JavaScript functions with as many arguments as their Ur types specify.  To call a non-FFI function \texttt{f} on argument \texttt{x}, run \texttt{execF(f, x)}.  A normal JavaScript function may also be used in a position where the Ur/Web runtime system expects an Ur/Web function.
 \item An Ur record is represented with a JavaScript record, where Ur field name \texttt{N} translates to JavaScript field name \texttt{\_N}.  An exception to this rule is that the empty record is encoded as \texttt{null}.
 \item \texttt{option}-like types receive special handling similar to their handling in C.  The ``\texttt{None}'' constructor is \texttt{null}, and a use of the ``\texttt{Some}'' constructor on a value \texttt{v} is either \texttt{v}, if the underlying type doesn't need to use \texttt{null}; or \texttt{\{v:v\}} otherwise.
 \item Any other datatypes represent a non-value-carrying constructor \texttt{C} as \texttt{"C"} and an application of a constructor \texttt{C} to value \texttt{v} as \texttt{\{n:"C", v:v\}}.  This rule only applies to datatypes defined in FFI module signatures; the compiler is free to optimize the representations of other, non-\texttt{option}-like datatypes in arbitrary ways.
 \item As in the C FFI, all abstract types of program syntax are implemented with strings in JavaScript.
-\item A value of Ur type \texttt{transaction t} is represented in the same way as for \texttt{unit -> t}.
+\item A value of Ur type \texttt{transaction t} is represented in the same way as for \texttt{unit -> t}.  (Note that FFI functions skip this extra level of function encoding, which only applies to functions defined in Ur/Web.)
 \end{itemize}
 
 It is possible to write JavaScript FFI code that interacts with the functional-reactive structure of a document.  Here is a quick summary of some of the simpler functions to use; descriptions of fancier stuff may be added later on request (and such stuff should be considered ``undocumented features'' until then).
