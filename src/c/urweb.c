@@ -3304,31 +3304,57 @@ int uw_commit(uw_context ctx) {
         }
       }
 
-  for (i = ctx->used_transactionals-1; i >= 0; --i)
-    if (ctx->transactionals[i].rollback == NULL)
-      if (ctx->transactionals[i].commit) {
-        ctx->transactionals[i].commit(ctx->transactionals[i].data);
-        if (uw_has_error(ctx)) {
-          uw_rollback(ctx, 0);
-          return 0;
-        }
-      }
-
   if (ctx->transaction_started) {
     int code = ctx->app->db_commit(ctx);
 
     if (code) {
-      if (code == -1)
+      if (ctx->client)
+        release_client(ctx->client);
+
+      if (code == -1) {
+        // This case is for a serialization failure, which is not really an "error."
+        // The transaction will restart, so we should rollback any transactionals
+        // that triggered above.
+
+        for (i = ctx->used_transactionals-1; i >= 0; --i)
+          if (ctx->transactionals[i].rollback != NULL)
+            ctx->transactionals[i].rollback(ctx->transactionals[i].data);
+
+        for (i = ctx->used_transactionals-1; i >= 0; --i)
+          if (ctx->transactionals[i].free)
+            ctx->transactionals[i].free(ctx->transactionals[i].data, 1);
+
 	return 1;
+      }
 
       for (i = ctx->used_transactionals-1; i >= 0; --i)
-	if (ctx->transactionals[i].free)
-	  ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
+        if (ctx->transactionals[i].free)
+          ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
 
       uw_set_error_message(ctx, "Error running SQL COMMIT");
       return 0;
     }
   }
+
+  for (i = ctx->used_transactionals-1; i >= 0; --i)
+    if (ctx->transactionals[i].rollback == NULL)
+      if (ctx->transactionals[i].commit) {
+        ctx->transactionals[i].commit(ctx->transactionals[i].data);
+        if (uw_has_error(ctx)) {
+           if (ctx->client)
+             release_client(ctx->client);
+
+           for (i = ctx->used_transactionals-1; i >= 0; --i)
+             if (ctx->transactionals[i].rollback != NULL)
+               ctx->transactionals[i].rollback(ctx->transactionals[i].data);
+
+           for (i = ctx->used_transactionals-1; i >= 0; --i)
+             if (ctx->transactionals[i].free)
+               ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
+
+          return 0;
+        }
+      }
 
   for (i = 0; i < ctx->used_deltas; ++i) {
     delta *d = &ctx->deltas[i];
