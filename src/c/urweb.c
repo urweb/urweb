@@ -3469,11 +3469,12 @@ int uw_commit(uw_context ctx) {
 
 size_t uw_transactionals_max = SIZE_MAX;
 
-void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, uw_callback rollback,
+int uw_register_transactional(uw_context ctx, void *data, uw_callback commit, uw_callback rollback,
                                uw_callback_with_retry free) {
   if (ctx->used_transactionals >= ctx->n_transactionals) {
     if (ctx->used_transactionals+1 > uw_transactionals_max)
-      uw_error(ctx, FATAL, "Exceeded limit on number of transactionals");
+      // Exceeded limit on number of transactionals.
+      return -1;
     ctx->transactionals = realloc(ctx->transactionals, sizeof(transactional) * (ctx->used_transactionals+1));
     ++ctx->n_transactionals;
   }
@@ -3482,6 +3483,8 @@ void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, u
   ctx->transactionals[ctx->used_transactionals].commit = commit;
   ctx->transactionals[ctx->used_transactionals].rollback = rollback;
   ctx->transactionals[ctx->used_transactionals++].free = free;
+
+  return 0;
 }
 
 

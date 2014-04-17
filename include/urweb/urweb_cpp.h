@@ -280,7 +280,7 @@ uw_Basis_int uw_Basis_datetimeSecond(struct uw_context *, uw_Basis_time);
 uw_Basis_int uw_Basis_datetimeDayOfWeek(struct uw_context *, uw_Basis_time);
 extern const uw_Basis_time uw_Basis_minTime;
 
-void uw_register_transactional(struct uw_context *, void *data, uw_callback commit, uw_callback rollback, uw_callback_with_retry free);
+int uw_register_transactional(struct uw_context *, void *data, uw_callback commit, uw_callback rollback, uw_callback_with_retry free);
 
 void uw_check_heap(struct uw_context *, size_t extra);
 char *uw_heap_front(struct uw_context *);
