@@ -1,4 +1,18 @@
 ========
+20140426
+========
+
+- New Basis functions having to do with dates and times, wrapped nicely in new
+  Datetime module of standard library
+- New .urp directives: 'html5', 'neverInline', 'noMangleSql'
+- New command-line arguments: '-explainEmbed', '-stop'
+- Changes to C FFI interface, especially for uw_register_transactional()
+- 'Basis.getEnv' now always calls UNIX getenv() outside a page handler.
+- Changed <active> to avoid generating an empty <span> for empty content.
+- New HTML tag: <pre>
+- Bug fixes and improvements to type inference, optimizations, and documentation
+
+========
 20131231
 ========
 
