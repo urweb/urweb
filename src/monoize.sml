@@ -2131,7 +2131,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                     strcatComma
                                                                         (map (fn (x', _) =>
                                                                                  sc ("T_" ^ x
-										     ^ ""
+										     ^ "."
 										     ^ Settings.mangleSql x'))
                                                                              xts)) grouped)
                                                ],
