@@ -1907,6 +1907,7 @@ fitem  : table'                         ([#1 table'], #2 table')
                                          in
                                              ([tname], (EApp (e, query), loc))
                                          end)
+       | LPAREN fitem RPAREN            (fitem)
 
 tname  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | LBRACE cexp RBRACE             (cexp)
