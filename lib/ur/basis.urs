@@ -992,6 +992,16 @@ val td : other ::: {Unit} -> [other ~ [Body, Tr]] => unit
   -> tag ([Colspan = int, Rowspan = int] ++ tableAttrs)
          ([Tr] ++ other) ([Body] ++ other) [] []
 
+val thead : other ::: {Unit} -> [other ~ [Table]] => unit
+  -> tag tableAttrs
+         ([Table] ++ other) ([Table] ++ other) [] []
+val tbody : other ::: {Unit} -> [other ~ [Table]] => unit
+  -> tag tableAttrs
+         ([Table] ++ other) ([Table] ++ other) [] []
+val tfoot : other ::: {Unit} -> [other ~ [Table]] => unit
+  -> tag tableAttrs
+         ([Table] ++ other) ([Table] ++ other) [] []
+
 (** Definition lists *)
 
 val dl : other ::: {Unit} -> [other ~ [Body,Dl]]
