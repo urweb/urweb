@@ -1442,6 +1442,8 @@ $$\begin{array}{l}
 
 The Ur/Web compiler provides syntactic sugar for monads, similar to Haskell's \cd{do} notation.  An expression $x \leftarrow e_1; e_2$ is desugared to $\mt{bind} \; e_1 \; (\lambda x \Rightarrow e_2)$, and an expression $e_1; e_2$ is desugared to $\mt{bind} \; e_1 \; (\lambda () \Rightarrow e_2)$.  Note a difference from Haskell: as the $e_1; e_2$ case desugaring involves a function with $()$ as its formal argument, the type of $e_1$ must be of the form $m \; \{\}$, rather than some arbitrary $m \; t$.
 
+The syntactic sugar also allows $p \leftarrow e_1; e_2$ for $p$ a pattern.  The pattern should be guaranteed to match any value of the corresponding type, or there will be a compile-time error.
+
 \subsection{Transactions}
 
 Ur is a pure language; we use Haskell's trick to support controlled side effects.  The standard library defines a monad $\mt{transaction}$, meant to stand for actions that may be undone cleanly.  By design, no other kinds of actions are supported.

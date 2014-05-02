@@ -2183,8 +2183,13 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 (e', (#1 (chaseUnifs t'), loc), enD gs2 @ gs1)
             end
 
-          | L.ERecord xes =>
+          | L.ERecord (xes, flex) =>
             let
+                val () = if flex then
+                             expError env (IllegalFlex eAll)
+                         else
+                             ()
+
                 val (xes', gs) = ListUtil.foldlMap (fn ((x, e), gs) =>
                                                        let
                                                            val (x', xk, gs1) = elabCon (env, denv) x

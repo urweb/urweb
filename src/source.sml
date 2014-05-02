@@ -125,7 +125,7 @@ and exp' =
 
   | EKAbs of string * exp
 
-  | ERecord of (con * exp) list
+  | ERecord of (con * exp) list * bool
   | EField of exp * con
   | EConcat of exp * exp
   | ECut of exp * con
