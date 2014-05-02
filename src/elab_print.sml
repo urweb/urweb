@@ -852,6 +852,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                            space,
                            p_exp env e1]
       | DOnError _ => string "ONERROR"
+      | DFfi _ => string "FFI"
 
 and p_str env (str, _) =
     case str of

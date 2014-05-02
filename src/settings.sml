@@ -194,6 +194,7 @@ val benignBase = basis ["get_cookie",
 
 val benign = ref benignBase
 fun setBenignEffectful ls = benign := S.addList (benignBase, ls)
+fun addBenignEffectful x = benign := S.add (!benign, x)
 fun isBenignEffectful x = S.member (!benign, x)
 
 val clientBase = basis ["get_client_source",
@@ -225,6 +226,7 @@ val clientBase = basis ["get_client_source",
                         "giveFocus"]
 val client = ref clientBase
 fun setClientOnly ls = client := S.addList (clientBase, ls)
+fun addClientOnly x = client := S.add (!client, x)
 fun isClientOnly x = S.member (!client, x)
 
 val serverBase = basis ["requestHeader",
@@ -240,6 +242,7 @@ val serverBase = basis ["requestHeader",
                         "firstFormField"]
 val server = ref serverBase
 fun setServerOnly ls = server := S.addList (serverBase, ls)
+fun addServerOnly x = server := S.add (!server, x)
 fun isServerOnly x = S.member (!server, x)
 
 val basisM = foldl (fn ((k, v : string), m) => M.insert (m, ("Basis", k), v)) M.empty
@@ -364,6 +367,7 @@ val jsFuncsBase = basisM [("alert", "alert"),
 val jsFuncs = ref jsFuncsBase
 fun setJsFuncs ls = jsFuncs := foldl (fn ((k, v), m) => M.insert (m, k, v)) jsFuncsBase ls
 fun jsFunc x = M.find (!jsFuncs, x)
+fun addJsFunc (k, v) = jsFuncs := M.insert (!jsFuncs, k, v)
 fun allJsFuncs () = M.listItemsi (!jsFuncs)
 
 datatype pattern_kind = Exact | Prefix
@@ -734,5 +738,9 @@ fun mangleSqlCatalog s = if !mangle then "uw_" ^ s else lowercase s
 val html5 = ref false
 fun setIsHtml5 b = html5 := b
 fun getIsHtml5 () = !html5
+
+val less = ref false
+fun setLessSafeFfi b = less := b
+fun getLessSafeFfi () = !less
 
 end

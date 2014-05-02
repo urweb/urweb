@@ -139,7 +139,7 @@ See doc for the variable `urweb-mode-info'."
 	       "of" "open" "let" "in"
 	       "rec" "sequence" "sig" "signature" "cookie" "style" "task" "policy"
 	       "struct" "structure" "table" "view" "then" "type" "val" "where"
-	       "with"
+	       "with" "ffi"
 
                "Name" "Type" "Unit")
   "A regexp that matches any non-SQL keywords of Ur/Web.")

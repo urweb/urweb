@@ -198,6 +198,7 @@ fun explifyDecl (d, loc : EM.span) =
       | L.DTask (e1, e2) => SOME (L'.DTask (explifyExp e1, explifyExp e2), loc)
       | L.DPolicy e1 => SOME (L'.DPolicy (explifyExp e1), loc)
       | L.DOnError v => SOME (L'.DOnError v, loc)
+      | L.DFfi (x, n, modes, t) => SOME (L'.DFfi (x, n, modes, explifyCon t), loc)
 
 and explifyStr (str, loc) =
     case str of

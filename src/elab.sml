@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2011, Adam Chlipala
+(* Copyright (c) 2008-2011, 2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -181,6 +181,7 @@ datatype decl' =
        | DTask of exp * exp
        | DPolicy of exp
        | DOnError of int * string list * string
+       | DFfi of string * int * Source.ffi_mode list * con
 
      and str' =
          StrConst of decl list

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2012, Adam Chlipala
+(* Copyright (c) 2008-2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -365,7 +365,7 @@ fun patternOut (e : exp) =
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | DCOLONWILD | TCOLON | TCOLONWILD | DOT | HASH | UNDER | UNDERUNDER | BAR
  | PLUS | MINUS | DIVIDE | DOTDOTDOT | MOD | AT
- | CON | LTYPE | VAL | REC | AND | FUN | MAP | UNIT | KUNIT | CLASS
+ | CON | LTYPE | VAL | REC | AND | FUN | MAP | UNIT | KUNIT | CLASS | FFI
  | DATATYPE | OF
  | TYPE | NAME
  | ARROW | LARROW | DARROW | STAR | SEMI | KARROW | DKARROW | BANG
@@ -532,6 +532,9 @@ fun patternOut (e : exp) =
  | enterDml of unit
  | leaveDml of unit
 
+ | ffi_mode of ffi_mode
+ | ffi_modes of ffi_mode list
+
 
 %verbose                                (* print summary of errors *)
 %pos int                                (* positions *)
@@ -645,6 +648,7 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
        | STYLE SYMBOL                   ([(DStyle SYMBOL, s (STYLEleft, SYMBOLright))])
        | TASK eapps EQ eexp             ([(DTask (eapps, eexp), s (TASKleft, eexpright))])
        | POLICY eexp                    ([(DPolicy eexp, s (POLICYleft, eexpright))])
+       | FFI SYMBOL ffi_modes COLON cexp([(DFfi (SYMBOL, ffi_modes, cexp), s (FFIleft, cexpright))])
 
 dtype  : SYMBOL dargs EQ barOpt dcons   (SYMBOL, dargs, dcons)
 
@@ -2267,3 +2271,16 @@ sqlagg : AVG                             ("avg")
        | SUM                             ("sum")
        | MIN                             ("min")
        | MAX                             ("max")
+
+ffi_mode : SYMBOL                        (case SYMBOL of
+                                              "effectful" => Effectful
+                                            | "benignEffectful" => BenignEffectful
+                                            | "clientOnly" => ClientOnly
+                                            | "serverOnly" => ServerOnly
+                                            | _ => (ErrorMsg.errorAt (s (SYMBOLleft, SYMBOLright)) "Invalid FFI mode"; Effectful))
+         | SYMBOL STRING                 (case SYMBOL of
+                                              "jsFunc" => JsFunc STRING
+                                            | _ => (ErrorMsg.errorAt (s (SYMBOLleft, SYMBOLright)) "Invalid FFI mode"; Effectful))
+
+ffi_modes :                              ([])
+          | ffi_mode ffi_modes           (ffi_mode :: ffi_modes)

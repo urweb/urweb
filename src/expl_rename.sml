@@ -219,6 +219,7 @@ fun renameDecl st (all as (d, loc)) =
         (case St.lookup (st, n) of
              NONE => all
            | SOME n' => (DOnError (n', xs, x), loc))
+      | DFfi (x, n, modes, t) => (DFfi (x, n, modes, renameCon st t), loc)
 
 and renameStr st (all as (str, loc)) =
     case str of
@@ -413,6 +414,15 @@ fun dupDecl (all as (d, loc), st) =
         (case St.lookup (st, n) of
              NONE => ([all], st)
            | SOME n' => ([(DOnError (n', xs, x), loc)], st))
+      | DFfi (x, n, modes, t) =>
+        let
+            val (st, n') = St.bind (st, n)
+            val t' = renameCon st t
+        in
+            ([(DFfi (x, n, modes, t'), loc),
+              (DVal (x, n', t', (ENamed n, loc)), loc)],
+             st)
+        end
 
 fun rename {NextId, FormalName, FormalId, Body = all as (str, loc)} =
     case str of

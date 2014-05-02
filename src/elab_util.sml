@@ -927,7 +927,8 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                                                    bind (ctx, NamedE (x, (CModProj (n, [], "css_class"), loc)))
                                                  | DTask _ => ctx
                                                  | DPolicy _ => ctx
-                                                 | DOnError _ => ctx,
+                                                 | DOnError _ => ctx
+                                                 | DFfi (x, _, _, t) => bind (ctx, NamedE (x, t)),
                                                mfd ctx d)) ctx ds,
                      fn ds' => (StrConst ds', loc))
               | StrVar _ => S.return2 strAll
@@ -1056,6 +1057,10 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, sgn_item = fsgi, sgn = fsg, str = f
                      fn e1' =>
                         (DPolicy e1', loc))
               | DOnError _ => S.return2 dAll
+              | DFfi (x, n, modes, t) =>
+                S.map2 (mfc ctx t,
+                        fn t' =>
+                           (DFfi (x, n, modes, t'), loc))
 
         and mfvi ctx (x, n, c, e) =
             S.bind2 (mfc ctx c,
@@ -1234,6 +1239,7 @@ and maxNameDecl (d, _) =
       | DTask _ => 0
       | DPolicy _ => 0
       | DOnError _ => 0
+      | DFfi (_, n, _, _) => n
 and maxNameStr (str, _) =
     case str of
         StrConst ds => maxName ds

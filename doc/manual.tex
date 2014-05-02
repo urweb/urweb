@@ -2530,6 +2530,24 @@ FFI modules may introduce new tags as values with $\mt{Basis.tag}$ types.  See \
 
 The onus is on the coder of a new tag's interface to think about consequences for code injection attacks, messing with the DOM in ways that may break Ur/Web reactive programming, etc.
 
+\subsection{The Less Safe FFI}
+
+An alternative interface is provided for declaring FFI functions inline within normal Ur/Web modules.  This facility must be opted into with the \texttt{lessSafeFfi} \texttt{.urp} directive, since it breaks a crucial property, allowing code in a \texttt{.ur} file to break basic invariants of the Ur/Web type system.  Without this option, one only needs to audit \texttt{.urp} files to be sure an application obeys the type-system rules.  The alternative interface may be more convenient for such purposes as declaring an FFI function typed in terms of some type local to a module.
+
+When the less safe mode is enabled, declarations like this one are accepted, at the top level of a \texttt{.ur} file:
+\begin{verbatim}
+  ffi foo : int -> int
+\end{verbatim}
+
+Now \texttt{foo} is available as a normal function.  If called in server-side code, and if the above declaration appeared in \texttt{bar.ur}, the C function will be linked as \texttt{uw\_Bar\_foo()}.  It is also possible to declare an FFI function to be implemented in JavaScript, using a general facility for including modifiers in an FFI declaration.  The modifiers appear before the colon, separated by spaces.  Here are the available ones, which have the same semantics as corresponding \texttt{.urp} directives.
+\begin{itemize}
+\item \texttt{effectful}
+\item \texttt{benignEffectful}
+\item \texttt{clientOnly}
+\item \texttt{serverOnly}
+\item \texttt{jsFunc "putJsFuncNameHere"}
+\end{itemize}
+
 
 \section{Compiler Phases}
 

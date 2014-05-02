@@ -445,6 +445,7 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> "style"     => (Tokens.STYLE (pos yypos, pos yypos + size yytext));
 <INITIAL> "task"      => (Tokens.TASK (pos yypos, pos yypos + size yytext));
 <INITIAL> "policy"    => (Tokens.POLICY (pos yypos, pos yypos + size yytext));
+<INITIAL> "ffi"       => (Tokens.FFI (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "Type"      => (Tokens.TYPE (pos yypos, pos yypos + size yytext));
 <INITIAL> "Name"      => (Tokens.NAME (pos yypos, pos yypos + size yytext));

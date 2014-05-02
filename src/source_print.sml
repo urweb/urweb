@@ -674,6 +674,7 @@ fun p_decl ((d, _) : decl) =
                            space,
                            p_exp e1]
       | DOnError _ => string "ONERROR"
+      | DFfi _ => string "FFI"
 
 and p_str (str, _) =
     case str of

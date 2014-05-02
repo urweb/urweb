@@ -643,6 +643,12 @@ fun corifyExp st (e, loc) =
 
       | L.ELet (x, t, e1, e2) => (L'.ELet (x, corifyCon st t, corifyExp st e1, corifyExp st e2), loc)
 
+fun isTransactional (c, _) =
+    case c of
+        L'.TFun (_, c) => isTransactional c
+      | L'.CApp ((L'.CFfi ("Basis", "transaction"), _), _) => true
+      | _ => false
+
 fun corifyDecl mods (all as (d, loc : EM.span), st) =
     case d of
         L.DCon (x, n, k, c) =>
@@ -970,12 +976,6 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                                                in
                                                    transactify c
                                                end
-
-                                       fun isTransactional (c, _) =
-                                           case c of
-                                               L'.TFun (_, c) => isTransactional c
-                                             | L'.CApp ((L'.CFfi ("Basis", "transaction"), _), _) => true
-                                             | _ => false
                                    in
                                        if isTransactional c then
                                            let
@@ -1164,6 +1164,66 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                       ([], st))
         end
 
+      | L.DFfi (x, n, modes, t) =>
+        let
+            val m = case St.name st of
+                        [m] => m
+                      | _ => (ErrorMsg.errorAt loc "Used 'ffi' declaration beneath module top level";
+                              "")
+
+            val name = (m, x)
+
+            val (st, n) = St.bindVal st x n
+            val s = doRestify Settings.Url (mods, x)
+
+            val t' = corifyCon st t
+
+            fun numArgs (t : L'.con) =
+                case #1 t of
+                    L'.TFun (_, ran) => 1 + numArgs ran
+                  | _ => 0
+
+            fun makeArgs (i, t : L'.con, acc) =
+                case #1 t of
+                    L'.TFun (dom, ran) => makeArgs (i-1, ran, ((L'.ERel i, loc), dom) :: acc)
+                  | _ => rev acc
+
+            fun wrapAbs (i, t : L'.con, tTrans, e) =
+                case (#1 t, #1 tTrans) of
+                    (L'.TFun (dom, ran), L'.TFun (_, ran')) => (L'.EAbs ("x" ^ Int.toString i, dom, ran, wrapAbs (i+1, ran, ran', e)), loc)
+                  | _ => e
+
+            fun getRan (t : L'.con) =
+                case #1 t of
+                    L'.TFun (_, ran) => getRan ran
+                  | _ => t
+
+            fun addLastBit (t : L'.con) =
+                case #1 t of
+                    L'.TFun (dom, ran) => (L'.TFun (dom, addLastBit ran), #2 t)
+                  | _ => (L'.TFun ((L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc), t), loc)
+
+            val e = (L'.EFfiApp (m, x, makeArgs (numArgs t' - 1, t', [])), loc)
+            val (e, tTrans) = if isTransactional t' then
+                                  ((L'.EAbs ("_", (L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc), getRan t', e), loc), addLastBit t')
+                              else
+                                  (e, t')
+            val e = wrapAbs (0, t', tTrans, e)
+        in
+            app (fn Source.Effectful => Settings.addEffectful name
+                  | Source.BenignEffectful => Settings.addBenignEffectful name
+                  | Source.ClientOnly => Settings.addClientOnly name
+                  | Source.ServerOnly => Settings.addServerOnly name
+                  | Source.JsFunc s => Settings.addJsFunc (name, s)) modes;
+
+            if isTransactional t' andalso not (Settings.isBenignEffectful name) then
+                Settings.addEffectful name
+            else
+                ();
+
+            ([(L'.DVal (x, n, t', e, s), loc)], st)
+        end
+
 and corifyStr mods ((str, loc), st) =
     case str of
         L.StrConst ds =>
@@ -1237,7 +1297,8 @@ fun maxName ds = foldl (fn ((d, _), n) =>
                              | L.DStyle (_, _, n') => Int.max (n, n')
                              | L.DTask _ => n
                              | L.DPolicy _ => n
-                             | L.DOnError _ => n)
+                             | L.DOnError _ => n
+                             | L.DFfi (_, n', _, _) => Int.max (n, n'))
                        0 ds
 
 and maxNameStr (str, _) =
