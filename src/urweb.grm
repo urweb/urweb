@@ -225,7 +225,7 @@ fun tagIn bt =
 
 datatype prop_kind = Delete | Update
 
-datatype attr = Class of exp | DynClass of exp | Style of exp | DynStyle of exp | Normal of con * exp
+datatype attr = Class of exp | DynClass of exp | Style of exp | DynStyle of exp | Normal of con * exp | Data of string * exp
 
 fun patType loc (p : pat) =
     case #1 p of
@@ -453,7 +453,7 @@ fun applyWindow loc e window =
  | rpat of (string * pat) list * bool
  | ptuple of pat list
 
- | attrs of exp option * exp option * exp option * exp option * (con * exp) list
+ | attrs of exp option * exp option * exp option * exp option * (string * exp) list * (con * exp) list
  | attr of attr
  | attrv of exp
 
@@ -1602,7 +1602,31 @@ tag    : tagHead attrs                  (let
                                                         | SOME e => (EApp ((EVar (["Basis"], "Some", Infer), pos),
                                                                            e), pos)
                                              val e = (EApp (e, eo), pos)
-                                             val e = (EApp (e, (ERecord (#5 attrs), pos)), pos)
+
+                                             val atts = case #5 attrs of
+                                                            [] => #6 attrs
+                                                          | data :: datas =>
+                                                            let
+                                                                fun doOne (name, value) =
+                                                                    let
+                                                                        val e = (EVar (["Basis"], "data_attr", Infer), pos)
+                                                                        val e = (EApp (e, (EPrim (Prim.String name), pos)), pos)
+                                                                    in
+                                                                        (EApp (e, value), pos)
+                                                                    end
+
+                                                                val datas' = foldl (fn (nv, acc) =>
+                                                                                       let
+                                                                                           val e = (EVar (["Basis"], "data_attrs", Infer), pos)
+                                                                                           val e = (EApp (e, acc), pos)
+                                                                                       in
+                                                                                           (EApp (e, doOne nv), pos)
+                                                                                       end) (doOne data) datas
+                                                            in
+                                                                ((CName "Data", pos), datas') :: #6 attrs
+                                                            end
+
+                                             val e = (EApp (e, (ERecord atts, pos)), pos)
                                              val e = (EApp (e, (EApp (#2 tagHead,
                                                                       (ERecord [], pos)), pos)), pos)
                                          in
@@ -1618,7 +1642,7 @@ tagHead: BEGIN_TAG                      (let
                                          end)
        | tagHead LBRACE cexp RBRACE     (#1 tagHead, (ECApp (#2 tagHead, cexp), s (tagHeadleft, RBRACEright)))
                                           
-attrs  :                                (NONE, NONE, NONE, NONE, [])
+attrs  :                                (NONE, NONE, NONE, NONE, [], [])
        | attr attrs                     (let
                                              val loc = s (attrleft, attrsright)
                                          in
@@ -1627,24 +1651,26 @@ attrs  :                                (NONE, NONE, NONE, NONE, [])
                                                  (case #1 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple classes specified for tag";
-                                                  (SOME e, #2 attrs, #3 attrs, #4 attrs, #5 attrs))
+                                                  (SOME e, #2 attrs, #3 attrs, #4 attrs, #5 attrs, #6 attrs))
                                                | DynClass e =>
                                                  (case #2 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple dynamic classes specified for tag";
-                                                  (#1 attrs, SOME e, #3 attrs, #4 attrs, #5 attrs))
+                                                  (#1 attrs, SOME e, #3 attrs, #4 attrs, #5 attrs, #6 attrs))
                                                | Style e =>
                                                  (case #3 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple styles specified for tag";
-                                                  (#1 attrs, #2 attrs, SOME e, #4 attrs, #5 attrs))
+                                                  (#1 attrs, #2 attrs, SOME e, #4 attrs, #5 attrs, #6 attrs))
                                                | DynStyle e =>
                                                  (case #4 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple dynamic classes specified for tag";
-                                                  (#1 attrs, #2 attrs, #3 attrs, SOME e, #5 attrs))
+                                                  (#1 attrs, #2 attrs, #3 attrs, SOME e, #5 attrs, #6 attrs))
+                                               | Data xe =>
+                                                 (#1 attrs, #2 attrs, #3 attrs, #4 attrs, xe :: #5 attrs, #6 attrs)
                                                | Normal xe =>
-                                                 (#1 attrs, #2 attrs, #3 attrs, #4 attrs, xe :: #5 attrs)
+                                                 (#1 attrs, #2 attrs, #3 attrs, #4 attrs, #5 attrs, xe :: #6 attrs)
                                          end)
 
 attr   : SYMBOL EQ attrv                (case SYMBOL of
@@ -1653,23 +1679,26 @@ attr   : SYMBOL EQ attrv                (case SYMBOL of
                                            | "style" => Style attrv
 					   | "dynStyle" => DynStyle attrv
 					   | _ =>
-                                             let
-                                                 val sym = makeAttr SYMBOL
-                                             in
-                                                 Normal ((CName sym, s (SYMBOLleft, SYMBOLright)),
-                                                         if (sym = "Href" orelse sym = "Src")
-                                                            andalso (case #1 attrv of
-                                                                         EPrim _ => true
-                                                                       | _ => false) then
-                                                             let
-                                                                 val loc = s (attrvleft, attrvright)
-                                                             in
-                                                                 (EApp ((EVar (["Basis"], "bless", Infer), loc),
-                                                                        attrv), loc)
-                                                             end
-                                                         else
-                                                             attrv)
-                                             end)
+                                             if String.isPrefix "data-" SYMBOL then
+                                                 Data (String.extract (SYMBOL, 5, NONE), attrv)
+                                             else
+                                                 let
+                                                     val sym = makeAttr SYMBOL
+                                                 in
+                                                     Normal ((CName sym, s (SYMBOLleft, SYMBOLright)),
+                                                             if (sym = "Href" orelse sym = "Src")
+                                                                andalso (case #1 attrv of
+                                                                             EPrim _ => true
+                                                                           | _ => false) then
+                                                                 let
+                                                                     val loc = s (attrvleft, attrvright)
+                                                                 in
+                                                                     (EApp ((EVar (["Basis"], "bless", Infer), loc),
+                                                                            attrv), loc)
+                                                                 end
+                                                             else
+                                                                 attrv)
+                                                 end)
                 
 attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))

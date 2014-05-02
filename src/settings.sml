@@ -309,6 +309,7 @@ val jsFuncsBase = basisM [("alert", "alert"),
 
                           ("checkUrl", "checkUrl"),
                           ("bless", "bless"),
+                          ("blessData", "blessData"),
 
                           ("eq_time", "eq"),
                           ("lt_time", "lt"),

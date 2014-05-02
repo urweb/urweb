@@ -387,6 +387,8 @@ uw_Basis_string uw_Basis_fieldValue(struct uw_context *, uw_Basis_postField);
 uw_Basis_string uw_Basis_remainingFields(struct uw_context *, uw_Basis_postField);
 uw_Basis_postField *uw_Basis_firstFormField(struct uw_context *, uw_Basis_string);
 
+uw_Basis_string uw_Basis_blessData(struct uw_context *, uw_Basis_string);
+
 extern const char uw_begin_xhtml[], uw_begin_html5[];
 
 #endif

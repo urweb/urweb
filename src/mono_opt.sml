@@ -118,6 +118,9 @@ fun unAs s =
     end
 
 fun checkUrl s = CharVector.all Char.isGraph s andalso Settings.checkUrl s
+val checkData = CharVector.all (fn ch => Char.isAlphaNum ch
+                                         orelse ch = #"_"
+                                         orelse ch = #"-")
 val checkAtom = CharVector.all (fn ch => Char.isAlphaNum ch
                                          orelse ch = #"+"
                                          orelse ch = #"-"
@@ -441,6 +444,13 @@ fun exp e =
 
       | ESignalBind ((ESignalReturn e1, loc), e2) =>
         optExp (EApp (e2, e1), loc)
+
+      | EFfiApp ("Basis", "blessData", [((se as EPrim (Prim.String s), loc), _)]) =>
+        (if checkData s then
+             ()
+         else
+             ErrorMsg.errorAt loc ("Invalid HTML5 data-* attribute " ^ s);
+         se)
 
       | EFfiApp ("Basis", "bless", [((se as EPrim (Prim.String s), loc), _)]) =>
         (if checkUrl s then

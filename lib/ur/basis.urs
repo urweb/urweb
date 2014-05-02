@@ -796,11 +796,17 @@ val active : unit
 val script : unit
              -> tag [Code = transaction unit] head [] [] []
 
-val head : unit -> tag [] html head [] []
-val title : unit -> tag [] head [] [] []
-val link : unit -> tag [Id = id, Rel = string, Typ = string, Href = url, Media = string] head [] [] []
+(* Type for HTML5 "data-*" attributes. *)
+type data_attr
+val data_attr : string (* Key *) -> string (* Value *) -> data_attr
+(* This function will fail if the key doesn't meet HTML's lexical rules! *)
+val data_attrs : data_attr -> data_attr -> data_attr
 
-val body : unit -> tag [Onload = transaction unit, Onresize = transaction unit, Onunload = transaction unit, Onhashchange = transaction unit]
+val head : unit -> tag [Data = data_attr] html head [] []
+val title : unit -> tag [Data = data_attr] head [] [] []
+val link : unit -> tag [Data = data_attr, Id = id, Rel = string, Typ = string, Href = url, Media = string] head [] [] []
+
+val body : unit -> tag [Data = data_attr, Onload = transaction unit, Onresize = transaction unit, Onunload = transaction unit, Onhashchange = transaction unit]
                        html body [] []
 con bodyTag = fn (attrs :: {Type}) =>
                  ctx ::: {Unit} ->
@@ -811,7 +817,7 @@ con bodyTagStandalone = fn (attrs :: {Type}) =>
                            -> [[Body] ~ ctx] =>
                                  unit -> tag attrs ([Body] ++ ctx) [] [] []
 
-val br : bodyTagStandalone [Id = id]
+val br : bodyTagStandalone [Data = data_attr, Id = id]
 
 con focusEvents = [Onblur = transaction unit, Onfocus = transaction unit]
 
@@ -837,8 +843,8 @@ con scrollEvents = [Onscroll = transaction unit]
 con boxEvents = focusEvents ++ mouseEvents ++ keyEvents ++ resizeEvents ++ scrollEvents
 con tableEvents = focusEvents ++ mouseEvents ++ keyEvents
 
-con boxAttrs = [Id = id, Title = string] ++ boxEvents
-con tableAttrs = [Id = id, Title = string] ++ tableEvents
+con boxAttrs = [Data = data_attr, Id = id, Title = string] ++ boxEvents
+con tableAttrs = [Data = data_attr, Id = id, Title = string] ++ tableEvents
 
 val span : bodyTag boxAttrs
 val div : bodyTag boxAttrs
@@ -901,7 +907,7 @@ con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                   -> [[Form] ~ ctx] =>
                         nm :: Name -> unit
                         -> tag attrs ([Form] ++ ctx) inner [] [nm = ty]
-val hidden : formTag string [] [Id = string, Value = string]
+val hidden : formTag string [] [Data = data_attr, Id = string, Value = string]
 val textbox : formTag string [] ([Value = string, Size = int, Placeholder = string, Source = source string, Onchange = transaction unit,
                                   Ontext = transaction unit] ++ boxAttrs)
 val password : formTag string [] ([Value = string, Size = int, Placeholder = string] ++ boxAttrs)
@@ -935,12 +941,12 @@ val fieldValue : postField -> string
 val remainingFields : postField -> string
 
 con radio = [Body, Radio]
-val radio : formTag (option string) radio [Id = id]
+val radio : formTag (option string) radio [Data = data_attr, Id = id]
 val radioOption : unit -> tag ([Value = string, Checked = bool] ++ boxAttrs) radio [] [] []
 
 con select = [Select]
 val select : formTag string select ([Onchange = transaction unit] ++ boxAttrs)
-val option : unit -> tag [Value = string, Selected = bool] select [] [] []
+val option : unit -> tag [Data = data_attr, Value = string, Selected = bool] select [] [] []
 
 val submit : ctx ::: {Unit} -> use ::: {Type}
              -> [[Form] ~ ctx] =>
@@ -1006,15 +1012,16 @@ val tfoot : other ::: {Unit} -> [other ~ [Table]] => unit
 
 val dl : other ::: {Unit} -> [other ~ [Body,Dl]]
   => unit
-  -> tag [] ([Body] ++ other) ([Dl] ++ other) [] []
+  -> tag [Data = data_attr] ([Body] ++ other) ([Dl] ++ other) [] []
 
 val dt : other ::: {Unit} -> [other ~ [Body,Dl]]
   => unit
-  -> tag [] ([Dl] ++ other) ([Body] ++ other) [] []
+  -> tag [Data = data_attr] ([Dl] ++ other) ([Body] ++ other) [] []
 
 val dd : other ::: {Unit} -> [other ~ [Body,Dl]]
   => unit
-  -> tag [] ([Dl] ++ other) ([Body] ++ other) [] []
+  -> tag [Data = data_attr] ([Dl] ++ other) ([Body] ++ other) [] []
+
 
 (** Aborting *)
 

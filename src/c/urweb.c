@@ -4396,3 +4396,13 @@ uw_Basis_postField *uw_Basis_firstFormField(uw_context ctx, uw_Basis_string s) {
 
   return f;
 }
+
+uw_Basis_string uw_Basis_blessData(uw_context ctx, uw_Basis_string s) {
+  char *p = s;
+
+  for (; *p; ++p)
+    if (!isalnum(*p) && *p != '-' && *p != '_')
+      uw_error(ctx, FATAL, "Illegal HTML5 data-* attribute: %s", s);
+
+  return s;
+}

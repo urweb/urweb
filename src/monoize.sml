@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2013, Adam Chlipala
+(* Copyright (c) 2008-2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -235,6 +235,7 @@ fun monoType env =
                   | L.CFfi ("Basis", "requestHeader") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "responseHeader") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "envVar") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "data_attr") => (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CFfi ("Basis", "serialized"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
@@ -3117,6 +3118,29 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.EFfiApp ("Basis", "data_attr", [(s1, _), (s2, _)]) =>
+            let
+                val (s1, fm) = monoExp (env, st, fm) s1
+                val (s2, fm) = monoExp (env, st, fm) s2
+            in
+                ((L'.EStrcat ((L'.EPrim (Prim.String "data-"), loc),
+                              (L'.EStrcat ((L'.EFfiApp ("Basis", "blessData", [(s1, (L'.TFfi ("Basis", "string"), loc))]), loc),
+                                           (L'.EStrcat ((L'.EPrim (Prim.String "=\""), loc),
+                                                        (L'.EStrcat ((L'.EFfiApp ("Basis", "attrifyString", [(s2, (L'.TFfi ("Basis", "string"), loc))]), loc),
+                                                                     (L'.EPrim (Prim.String "\""), loc)), loc)),
+                                            loc)), loc)), loc),
+                 fm)
+            end
+
+          | L.EFfiApp ("Basis", "data_attrs", [(s1, _), (s2, _)]) =>
+            let
+                val (s1, fm) = monoExp (env, st, fm) s1
+                val (s2, fm) = monoExp (env, st, fm) s2
+            in
+                ((L'.EStrcat (s1, (L'.EStrcat ((L'.EPrim (Prim.String " "), loc), s2), loc)), loc),
+                 fm)
+            end
+
           | L.EFfiApp ("Basis", "css_url", [(s, _)]) =>
             let
                 val (s, fm) = monoExp (env, st, fm) s
@@ -3317,6 +3341,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                         val (s, fm) = foldl (fn (("Action", _, _), acc) => acc
                                               | (("Source", _, _), acc) => acc
+                                              | (("Data", e, _), (s, fm)) =>
+                                                ((L'.EStrcat (s,
+                                                              (L'.EStrcat (
+                                                               (L'.EPrim (Prim.String " "), loc),
+                                                               e), loc)), loc),
+                                                 fm)
                                               | ((x, e, t), (s, fm)) =>
                                                 case t of
                                                     (L'.TFfi ("Basis", "bool"), _) =>

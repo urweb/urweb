@@ -2052,7 +2052,9 @@ $$\begin{array}{l}
   \hspace{.1in} \Rightarrow \mt{xml} \; \mt{ctx} \; \mt{use_1} \; \mt{bind} \to \mt{xml} \; \mt{ctx} \; (\mt{use_1} \rc \mt{use_2}) \; \mt{bind}
 \end{array}$$
 
-We will not list here the different HTML tags and related functions from the standard library.  They should be easy enough to understand from the code in \texttt{basis.urs}.  The set of tags in the library is not yet claimed to be complete for HTML standards.  Also note that there is currently no way for the programmer to add his own tags.  It \emph{is} possible to add new tags directly to \texttt{basis.urs}, but this should only be done as a prelude to suggesting a patch to the main distribution.
+We will not list here the different HTML tags and related functions from the standard library.  They should be easy enough to understand from the code in \texttt{basis.urs}.  The set of tags in the library is not yet claimed to be complete for HTML standards.  Also note that there is currently no way for the programmer to add his own tags, without using the foreign function interface (Section \ref{ffi}).
+
+Some tags support HTML5 \texttt{data-*} attributes, which in Ur/Web are encoded as a single attribute $\mt{Data}$ with type $\mt{data\_attrs}$ encoding one or more attributes of this kind.  See \texttt{basis.urs} for details.  The usual HTML5 syntax for these attributes is supported by the Ur/Web parser as syntactic sugar.
 
 One last useful function is for aborting any page generation, returning some XML as an error message.  This function takes the place of some uses of a general exception mechanism.
 $$\begin{array}{l}
@@ -2396,7 +2398,7 @@ The currently supported task kinds are:
 \end{itemize}
 
 
-\section{The Foreign Function Interface}
+\section{\label{ffi}The Foreign Function Interface}
 
 It is possible to call your own C and JavaScript code from Ur/Web applications, via the foreign function interface (FFI).  The starting point for a new binding is a \texttt{.urs} signature file that presents your external library as a single Ur/Web module (with no nested modules).  Compilation conventions map the types and values that you use into C and/or JavaScript types and values.
 
