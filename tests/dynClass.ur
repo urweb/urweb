@@ -15,7 +15,7 @@ fun main () : transaction page =
                                       STYLE "width: 500px"
                                   else
                                       STYLE "width: 200px")}
-                onclick={b <- get toggle; set toggle (not b)}/>
+                onclick={fn _ => b <- get toggle; set toggle (not b)}/>
 
         <button dynStyle={b <- signal toggle;
                           return (if b then

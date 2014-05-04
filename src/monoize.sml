@@ -3230,7 +3230,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         (L.ECApp (
                          (L.ECApp (
 			  (L.EFfi ("Basis", "tag"),
-                           _), (L.CRecord (_, attrsGiven), _)), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                           _), (L.CRecord (_, attrsGiven), _)), _), _), _), ctxOuter), _), _), _), _), _), _), _), _), _), _), _),
 		  class), _),
 	         dynClass), _),
                 style), _),
@@ -3581,6 +3581,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                       (L'.EPrim (Prim.String ")"), loc)), loc)), loc)
                         end
 
+                fun inTag tag' = case ctxOuter of
+				     (L.CRecord (_, ctx), _) =>
+				     List.exists (fn ((L.CName tag'', _), _) => tag'' = tag'
+                                                   | _ => false) ctx
+                                  | _ => false
+
+                fun pnode () = if inTag "Tr" then
+			           "tr"
+                               else if inTag "Table" then
+			           "table"
+                               else
+			           "span"
+
 		val baseAll as (base, fm) =
                     case tag of
 			"body" => let
@@ -3603,24 +3616,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                       | "dyn" =>
 			let
-                            fun inTag tag = case targs of
-						(L.CRecord (_, ctx), _) :: _ =>
-						List.exists (fn ((L.CName tag', _), _) => tag' = tag
-                                                              | _ => false) ctx
-                                              | _ => false
-
-                            val tag = if inTag "Tr" then
-					  "tr"
-                                      else if inTag "Table" then
-					  "table"
-                                      else
-					  "span"
 			in
                             case attrs of
 				[("Signal", e, _)] =>
 				((L'.EStrcat
                                       ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">dyn(\""
-                                                               ^ tag ^ "\", execD(")), loc),
+                                                               ^ pnode () ^ "\", execD(")), loc),
                                        (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
                                                     (L'.EPrim (Prim.String ("))</script>")), loc)), loc)), loc),
 				 fm)
@@ -3834,7 +3835,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 		    L'.ENone _ =>
 		    (case #1 dynStyle of
 		         L'.ENone _ => baseAll
-		       | L'.ESome (_, ds) => (strcat [str "<script type=\"text/javascript\">dynClass(execD(",
+		       | L'.ESome (_, ds) => (strcat [str "<script type=\"text/javascript\">dynClass(\"",
+                                                      str (pnode ()),
+                                                      str "\",execD(",
 				                      (L'.EJavaScript (L'.Script, base), loc),
 				                      str "),null,execD(",
 				                      (L'.EJavaScript (L'.Script, ds), loc),
@@ -3852,7 +3855,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                   | _ => (E.errorAt loc "Absence/presence of 'dynStyle' unknown";
                                           str "null")
                     in
-                        (strcat [str "<script type=\"text/javascript\">dynClass(execD(",
+                        (strcat [str "<script type=\"text/javascript\">dynClass(\"",
+                                 str (pnode ()),
+                                 str "\",execD(",
 				 (L'.EJavaScript (L'.Script, base), loc),
 				 str "),execD(",
 				 (L'.EJavaScript (L'.Script, dc), loc),
