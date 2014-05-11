@@ -873,6 +873,42 @@ val hr : bodyTag boxAttrs
 
 val pre : bodyTag boxAttrs
 
+(** sections **)
+val section : bodyTag boxAttrs
+val article : bodyTag boxAttrs
+val nav : bodyTag boxAttrs
+val aside : bodyTag boxAttrs
+val footer : bodyTag boxAttrs
+val header : bodyTag boxAttrs
+val main : bodyTag boxAttrs
+
+(** forms **)
+val meter : bodyTag boxAttrs
+val progress : bodyTag boxAttrs
+val output : bodyTag boxAttrs
+val keygen : bodyTag boxAttrs
+val datalist : bodyTag boxAttrs
+
+(** Interactive Elements **)
+val details : bodyTag boxAttrs
+val dialog : bodyTag boxAttrs
+val menuitem : bodyTag boxAttrs
+
+(** Grouping Content **)
+val figure : bodyTag boxAttrs
+val figcaption : bodyTag boxAttrs
+
+(** Text Level Semantics **)
+val data : bodyTag boxAttrs
+val mark : bodyTag boxAttrs
+val rp  : bodyTag boxAttrs
+val rt  : bodyTag boxAttrs
+val ruby : bodyTag boxAttrs
+val summary : bodyTag boxAttrs
+val time  : bodyTag boxAttrs
+val wbr : bodyTag boxAttrs
+val bdi : bodyTag boxAttrs
+
 val a : bodyTag ([Link = transaction page, Href = url, Target = string, Rel = string] ++ boxAttrs)
 
 val img : bodyTag ([Alt = string, Src = url, Width = int, Height = int,
