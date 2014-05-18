@@ -1256,17 +1256,34 @@ void uw_end_initializing(uw_context ctx) {
   ctx->amInitializing = 0;
 }
 
+static void align_heap(uw_context ctx) {
+  size_t posn = ctx->heap.front - ctx->heap.start;
+
+  if (posn % 4 != 0) {
+    size_t bump = 4 - posn % 4;
+    uw_check_heap(ctx, bump);
+    ctx->heap.front += bump;
+  }
+}
+
 void *uw_malloc(uw_context ctx, size_t len) {
+  // On some architectures, it's important that all word-sized memory accesses
+  // be to word-aligned addresses, so we'll do a little bit of extra work here
+  // in anticipation of a possible word-aligned access to the address we'll
+  // return.
+
   void *result;
 
   if (ctx->amInitializing) {
-    result = malloc(len);
+    int error = posix_memalign(&result, 4, len);
 
-    if (result)
+    if (!error)
       return result;
     else
-      uw_error(ctx, FATAL, "uw_malloc: malloc() returns 0");
+      uw_error(ctx, FATAL, "uw_malloc: posix_memalign() returns %d", error);
   } else {
+    align_heap(ctx);
+
     uw_check_heap(ctx, len);
 
     result = ctx->heap.front;
@@ -1276,6 +1293,8 @@ void *uw_malloc(uw_context ctx, size_t len) {
 }
 
 void uw_begin_region(uw_context ctx) {
+  align_heap(ctx);
+
   regions *r = (regions *) ctx->heap.front;
 
   uw_check_heap(ctx, sizeof(regions));
