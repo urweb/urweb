@@ -4001,7 +4001,8 @@ uw_Basis_int uw_Basis_toSeconds(uw_context ctx, uw_Basis_time tm) {
 
 uw_Basis_time uw_Basis_fromDatetime(uw_context ctx, uw_Basis_int year, uw_Basis_int month, uw_Basis_int day, uw_Basis_int hour, uw_Basis_int minute, uw_Basis_int second) {
   struct tm tm = { .tm_year = year - 1900, .tm_mon = month, .tm_mday = day,
-                   .tm_hour = hour, .tm_min = minute, .tm_sec = second };
+                   .tm_hour = hour, .tm_min = minute, .tm_sec = second,
+                   .tm_isdst = -1 };
   uw_Basis_time r = { timelocal(&tm) };
   return r;
 }
