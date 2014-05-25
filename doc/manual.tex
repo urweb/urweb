@@ -62,6 +62,8 @@ Some other packages must be installed for the above to work.  At a minimum, you 
 apt-get install mlton libssl-dev
 \end{verbatim}
 
+Note that, like the Ur/Web compiler, MLton is a whole-program optimizing compiler, so it frequently requires much more memory than old-fashioned compilers do.  Expect building Ur/Web with MLton to require not much less than a gigabyte of RAM.  If a \texttt{mlton} invocation ends suspiciously, the most likely explanation is that it has exhausted available memory.
+
 To build programs that access SQL databases, you also need one of these client libraries for supported backends.
 \begin{verbatim}
 apt-get install libpq-dev libmysqlclient-dev libsqlite3-dev
@@ -72,7 +74,7 @@ It is also possible to access the modules of the Ur/Web compiler interactively, 
 apt-get install smlnj libsmlnj-smlnj ml-yacc ml-lpt
 \end{verbatim}
 
-To begin an interactive session with the Ur compiler modules, run \texttt{make smlnj}, and then, from within an \texttt{sml} session, run \texttt{CM.make "src/urweb.cm";}.  The \texttt{Compiler} module is the main entry point.
+To begin an interactive session with the Ur compiler modules, run \texttt{make smlnj}, and then, from within an \texttt{sml} session, run \texttt{CM.make "src/urweb.cm";}.  The \texttt{Compiler} module is the main entry point, and you can find its signature in \texttt{src/compiler.sig}.
 
 To run an SQL-backed application with a backend besides SQLite, you will probably want to install one of these servers.
 
