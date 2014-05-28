@@ -125,7 +125,7 @@ and exp' =
 
   | EKAbs of string * exp
 
-  | ERecord of (con * exp) list
+  | ERecord of (con * exp) list * bool
   | EField of exp * con
   | EConcat of exp * exp
   | ECut of exp * con
@@ -146,6 +146,13 @@ and sgn = sgn' located
 and pat = pat' located
 and exp = exp' located
 and edecl = edecl' located
+
+datatype ffi_mode =
+         Effectful
+       | BenignEffectful
+       | ClientOnly
+       | ServerOnly
+       | JsFunc of string
 
 datatype decl' =
          DCon of string * kind option * con
@@ -169,6 +176,7 @@ datatype decl' =
        | DTask of exp * exp
        | DPolicy of exp
        | DOnError of string * string list * string
+       | DFfi of string * ffi_mode list * con
 
      and str' =
          StrConst of decl list

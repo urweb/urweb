@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2013, Adam Chlipala
+(* Copyright (c) 2008-2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -235,6 +235,7 @@ fun monoType env =
                   | L.CFfi ("Basis", "requestHeader") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "responseHeader") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "envVar") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "data_attr") => (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CFfi ("Basis", "serialized"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
@@ -2131,7 +2132,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                     strcatComma
                                                                         (map (fn (x', _) =>
                                                                                  sc ("T_" ^ x
-										     ^ ""
+										     ^ "."
 										     ^ Settings.mangleSql x'))
                                                                              xts)) grouped)
                                                ],
@@ -3117,6 +3118,29 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
+          | L.EFfiApp ("Basis", "data_attr", [(s1, _), (s2, _)]) =>
+            let
+                val (s1, fm) = monoExp (env, st, fm) s1
+                val (s2, fm) = monoExp (env, st, fm) s2
+            in
+                ((L'.EStrcat ((L'.EPrim (Prim.String "data-"), loc),
+                              (L'.EStrcat ((L'.EFfiApp ("Basis", "blessData", [(s1, (L'.TFfi ("Basis", "string"), loc))]), loc),
+                                           (L'.EStrcat ((L'.EPrim (Prim.String "=\""), loc),
+                                                        (L'.EStrcat ((L'.EFfiApp ("Basis", "attrifyString", [(s2, (L'.TFfi ("Basis", "string"), loc))]), loc),
+                                                                     (L'.EPrim (Prim.String "\""), loc)), loc)),
+                                            loc)), loc)), loc),
+                 fm)
+            end
+
+          | L.EFfiApp ("Basis", "data_attrs", [(s1, _), (s2, _)]) =>
+            let
+                val (s1, fm) = monoExp (env, st, fm) s1
+                val (s2, fm) = monoExp (env, st, fm) s2
+            in
+                ((L'.EStrcat (s1, (L'.EStrcat ((L'.EPrim (Prim.String " "), loc), s2), loc)), loc),
+                 fm)
+            end
+
           | L.EFfiApp ("Basis", "css_url", [(s, _)]) =>
             let
                 val (s, fm) = monoExp (env, st, fm) s
@@ -3206,7 +3230,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         (L.ECApp (
                          (L.ECApp (
 			  (L.EFfi ("Basis", "tag"),
-                           _), (L.CRecord (_, attrsGiven), _)), _), _), _), _), _), _), _), _), _), _), _), _), _), _), _),
+                           _), (L.CRecord (_, attrsGiven), _)), _), _), _), ctxOuter), _), _), _), _), _), _), _), _), _), _), _),
 		  class), _),
 	         dynClass), _),
                 style), _),
@@ -3317,6 +3341,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                         val (s, fm) = foldl (fn (("Action", _, _), acc) => acc
                                               | (("Source", _, _), acc) => acc
+                                              | (("Data", e, _), (s, fm)) =>
+                                                ((L'.EStrcat (s,
+                                                              (L'.EStrcat (
+                                                               (L'.EPrim (Prim.String " "), loc),
+                                                               e), loc)), loc),
+                                                 fm)
                                               | ((x, e, t), (s, fm)) =>
                                                 case t of
                                                     (L'.TFfi ("Basis", "bool"), _) =>
@@ -3551,6 +3581,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                       (L'.EPrim (Prim.String ")"), loc)), loc)), loc)
                         end
 
+                fun inTag tag' = case ctxOuter of
+				     (L.CRecord (_, ctx), _) =>
+				     List.exists (fn ((L.CName tag'', _), _) => tag'' = tag'
+                                                   | _ => false) ctx
+                                  | _ => false
+
+                fun pnode () = if inTag "Tr" then
+			           "tr"
+                               else if inTag "Table" then
+			           "table"
+                               else
+			           "span"
+
 		val baseAll as (base, fm) =
                     case tag of
 			"body" => let
@@ -3573,24 +3616,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                       | "dyn" =>
 			let
-                            fun inTag tag = case targs of
-						(L.CRecord (_, ctx), _) :: _ =>
-						List.exists (fn ((L.CName tag', _), _) => tag' = tag
-                                                              | _ => false) ctx
-                                              | _ => false
-
-                            val tag = if inTag "Tr" then
-					  "tr"
-                                      else if inTag "Table" then
-					  "table"
-                                      else
-					  "span"
 			in
                             case attrs of
 				[("Signal", e, _)] =>
 				((L'.EStrcat
                                       ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">dyn(\""
-                                                               ^ tag ^ "\", execD(")), loc),
+                                                               ^ pnode () ^ "\", execD(")), loc),
                                        (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
                                                     (L'.EPrim (Prim.String ("))</script>")), loc)), loc)), loc),
 				 fm)
@@ -3804,7 +3835,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 		    L'.ENone _ =>
 		    (case #1 dynStyle of
 		         L'.ENone _ => baseAll
-		       | L'.ESome (_, ds) => (strcat [str "<script type=\"text/javascript\">dynClass(execD(",
+		       | L'.ESome (_, ds) => (strcat [str "<script type=\"text/javascript\">dynClass(\"",
+                                                      str (pnode ()),
+                                                      str "\",execD(",
 				                      (L'.EJavaScript (L'.Script, base), loc),
 				                      str "),null,execD(",
 				                      (L'.EJavaScript (L'.Script, ds), loc),
@@ -3822,7 +3855,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                   | _ => (E.errorAt loc "Absence/presence of 'dynStyle' unknown";
                                           str "null")
                     in
-                        (strcat [str "<script type=\"text/javascript\">dynClass(execD(",
+                        (strcat [str "<script type=\"text/javascript\">dynClass(\"",
+                                 str (pnode ()),
+                                 str "\",execD(",
 				 (L'.EJavaScript (L'.Script, base), loc),
 				 str "),execD(",
 				 (L'.EJavaScript (L'.Script, dc), loc),

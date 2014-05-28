@@ -1,0 +1,4 @@
+rewrite all DynList/*
+
+$/list
+dynList

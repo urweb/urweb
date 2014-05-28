@@ -2183,8 +2183,13 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 (e', (#1 (chaseUnifs t'), loc), enD gs2 @ gs1)
             end
 
-          | L.ERecord xes =>
+          | L.ERecord (xes, flex) =>
             let
+                val () = if flex then
+                             expError env (IllegalFlex eAll)
+                         else
+                             ()
+
                 val (xes', gs) = ListUtil.foldlMap (fn ((x, e), gs) =>
                                                        let
                                                            val (x', xk, gs1) = elabCon (env, denv) x
@@ -2994,6 +2999,7 @@ and sgiOfDecl (d, loc) =
       | L'.DTask _ => []
       | L'.DPolicy _ => []
       | L'.DOnError _ => []
+      | L'.DFfi (x, n, _, t) => [(L'.SgiVal (x, n, t), loc)]
 
 and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
     ((*prefaces "subSgn" [("sgn1", p_sgn env sgn1),
@@ -4292,6 +4298,20 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                           handle CUnify _ => ErrorMsg.error "onError handler has wrong type.");
                          ([(L'.DOnError (n, ms, s), loc)], (env, denv, gs))
                      end)
+
+              | L.DFfi (x, modes, t) =>
+                let
+                    val () = if Settings.getLessSafeFfi () then
+                                 ()
+                             else
+                                 ErrorMsg.errorAt loc "To enable 'ffi' declarations, the .urp directive 'lessSafeFfi' is mandatory."
+
+                    val (t', _, gs1) = elabCon (env, denv) t
+                    val t' = normClassConstraint env t'
+                    val (env', n) = E.pushENamed env x t'
+                in
+                    ([(L'.DFfi (x, n, modes, t'), loc)], (env', denv, enD gs1 @ gs))
+                end
 
         (*val tcs = List.filter (fn TypeClass _ => true | _ => false) (#3 (#2 r))*)
     in

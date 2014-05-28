@@ -29,4 +29,8 @@ signature JSCOMP = sig
 
     val process : Mono.file -> Mono.file
 
+    val explainEmbed : bool ref
+    (* Output verbose error messages about inability to embed server-side
+     * values in client-side code? *)
+
 end

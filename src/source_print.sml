@@ -277,14 +277,20 @@ fun p_exp' par (e, _) =
                                             space,
                                             string "!"])
 
-      | ERecord xes => box [string "{",
-                            p_list (fn (x, e) =>
-                                       box [p_name x,
-                                            space,
-                                            string "=",
-                                            space,
-                                            p_exp e]) xes,
-                            string "}"]
+      | ERecord (xes, flex) => box [string "{",
+                                    p_list (fn (x, e) =>
+                                               box [p_name x,
+                                                    space,
+                                                    string "=",
+                                                    space,
+                                                    p_exp e]) xes,
+                                    if flex then
+                                        box [string ",",
+                                             space,
+                                             string "..."]
+                                    else
+                                        box [],
+                                    string "}"]
       | EField (e, c) => box [p_exp' true e,
                               string ".",
                               p_con' true c]
@@ -668,6 +674,7 @@ fun p_decl ((d, _) : decl) =
                            space,
                            p_exp e1]
       | DOnError _ => string "ONERROR"
+      | DFfi _ => string "FFI"
 
 and p_str (str, _) =
     case str of

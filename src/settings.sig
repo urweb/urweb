@@ -78,18 +78,22 @@ signature SETTINGS = sig
 
     (* Which FFI functions should not have their calls removed or reordered, but cause no lasting effects? *)
     val setBenignEffectful : ffi list -> unit
+    val addBenignEffectful : ffi -> unit
     val isBenignEffectful : ffi -> bool
 
     (* Which FFI functions may only be run in clients? *)
     val setClientOnly : ffi list -> unit
+    val addClientOnly : ffi -> unit
     val isClientOnly : ffi -> bool
 
     (* Which FFI functions may only be run on servers? *)
     val setServerOnly : ffi list -> unit
+    val addServerOnly : ffi -> unit
     val isServerOnly : ffi -> bool
 
     (* Which FFI functions may be run in JavaScript?  (JavaScript function names included) *)
     val setJsFuncs : (ffi * string) list -> unit
+    val addJsFunc : ffi * string -> unit
     val jsFunc : ffi -> string option
     val allJsFuncs : unit -> (ffi * string) list
 
@@ -271,4 +275,7 @@ signature SETTINGS = sig
 
     val setIsHtml5 : bool -> unit
     val getIsHtml5 : unit -> bool
+
+    val setLessSafeFfi : bool -> unit
+    val getLessSafeFfi : unit -> bool
 end

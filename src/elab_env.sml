@@ -1681,5 +1681,6 @@ fun declBinds env (d, loc) =
       | DTask _ => env
       | DPolicy _ => env
       | DOnError _ => env
+      | DFfi (x, n, _, t) => pushENamedAs env x n t
 
 end

@@ -180,6 +180,7 @@ datatype exp_error =
      | Unresolvable of ErrorMsg.span * con
      | OutOfContext of ErrorMsg.span * (exp * con) option
      | IllegalRec of string * exp
+     | IllegalFlex of Source.exp
 
 val simplExp = U.Exp.mapB {kind = fn _ => fn k => k,
                            con = fn env => fn c => #1 (ElabOps.reduceCon env (c, ErrorMsg.dummySpan)),
@@ -251,6 +252,9 @@ fun expError env err =
         (ErrorMsg.errorAt (#2 e) "Illegal 'val rec' righthand side (must be a function abstraction)";
          eprefaces' [("Variable", PD.string x),
                      ("Expression", p_exp env e)])
+      | IllegalFlex e =>
+        (ErrorMsg.errorAt (#2 e) "Flex record syntax (\"...\") only allowed in patterns";
+         eprefaces' [("Expression", SourcePrint.p_exp e)])
 
 
 datatype decl_error =

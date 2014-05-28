@@ -14,13 +14,13 @@ void uw_global_init(void);
 void uw_app_init(uw_app*);
 
 void uw_client_connect(unsigned id, int pass, int sock,
-                       int (*send)(int sockfd, const void *buf, size_t len),
+                       int (*send)(int sockfd, const void *buf, ssize_t len),
                        int (*close)(int fd),
                        void *logger_data, uw_logger log_error);
 void uw_prune_clients(struct uw_context *);
 failure_kind uw_initialize(struct uw_context *);
 
-struct uw_context * uw_init(int id, void *logger_data, uw_logger log_debug);
+struct uw_context * uw_init(int id, uw_loggers *lg);
 void uw_close(struct uw_context *);
 int uw_set_app(struct uw_context *, uw_app*);
 uw_app *uw_get_app(struct uw_context *);
@@ -36,6 +36,8 @@ failure_kind uw_begin_init(struct uw_context *);
 void uw_set_on_success(char *);
 void uw_set_headers(struct uw_context *, char *(*get_header)(void *, const char *), void *get_header_data);
 void uw_set_env(struct uw_context *, char *(*get_env)(void *, const char *), void *get_env_data);
+uw_loggers* uw_get_loggers(struct uw_context *ctx);
+uw_loggers* uw_get_loggers(struct uw_context *ctx);
 failure_kind uw_begin(struct uw_context *, char *path);
 void uw_ensure_transaction(struct uw_context *);
 failure_kind uw_begin_onError(struct uw_context *, char *msg);
@@ -282,7 +284,7 @@ uw_Basis_int uw_Basis_datetimeSecond(struct uw_context *, uw_Basis_time);
 uw_Basis_int uw_Basis_datetimeDayOfWeek(struct uw_context *, uw_Basis_time);
 extern const uw_Basis_time uw_Basis_minTime;
 
-void uw_register_transactional(struct uw_context *, void *data, uw_callback commit, uw_callback rollback, uw_callback_with_retry free);
+int uw_register_transactional(struct uw_context *, void *data, uw_callback commit, uw_callback rollback, uw_callback_with_retry free);
 
 void uw_check_heap(struct uw_context *, size_t extra);
 char *uw_heap_front(struct uw_context *);
@@ -388,6 +390,8 @@ uw_Basis_string uw_Basis_fieldName(struct uw_context *, uw_Basis_postField);
 uw_Basis_string uw_Basis_fieldValue(struct uw_context *, uw_Basis_postField);
 uw_Basis_string uw_Basis_remainingFields(struct uw_context *, uw_Basis_postField);
 uw_Basis_postField *uw_Basis_firstFormField(struct uw_context *, uw_Basis_string);
+
+uw_Basis_string uw_Basis_blessData(struct uw_context *, uw_Basis_string);
 
 extern const char uw_begin_xhtml[], uw_begin_html5[];
 

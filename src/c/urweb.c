@@ -460,8 +460,7 @@ struct uw_context {
 
   void *client_data;
 
-  void *logger_data;
-  uw_logger log_debug;
+  uw_loggers *loggers;
 
   int isPost, hasPostBody;
   uw_Basis_postBody postBody;
@@ -487,7 +486,7 @@ size_t uw_page_max = SIZE_MAX;
 size_t uw_heap_max = SIZE_MAX;
 size_t uw_script_max = SIZE_MAX;
 
-uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
+uw_context uw_init(int id, uw_loggers *lg) {
   uw_context ctx = malloc(sizeof(struct uw_context));
 
   ctx->app = NULL;
@@ -546,8 +545,7 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
 
   ctx->client_data = uw_init_client_data();
 
-  ctx->logger_data = logger_data;
-  ctx->log_debug = log_debug;
+  ctx->loggers = lg;
 
   ctx->isPost = ctx->hasPostBody = 0;
 
@@ -599,6 +597,11 @@ void uw_set_db(uw_context ctx, void *db) {
 
 void *uw_get_db(uw_context ctx) {
   return ctx->db;
+}
+
+
+uw_loggers* uw_get_loggers(struct uw_context *ctx) {
+  return ctx->loggers;
 }
 
 void uw_free(uw_context ctx) {
@@ -1258,17 +1261,34 @@ void uw_end_initializing(uw_context ctx) {
   ctx->amInitializing = 0;
 }
 
+static void align_heap(uw_context ctx) {
+  size_t posn = ctx->heap.front - ctx->heap.start;
+
+  if (posn % 4 != 0) {
+    size_t bump = 4 - posn % 4;
+    uw_check_heap(ctx, bump);
+    ctx->heap.front += bump;
+  }
+}
+
 void *uw_malloc(uw_context ctx, size_t len) {
+  // On some architectures, it's important that all word-sized memory accesses
+  // be to word-aligned addresses, so we'll do a little bit of extra work here
+  // in anticipation of a possible word-aligned access to the address we'll
+  // return.
+
   void *result;
 
   if (ctx->amInitializing) {
-    result = malloc(len);
+    int error = posix_memalign(&result, 4, len);
 
-    if (result)
+    if (!error)
       return result;
     else
-      uw_error(ctx, FATAL, "uw_malloc: malloc() returns 0");
+      uw_error(ctx, FATAL, "uw_malloc: posix_memalign() returns %d", error);
   } else {
+    align_heap(ctx);
+
     uw_check_heap(ctx, len);
 
     result = ctx->heap.front;
@@ -1278,6 +1298,8 @@ void *uw_malloc(uw_context ctx, size_t len) {
 }
 
 void uw_begin_region(uw_context ctx) {
+  align_heap(ctx);
+
   regions *r = (regions *) ctx->heap.front;
 
   uw_check_heap(ctx, sizeof(regions));
@@ -1587,6 +1609,9 @@ char *uw_Basis_jsifyChannel(uw_context ctx, uw_Basis_channel chn) {
 uw_Basis_source uw_Basis_new_client_source(uw_context ctx, uw_Basis_string s) {
   int len;
   size_t s_len = strlen(s);
+
+  if(ctx->id < 0)
+    uw_error(ctx, FATAL, "Attempt to create client source using inappropriate context");
 
   uw_check_script(ctx, 15 + 2 * INTS_MAX + s_len);
   sprintf(ctx->script.front, "s%d_%llu=sc(exec(%n", ctx->id, ctx->source_count, &len);
@@ -3316,31 +3341,57 @@ int uw_commit(uw_context ctx) {
         }
       }
 
-  for (i = ctx->used_transactionals-1; i >= 0; --i)
-    if (ctx->transactionals[i].rollback == NULL)
-      if (ctx->transactionals[i].commit) {
-        ctx->transactionals[i].commit(ctx->transactionals[i].data);
-        if (uw_has_error(ctx)) {
-          uw_rollback(ctx, 0);
-          return 0;
-        }
-      }
-
   if (ctx->transaction_started) {
     int code = ctx->app->db_commit(ctx);
 
     if (code) {
-      if (code == -1)
+      if (ctx->client)
+        release_client(ctx->client);
+
+      if (code == -1) {
+        // This case is for a serialization failure, which is not really an "error."
+        // The transaction will restart, so we should rollback any transactionals
+        // that triggered above.
+
+        for (i = ctx->used_transactionals-1; i >= 0; --i)
+          if (ctx->transactionals[i].rollback != NULL)
+            ctx->transactionals[i].rollback(ctx->transactionals[i].data);
+
+        for (i = ctx->used_transactionals-1; i >= 0; --i)
+          if (ctx->transactionals[i].free)
+            ctx->transactionals[i].free(ctx->transactionals[i].data, 1);
+
 	return 1;
+      }
 
       for (i = ctx->used_transactionals-1; i >= 0; --i)
-	if (ctx->transactionals[i].free)
-	  ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
+        if (ctx->transactionals[i].free)
+          ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
 
       uw_set_error_message(ctx, "Error running SQL COMMIT");
       return 0;
     }
   }
+
+  for (i = ctx->used_transactionals-1; i >= 0; --i)
+    if (ctx->transactionals[i].rollback == NULL)
+      if (ctx->transactionals[i].commit) {
+        ctx->transactionals[i].commit(ctx->transactionals[i].data);
+        if (uw_has_error(ctx)) {
+           if (ctx->client)
+             release_client(ctx->client);
+
+           for (i = ctx->used_transactionals-1; i >= 0; --i)
+             if (ctx->transactionals[i].rollback != NULL)
+               ctx->transactionals[i].rollback(ctx->transactionals[i].data);
+
+           for (i = ctx->used_transactionals-1; i >= 0; --i)
+             if (ctx->transactionals[i].free)
+               ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
+
+          return 0;
+        }
+      }
 
   for (i = 0; i < ctx->used_deltas; ++i) {
     delta *d = &ctx->deltas[i];
@@ -3455,11 +3506,12 @@ int uw_commit(uw_context ctx) {
 
 size_t uw_transactionals_max = SIZE_MAX;
 
-void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, uw_callback rollback,
+int uw_register_transactional(uw_context ctx, void *data, uw_callback commit, uw_callback rollback,
                                uw_callback_with_retry free) {
   if (ctx->used_transactionals >= ctx->n_transactionals) {
     if (ctx->used_transactionals+1 > uw_transactionals_max)
-      uw_error(ctx, FATAL, "Exceeded limit on number of transactionals");
+      // Exceeded limit on number of transactionals.
+      return -1;
     ctx->transactionals = realloc(ctx->transactionals, sizeof(transactional) * (ctx->used_transactionals+1));
     ++ctx->n_transactionals;
   }
@@ -3468,6 +3520,8 @@ void uw_register_transactional(uw_context ctx, void *data, uw_callback commit, u
   ctx->transactionals[ctx->used_transactionals].commit = commit;
   ctx->transactionals[ctx->used_transactionals].rollback = rollback;
   ctx->transactionals[ctx->used_transactionals++].free = free;
+
+  return 0;
 }
 
 
@@ -3965,7 +4019,8 @@ uw_Basis_int uw_Basis_toSeconds(uw_context ctx, uw_Basis_time tm) {
 
 uw_Basis_time uw_Basis_fromDatetime(uw_context ctx, uw_Basis_int year, uw_Basis_int month, uw_Basis_int day, uw_Basis_int hour, uw_Basis_int minute, uw_Basis_int second) {
   struct tm tm = { .tm_year = year - 1900, .tm_mon = month, .tm_mday = day,
-                   .tm_hour = hour, .tm_min = minute, .tm_sec = second };
+                   .tm_hour = hour, .tm_min = minute, .tm_sec = second,
+                   .tm_isdst = -1 };
   uw_Basis_time r = { timelocal(&tm) };
   return r;
 }
@@ -4136,8 +4191,8 @@ uw_Basis_int uw_Basis_naughtyDebug(uw_context ctx, uw_Basis_string s) {
 }
 
 uw_Basis_unit uw_Basis_debug(uw_context ctx, uw_Basis_string s) {
-  if (ctx->log_debug)
-    ctx->log_debug(ctx->logger_data, "%s\n", s);
+  if (ctx->loggers->log_debug)
+    ctx->loggers->log_debug(ctx->loggers->logger_data, "%s\n", s);
   else
     fprintf(stderr, "%s\n", s);
   return uw_unit_v;
@@ -4378,4 +4433,14 @@ uw_Basis_postField *uw_Basis_firstFormField(uw_context ctx, uw_Basis_string s) {
   f->remaining = s+1;
 
   return f;
+}
+
+uw_Basis_string uw_Basis_blessData(uw_context ctx, uw_Basis_string s) {
+  char *p = s;
+
+  for (; *p; ++p)
+    if (!isalnum(*p) && *p != '-' && *p != '_')
+      uw_error(ctx, FATAL, "Illegal HTML5 data-* attribute: %s", s);
+
+  return s;
 }

@@ -62,6 +62,8 @@ Some other packages must be installed for the above to work.  At a minimum, you 
 apt-get install mlton libssl-dev
 \end{verbatim}
 
+Note that, like the Ur/Web compiler, MLton is a whole-program optimizing compiler, so it frequently requires much more memory than old-fashioned compilers do.  Expect building Ur/Web with MLton to require not much less than a gigabyte of RAM.  If a \texttt{mlton} invocation ends suspiciously, the most likely explanation is that it has exhausted available memory.
+
 To build programs that access SQL databases, you also need one of these client libraries for supported backends.
 \begin{verbatim}
 apt-get install libpq-dev libmysqlclient-dev libsqlite3-dev
@@ -72,7 +74,7 @@ It is also possible to access the modules of the Ur/Web compiler interactively, 
 apt-get install smlnj libsmlnj-smlnj ml-yacc ml-lpt
 \end{verbatim}
 
-To begin an interactive session with the Ur compiler modules, run \texttt{make smlnj}, and then, from within an \texttt{sml} session, run \texttt{CM.make "src/urweb.cm";}.  The \texttt{Compiler} module is the main entry point.
+To begin an interactive session with the Ur compiler modules, run \texttt{make smlnj}, and then, from within an \texttt{sml} session, run \texttt{CM.make "src/urweb.cm";}.  The \texttt{Compiler} module is the main entry point, and you can find its signature in \texttt{src/compiler.sig}.
 
 To run an SQL-backed application with a backend besides SQLite, you will probably want to install one of these servers.
 
@@ -265,6 +267,8 @@ sqlite3 path/to/database/file <app.sql
   \end{itemize}
 
 \item \texttt{-dumpSource}: When compilation fails, output to stderr the complete source code of the last intermediate program before the compilation phase that signaled the error.  (Warning: these outputs can be very long and aren't especially optimized for readability!)
+
+\item \texttt{-explainEmbed}: Trigger more verbose error messages about inability to embed server-side values in client-side code.
 
 \item \texttt{-limit class num}: Equivalent to the \texttt{limit} directive from \texttt{.urp} files
 
@@ -1440,6 +1444,8 @@ $$\begin{array}{l}
 
 The Ur/Web compiler provides syntactic sugar for monads, similar to Haskell's \cd{do} notation.  An expression $x \leftarrow e_1; e_2$ is desugared to $\mt{bind} \; e_1 \; (\lambda x \Rightarrow e_2)$, and an expression $e_1; e_2$ is desugared to $\mt{bind} \; e_1 \; (\lambda () \Rightarrow e_2)$.  Note a difference from Haskell: as the $e_1; e_2$ case desugaring involves a function with $()$ as its formal argument, the type of $e_1$ must be of the form $m \; \{\}$, rather than some arbitrary $m \; t$.
 
+The syntactic sugar also allows $p \leftarrow e_1; e_2$ for $p$ a pattern.  The pattern should be guaranteed to match any value of the corresponding type, or there will be a compile-time error.
+
 \subsection{Transactions}
 
 Ur is a pure language; we use Haskell's trick to support controlled side effects.  The standard library defines a monad $\mt{transaction}$, meant to stand for actions that may be undone cleanly.  By design, no other kinds of actions are supported.
@@ -2050,7 +2056,9 @@ $$\begin{array}{l}
   \hspace{.1in} \Rightarrow \mt{xml} \; \mt{ctx} \; \mt{use_1} \; \mt{bind} \to \mt{xml} \; \mt{ctx} \; (\mt{use_1} \rc \mt{use_2}) \; \mt{bind}
 \end{array}$$
 
-We will not list here the different HTML tags and related functions from the standard library.  They should be easy enough to understand from the code in \texttt{basis.urs}.  The set of tags in the library is not yet claimed to be complete for HTML standards.  Also note that there is currently no way for the programmer to add his own tags.  It \emph{is} possible to add new tags directly to \texttt{basis.urs}, but this should only be done as a prelude to suggesting a patch to the main distribution.
+We will not list here the different HTML tags and related functions from the standard library.  They should be easy enough to understand from the code in \texttt{basis.urs}.  The set of tags in the library is not yet claimed to be complete for HTML standards.  Also note that there is currently no way for the programmer to add his own tags, without using the foreign function interface (Section \ref{ffi}).
+
+Some tags support HTML5 \texttt{data-*} attributes, which in Ur/Web are encoded as a single attribute $\mt{Data}$ with type $\mt{data\_attrs}$ encoding one or more attributes of this kind.  See \texttt{basis.urs} for details.  The usual HTML5 syntax for these attributes is supported by the Ur/Web parser as syntactic sugar.
 
 One last useful function is for aborting any page generation, returning some XML as an error message.  This function takes the place of some uses of a general exception mechanism.
 $$\begin{array}{l}
@@ -2394,7 +2402,7 @@ The currently supported task kinds are:
 \end{itemize}
 
 
-\section{The Foreign Function Interface}
+\section{\label{ffi}The Foreign Function Interface}
 
 It is possible to call your own C and JavaScript code from Ur/Web applications, via the foreign function interface (FFI).  The starting point for a new binding is a \texttt{.urs} signature file that presents your external library as a single Ur/Web module (with no nested modules).  Compilation conventions map the types and values that you use into C and/or JavaScript types and values.
 
@@ -2457,12 +2465,12 @@ void *uw_malloc(uw_context, size_t);
   \item \begin{verbatim}
 typedef void (*uw_callback)(void *);
 typedef void (*uw_callback_with_retry)(void *, int will_retry);
-void uw_register_transactional(uw_context, void *data, uw_callback commit,
-                               uw_callback rollback, uw_callback_with_retry free);
+int uw_register_transactional(uw_context, void *data, uw_callback commit,
+                              uw_callback rollback, uw_callback_with_retry free);
   \end{verbatim}
-  All side effects in Ur/Web programs need to be compatible with transactions, such that any set of actions can be undone at any time.  Thus, you should not perform actions with non-local side effects directly; instead, register handlers to be called when the current transaction is committed or rolled back.  The arguments here give an arbitary piece of data to be passed to callbacks, a function to call on commit, a function to call on rollback, and a function to call afterward in either case to clean up any allocated resources.  A rollback handler may be called after the associated commit handler has already been called, if some later part of the commit process fails.  A free handler is told whether the runtime system expects to retry the current page request after rollback finishes.
+  All side effects in Ur/Web programs need to be compatible with transactions, such that any set of actions can be undone at any time.  Thus, you should not perform actions with non-local side effects directly; instead, register handlers to be called when the current transaction is committed or rolled back.  The arguments here give an arbitary piece of data to be passed to callbacks, a function to call on commit, a function to call on rollback, and a function to call afterward in either case to clean up any allocated resources.  A rollback handler may be called after the associated commit handler has already been called, if some later part of the commit process fails.  A free handler is told whether the runtime system expects to retry the current page request after rollback finishes.  The return value of \texttt{uw\_register\_transactional()} is 0 on success and nonzero on failure (where failure currently only happens when exceeding configured limits on number of transactionals).
 
-  Any of the callbacks may be \texttt{NULL}.  To accommodate some stubbornly non-transactional real-world actions like sending an e-mail message, Ur/Web treats \texttt{NULL} \texttt{rollback} callbacks specially.  When a transaction commits, all \texttt{commit} actions that have non-\texttt{NULL} rollback actions are tried before any \texttt{commit} actions that have \texttt{NULL} rollback actions.  Thus, if a single execution uses only one non-transactional action, and if that action never fails partway through its execution while still causing an observable side effect, then Ur/Web can maintain the transactional abstraction.
+  Any of the callbacks may be \texttt{NULL}.  To accommodate some stubbornly non-transactional real-world actions like sending an e-mail message, Ur/Web treats \texttt{NULL} \texttt{rollback} callbacks specially.  When a transaction commits, all \texttt{commit} actions that have non-\texttt{NULL} rollback actions are tried before any \texttt{commit} actions that have \texttt{NULL} rollback actions.  Furthermore, an SQL \texttt{COMMIT} is also attempted in between the two phases, so the nicely transactional actions have a chance to influence whether data are committed to the database, while \texttt{NULL}-rollback actions only get run in the first place after committing data.  The reason for all this is that it is \emph{expected} that concurrency interactions will cause database commits to fail in benign ways that call for transaction restart.  A truly non-undoable action should only be run after we are sure the database transaction will commit.
 
   When a request handler ends with multiple pending transactional actions, their handlers are run in a first-in-last-out stack-like order, wherever the order would otherwise be ambiguous.
 
@@ -2486,12 +2494,12 @@ In contrast to C FFI code, JavaScript FFI functions take no extra context argume
 
 \begin{itemize}
 \item Integers, floats, strings, characters, and booleans are represented in the usual JavaScript way.
-\item Ur functions are represented in an unspecified way.  This means that you should not rely on any details of function representation.  Named FFI functions are represented as JavaScript functions with as many arguments as their Ur types specify.  To call a non-FFI function \texttt{f} on argument \texttt{x}, run \texttt{execF(f, x)}.  To lift a normal JavaScript function \cd{f} into an Ur/Web JavaScript function, run \cd{flift(f)}.
+\item Ur functions are represented in an unspecified way.  This means that you should not rely on any details of function representation.  Named FFI functions are represented as JavaScript functions with as many arguments as their Ur types specify.  To call a non-FFI function \texttt{f} on argument \texttt{x}, run \texttt{execF(f, x)}.  A normal JavaScript function may also be used in a position where the Ur/Web runtime system expects an Ur/Web function.
 \item An Ur record is represented with a JavaScript record, where Ur field name \texttt{N} translates to JavaScript field name \texttt{\_N}.  An exception to this rule is that the empty record is encoded as \texttt{null}.
 \item \texttt{option}-like types receive special handling similar to their handling in C.  The ``\texttt{None}'' constructor is \texttt{null}, and a use of the ``\texttt{Some}'' constructor on a value \texttt{v} is either \texttt{v}, if the underlying type doesn't need to use \texttt{null}; or \texttt{\{v:v\}} otherwise.
 \item Any other datatypes represent a non-value-carrying constructor \texttt{C} as \texttt{"C"} and an application of a constructor \texttt{C} to value \texttt{v} as \texttt{\{n:"C", v:v\}}.  This rule only applies to datatypes defined in FFI module signatures; the compiler is free to optimize the representations of other, non-\texttt{option}-like datatypes in arbitrary ways.
 \item As in the C FFI, all abstract types of program syntax are implemented with strings in JavaScript.
-\item A value of Ur type \texttt{transaction t} is represented in the same way as for \texttt{unit -> t}.
+\item A value of Ur type \texttt{transaction t} is represented in the same way as for \texttt{unit -> t}.  (Note that FFI functions skip this extra level of function encoding, which only applies to functions defined in Ur/Web.)
 \end{itemize}
 
 It is possible to write JavaScript FFI code that interacts with the functional-reactive structure of a document.  Here is a quick summary of some of the simpler functions to use; descriptions of fancier stuff may be added later on request (and such stuff should be considered ``undocumented features'' until then).
@@ -2523,6 +2531,24 @@ It is possible to write JavaScript FFI code that interacts with the functional-r
 FFI modules may introduce new tags as values with $\mt{Basis.tag}$ types.  See \texttt{basis.urs} for examples of how tags are declared.  The identifier of a tag value is used as its rendering in HTML.  The Ur/Web syntax sugar for XML literals desugars each use of a tag into a reference to an identifier with the same name.  There is no need to provide implementations (i.e., in C or JavaScript code) for such identifiers.
 
 The onus is on the coder of a new tag's interface to think about consequences for code injection attacks, messing with the DOM in ways that may break Ur/Web reactive programming, etc.
+
+\subsection{The Less Safe FFI}
+
+An alternative interface is provided for declaring FFI functions inline within normal Ur/Web modules.  This facility must be opted into with the \texttt{lessSafeFfi} \texttt{.urp} directive, since it breaks a crucial property, allowing code in a \texttt{.ur} file to break basic invariants of the Ur/Web type system.  Without this option, one only needs to audit \texttt{.urp} files to be sure an application obeys the type-system rules.  The alternative interface may be more convenient for such purposes as declaring an FFI function typed in terms of some type local to a module.
+
+When the less safe mode is enabled, declarations like this one are accepted, at the top level of a \texttt{.ur} file:
+\begin{verbatim}
+  ffi foo : int -> int
+\end{verbatim}
+
+Now \texttt{foo} is available as a normal function.  If called in server-side code, and if the above declaration appeared in \texttt{bar.ur}, the C function will be linked as \texttt{uw\_Bar\_foo()}.  It is also possible to declare an FFI function to be implemented in JavaScript, using a general facility for including modifiers in an FFI declaration.  The modifiers appear before the colon, separated by spaces.  Here are the available ones, which have the same semantics as corresponding \texttt{.urp} directives.
+\begin{itemize}
+\item \texttt{effectful}
+\item \texttt{benignEffectful}
+\item \texttt{clientOnly}
+\item \texttt{serverOnly}
+\item \texttt{jsFunc "putJsFuncNameHere"}
+\end{itemize}
 
 
 \section{Compiler Phases}

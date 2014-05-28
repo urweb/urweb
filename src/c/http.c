@@ -70,9 +70,11 @@ static void log_debug(void *data, const char *fmt, ...) {
   }
 }
 
+static uw_loggers ls = {NULL, log_error, log_debug};
+
 static void *worker(void *data) {
   int me = *(int *)data;
-  uw_context ctx = uw_request_new_context(me, &uw_application, NULL, log_error, log_debug);
+  uw_context ctx = uw_request_new_context(me, &uw_application, &ls);
   size_t buf_size = 1024;
   char *buf = malloc(buf_size), *back = buf;
   uw_request_context rc = uw_new_request_context();
@@ -307,8 +309,6 @@ static void sigint(int signum) {
   exit(0);
 }
 
-static loggers ls = {&uw_application, NULL, log_error, log_debug};
-
 int main(int argc, char *argv[]) {
   // The skeleton for this function comes from Beej's sockets tutorial.
   int sockfd;  // listen on sock_fd
@@ -374,7 +374,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  uw_request_init(&uw_application, NULL, log_error, log_debug);
+  uw_request_init(&uw_application, &ls);
 
   names = calloc(nthreads, sizeof(int));
 
@@ -411,7 +411,11 @@ int main(int argc, char *argv[]) {
   {
     pthread_t thread;
 
-    if (pthread_create_big(&thread, NULL, client_pruner, &ls)) {
+    pruner_data *pd = (pruner_data *)malloc(sizeof(pruner_data));
+    pd->app = &uw_application;
+    pd->loggers = &ls;
+
+    if (pthread_create_big(&thread, NULL, client_pruner, pd)) {
       fprintf(stderr, "Error creating pruner thread\n");
       return 1;
     }

@@ -150,6 +150,7 @@ datatype decl' =
        | DTask of exp * exp
        | DPolicy of exp
        | DOnError of int * string list * string
+       | DFfi of string * int * Source.ffi_mode list * con
 
      and str' =
          StrConst of decl list

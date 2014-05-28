@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2012, Adam Chlipala
+(* Copyright (c) 2008-2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -225,7 +225,7 @@ fun tagIn bt =
 
 datatype prop_kind = Delete | Update
 
-datatype attr = Class of exp | DynClass of exp | Style of exp | DynStyle of exp | Normal of con * exp
+datatype attr = Class of exp | DynClass of exp | Style of exp | DynStyle of exp | Normal of con * exp | Data of string * exp
 
 fun patType loc (p : pat) =
     case #1 p of
@@ -322,6 +322,39 @@ fun applyWindow loc e window =
         (EApp (e', ob), loc)
     end
 
+fun patternOut (e : exp) =
+    case #1 e of
+        EWild => (PWild, #2 e)
+      | EVar ([], x, Infer) =>
+        if Char.isUpper (String.sub (x, 0)) then
+            (PCon ([], x, NONE), #2 e)
+        else
+            (PVar x, #2 e)
+      | EVar (xs, x, Infer) =>
+        if Char.isUpper (String.sub (x, 0)) then
+            (PCon (xs, x, NONE), #2 e)
+        else
+            (ErrorMsg.errorAt (#2 e) "Badly capitalized constructor name in pattern";
+             (PWild, #2 e))
+      | EPrim p => (PPrim p, #2 e)
+      | EApp ((EVar (xs, x, Infer), _), e') =>
+        (PCon (xs, x, SOME (patternOut e')), #2 e)
+      | ERecord (xes, flex) =>
+        (PRecord (map (fn (x, e') =>
+                          let
+                              val x =
+                                  case #1 x of
+                                      CName x => x
+                                    | _ => (ErrorMsg.errorAt (#2 e) "Field name not constant in pattern";
+                                            "")
+                          in
+                              (x, patternOut e')
+                          end) xes, flex), #2 e)
+      | EAnnot (e', t) =>
+        (PAnnot (patternOut e', t), #2 e)
+      | _ => (ErrorMsg.errorAt (#2 e) "This is an expression but not a pattern.";
+              (PWild, #2 e))
+
 %%
 %header (functor UrwebLrValsFn(structure Token : TOKEN))
 
@@ -332,7 +365,7 @@ fun applyWindow loc e window =
  | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE
  | EQ | COMMA | COLON | DCOLON | DCOLONWILD | TCOLON | TCOLONWILD | DOT | HASH | UNDER | UNDERUNDER | BAR
  | PLUS | MINUS | DIVIDE | DOTDOTDOT | MOD | AT
- | CON | LTYPE | VAL | REC | AND | FUN | MAP | UNIT | KUNIT | CLASS
+ | CON | LTYPE | VAL | REC | AND | FUN | MAP | UNIT | KUNIT | CLASS | FFI
  | DATATYPE | OF
  | TYPE | NAME
  | ARROW | LARROW | DARROW | STAR | SEMI | KARROW | DKARROW | BANG
@@ -428,13 +461,13 @@ fun applyWindow loc e window =
  | eapps of exp
  | eterm of exp
  | etuple of exp list
- | rexp of (con * exp) list
+ | rexp of (con * exp) list * bool
  | xml of exp
  | xmlOne of exp
  | xmlOpt of exp
  | tag of (string * exp) * exp option * exp option * exp
  | tagHead of string * exp
- | bind of string * con option * exp
+ | bind of pat * con option * exp
  | edecl of edecl
  | edecls of edecl list
 
@@ -453,7 +486,7 @@ fun applyWindow loc e window =
  | rpat of (string * pat) list * bool
  | ptuple of pat list
 
- | attrs of exp option * exp option * exp option * exp option * (con * exp) list
+ | attrs of exp option * exp option * exp option * exp option * (string * exp) list * (con * exp) list
  | attr of attr
  | attrv of exp
 
@@ -498,6 +531,9 @@ fun applyWindow loc e window =
  | fsets of (con * exp) list
  | enterDml of unit
  | leaveDml of unit
+
+ | ffi_mode of ffi_mode
+ | ffi_modes of ffi_mode list
 
 
 %verbose                                (* print summary of errors *)
@@ -612,6 +648,7 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
        | STYLE SYMBOL                   ([(DStyle SYMBOL, s (STYLEleft, SYMBOLright))])
        | TASK eapps EQ eexp             ([(DTask (eapps, eexp), s (TASKleft, eexpright))])
        | POLICY eexp                    ([(DPolicy eexp, s (POLICYleft, eexpright))])
+       | FFI SYMBOL ffi_modes COLON cexp([(DFfi (SYMBOL, ffi_modes, cexp), s (FFIleft, cexpright))])
 
 dtype  : SYMBOL dargs EQ barOpt dcons   (SYMBOL, dargs, dcons)
 
@@ -730,10 +767,10 @@ cst    : UNIQUE tnames                  (let
                                              val e = (EApp (e, mat), loc)
                                              val e = (EApp (e, texp), loc)
                                          in
-                                             (EApp (e, (ERecord [((CName "OnDelete", loc),
-                                                                  findMode Delete),
-                                                                 ((CName "OnUpdate", loc),
-                                                                  findMode Update)], loc)), loc)
+                                             (EApp (e, (ERecord ([((CName "OnDelete", loc),
+                                                                   findMode Delete),
+                                                                  ((CName "OnUpdate", loc),
+                                                                   findMode Update)], false), loc)), loc)
                                          end)
 
        | LBRACE eexp RBRACE             (eexp)
@@ -779,7 +816,7 @@ pk     : LBRACE LBRACE eexp RBRACE RBRACE (eexp)
                                              val witness = map (fn (c, _) =>
                                                                    (c, (EWild, loc)))
                                                            (#1 tnames :: #2 tnames)
-                                             val witness = (ERecord witness, loc)
+                                             val witness = (ERecord (witness, false), loc)
                                          in
                                              (EApp (e, witness), loc)
                                          end)
@@ -1136,11 +1173,17 @@ eexp   : eapps                          (case #1 eapps of
                                          end)
        | bind SEMI eexp                 (let
                                              val loc = s (bindleft, eexpright)
-                                             val (v, to, e1) = bind
+                                             val (p, to, e1) = bind
                                              val e = (EVar (["Basis"], "bind", Infer), loc)
                                              val e = (EApp (e, e1), loc)
+
+                                             val f = case #1 p of
+                                                         PVar v => (EAbs (v, to, eexp), loc)
+                                                       | _ => (EAbs ("$x", to,
+                                                                     (ECase ((EVar ([], "$x", Infer), loc),
+                                                                             [(p, eexp)]), loc)), loc)
                                          in
-                                             (EApp (e, (EAbs (v, to, eexp), loc)), loc)
+                                             (EApp (e, f), loc)
                                          end)
        | eexp EQ eexp                   (native_op ("eq", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp NE eexp                   (native_op ("ne", eexp1, eexp2, s (eexp1left, eexp2right)))
@@ -1181,17 +1224,17 @@ eexp   : eapps                          (case #1 eapps of
                                              val loc = s (eappsleft, eexpright)
                                          in
                                              (EApp ((EVar (["Basis"], "Cons", Infer), loc),
-                                                    (ERecord [((CName "1", loc),
-                                                               eapps),
-                                                              ((CName "2", loc),
-                                                               eexp)], loc)), loc)
+                                                    (ERecord ([((CName "1", loc),
+                                                                eapps),
+                                                               ((CName "2", loc),
+                                                                eexp)], false), loc)), loc)
                                          end)
 
-bind   : SYMBOL LARROW eapps            (SYMBOL, NONE, eapps)
+bind   : eapps LARROW eapps             (patternOut eapps1, NONE, eapps2)
        | eapps                          (let
                                              val loc = s (eappsleft, eappsright)
                                          in
-                                             ("_", SOME (TRecord (CRecord [], loc), loc), eapps)
+                                             ((PVar "_", loc), SOME (TRecord (CRecord [], loc), loc), eapps)
                                          end)
 
 eargs  : earg                           (earg)
@@ -1289,7 +1332,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                          in
                                              (ERecord (ListUtil.mapi (fn (i, e) =>
                                                                          ((CName (Int.toString (i + 1)), loc),
-                                                                          e)) etuple), loc)
+                                                                          e)) etuple, false), loc)
                                          end)
 
        | path                           (EVar (#1 path, #2 path, Infer), s (pathleft, pathright))
@@ -1299,7 +1342,8 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | AT cpath                       (EVar (#1 cpath, #2 cpath, TypesOnly), s (ATleft, cpathright))
        | AT AT cpath                    (EVar (#1 cpath, #2 cpath, DontInfer), s (AT1left, cpathright))
        | LBRACE rexp RBRACE             (ERecord rexp, s (LBRACEleft, RBRACEright))
-       | UNIT                           (ERecord [], s (UNITleft, UNITright))
+       | LBRACE RBRACE                  (ERecord ([], false), s (LBRACEleft, RBRACEright))
+       | UNIT                           (ERecord ([], false), s (UNITleft, UNITright))
 
        | INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
@@ -1386,7 +1430,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                                                        ^ " vs. " ^ Int.toString (length sqlexps) ^ ")")
                                              else
                                                  ();
-                                             (EApp (e, (ERecord (ListPair.zip (fields, sqlexps)), loc)), loc)
+                                             (EApp (e, (ERecord (ListPair.zip (fields, sqlexps), false), loc)), loc)
                                          end)
        | LPAREN enterDml UPDATE texp SET fsets CWHERE sqlexp leaveDml RPAREN
                                         (let
@@ -1394,7 +1438,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
                                              val e = (EVar (["Basis"], "update", Infer), loc)
                                              val e = (ECApp (e, (CWild (KRecord (KType, loc), loc), loc)), loc)
-                                             val e = (EApp (e, (ERecord fsets, loc)), loc)
+                                             val e = (EApp (e, (ERecord (fsets, false), loc)), loc)
                                              val e = (EApp (e, texp), loc)
                                          in
                                              (EApp (e, sqlexp), loc)
@@ -1486,9 +1530,9 @@ rpat   : CSYMBOL EQ pat                 ([(CSYMBOL, pat)], false)
 ptuple : pat COMMA pat                  ([pat1, pat2])
        | pat COMMA ptuple               (pat :: ptuple)
 
-rexp   :                                ([])
-       | ident EQ eexp                  ([(ident, eexp)])
-       | ident EQ eexp COMMA rexp       ((ident, eexp) :: rexp)
+rexp   : DOTDOTDOT                      ([], true)
+       | ident EQ eexp                  ([(ident, eexp)], false)
+       | ident EQ eexp COMMA rexp       ((ident, eexp) :: #1 rexp, #2 rexp)
 
 xml    : xmlOne xml                     (let
                                              val pos = s (xmlOneleft, xmlright)
@@ -1602,9 +1646,33 @@ tag    : tagHead attrs                  (let
                                                         | SOME e => (EApp ((EVar (["Basis"], "Some", Infer), pos),
                                                                            e), pos)
                                              val e = (EApp (e, eo), pos)
-                                             val e = (EApp (e, (ERecord (#5 attrs), pos)), pos)
+
+                                             val atts = case #5 attrs of
+                                                            [] => #6 attrs
+                                                          | data :: datas =>
+                                                            let
+                                                                fun doOne (name, value) =
+                                                                    let
+                                                                        val e = (EVar (["Basis"], "data_attr", Infer), pos)
+                                                                        val e = (EApp (e, (EPrim (Prim.String name), pos)), pos)
+                                                                    in
+                                                                        (EApp (e, value), pos)
+                                                                    end
+
+                                                                val datas' = foldl (fn (nv, acc) =>
+                                                                                       let
+                                                                                           val e = (EVar (["Basis"], "data_attrs", Infer), pos)
+                                                                                           val e = (EApp (e, acc), pos)
+                                                                                       in
+                                                                                           (EApp (e, doOne nv), pos)
+                                                                                       end) (doOne data) datas
+                                                            in
+                                                                ((CName "Data", pos), datas') :: #6 attrs
+                                                            end
+
+                                             val e = (EApp (e, (ERecord (atts, false), pos)), pos)
                                              val e = (EApp (e, (EApp (#2 tagHead,
-                                                                      (ERecord [], pos)), pos)), pos)
+                                                                      (ERecord ([], false), pos)), pos)), pos)
                                          in
                                              (tagHead, #1 attrs, #2 attrs, e)
                                          end)
@@ -1618,7 +1686,7 @@ tagHead: BEGIN_TAG                      (let
                                          end)
        | tagHead LBRACE cexp RBRACE     (#1 tagHead, (ECApp (#2 tagHead, cexp), s (tagHeadleft, RBRACEright)))
                                           
-attrs  :                                (NONE, NONE, NONE, NONE, [])
+attrs  :                                (NONE, NONE, NONE, NONE, [], [])
        | attr attrs                     (let
                                              val loc = s (attrleft, attrsright)
                                          in
@@ -1627,24 +1695,26 @@ attrs  :                                (NONE, NONE, NONE, NONE, [])
                                                  (case #1 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple classes specified for tag";
-                                                  (SOME e, #2 attrs, #3 attrs, #4 attrs, #5 attrs))
+                                                  (SOME e, #2 attrs, #3 attrs, #4 attrs, #5 attrs, #6 attrs))
                                                | DynClass e =>
                                                  (case #2 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple dynamic classes specified for tag";
-                                                  (#1 attrs, SOME e, #3 attrs, #4 attrs, #5 attrs))
+                                                  (#1 attrs, SOME e, #3 attrs, #4 attrs, #5 attrs, #6 attrs))
                                                | Style e =>
                                                  (case #3 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple styles specified for tag";
-                                                  (#1 attrs, #2 attrs, SOME e, #4 attrs, #5 attrs))
+                                                  (#1 attrs, #2 attrs, SOME e, #4 attrs, #5 attrs, #6 attrs))
                                                | DynStyle e =>
                                                  (case #4 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple dynamic classes specified for tag";
-                                                  (#1 attrs, #2 attrs, #3 attrs, SOME e, #5 attrs))
+                                                  (#1 attrs, #2 attrs, #3 attrs, SOME e, #5 attrs, #6 attrs))
+                                               | Data xe =>
+                                                 (#1 attrs, #2 attrs, #3 attrs, #4 attrs, xe :: #5 attrs, #6 attrs)
                                                | Normal xe =>
-                                                 (#1 attrs, #2 attrs, #3 attrs, #4 attrs, xe :: #5 attrs)
+                                                 (#1 attrs, #2 attrs, #3 attrs, #4 attrs, #5 attrs, xe :: #6 attrs)
                                          end)
 
 attr   : SYMBOL EQ attrv                (case SYMBOL of
@@ -1653,23 +1723,26 @@ attr   : SYMBOL EQ attrv                (case SYMBOL of
                                            | "style" => Style attrv
 					   | "dynStyle" => DynStyle attrv
 					   | _ =>
-                                             let
-                                                 val sym = makeAttr SYMBOL
-                                             in
-                                                 Normal ((CName sym, s (SYMBOLleft, SYMBOLright)),
-                                                         if (sym = "Href" orelse sym = "Src")
-                                                            andalso (case #1 attrv of
-                                                                         EPrim _ => true
-                                                                       | _ => false) then
-                                                             let
-                                                                 val loc = s (attrvleft, attrvright)
-                                                             in
-                                                                 (EApp ((EVar (["Basis"], "bless", Infer), loc),
-                                                                        attrv), loc)
-                                                             end
-                                                         else
-                                                             attrv)
-                                             end)
+                                             if String.isPrefix "data-" SYMBOL then
+                                                 Data (String.extract (SYMBOL, 5, NONE), attrv)
+                                             else
+                                                 let
+                                                     val sym = makeAttr SYMBOL
+                                                 in
+                                                     Normal ((CName sym, s (SYMBOLleft, SYMBOLright)),
+                                                             if (sym = "Href" orelse sym = "Src")
+                                                                andalso (case #1 attrv of
+                                                                             EPrim _ => true
+                                                                           | _ => false) then
+                                                                 let
+                                                                     val loc = s (attrvleft, attrvright)
+                                                                 in
+                                                                     (EApp ((EVar (["Basis"], "bless", Infer), loc),
+                                                                            attrv), loc)
+                                                                 end
+                                                             else
+                                                                 attrv)
+                                                 end)
                 
 attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
@@ -1679,14 +1752,14 @@ attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTri
 query  : query1 obopt lopt ofopt        (let
                                              val loc = s (query1left, query1right)
 
-                                             val re = (ERecord [((CName "Rows", loc),
-                                                                 query1),
-                                                                ((CName "OrderBy", loc),
-                                                                 obopt),
-                                                                ((CName "Limit", loc),
-                                                                 lopt),
-                                                                ((CName "Offset", loc),
-                                                                 ofopt)], loc)
+                                             val re = (ERecord ([((CName "Rows", loc),
+                                                                  query1),
+                                                                 ((CName "OrderBy", loc),
+                                                                  obopt),
+                                                                 ((CName "Limit", loc),
+                                                                  lopt),
+                                                                 ((CName "Offset", loc),
+                                                                  ofopt)], false), loc)
                                          in
                                              (EApp ((EVar (["Basis"], "sql_query", Infer), loc), re), loc)
                                          end)
@@ -1767,21 +1840,21 @@ query1 : SELECT dopt select FROM tables wopt gopt hopt
                                              val e = (EVar (["Basis"], "sql_query1", Infer), loc)
                                              val e = (ECApp (e, (CRecord (map (fn nm => (nm, (CUnit, loc))) empties),
                                                                  loc)), loc)
-                                             val re = (ERecord [((CName "Distinct", loc),
-                                                                 dopt),
-                                                                ((CName "From", loc),
-                                                                 #2 tables),
-                                                                ((CName "Where", loc),
-                                                                 wopt),
-                                                                ((CName "GroupBy", loc),
-                                                                 grp),
-                                                                ((CName "Having", loc),
-                                                                 hopt),
-                                                                ((CName "SelectFields", loc),
-                                                                 (ECApp ((EVar (["Basis"], "sql_subset", Infer), loc),
-                                                                         sel), loc)),
-                                                                ((CName "SelectExps", loc),
-                                                                 (ERecord exps, loc))], loc)
+                                             val re = (ERecord ([((CName "Distinct", loc),
+                                                                  dopt),
+                                                                 ((CName "From", loc),
+                                                                  #2 tables),
+                                                                 ((CName "Where", loc),
+                                                                  wopt),
+                                                                 ((CName "GroupBy", loc),
+                                                                  grp),
+                                                                 ((CName "Having", loc),
+                                                                  hopt),
+                                                                 ((CName "SelectFields", loc),
+                                                                  (ECApp ((EVar (["Basis"], "sql_subset", Infer), loc),
+                                                                          sel), loc)),
+                                                                 ((CName "SelectExps", loc),
+                                                                  (ERecord (exps, false), loc))], false), loc)
 
                                              val e = (EApp (e, re), loc)
                                          in
@@ -1907,6 +1980,7 @@ fitem  : table'                         ([#1 table'], #2 table')
                                          in
                                              ([tname], (EApp (e, query), loc))
                                          end)
+       | LPAREN fitem RPAREN            (fitem)
 
 tname  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | LBRACE cexp RBRACE             (cexp)
@@ -2197,3 +2271,16 @@ sqlagg : AVG                             ("avg")
        | SUM                             ("sum")
        | MIN                             ("min")
        | MAX                             ("max")
+
+ffi_mode : SYMBOL                        (case SYMBOL of
+                                              "effectful" => Effectful
+                                            | "benignEffectful" => BenignEffectful
+                                            | "clientOnly" => ClientOnly
+                                            | "serverOnly" => ServerOnly
+                                            | _ => (ErrorMsg.errorAt (s (SYMBOLleft, SYMBOLright)) "Invalid FFI mode"; Effectful))
+         | SYMBOL STRING                 (case SYMBOL of
+                                              "jsFunc" => JsFunc STRING
+                                            | _ => (ErrorMsg.errorAt (s (SYMBOLleft, SYMBOLright)) "Invalid FFI mode"; Effectful))
+
+ffi_modes :                              ([])
+          | ffi_mode ffi_modes           (ffi_mode :: ffi_modes)

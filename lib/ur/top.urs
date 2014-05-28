@@ -155,6 +155,10 @@ val mapX3 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type)
             -> r ::: {K} -> folder r
             -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> xml ctx [] []
 
+(* Note that the next two functions return elements in the _reverse_ of the natural order!
+ * Such a choice interacts well with the time complexity of standard list operations.
+ * It's easy to regain the natural order by inverting a query's 'ORDER BY' condition. *)
+
 val queryL : tables ::: {{Type}} -> exps ::: {Type}
              -> [tables ~ exps] =>
                   sql_query [] [] tables exps

@@ -81,6 +81,7 @@ signature ELAB_ERR = sig
            | Unresolvable of ErrorMsg.span * Elab.con
            | OutOfContext of ErrorMsg.span * (Elab.exp * Elab.con) option
            | IllegalRec of string * Elab.exp
+           | IllegalFlex of Source.exp
 
     val expError : ElabEnv.env -> exp_error -> unit
 
