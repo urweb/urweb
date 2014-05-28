@@ -75,6 +75,10 @@ int uw_next_entry(struct uw_context *);
 
 void uw_write(struct uw_context *, const char*);
 
+// For caching.
+void uw_recordingStart(struct uw_context *);
+char *uw_recordingRead(struct uw_context *);
+
 uw_Basis_source uw_Basis_new_client_source(struct uw_context *, uw_Basis_string);
 uw_unit uw_Basis_set_client_source(struct uw_context *, uw_Basis_source, uw_Basis_string);
 

@@ -1,4 +1,4 @@
-structure Sql = struct
+structure Sql :> SQL = struct
 
 open Mono
 

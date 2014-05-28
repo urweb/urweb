@@ -477,6 +477,9 @@ struct uw_context {
 
   char *output_buffer;
   size_t output_buffer_size;
+
+  // For caching.
+  char *recording;
 };
 
 size_t uw_headers_max = SIZE_MAX;
@@ -559,6 +562,8 @@ uw_context uw_init(int id, void *logger_data, uw_logger log_debug) {
 
   ctx->output_buffer = malloc(1);
   ctx->output_buffer_size = 1;
+
+  ctx->recording = 0;
 
   return ctx;
 }
@@ -1634,6 +1639,19 @@ void uw_write(uw_context ctx, const char* s) {
   uw_check(ctx, strlen(s) + 1);
   uw_write_unsafe(ctx, s);
   *ctx->page.front = 0;
+}
+
+void uw_recordingStart(uw_context ctx) {
+  // TODO: remove following debug statement.
+  uw_write(ctx, "<!--Recording started here-->");
+  ctx->recording = ctx->page.front;
+}
+
+char *uw_recordingRead(uw_context ctx) {
+  char *recording = strdup(ctx->recording);
+  // TODO: remove following debug statement.
+  uw_write(ctx, "<!--Recording read here-->");
+  return recording;
 }
 
 char *uw_Basis_attrifyInt(uw_context ctx, uw_Basis_int n) {

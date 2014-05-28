@@ -10,6 +10,10 @@ structure SS = BinarySetFn (StringKey)
 structure SM = BinaryMapFn (StringKey)
 structure SIMM = MultimapFn (structure KeyMap = SM structure ValSet = IS)
 
+val ffiIndices : int list ref = ref []
+val rs : int list ref = ref []
+val ws : int list ref = ref []
+
 val rec tablesRead =
  fn Query1 {From=tablePairs, ...} => SS.fromList (map #1 tablePairs)
   | Union (q1,q2) => SS.union (tablesRead q1, tablesRead q2)
@@ -54,8 +58,8 @@ fun boolPat (b, loc) = (PCon (Enum,
                         loc)
 fun boolTyp loc = (TFfi ("Basis", "int"), loc)
 
-fun ffiAppExp (module, func, arg, loc) =
-    (EFfiApp (module, func, [(intExp (arg, loc), intTyp loc)]), loc)
+fun ffiAppExp (module, func, index, loc) =
+    (EFfiApp (module, func ^ Int.toString index, []), loc)
 
 fun sequence (befores, center, afters, loc) =
     List.foldr (fn (exp, seq) => (ESeq (exp, seq), loc))
@@ -173,6 +177,9 @@ fun go file =
         val {readers, writers} = handlerIndices file
         val (fileWithChecks, tablesToIndices) = addCacheChecking (file, readers)
     in
+        rs := IS.listItems readers;
+        ws := IS.listItems writers;
+        ffiIndices := IS.listItems readers;
         addCacheFlushing (fileWithChecks, tablesToIndices, writers)
     end
 

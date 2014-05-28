@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -734,7 +734,7 @@ fun unurlify fromClient env (t, loc) =
                                                  string (Int.toString (size has_arg)),
                                                  string ", ((*request)[0] == '/' ? ++*request : NULL), ",
                                                  newline,
-                                                 
+
                                                  if unboxable then
                                                      unurlify' "(*request)" (#1 t)
                                                  else
@@ -914,7 +914,7 @@ fun unurlify fromClient env (t, loc) =
                                               space,
                                               string "4, ((*request)[0] == '/' ? ++*request : NULL), ",
                                               newline,
-                                              
+
                                               string "({",
                                               newline,
                                               p_typ env (t, loc),
@@ -1188,7 +1188,7 @@ fun urlify env t =
                          string "(ctx,",
                          space,
                          string "it",
-                         string (Int.toString level), 
+                         string (Int.toString level),
                          string ");",
                          newline]
                 else
@@ -1388,7 +1388,7 @@ fun urlify env t =
                           string (Int.toString level),
                           string ");",
                           newline])
-                    
+
               | _ => (ErrorMsg.errorAt loc "Unable to choose a URL encoding function";
                       space)
     in
@@ -1578,7 +1578,7 @@ and p_exp' par tail env (e, loc) =
                                     newline],
                  string "tmp;",
                  newline,
-                 string "})"]          
+                 string "})"]
         end
       | ENone _ => string "NULL"
       | ESome (t, e) =>
@@ -2078,7 +2078,7 @@ and p_exp' par tail env (e, loc) =
                      space,
                      p_exp' false false (E.pushERel
                                              (E.pushERel env "r" (TRecord rnum, loc))
-                                             "acc" state) 
+                                             "acc" state)
                             body,
                      string ";",
                      newline]
@@ -2102,7 +2102,7 @@ and p_exp' par tail env (e, loc) =
                  newline,
                  string "uw_ensure_transaction(ctx);",
                  newline,
-                 
+
                  case prepared of
                      NONE =>
                      box [string "char *query = ",
@@ -2187,7 +2187,7 @@ and p_exp' par tail env (e, loc) =
                           string "uw_ensure_transaction(ctx);",
                           newline,
                           newline,
-                          
+
                           #dmlPrepared (Settings.currentDbms ()) {loc = loc,
                                                                   id = id,
                                                                   dml = dml',
@@ -3378,6 +3378,50 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
+             (* For caching. *)
+             box (List.map
+                      (fn index =>
+                          let val i = Int.toString index
+                          in box [string "static char *cache",
+                                  string i,
+                                  string " = NULL;",
+                                  newline,
+                                  string "static uw_Basis_bool uw_Cache_check",
+                                  string i,
+                                  string "(uw_context ctx) { puts(\"Checked ",
+                                  string i,
+                                  string "\"); if (cache",
+                                  string i,
+                                  string " == NULL) { uw_recordingStart(ctx); return uw_Basis_False; } else { uw_write(ctx, cache",
+                                  string i,
+                                  string "); return uw_Basis_True; } };",
+                                  newline,
+                                  string "static uw_unit uw_Cache_store",
+                                  string i,
+                                  string "(uw_context ctx) { cache",
+                                  string i,
+                                  string " = uw_recordingRead(ctx); puts(\"Stored ",
+                                  string i,
+                                  string "\"); return uw_unit_v; };",
+                                  newline,
+                                  string "static uw_unit uw_Cache_flush",
+                                  string i,
+                                  string "(uw_context ctx) { free(cache",
+                                  string i,
+                                  string "); cache",
+                                  string i,
+                                  string " = NULL; puts(\"Flushed ",
+                                  string i,
+                                  string "\"); return uw_unit_v; };",
+                                  newline,
+                                  string "static uw_unit uw_Cache_ready",
+                                  string i,
+                                  string "(uw_context ctx) { return uw_unit_v; };",
+                                  newline,
+                                  newline]
+                          end)
+                      (!SqlCache.ffiIndices)),
+             newline,
 
              p_list_sep newline (fn x => x) pds,
              newline,
@@ -3433,7 +3477,7 @@ fun p_file env (ds, ps) =
 
              makeChecker ("uw_check_envVar", Settings.getEnvVarRules ()),
              newline,
-             
+
              string "extern void uw_sign(const char *in, char *out);",
              newline,
              string "extern int uw_hash_blocksize;",
@@ -3480,7 +3524,7 @@ fun p_file env (ds, ps) =
                   newline,
                   string ("uw_write_header(ctx, \"Last-modified: " ^ Date.fmt rfcFmt nowD ^ "\\r\\n\");"),
                   newline,
-                  string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),                  
+                  string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),
                   newline,
                   string "uw_write(ctx, jslib);",
                   newline,

@@ -1,10 +1,8 @@
 signature SQL = sig
 
-val fu : Mono.file -> unit
-
 val debug : bool ref
 
-type lvar
+type lvar = int
 
 datatype func =
          DtCon0 of string
@@ -41,7 +39,13 @@ datatype prop =
        | Reln of reln * exp list
        | Cond of exp * prop
 
-datatype ('a, 'b) sum = inl of 'a | inr of 'b
+datatype chunk =
+         String of string
+       | Exp of Mono.exp
+
+type 'a parser = chunk list -> ('a * chunk list) option
+
+val parse : 'a parser -> Mono.exp -> 'a option
 
 datatype Rel =
          Exps of exp * exp -> prop
@@ -61,19 +65,27 @@ datatype sqexp =
        | Unmodeled
        | Null
 
+datatype ('a,'b) sum = inl of 'a | inr of 'b
+
 datatype sitem =
          SqField of string * string
        | SqExp of sqexp * string
 
-type query1
+type query1 = {Select : sitem list,
+              From : (string * string) list,
+              Where : sqexp option}
 
 datatype query =
          Query1 of query1
        | Union of query * query
 
+val query : query parser
+
 datatype dml =
          Insert of string * (string * sqexp) list
        | Delete of string * sqexp
        | Update of string * (string * sqexp) list * sqexp
+
+val dml : dml parser
 
 end
