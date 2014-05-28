@@ -1,4 +1,0 @@
-database dbname=test
-safeGet Test/main
-
-test
