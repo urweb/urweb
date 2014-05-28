@@ -212,10 +212,10 @@ void uw_request_init(uw_app *app, uw_loggers* ls) {
 }
 
 
-typedef struct uw_rc {
+struct uw_rc {
   size_t path_copy_size, queryString_size;
   char *path_copy, *queryString;
-} *uw_request_context;
+};
 
 uw_request_context uw_new_request_context(void) {
   uw_request_context r = malloc(sizeof(struct uw_rc));

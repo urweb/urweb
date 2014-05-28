@@ -1259,8 +1259,8 @@ void uw_end_initializing(uw_context ctx) {
 static void align_heap(uw_context ctx) {
   size_t posn = ctx->heap.front - ctx->heap.start;
 
-  if (posn % 4 != 0) {
-    size_t bump = 4 - posn % 4;
+  if (posn % sizeof(void *) != 0) {
+    size_t bump = sizeof(void *) - posn % sizeof(void *);
     uw_check_heap(ctx, bump);
     ctx->heap.front += bump;
   }
@@ -1275,7 +1275,7 @@ void *uw_malloc(uw_context ctx, size_t len) {
   void *result;
 
   if (ctx->amInitializing) {
-    int error = posix_memalign(&result, 4, len);
+    int error = posix_memalign(&result, sizeof(void *), len);
 
     if (!error)
       return result;
