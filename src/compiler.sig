@@ -122,7 +122,7 @@ signature COMPILER = sig
     val pathcheck : (Mono.file, Mono.file) phase
     val sidecheck : (Mono.file, Mono.file) phase
     val sigcheck : (Mono.file, Mono.file) phase
-    val sqlCache : (Mono.file, Mono.file) phase
+    val sqlcache : (Mono.file, Mono.file) phase
     val cjrize : (Mono.file, Cjr.file) phase
     val prepare : (Cjr.file, Cjr.file) phase
     val checknest : (Cjr.file, Cjr.file) phase
@@ -187,7 +187,7 @@ signature COMPILER = sig
     val toPathcheck : (string, Mono.file) transform
     val toSidecheck : (string, Mono.file) transform
     val toSigcheck : (string, Mono.file) transform
-    val toSqlCache : (string, Mono.file) transform
+    val toSqlcache : (string, Mono.file) transform
     val toCjrize : (string, Cjr.file) transform
     val toPrepare : (string, Cjr.file) transform
     val toChecknest : (string, Cjr.file) transform
@@ -198,6 +198,7 @@ signature COMPILER = sig
     val enableBoot : unit -> unit
 
     val doIflow : bool ref
+    val doSqlcache : bool ref
 
     val addPath : string * string -> unit
     val addModuleRoot : string * string -> unit

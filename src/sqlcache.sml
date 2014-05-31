@@ -1,4 +1,4 @@
-structure SqlCache = struct
+structure Sqlcache :> SQLCACHE = struct
 
 open Sql
 open Mono
@@ -11,8 +11,6 @@ structure SM = BinaryMapFn (StringKey)
 structure SIMM = MultimapFn (structure KeyMap = SM structure ValSet = IS)
 
 val ffiIndices : int list ref = ref []
-val rs : int list ref = ref []
-val ws : int list ref = ref []
 
 val rec tablesRead =
  fn Query1 {From=tablePairs, ...} => SS.fromList (map #1 tablePairs)
@@ -177,8 +175,6 @@ fun go file =
         val {readers, writers} = handlerIndices file
         val (fileWithChecks, tablesToIndices) = addCacheChecking (file, readers)
     in
-        rs := IS.listItems readers;
-        ws := IS.listItems writers;
         ffiIndices := IS.listItems readers;
         addCacheFlushing (fileWithChecks, tablesToIndices, writers)
     end

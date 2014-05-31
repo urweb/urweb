@@ -189,10 +189,6 @@ $(SRC)/fuse.sml
 $(SRC)/sql.sig
 $(SRC)/sql.sml
 
-$(SRC)/multimap_fn.sml
-
-$(SRC)/sql_cache.sml
-
 $(SRC)/iflow.sig
 $(SRC)/iflow.sml
 
@@ -210,6 +206,11 @@ $(SRC)/sidecheck.sml
 
 $(SRC)/sigcheck.sig
 $(SRC)/sigcheck.sml
+
+$(SRC)/multimap_fn.sml
+
+$(SRC)/sqlcache.sig
+$(SRC)/sqlcache.sml
 
 $(SRC)/cjr.sml
 

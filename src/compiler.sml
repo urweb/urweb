@@ -83,6 +83,7 @@ type ('src, 'dst) transform = {
 val debug = ref false
 val dumpSource = ref false
 val doIflow = ref false
+val doSqlcache = ref false
 
 val doDumpSource = ref (fn () => ())
 
@@ -1439,19 +1440,19 @@ val sigcheck = {
 
 val toSigcheck = transform sigcheck "sigcheck" o toSidecheck
 
-val sqlCache = {
-    func = SqlCache.go,
+val sqlcache = {
+    func = (fn file => (if !doSqlcache then Sqlcache.go file else file)),
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toSqlCache = transform sqlCache "sqlCache" o toSigcheck
+val toSqlcache = transform sqlcache "sqlcache" o toSigcheck
 
 val cjrize = {
     func = Cjrize.cjrize,
     print = CjrPrint.p_file CjrEnv.empty
 }
 
-val toCjrize = transform cjrize "cjrize" o toSqlCache
+val toCjrize = transform cjrize "cjrize" o toSqlcache
 
 val prepare = {
     func = Prepare.prepare,

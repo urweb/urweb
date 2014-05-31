@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -47,6 +47,7 @@ fun oneRun args =
                   Elaborate.unifyMore := false;
                   Compiler.dumpSource := false;
                   Compiler.doIflow := false;
+                  Compiler.doSqlcache := false;
                   Demo.noEmacs := false;
                   Settings.setDebug false)
 
@@ -64,7 +65,7 @@ fun oneRun args =
         fun doArgs args =
             case args of
                 [] => ()
-              | "-version" :: rest => 
+              | "-version" :: rest =>
                   printVersion ()
               | "-numeric-version" :: rest =>
                   printNumericVersion ()
@@ -158,6 +159,9 @@ fun oneRun args =
                  doArgs rest)
               | "-iflow" :: rest =>
                 (Compiler.doIflow := true;
+                 doArgs rest)
+              | "-sqlcache" :: rest =>
+                (Compiler.doSqlcache := true;
                  doArgs rest)
               | "-moduleOf" :: fname :: _ =>
                 (print (Compiler.moduleOf fname ^ "\n");
@@ -306,7 +310,7 @@ val () = case CommandLine.arguments () of
                               (* Redirect the daemon's output to the socket. *)
                               redirect Posix.FileSys.stdout;
                               redirect Posix.FileSys.stderr;
-                              
+
                               loop' ("", []);
                               Socket.close sock;
 
@@ -325,7 +329,7 @@ val () = case CommandLine.arguments () of
                       loop ()
                   end)
            | ["daemon", "stop"] =>
-	     (OS.FileSys.remove socket handle OS.SysErr _ => OS.Process.exit OS.Process.success) 
+	     (OS.FileSys.remove socket handle OS.SysErr _ => OS.Process.exit OS.Process.success)
            | args =>
              let
                  val sock = UnixSock.Strm.socket ()

@@ -177,10 +177,10 @@ val uw_ident = wrapP ident (fn s => if String.isPrefix "uw_" s andalso size s >=
                                     else
                                         NONE)
 
-val field = wrap (follow t_ident
-                         (follow (const ".")
-                                 uw_ident))
-                 (fn (t, ((), f)) => (t, f))
+val field = wrap (follow (opt (follow t_ident (const ".")))
+                         uw_ident)
+                 (fn (SOME (t, ()), f) => (t, f)
+                   | (NONE, f) => ("T", f)) (* Should probably deal with this MySQL/SQLite case better some day. *)
 
 datatype Rel =
          Exps of exp * exp -> prop
@@ -396,22 +396,22 @@ val insert = log "insert"
 val delete = log "delete"
                  (wrap (follow (const "DELETE FROM ")
                                (follow uw_ident
-                                       (follow (const " AS T_T WHERE ")
+                                       (follow (follow (opt (const " AS T_T")) (const " WHERE "))
                                                sqexp)))
-                       (fn ((), (tab, ((), es))) => (tab, es)))
+                       (fn ((), (tab, (_, es))) => (tab, es)))
 
 val setting = log "setting"
-              (wrap (follow uw_ident (follow (const " = ") sqexp))
-               (fn (f, ((), e)) => (f, e)))
+                  (wrap (follow uw_ident (follow (const " = ") sqexp))
+                        (fn (f, ((), e)) => (f, e)))
 
 val update = log "update"
                  (wrap (follow (const "UPDATE ")
                                (follow uw_ident
-                                       (follow (const " AS T_T SET ")
+                                       (follow (follow (opt (const " AS T_T")) (const " SET "))
                                                (follow (list setting)
                                                        (follow (ws (const "WHERE "))
                                                                sqexp)))))
-                       (fn ((), (tab, ((), (fs, ((), e))))) =>
+                       (fn ((), (tab, (_, (fs, ((), e))))) =>
                            (tab, fs, e)))
 
 val dml = log "dml"

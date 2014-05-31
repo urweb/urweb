@@ -1667,16 +1667,11 @@ void uw_write(uw_context ctx, const char* s) {
 }
 
 void uw_recordingStart(uw_context ctx) {
-  // TODO: remove following debug statement.
-  uw_write(ctx, "<!--Recording started here-->");
   ctx->recording = ctx->page.front;
 }
 
 char *uw_recordingRead(uw_context ctx) {
-  char *recording = strdup(ctx->recording);
-  // TODO: remove following debug statement.
-  uw_write(ctx, "<!--Recording read here-->");
-  return recording;
+  return strdup(ctx->recording);
 }
 
 char *uw_Basis_attrifyInt(uw_context ctx, uw_Basis_int n) {

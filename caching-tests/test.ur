@@ -2,7 +2,6 @@ table foo01 : {Id : int, Bar : string} PRIMARY KEY Id
 table foo10 : {Id : int, Bar : string} PRIMARY KEY Id
 
 fun flush01 () : transaction page =
-    dml (INSERT INTO foo01 (Id, Bar) VALUES (42, "baz01"));
     dml (UPDATE foo01 SET Bar = "baz01" WHERE Id = 42);
     return <xml><body>
       Flushed 1!
