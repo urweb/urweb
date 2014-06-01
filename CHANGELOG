@@ -1,4 +1,16 @@
 ========
+20140531
+========
+
+- Parsing extension: monadic bind supports patterns, like "(x, y) <- a; b"
+- New, optional less safe FFI
+- New HTML tags: <tbody>, <tfoot>, <thead>
+- HTML5 data-* attributes
+- HTML5 semantic tags
+- Syntactic sugar extension: allow parens grouping joins in FROM clauses
+- Bug fixes and documentation improvements
+
+========
 20140426
 ========
 
