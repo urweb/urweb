@@ -465,7 +465,7 @@ fun check f rules s =
 
 val checkUrl = check (fn _ => true) url
 
-val validMime = CharVector.all (fn ch => Char.isAlphaNum ch orelse ch = #"/" orelse ch = #"-" orelse ch = #".")
+val validMime = CharVector.all (fn ch => Char.isAlphaNum ch orelse ch = #"/" orelse ch = #"-" orelse ch = #"." orelse ch = #"+")
 val validEnv = CharVector.all (fn ch => Char.isAlphaNum ch orelse ch = #"_" orelse ch = #".")
 
 val checkMime = check validMime mime

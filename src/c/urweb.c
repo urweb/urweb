@@ -3604,7 +3604,7 @@ uw_Basis_string uw_Basis_checkUrl(uw_context ctx, uw_Basis_string s) {
 
 static int mime_format(const char *s) {
   for (; *s; ++s)
-    if (!isalnum((int)*s) && *s != '/' && *s != '-' && *s != '.')
+    if (!isalnum((int)*s) && *s != '/' && *s != '-' && *s != '.' && *s != '+')
       return 0;
 
   return 1;
