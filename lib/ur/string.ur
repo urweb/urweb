@@ -86,3 +86,28 @@ fun newlines [ctx] [[Body] ~ ctx] (s : string) : xml ([Body] ++ ctx) [] [] =
 
 fun isPrefix {Full = f, Prefix = p} =
     length f >= length p && substring f {Start = 0, Len = length p} = p
+
+fun trim s =
+    let
+        val len = length s
+
+        fun findStart i =
+            if i < len && Char.isSpace (sub s i) then
+                findStart (i+1)
+            else
+                i
+
+        fun findFinish i =
+            if i >= 0 && Char.isSpace (sub s i) then
+                findFinish (i-1)
+            else
+                i
+
+        val start = findStart 0
+        val finish = findFinish (len - 1)
+    in
+        if finish >= start then
+            substring s {Start = start, Len = finish - start + 1}
+        else
+            ""
+    end

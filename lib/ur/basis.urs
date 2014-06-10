@@ -946,11 +946,11 @@ con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
 val hidden : formTag string [] [Data = data_attr, Id = string, Value = string]
 val textbox : formTag string [] ([Value = string, Size = int, Placeholder = string, Source = source string, Onchange = transaction unit,
                                   Ontext = transaction unit] ++ boxAttrs)
-val password : formTag string [] ([Value = string, Size = int, Placeholder = string] ++ boxAttrs)
+val password : formTag string [] ([Value = string, Size = int, Placeholder = string, Onchange = transaction unit] ++ boxAttrs)
 val textarea : formTag string [] ([Rows = int, Cols = int, Onchange = transaction unit,
                                    Ontext = transaction unit] ++ boxAttrs)
 
-val checkbox : formTag bool [] ([Checked = bool] ++ boxAttrs)
+val checkbox : formTag bool [] ([Checked = bool, Onchange = transaction unit] ++ boxAttrs)
 
 type file
 val fileName : file -> option string
@@ -1010,7 +1010,7 @@ val ctextbox : cformTag ([Value = string, Size = int, Source = source string, Pl
                           Ontext = transaction unit] ++ boxAttrs) []
 val button : cformTag ([Value = string] ++ boxAttrs) []
 
-val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool] ++ boxAttrs) []
+val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool, Onchange = transaction unit] ++ boxAttrs) []
 
 con cselect = [Cselect]
 val cselect : cformTag ([Source = source string, Onchange = transaction unit] ++ boxAttrs) cselect

@@ -33,3 +33,5 @@ val mp : (char -> char) -> string -> string
 val newlines : ctx ::: {Unit} -> [[Body] ~ ctx] => string -> xml ([Body] ++ ctx) [] []
 
 val isPrefix : {Full : t, Prefix : t} -> bool
+
+val trim : t -> t
