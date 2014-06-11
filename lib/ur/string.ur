@@ -92,13 +92,13 @@ fun trim s =
         val len = length s
 
         fun findStart i =
-            if i < len && Char.isSpace (sub s i) then
+            if i < len && isspace (sub s i) then
                 findStart (i+1)
             else
                 i
 
         fun findFinish i =
-            if i >= 0 && Char.isSpace (sub s i) then
+            if i >= 0 && isspace (sub s i) then
                 findFinish (i-1)
             else
                 i
