@@ -625,6 +625,8 @@ There are infix operator syntaxes for a number of functions defined in the $\mt{
 
 A signature item $\mt{table} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{sql\_table} \; c \; []$.  $\mt{view} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{sql\_view} \; c$, $\mt{sequence} \; x$ is short for $\mt{val} \; x : \mt{Basis}.\mt{sql\_sequence}$.  $\mt{cookie} \; x : \tau$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{http\_cookie} \; \tau$, and $\mt{style} \; x$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{css\_class}$.
 
+It is possible to write a $\mt{let}$ expression with its constituents in reverse order, along the lines of Haskell's \cd{where}.  An expression $\mt{let} \; e \; \mt{where} \; ed^* \; \mt{end}$ desugars to $\mt{let} \; ed^* \; \mt{in} \; e \; \mt{end}$.
+
 
 \section{Static Semantics}
 

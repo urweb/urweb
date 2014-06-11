@@ -1456,6 +1456,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
        | UNDER                          (EWild, s (UNDERleft, UNDERright))
 
        | LET edecls IN eexp END         (ELet (edecls, eexp), s (LETleft, ENDright))
+       | LET eexp WHERE edecls END      (ELet (edecls, eexp), s (LETleft, ENDright))
 
        | LBRACK RBRACK                  (EVar (["Basis"], "Nil", Infer), s (LBRACKleft, RBRACKright))
 
