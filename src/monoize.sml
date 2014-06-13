@@ -3290,6 +3290,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     else
                         (NONE, NONE, attrs)
 
+                (* Special case for <button value=""> *)
+                val (attrs, extraString) = case tag of
+                                               "button" =>
+                                               (case List.partition (fn (x, _, _) => x = "Value") attrs of
+                                                    ([(_, value, _)], rest) =>
+                                                    (rest, SOME value)
+                                                  | _ => (attrs, NONE))
+                                             | _ => (attrs, NONE)
+                                       
+
                 val (class, fm) = monoExp (env, st, fm) class
                 val (dynClass, fm) = monoExp (env, st, fm) dynClass
                 val (style, fm) = monoExp (env, st, fm) style
@@ -3464,6 +3474,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         fun normal () =
                             let
                                 val (xml, fm) = monoExp (env, st, fm) xml
+
+                                val xml = case extraString of
+                                              NONE => xml
+                                            | SOME extra => (L'.EStrcat (extra, xml), loc)
                             in
                                 ((L'.EStrcat ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String ">"), loc)), loc),
                                               (L'.EStrcat (xml,
@@ -3483,12 +3497,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                            Substring.string bef)
                             end
                     in
-                        case xml of
-                            (L.EApp ((L.ECApp (
-                                      (L.ECApp ((L.EFfi ("Basis", "cdata"), _),
-                                                _), _),
-                                      _), _),
-                                     (L.EPrim (Prim.String s), _)), _) =>
+                        case (xml, extraString) of
+                            ((L.EApp ((L.ECApp (
+                                       (L.ECApp ((L.EFfi ("Basis", "cdata"), _),
+                                                 _), _),
+                                       _), _),
+                                      (L.EPrim (Prim.String s), _)), _), NONE) =>
                             if CharVector.all Char.isSpace s andalso isSingleton () then
                                 ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String " />"), loc)), loc), fm)
                             else
