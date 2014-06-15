@@ -503,14 +503,14 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
           had_error = 1;
           strcpy(errmsg, uw_error_message(ctx));
         } else {
+          try_rollback(ctx, 0, logger_data, log_error);
+
           uw_write_header(ctx, "Content-type: text/html\r\n");
           uw_write(ctx, "<html><head><title>Fatal Error</title></head><body>");
           uw_write(ctx, "Fatal error: ");
           uw_write(ctx, uw_error_message(ctx));
           uw_write(ctx, "\n</body></html>");
         
-          try_rollback(ctx, 0, logger_data, log_error);
-
           return FAILED;
         }
       } else
@@ -527,14 +527,14 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
           had_error = 1;
           strcpy(errmsg, uw_error_message(ctx));
         } else {
+          try_rollback(ctx, 0, logger_data, log_error);
+
           uw_reset_keep_error_message(ctx);
           on_failure(ctx);
           uw_write_header(ctx, "Content-type: text/plain\r\n");
           uw_write(ctx, "Fatal error (out of retries): ");
           uw_write(ctx, uw_error_message(ctx));
           uw_write(ctx, "\n");
-          
-          try_rollback(ctx, 0, logger_data, log_error);
 
           return FAILED;
         }
@@ -548,6 +548,8 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         had_error = 1;
         strcpy(errmsg, uw_error_message(ctx));
       } else {
+        try_rollback(ctx, 0, logger_data, log_error);
+
         uw_reset_keep_error_message(ctx);
         on_failure(ctx);
         uw_write_header(ctx, "Content-type: text/html\r\n");
@@ -555,8 +557,6 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         uw_write(ctx, "Fatal error: ");
         uw_write(ctx, uw_error_message(ctx));
         uw_write(ctx, "\n</body></html>");
-
-        try_rollback(ctx, 0, logger_data, log_error);
 
         return FAILED;
       }
@@ -567,12 +567,12 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         had_error = 1;
         strcpy(errmsg, "Unknown uw_handle return code");
       } else {
+        try_rollback(ctx, 0, logger_data, log_error);
+
         uw_reset_keep_request(ctx);
         on_failure(ctx);
         uw_write_header(ctx, "Content-type: text/plain\r\n");
         uw_write(ctx, "Unknown uw_handle return code!\n");
-
-        try_rollback(ctx, 0, logger_data, log_error);
 
         return FAILED;
       }
