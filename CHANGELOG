@@ -1,4 +1,15 @@
 ========
+20140615
+========
+
+- New syntactic sugar: 'let E where DS end' for 'let DS in E end'
+- Add 'onChange' attributes to more tags.
+- New standard library function: String.trim
+- Start treating Ur/Web tag <button> as real HTML tag <button>,
+  with special handling of 'value' attribute as tag content.
+- Bug fixes
+
+========
 20140531
 ========
 
