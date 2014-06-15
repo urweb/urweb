@@ -2208,6 +2208,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "string"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyString", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "string"), loc))]), loc)), loc),
              fm)
+          | L.EFfi ("Basis", "sql_url") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "string"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyString", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "string"), loc))]), loc)), loc),
+             fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_prim"), _), t) =>
             let
                 val t = monoType env t

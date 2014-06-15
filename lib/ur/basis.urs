@@ -703,6 +703,7 @@ type css_value
 val atom : string -> css_value
 type url
 val css_url : url -> css_value
+val sql_url : sql_injectable_prim url
 type css_property
 val property : string -> css_property
 val value : css_property -> css_value -> css_property
