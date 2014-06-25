@@ -11,7 +11,10 @@ fun addCondition (c : condition) (q : tag_query) : tag_query =
         Present => (SELECT I.Id AS Id
                     FROM ({{q}}) AS I
                       JOIN tags ON tags.Id = I.Id AND tags.Tag = {[c.Tag]})
-      | Absent => q
+      | Absent => (SELECT I.Id AS Id
+                   FROM ({{q}}) AS I
+                     LEFT JOIN tags ON tags.Id = I.Id AND tags.Tag = {[c.Tag]}
+                   WHERE tags.Tag IS NULL)
 
 fun withConditions (cs : list condition) : tag_query =
     List.foldl addCondition (SELECT images.Id AS Id FROM images) cs
