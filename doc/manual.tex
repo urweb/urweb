@@ -2280,7 +2280,7 @@ $$\begin{array}{rrcll}
   &&& \{\{e\}\} \; \mt{AS} \; \{c\} & \textrm{computed table expression, with computed local name} \\
   \textrm{$\mt{FROM}$ items} & F &::=& T \mid \{\{e\}\} \mid F \; J \; \mt{JOIN} \; F \; \mt{ON} \; E \\
   &&& \mid F \; \mt{CROSS} \; \mt{JOIN} \ F \\
-  &&& \mid (Q) \; \mt{AS} \; t \\
+  &&& \mid (Q) \; \mt{AS} \; t \mid (\{\{e\}\}) \; \mt{AS} \; t \\
   \textrm{Joins} & J &::=& [\mt{INNER}] \\
   &&& \mid [\mt{LEFT} \mid \mt{RIGHT} \mid \mt{FULL}] \; [\mt{OUTER}] \\
   \textrm{SQL expressions} & E &::=& t.f & \textrm{column references} \\
