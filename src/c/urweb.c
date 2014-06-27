@@ -3304,6 +3304,8 @@ static char *find_sig(char *haystack) {
   return s;
 }
 
+static pthread_mutex_t message_send_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 int uw_commit(uw_context ctx) {
   int i;
   char *sig;
@@ -3323,10 +3325,17 @@ int uw_commit(uw_context ctx) {
         }
       }
 
+  // Here's an important lock to provide the abstraction that all messages from one transaction are sent as an atomic unit.
+  if (ctx->used_deltas > 0)
+    pthread_mutex_lock(&message_send_mutex);
+
   if (ctx->transaction_started) {
     int code = ctx->app->db_commit(ctx);
 
     if (code) {
+      if (ctx->used_deltas > 0)
+        pthread_mutex_unlock(&message_send_mutex);
+
       if (ctx->client)
         release_client(ctx->client);
 
@@ -3360,16 +3369,19 @@ int uw_commit(uw_context ctx) {
       if (ctx->transactionals[i].commit) {
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
         if (uw_has_error(ctx)) {
-           if (ctx->client)
-             release_client(ctx->client);
+          if (ctx->used_deltas > 0)
+            pthread_mutex_unlock(&message_send_mutex);
 
-           for (i = ctx->used_transactionals-1; i >= 0; --i)
-             if (ctx->transactionals[i].rollback != NULL)
-               ctx->transactionals[i].rollback(ctx->transactionals[i].data);
+          if (ctx->client)
+            release_client(ctx->client);
 
-           for (i = ctx->used_transactionals-1; i >= 0; --i)
-             if (ctx->transactionals[i].free)
-               ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
+          for (i = ctx->used_transactionals-1; i >= 0; --i)
+            if (ctx->transactionals[i].rollback != NULL)
+              ctx->transactionals[i].rollback(ctx->transactionals[i].data);
+
+          for (i = ctx->used_transactionals-1; i >= 0; --i)
+            if (ctx->transactionals[i].free)
+              ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
 
           return 0;
         }
@@ -3384,6 +3396,9 @@ int uw_commit(uw_context ctx) {
 
     client_send(c, &d->msgs, ctx->script.start, uw_buffer_used(&ctx->script));
   }
+
+  if (ctx->used_deltas > 0)
+    pthread_mutex_unlock(&message_send_mutex);
 
   if (ctx->client)
     release_client(ctx->client);
