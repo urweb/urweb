@@ -287,3 +287,6 @@ val eqNullable' : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
 val mkRead' : t ::: Type -> (string -> option t) -> string -> read t
 
 val postFields : postBody -> list (string * string)
+
+val max : t ::: Type -> ord t -> t -> t -> t
+val min : t ::: Type -> ord t -> t -> t -> t
