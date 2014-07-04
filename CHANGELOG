@@ -1,4 +1,13 @@
 ========
+20140704
+========
+
+- New syntactic shorthand for antiquoting subqueries
+- New Top members: max and min
+- 'sql_injectable_prim' instance for 'url'
+- Bug fixes
+
+========
 20140615
 ========
 
