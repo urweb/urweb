@@ -1203,8 +1203,13 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                     L'.TFun (dom, ran) => (L'.TFun (dom, addLastBit ran), #2 t)
                   | _ => (L'.TFun ((L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc), t), loc)
 
-            val e = (L'.EFfiApp (m, x, makeArgs (numArgs t' - 1, t', [])), loc)
-            val (e, tTrans) = if isTransactional t' then
+            val isTrans = isTransactional t'
+            val e = (L'.EFfiApp (m, x, makeArgs (numArgs t' -
+                                               (if isTrans then
+                                                    0
+                                                else
+                                                    1), t', [])), loc)
+            val (e, tTrans) = if isTrans then
                                   ((L'.EAbs ("_", (L'.TRecord (L'.CRecord ((L'.KType, loc), []), loc), loc), getRan t', e), loc), addLastBit t')
                               else
                                   (e, t')
@@ -1216,7 +1221,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                   | Source.ServerOnly => Settings.addServerOnly name
                   | Source.JsFunc s => Settings.addJsFunc (name, s)) modes;
 
-            if isTransactional t' andalso not (Settings.isBenignEffectful name) then
+            if isTrans andalso not (Settings.isBenignEffectful name) then
                 Settings.addEffectful name
             else
                 ();
