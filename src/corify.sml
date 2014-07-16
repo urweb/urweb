@@ -1221,6 +1221,11 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                   | Source.ServerOnly => Settings.addServerOnly name
                   | Source.JsFunc s => Settings.addJsFunc (name, s)) modes;
 
+            if List.exists (fn Source.JsFunc _ => true | _ => false) modes then
+                ()
+            else
+                Settings.addJsFunc (name, #2 name);
+
             if isTrans andalso not (Settings.isBenignEffectful name) then
                 Settings.addEffectful name
             else
