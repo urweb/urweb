@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, 2013, Adam Chlipala
+(* Copyright (c) 2008, 2013-2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -471,7 +471,7 @@ fun reduce (file : file) =
 
                       | ECase (e, pes, _) =>
                         let
-                            val lss = map (fn (p, e) => summarize (d + patBinds p) e) pes
+                            val lss = map (fn (p, e) => summarize (if d = ~1 then ~1 else d + patBinds p) e) pes
 
                             fun splitRel ls acc =
                                 case ls of
@@ -510,7 +510,7 @@ fun reduce (file : file) =
                         List.concat [summarize d query,
                                      summarize d initial,
                                      [ReadDb],
-                                     summarize (d + 2) body]
+                                     summarize (if d = ~1 then ~1 else d + 2) body]
 
                       | EDml (e, _) => summarize d e @ [WriteDb]
                       | ENextval e => summarize d e @ [WriteDb]
@@ -585,7 +585,7 @@ fun reduce (file : file) =
                                 val effs_e' = List.filter (fn x => x <> UseRel) effs_e'
                                 val effs_b = summarize 0 b
 
-                                (*val () = Print.fprefaces outf "Try"
+                                (*val () = Print.prefaces "Try"
                                                         [(*("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan)),*)
                                                          ("e'", MonoPrint.p_exp env e'),
                                                          ("b", MonoPrint.p_exp (E.pushERel env x t NONE) b),
