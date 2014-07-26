@@ -502,7 +502,7 @@ fun reduce (file : file) =
                       | EWrite e => summarize d e @ [WritePage]
                                     
                       | ESeq (e1, e2) => summarize d e1 @ summarize d e2
-                      | ELet (_, _, e1, e2) => summarize d e1 @ summarize (d + 1) e2
+                      | ELet (_, _, e1, e2) => summarize d e1 @ summarize (if d = ~1 then ~1 else d + 1) e2
 
                       | EClosure (_, es) => List.concat (map (summarize d) es)
 
