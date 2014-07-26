@@ -377,6 +377,10 @@ Compiled applications consult a few environment variables to modify their behavi
   \item \cd{URWEB\_PQ\_CON}: when using PostgreSQL, overrides the compiled-in connection string
 \end{itemize}
 
+\subsection{A Word of Warning on Heuristic Compilation}
+
+For server-side code, Ur/Web follows an unusual compilation model, where not all type-correct programs can be compiled successfully, especially when using functions as data not known until runtime.  See Section \ref{phases} for more detail.
+
 
 \section{Ur Syntax}
 
@@ -2555,9 +2559,9 @@ Now \texttt{foo} is available as a normal function.  If called in server-side co
 When no \texttt{jsFunc} directive is present, the function is assumed to map to a JavaScript function of the same name, if used in a client-side context.
 
 
-\section{Compiler Phases}
+\section{\label{phases}Compiler Phases}
 
-The Ur/Web compiler is unconventional in that it relies on a kind of \emph{heuristic compilation}.  Not all valid programs will compile successfully.  Informally, programs fail to compile when they are ``too higher order.''  Compiler phases do their best to eliminate different kinds of higher order-ness, but some programs just won't compile.  This is a trade-off for producing very efficient executables.  Compiled Ur/Web programs use native C representations and require no garbage collection.
+The Ur/Web compiler is unconventional in that it relies on a kind of \emph{heuristic compilation}.  Not all valid programs will compile successfully.  Informally, programs fail to compile when they are ``too higher order.''  Compiler phases do their best to eliminate different kinds of higher order-ness, but some programs just won't compile.  This is a trade-off for producing very efficient executables.  Compiled Ur/Web programs use native C representations and require no garbage collection.  Also, this warning only applies to server-side code, as client-side code runs in a normal JavaScript environment with garbage collection.
 
 In this section, we step through the main phases of compilation, noting what consequences each phase has for effective programming.
 
