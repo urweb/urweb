@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2013, Adam Chlipala
+(* Copyright (c) 2008-2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1191,6 +1191,12 @@
                  (L'.CProj (c1, n1), _) => projSpecial1 (c1, n1, isRecord')
                | (_, L'.CProj (c2, n2)) => projSpecial2 (c2, n2, isRecord')
                | _ => isRecord' ()
+
+         fun maybeIsRecord c =
+             case c of
+                 L'.CRecord _ => isRecord ()
+               | L'.CConcat _ => isRecord ()
+               | _ => err COccursCheckFailed
      in
          (*eprefaces "unifyCons''" [("c1", p_con env c1All),
                                   ("c2", p_con env c2All)];*)
@@ -1220,21 +1226,16 @@
              else
                  err (fn _ => TooLifty (loc1, loc2))
 
-           | (L'.CRecord _, _) => isRecord ()
-           | (_, L'.CRecord _) => isRecord ()
-           | (L'.CConcat _, _) => isRecord ()
-           | (_, L'.CConcat _) => isRecord ()
-
            | (L'.CUnif (0, _, _, _, r as ref (L'.Unknown f)), _) =>
              if occursCon r c2All then
-                 err COccursCheckFailed
+                 maybeIsRecord c2
              else if f c2All then
                  r := L'.Known c2All
              else
                  err CScope
            | (_, L'.CUnif (0, _, _, _, r as ref (L'.Unknown f))) =>
              if occursCon r c1All then
-                 err COccursCheckFailed
+                 maybeIsRecord c1
              else if f c1All then
                  r := L'.Known c1All
              else
@@ -1242,7 +1243,7 @@
 
            | (L'.CUnif (nl, _, _, _, r as ref (L'.Unknown f)), _) =>
              if occursCon r c2All then
-                 err COccursCheckFailed
+                 maybeIsRecord c2
              else
                  (let
                       val sq = squish nl c2All
@@ -1255,7 +1256,7 @@
                   handle CantSquish => err (fn _ => TooDeep))
            | (_, L'.CUnif (nl, _, _, _, r as ref (L'.Unknown f))) =>
              if occursCon r c1All then
-                 err COccursCheckFailed
+                 maybeIsRecord c1
              else
                  (let
                       val sq = squish nl c1All
@@ -1266,6 +1267,11 @@
                           err CScope
                   end
                   handle CantSquish => err (fn _ => TooDeep))
+
+           | (L'.CRecord _, _) => isRecord ()
+           | (_, L'.CRecord _) => isRecord ()
+           | (L'.CConcat _, _) => isRecord ()
+           | (_, L'.CConcat _) => isRecord ()
 
 
            | (L'.CUnit, L'.CUnit) => ()
