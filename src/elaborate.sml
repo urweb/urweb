@@ -1220,6 +1220,11 @@
              else
                  err (fn _ => TooLifty (loc1, loc2))
 
+           | (L'.CRecord _, _) => isRecord ()
+           | (_, L'.CRecord _) => isRecord ()
+           | (L'.CConcat _, _) => isRecord ()
+           | (_, L'.CConcat _) => isRecord ()
+
            | (L'.CUnif (0, _, _, _, r as ref (L'.Unknown f)), _) =>
              if occursCon r c2All then
                  err COccursCheckFailed
@@ -1261,11 +1266,6 @@
                           err CScope
                   end
                   handle CantSquish => err (fn _ => TooDeep))
-
-           | (L'.CRecord _, _) => isRecord ()
-           | (_, L'.CRecord _) => isRecord ()
-           | (L'.CConcat _, _) => isRecord ()
-           | (_, L'.CConcat _) => isRecord ()
 
 
            | (L'.CUnit, L'.CUnit) => ()
