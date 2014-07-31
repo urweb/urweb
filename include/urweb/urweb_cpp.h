@@ -263,6 +263,7 @@ void uw_mayReturnIndirectly(struct uw_context *);
 __attribute__((noreturn)) void uw_return_blob(struct uw_context *, uw_Basis_blob, uw_Basis_string mimeType);
 __attribute__((noreturn)) void uw_return_blob_from_page(struct uw_context *, uw_Basis_string mimeType);
 __attribute__((noreturn)) void uw_redirect(struct uw_context *, uw_Basis_string url);
+void uw_replace_page(struct uw_context *, const char *data, size_t size);
 
 uw_Basis_time uw_Basis_now(struct uw_context *);
 uw_Basis_time uw_Basis_addSeconds(struct uw_context *, uw_Basis_time, uw_Basis_int);

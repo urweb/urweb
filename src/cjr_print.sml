@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2012, Adam Chlipala
+(* Copyright (c) 2008-2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -3293,6 +3293,17 @@ fun p_file env (ds, ps) =
         val now = Time.now ()
         val nowD = Date.fromTimeUniv now
         val rfcFmt = "%a, %d %b %Y %H:%M:%S GMT"
+
+        fun hexifyByte (b : Word8.word) : string =
+            let
+                val s = Int.fmt StringCvt.HEX (Word8.toInt b)
+            in
+                "\\x" ^ (if size s < 2 then "0" else "") ^ s
+            end
+
+        fun hexify (v : Word8Vector.vector) : string =
+            String.concat (Word8Vector.foldr (fn (b, ls) =>
+                                                 hexifyByte b :: ls) [] v)
     in
         box [string "#include \"",
              string (OS.Path.joinDirFile {dir = !Settings.configInclude,
@@ -3476,9 +3487,9 @@ fun p_file env (ds, ps) =
                   string "}",
                   newline,
                   newline,
-                  string "uw_write_header(ctx, \"Content-type: text/javascript\\r\\n\");",
+                  string "uw_write_header(ctx, \"Content-Type: text/javascript\\r\\n\");",
                   newline,
-                  string ("uw_write_header(ctx, \"Last-modified: " ^ Date.fmt rfcFmt nowD ^ "\\r\\n\");"),
+                  string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt nowD ^ "\\r\\n\");"),
                   newline,
                   string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),                  
                   newline,
@@ -3487,6 +3498,37 @@ fun p_file env (ds, ps) =
                   string "return;",
                   newline],
              string "}",
+             newline,
+             newline,
+
+             p_list_sep newline (fn r =>
+                                    box [string "if (!strcmp(request, \"",
+                                         string (String.toCString (#Uri r)),
+                                         string "\")) {",
+                                         newline,
+                                         box [(case #ContentType r of
+                                                   NONE => box []
+                                                 | SOME ct => box [string "uw_write_header(ctx, \"Content-Type: ",
+                                                                   string (String.toCString ct),
+                                                                   string "\\r\\n\");",
+                                                                   newline]),
+                                              string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt (Date.fromTimeUniv (#LastModified r)) ^ "\\r\\n\");"),
+                                              newline,
+                                              string ("uw_write_header(ctx, \"Content-Length: " ^ Int.toString (Word8Vector.length (#Bytes r)) ^ "\\r\\n\");"),
+                                              newline,
+                                              string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),                  
+                                              newline,
+                                              string "uw_replace_page(ctx, \"",
+                                              string (hexify (#Bytes r)),
+                                              string "\", ",
+                                              string (Int.toString (Word8Vector.length (#Bytes r))),
+                                              string ");",
+                                              newline,
+                                              string "return;",
+                                              newline],
+                                         string "};",
+                                         newline]) (Settings.listFiles ()),
+
              newline,
              p_list_sep newline (fn x => x) pds',
              newline,

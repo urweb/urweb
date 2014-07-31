@@ -278,4 +278,10 @@ signature SETTINGS = sig
 
     val setLessSafeFfi : bool -> unit
     val getLessSafeFfi : unit -> bool
+
+    val setFilePath : string -> unit
+    (* Sets the directory where we look for files being added below. *)
+
+    val addFile : {Uri : string, LoadFromFilename : string} -> unit
+    val listFiles : unit -> {Uri : string, ContentType : string option, LastModified : Time.time, Bytes : Word8Vector.vector} list
 end

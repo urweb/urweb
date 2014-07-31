@@ -3861,6 +3861,11 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   longjmp(ctx->jmp_buf, RETURN_INDIRECTLY);
 }
 
+void uw_replace_page(uw_context ctx, const char *data, size_t size) {
+  uw_buffer_reset(&ctx->page);
+  ctx_uw_buffer_append(ctx, "page", &ctx->page, data, size);
+}
+
 __attribute__((noreturn)) void uw_return_blob_from_page(uw_context ctx, uw_Basis_string mimeType) {
   cleanup *cl;
   int len;

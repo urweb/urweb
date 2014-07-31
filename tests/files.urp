@@ -1,0 +1,6 @@
+rewrite all Files/*
+file /hello_world.txt hello.txt
+file /img/web.png web.png
+file /files.urp files.urp
+
+files

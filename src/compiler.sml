@@ -461,6 +461,8 @@ fun parseUrp' accLibs fname =
          end
      else
          let
+             val thisPath = OS.Path.dir fname
+
              val pathmap = ref (!pathmap)
              val bigLibs = ref []
 
@@ -875,6 +877,13 @@ fun parseUrp' accLibs fname =
                                    | "noMangleSql" => Settings.setMangleSql false
                                    | "html5" => Settings.setIsHtml5 true
                                    | "lessSafeFfi" => Settings.setLessSafeFfi true
+
+                                   | "file" =>
+                                     (case String.fields Char.isSpace arg of
+                                          [uri, fname] => (Settings.setFilePath thisPath;
+                                                           Settings.addFile {Uri = uri,
+                                                                             LoadFromFilename = fname})
+                                        | _ => ErrorMsg.error "Bad 'file' arguments")
 
                                    | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                                  read ()

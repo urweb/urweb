@@ -744,4 +744,106 @@ val less = ref false
 fun setLessSafeFfi b = less := b
 fun getLessSafeFfi () = !less
 
+structure SM = BinaryMapFn(struct
+                           type ord_key = string
+                           val compare = String.compare
+                           end)
+
+val noMimeFile = ref false
+
+fun noMime () =
+    (TextIO.output (TextIO.stdErr, "WARNING: Error opening /etc/mime.types.  Static files will be served with no suggested MIME types.\n");
+     noMimeFile := true;
+     SM.empty)
+
+fun readMimeTypes () =
+    let
+        val inf = TextIO.openIn "/etc/mime.types"
+
+        fun loop m =
+            case TextIO.inputLine inf of
+                NONE => m
+              | SOME line =>
+                if size line > 0 andalso String.sub (line, 0) = #"#" then
+                    loop m
+                else
+                    case String.tokens Char.isSpace line of
+                        typ :: exts =>
+                        loop (foldl (fn (ext, m) => SM.insert (m, ext, typ)) m exts)
+                      | _ => loop m
+    in
+        loop SM.empty
+        before TextIO.closeIn inf
+    end handle IO.Io _ => noMime ()
+             | OS.SysErr _ => noMime ()
+
+val mimeTypes = ref (NONE : string SM.map option)
+
+fun getMimeTypes () =
+    case !mimeTypes of
+        SOME m => m
+      | NONE =>
+        let
+            val m = readMimeTypes ()
+        in
+            mimeTypes := SOME m;
+            m
+        end
+
+fun mimeTypeOf filename =
+    case OS.Path.ext filename of
+        NONE => (if !noMimeFile then
+                     ()
+                 else
+                     TextIO.output (TextIO.stdErr, "WARNING: No extension found in filename '" ^ filename ^ "'.  Header 'Content-Type' will be omitted in HTTP responses.\n");
+                 NONE)
+      | SOME ext =>
+        let
+            val to = SM.find (getMimeTypes (), ext)
+        in
+            case to of
+                NONE => if !noMimeFile then
+                            ()
+                        else
+                            TextIO.output (TextIO.stdErr, "WARNING: No MIME type known for extension '" ^ ext ^ "'.  Header 'Content-Type' will be omitted in HTTP responses.\n")
+              | _ => ();
+            to
+        end
+
+val files = ref (SM.empty : (string * {Uri : string, ContentType : string option, LastModified : Time.time, Bytes : Word8Vector.vector}) SM.map)
+
+val filePath = ref "."
+
+fun setFilePath path = filePath := path
+
+fun addFile {Uri, LoadFromFilename} =
+    let
+        val path = OS.Path.joinDirFile {dir = !filePath, file = LoadFromFilename}
+    in
+        case SM.find (!files, Uri) of
+            SOME (path', _) =>
+            if path' = path then
+                ()
+            else
+                ErrorMsg.error ("Two different files requested for URI " ^ Uri)
+          | NONE =>
+            let
+                val inf = BinIO.openIn path
+            in
+                files := SM.insert (!files,
+                                    Uri,
+                                    (path,
+                                     {Uri = Uri,
+                                      ContentType = mimeTypeOf path,
+                                      LastModified = OS.FileSys.modTime path,
+                                      Bytes = BinIO.inputAll inf}));
+                BinIO.closeIn inf
+            end
+    end handle IO.Io _ =>
+               ErrorMsg.error ("Error loading file " ^ LoadFromFilename)
+             | OS.SysErr (s, _) =>
+               ErrorMsg.error ("Error loading file " ^ LoadFromFilename ^ " (" ^ s ^ ")")
+
+fun listFiles () = map #2 (SM.listItems (!files))
+
 end
