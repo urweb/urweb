@@ -190,13 +190,13 @@ fun match (env, p : pat, e : exp) =
         (PWild, _) => Yes env
       | (PVar (x, t), _) => Yes ((x, t, e) :: env)
 
-      | (PPrim (Prim.String s), EStrcat ((EPrim (Prim.String s'), _), _)) =>
+      | (PPrim (Prim.String (_, s)), EStrcat ((EPrim (Prim.String (_, s')), _), _)) =>
         if String.isPrefix s' s then
             Maybe
         else
             No
 
-      | (PPrim (Prim.String s), EStrcat (_, (EPrim (Prim.String s'), _))) =>
+      | (PPrim (Prim.String (_, s)), EStrcat (_, (EPrim (Prim.String (_, s')), _))) =>
         if String.isSuffix s' s then
             Maybe
         else
@@ -756,8 +756,10 @@ fun reduce (file : file) =
 
                       | ELet (x, t, e', b) => doLet (x, t, e', b)
 
-                      | EStrcat ((EPrim (Prim.String s1), _), (EPrim (Prim.String s2), _)) =>
-                        EPrim (Prim.String (s1 ^ s2))
+                      | EStrcat ((EPrim (Prim.String (k1, s1)), _), (EPrim (Prim.String (k2, s2)), _)) =>
+                        EPrim (Prim.String ((case (k1, k2) of
+                                                 (Prim.Html, Prim.Html) => Prim.Html
+                                               | _ => Prim.Normal), s1 ^ s2))
 
                       | ESignalBind ((ESignalReturn e1, loc), e2) =>
                         #1 (reduceExp env (EApp (e2, e1), loc))

@@ -203,10 +203,10 @@ fun p_patMatch (env, disc) (p, loc) =
                                    Prim.p_t_GCC (Prim.Int n),
                                    string ")"]
       | PPrim (Prim.String s) => box [string ("!strcmp(" ^ disc),
-                                      string ",",
-                                      space,
-                                      Prim.p_t_GCC (Prim.String s),
-                                      string ")"]
+                                           string ",",
+                                           space,
+                                           Prim.p_t_GCC (Prim.String s),
+                                           string ")"]
       | PPrim (Prim.Char ch) => box [string ("(" ^ disc),
                                      space,
                                      string "==",
@@ -503,16 +503,16 @@ fun getPargs (e, _) =
 
       | ECase (e,
                [((PNone _, _),
-                 (EPrim (Prim.String "NULL"), _)),
+                 (EPrim (Prim.String (_, "NULL")), _)),
                 ((PSome (_, (PVar _, _)), _),
                  (EFfiApp (m, x, [((ERel 0, _), _)]), _))],
                {disc = t, ...}) => map (fn (x, y) => (x, Nullable y)) (getPargs (EFfiApp (m, x, [(e, t)]), #2 e))
 
       | ECase (e,
                [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
-                 (EPrim (Prim.String "TRUE"), _)),
+                 (EPrim (Prim.String (_, "TRUE")), _)),
                 ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, _), _),
-                 (EPrim (Prim.String "FALSE"), _))],
+                 (EPrim (Prim.String (_, "FALSE")), _))],
                _) => [(e, Bool)]
 
       | _ => raise Fail "CjrPrint: getPargs"
@@ -2218,7 +2218,7 @@ and p_exp' par tail env (e, loc) =
                  NONE => #nextval (Settings.currentDbms ()) {loc = loc,
                                                              seqE = p_exp' false false env seq,
                                                              seqName = case #1 seq of
-                                                                           EPrim (Prim.String s) => SOME s
+                                                                           EPrim (Prim.String (_, s)) => SOME s
                                                                          | _ => NONE}
                | SOME {id, query} => #nextvalPrepared (Settings.currentDbms ()) {loc = loc,
                                                                                  id = id,

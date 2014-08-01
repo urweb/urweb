@@ -282,11 +282,11 @@ fun parseValue s pos =
         in
             (EApp ((EVar (["Basis"], "css_url", Infer), pos),
                    (EApp ((EVar (["Basis"], "bless", Infer), pos),
-                          (EPrim (Prim.String s), pos)), pos)), pos)
+                          (EPrim (Prim.String (Prim.Normal, s)), pos)), pos)), pos)
         end
     else
         (EApp ((EVar (["Basis"], "atom", Infer), pos),
-               (EPrim (Prim.String s), pos)), pos)
+               (EPrim (Prim.String (Prim.Normal, s)), pos)), pos)
 
 fun parseProperty s pos =
     let
@@ -294,11 +294,11 @@ fun parseProperty s pos =
     in
         if Substring.isEmpty after then
             (ErrorMsg.errorAt pos ("Invalid CSS property syntax: " ^ s);
-             (EPrim (Prim.String ""), pos))
+             (EPrim (Prim.String (Prim.Normal, "")), pos))
         else
             foldl (fn (value, e) => (EApp ((EApp ((EVar (["Basis"], "value", Infer), pos), e), pos), parseValue value pos), pos))
                 (EApp ((EVar (["Basis"], "property", Infer), pos),
-                       (EPrim (Prim.String (Substring.string (#2 (Substring.splitl Char.isSpace befor)))), pos)), pos)
+                       (EPrim (Prim.String (Prim.Normal, Substring.string (#2 (Substring.splitl Char.isSpace befor)))), pos)), pos)
                 (String.tokens Char.isSpace (Substring.string (Substring.slice (after, 1, NONE))))
     end
 
@@ -1152,8 +1152,8 @@ eapps  : eterm                          (eterm)
        | eapps BANG                     (EDisjointApp eapps, s (eappsleft, BANGright))
 
 eexp   : eapps                          (case #1 eapps of
-                                             EApp ((EVar ([], "CLASS", _), _), (EPrim (Prim.String s), loc)) => parseClass s loc
-                                           | EApp ((EVar ([], "STYLE", _), _), (EPrim (Prim.String s), loc)) => parseStyle s loc
+                                             EApp ((EVar ([], "CLASS", _), _), (EPrim (Prim.String (_, s)), loc)) => parseClass s loc
+                                           | EApp ((EVar ([], "STYLE", _), _), (EPrim (Prim.String (_, s)), loc)) => parseStyle s loc
                                            | _ => eapps)
        | FN eargs DARROW eexp           (let
                                              val loc = s (FNleft, eexpright)
@@ -1347,7 +1347,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
 
        | INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
-       | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
+       | STRING                         (EPrim (Prim.String (Prim.Normal, STRING)), s (STRINGleft, STRINGright))
        | CHAR                           (EPrim (Prim.Char CHAR), s (CHARleft, CHARright))
 
        | path DOT idents                (let
@@ -1396,7 +1396,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                              else
                                                  ErrorMsg.errorAt loc "Initial XML tag pair aren't both tagged \"xml\".";
                                              (EApp ((EVar (["Basis"], "cdata", Infer), loc),
-                                                    (EPrim (Prim.String ""), loc)),
+                                                    (EPrim (Prim.String (Prim.Html, "")), loc)),
                                               loc)
                                          end)
        | XML_BEGIN_END                  (let
@@ -1407,7 +1407,7 @@ eterm  : LPAREN eexp RPAREN             (#1 eexp, s (LPARENleft, RPARENright))
                                              else
                                                  ErrorMsg.errorAt loc "Initial XML tag pair aren't both tagged \"xml\".";
                                              (EApp ((EVar (["Basis"], "cdata", Infer), loc),
-                                                    (EPrim (Prim.String ""), loc)),
+                                                    (EPrim (Prim.String (Prim.Html, "")), loc)),
                                               loc)
                                          end)
 
@@ -1511,7 +1511,7 @@ pterm  : SYMBOL                         (PVar SYMBOL, s (SYMBOLleft, SYMBOLright
        | UNDER                          (PWild, s (UNDERleft, UNDERright))
        | INT                            (PPrim (Prim.Int INT), s (INTleft, INTright))
        | MINUS INT                      (PPrim (Prim.Int (~INT)), s (MINUSleft, INTright))
-       | STRING                         (PPrim (Prim.String STRING), s (STRINGleft, STRINGright))
+       | STRING                         (PPrim (Prim.String (Prim.Normal, STRING)), s (STRINGleft, STRINGright))
        | CHAR                           (PPrim (Prim.Char CHAR), s (CHARleft, CHARright))
        | LPAREN pat RPAREN              (pat)
        | LBRACE RBRACE                  (PRecord ([], false), s (LBRACEleft, RBRACEright))
@@ -1547,11 +1547,11 @@ xml    : xmlOne xml                     (let
 
 xmlOpt : xml                            (xml)
        |                                (EApp ((EVar (["Basis"], "cdata", Infer), dummy),
-                                               (EPrim (Prim.String ""), dummy)),
+                                               (EPrim (Prim.String (Prim.Html, "")), dummy)),
                                          dummy)
 
 xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer), s (NOTAGSleft, NOTAGSright)),
-                                               (EPrim (Prim.String NOTAGS), s (NOTAGSleft, NOTAGSright))),
+                                               (EPrim (Prim.String (Prim.Html, NOTAGS)), s (NOTAGSleft, NOTAGSright))),
                                          s (NOTAGSleft, NOTAGSright))
        | tag DIVIDE GT                  (let
                                              val pos = s (tagleft, GTright)
@@ -1568,7 +1568,7 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                      (EVar (["Basis"], "cdata", Infer), pos)
 
                                              val cdata = (EApp (cdata,
-                                                                (EPrim (Prim.String ""), pos)),
+                                                                (EPrim (Prim.String (Prim.Html, "")), pos)),
                                                           pos)
                                          in
                                              (EApp (#4 tag, cdata), pos)
@@ -1629,7 +1629,7 @@ tag    : tagHead attrs                  (let
                                              val e = (EVar (["Basis"], "tag", Infer), pos)
                                              val eo = case #1 attrs of
                                                           NONE => (EVar (["Basis"], "null", Infer), pos)
-                                                        | SOME (EPrim (Prim.String s), pos) => parseClass s pos
+                                                        | SOME (EPrim (Prim.String (_, s)), pos) => parseClass s pos
                                                         | SOME e => e
                                              val e = (EApp (e, eo), pos)
                                              val eo = case #2 attrs of
@@ -1639,7 +1639,7 @@ tag    : tagHead attrs                  (let
                                              val e = (EApp (e, eo), pos)
                                              val eo = case #3 attrs of
                                                           NONE => (EVar (["Basis"], "noStyle", Infer), pos)
-                                                        | SOME (EPrim (Prim.String s), pos) => parseStyle s pos
+                                                        | SOME (EPrim (Prim.String (_, s)), pos) => parseStyle s pos
                                                         | SOME e => e
                                              val e = (EApp (e, eo), pos)
                                              val eo = case #4 attrs of
@@ -1656,7 +1656,7 @@ tag    : tagHead attrs                  (let
                                                                     let
                                                                         val e = (EVar (["Basis"], "data_attr", Infer), pos)
                                                                         val e = (EApp (e, (EVar (["Basis"], kind ^ "_kind", Infer), pos)), pos)
-                                                                        val e = (EApp (e, (EPrim (Prim.String name), pos)), pos)
+                                                                        val e = (EApp (e, (EPrim (Prim.String (Prim.Normal, name)), pos)), pos)
                                                                     in
                                                                         (EApp (e, value), pos)
                                                                     end
@@ -1750,7 +1750,7 @@ attr   : SYMBOL EQ attrv                (case SYMBOL of
                 
 attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
-       | STRING                         (EPrim (Prim.String STRING), s (STRINGleft, STRINGright))
+       | STRING                         (EPrim (Prim.String (Prim.Normal, STRING)), s (STRINGleft, STRINGright))
        | LBRACE eexp RBRACE             (eexp)
 
 query  : query1 obopt lopt ofopt        (let
@@ -2038,7 +2038,7 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                                      s (INTleft, INTright)))
        | FLOAT                          (sql_inject (EPrim (Prim.Float FLOAT),
                                                      s (FLOATleft, FLOATright)))
-       | STRING                         (sql_inject (EPrim (Prim.String STRING),
+       | STRING                         (sql_inject (EPrim (Prim.String (Prim.Normal, STRING)),
                                                      s (STRINGleft, STRINGright)))
        | CURRENT_TIMESTAMP              (sql_nfunc ("current_timestamp",
                                                     s (CURRENT_TIMESTAMPleft, CURRENT_TIMESTAMPright)))

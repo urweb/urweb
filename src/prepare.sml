@@ -65,7 +65,7 @@ fun prepString (e, st) =
                     SOME (#p_blank (Settings.currentDbms ()) (n + 1, t) :: ss, n + 1)
             in
                 case #1 e of
-                    EPrim (Prim.String s) =>
+                    EPrim (Prim.String (_, s)) =>
                     SOME (s :: ss, n)
                   | EFfiApp ("Basis", "strcat", [(e1, _), (e2, _)]) =>
                     (case prepString' (e1, ss, n) of
@@ -82,16 +82,16 @@ fun prepString (e, st) =
 
                   | ECase (e,
                            [((PNone _, _),
-                             (EPrim (Prim.String "NULL"), _)),
+                             (EPrim (Prim.String (_, "NULL")), _)),
                             ((PSome (_, (PVar _, _)), _),
                              (EFfiApp (m, x, [((ERel 0, _), _)]), _))],
                            {disc = t, ...}) => prepString' ((EFfiApp (m, x, [(e, t)]), #2 e), ss, n)
 
                   | ECase (e,
                            [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
-                             (EPrim (Prim.String "TRUE"), _)),
+                             (EPrim (Prim.String (_, "TRUE")), _)),
                             ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, _), _),
-                             (EPrim (Prim.String "FALSE"), _))],
+                             (EPrim (Prim.String (_, "FALSE")), _))],
                            _) => doOne Bool
 
                   | _ => NONE
@@ -268,14 +268,14 @@ fun prepExp (e as (_, loc), st) =
         if #supportsNextval (Settings.currentDbms ()) then
             let
                 val s = case seq of
-                            (EPrim (Prim.String s), loc) =>
-                            (EPrim (Prim.String ("SELECT NEXTVAL('" ^ s ^ "')")), loc)
+                            (EPrim (Prim.String (_, s)), loc) =>
+                            (EPrim (Prim.String (Prim.Normal, "SELECT NEXTVAL('" ^ s ^ "')")), loc)
                           | _ =>
                             let
                                 val t = (TFfi ("Basis", "string"), loc)
-                                val s' = (EFfiApp ("Basis", "strcat", [(seq, t), ((EPrim (Prim.String "')"), loc), t)]), loc)
+                                val s' = (EFfiApp ("Basis", "strcat", [(seq, t), ((EPrim (Prim.String (Prim.Normal, "')")), loc), t)]), loc)
                             in
-                                (EFfiApp ("Basis", "strcat", [((EPrim (Prim.String "SELECT NEXTVAL('"), loc), t), (s', t)]), loc)
+                                (EFfiApp ("Basis", "strcat", [((EPrim (Prim.String (Prim.Normal, "SELECT NEXTVAL('")), loc), t), (s', t)]), loc)
                             end
             in
                 case prepString (s, st) of

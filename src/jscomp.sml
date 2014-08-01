@@ -55,7 +55,7 @@ type state = {
 
 fun strcat loc es =
     case es of
-        [] => (EPrim (Prim.String ""), loc)
+        [] => (EPrim (Prim.String (Prim.Normal, "")), loc)
       | [x] => x
       | x :: es' => (EStrcat (x, strcat loc es'), loc)
 
@@ -81,7 +81,7 @@ fun process (file : file) =
                     | (_, state) => state)
                   (IM.empty, IM.empty) (#1 file)
 
-        fun str loc s = (EPrim (Prim.String s), loc)
+        fun str loc s = (EPrim (Prim.String (Prim.Normal, s)), loc)
 
         fun isNullable (t, _) =
             case t of
@@ -149,7 +149,7 @@ fun process (file : file) =
                     val (e', st) = quoteExp loc t ((ERel 0, loc), st)
                 in
                     (case #1 e' of
-                        EPrim (Prim.String "ERROR") => raise Fail "UHOH"
+                        EPrim (Prim.String (_, "ERROR")) => raise Fail "UHOH"
                       | _ =>
                         (ECase (e,
                                 [((PNone t, loc),
@@ -450,7 +450,7 @@ fun process (file : file) =
                                                             3)
                             in
                                 case p of
-                                    Prim.String s =>
+                                    Prim.String (_, s) =>
                                     str ("\"" ^ String.translate jsChar s ^ "\"")
                                   | Prim.Char ch => str ("\"" ^ jsChar ch ^ "\"")
                                   | _ => str (Prim.toString p)
@@ -519,7 +519,7 @@ fun process (file : file) =
 
                         fun deStrcat level (all as (e, loc)) =
                             case e of
-                                EPrim (Prim.String s) => jsifyStringMulti (level, s)
+                                EPrim (Prim.String (_, s)) => jsifyStringMulti (level, s)
                               | EStrcat (e1, e2) => deStrcat level e1 ^ deStrcat level e2
                               | EFfiApp ("Basis", "jsifyString", [(e, _)]) => "\"" ^ deStrcat (level + 1) e ^ "\""
                               | _ => (ErrorMsg.errorAt loc "Unexpected non-constant JavaScript code";
@@ -1021,10 +1021,10 @@ fun process (file : file) =
              case #1 e of
                  EPrim p =>
                  (case p of
-                      Prim.String s => if inString {needle = "<script", haystack = s} then
-                                           foundJavaScript := true
-                                       else
-                                           ()
+                      Prim.String (_, s) => if inString {needle = "<script", haystack = s} then
+                                                foundJavaScript := true
+                                            else
+                                                ()
                     | _ => ();
                   (e, st))
                | ERel _ => (e, st)

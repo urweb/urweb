@@ -515,7 +515,7 @@ fun fooifyExp fk env =
                 let
                     val (_, _, _, s) = Env.lookupENamed env fnam
                 in
-                    ((L'.EPrim (Prim.String (Settings.getUrlPrefix () ^ s)), loc), fm)
+                    ((L'.EPrim (Prim.String (Prim.Normal, Settings.getUrlPrefix () ^ s)), loc), fm)
                 end
               | L'.EClosure (fnam, args) =>
                 let
@@ -531,21 +531,21 @@ fun fooifyExp fk env =
                             in
                                 attrify (args, ft,
                                          (L'.EStrcat (e,
-                                                      (L'.EStrcat ((L'.EPrim (Prim.String "/"), loc),
+                                                      (L'.EStrcat ((L'.EPrim (Prim.String (Prim.Normal, "/")), loc),
                                                                    arg'), loc)), loc),
                                          fm)
                             end
                           | _ => (E.errorAt loc "Type mismatch encoding attribute";
                                   (e, fm))
                 in
-                    attrify (args, ft, (L'.EPrim (Prim.String (Settings.getUrlPrefix () ^ s)), loc), fm)
+                    attrify (args, ft, (L'.EPrim (Prim.String (Prim.Normal, Settings.getUrlPrefix () ^ s)), loc), fm)
                 end
               | _ =>
                 case t of
-                    L'.TFfi ("Basis", "unit") => ((L'.EPrim (Prim.String ""), loc), fm)
+                    L'.TFfi ("Basis", "unit") => ((L'.EPrim (Prim.String (Prim.Normal, "")), loc), fm)
                   | L'.TFfi (m, x) => ((L'.EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [(e, tAll)]), loc), fm)
 
-                  | L'.TRecord [] => ((L'.EPrim (Prim.String ""), loc), fm)
+                  | L'.TRecord [] => ((L'.EPrim (Prim.String (Prim.Normal, "")), loc), fm)
                   | L'.TRecord ((x, t) :: xts) =>
                     let
                         val (se, fm) = fooify fm ((L'.EField (e, x), loc), t)
@@ -555,7 +555,7 @@ fun fooifyExp fk env =
                                       val (se', fm) = fooify fm ((L'.EField (e, x), loc), t)
                                   in
                                       ((L'.EStrcat (se,
-                                                    (L'.EStrcat ((L'.EPrim (Prim.String "/"), loc),
+                                                    (L'.EStrcat ((L'.EPrim (Prim.String (Prim.Normal, "/")), loc),
                                                                  se'), loc)), loc),
                                        fm)
                                   end) (se, fm) xts
@@ -585,14 +585,14 @@ fun fooifyExp fk env =
                                             case to of
                                                 NONE =>
                                                 (((L'.PCon (dk, L'.PConVar n, NONE), loc),
-                                                  (L'.EPrim (Prim.String x), loc)),
+                                                  (L'.EPrim (Prim.String (Prim.Normal, x)), loc)),
                                                  fm)
                                               | SOME t =>
                                                 let
                                                     val (arg, fm) = fooify fm ((L'.ERel 0, loc), t)
                                                 in
                                                     (((L'.PCon (dk, L'.PConVar n, SOME (L'.PVar ("a", t), loc)), loc),
-                                                      (L'.EStrcat ((L'.EPrim (Prim.String (x ^ "/")), loc),
+                                                      (L'.EStrcat ((L'.EPrim (Prim.String (Prim.Normal, x ^ "/")), loc),
                                                                    arg), loc)),
                                                      fm)
                                                 end)
@@ -626,10 +626,10 @@ fun fooifyExp fk env =
                     in
                         ((L'.ECase (e,
                                     [((L'.PNone t, loc),
-                                      (L'.EPrim (Prim.String "None"), loc)),
+                                      (L'.EPrim (Prim.String (Prim.Normal, "None")), loc)),
 
                                      ((L'.PSome (t, (L'.PVar ("x", t), loc)), loc),
-                                      (L'.EStrcat ((L'.EPrim (Prim.String "Some/"), loc),
+                                      (L'.EStrcat ((L'.EPrim (Prim.String (Prim.Normal, "Some/")), loc),
                                                    body), loc))],
                                     {disc = tAll,
                                      result = (L'.TFfi ("Basis", "string"), loc)}), loc),
@@ -644,9 +644,9 @@ fun fooifyExp fk env =
                                 val (arg, fm) = fooify fm ((L'.ERel 0, loc), rt)
 
                                 val branches = [((L'.PNone rt, loc),
-                                                 (L'.EPrim (Prim.String "Nil"), loc)),
+                                                 (L'.EPrim (Prim.String (Prim.Normal, "Nil")), loc)),
                                                 ((L'.PSome (rt, (L'.PVar ("a", rt), loc)), loc),
-                                                 (L'.EStrcat ((L'.EPrim (Prim.String "Cons/"), loc),
+                                                 (L'.EStrcat ((L'.EPrim (Prim.String (Prim.Normal, "Cons/")), loc),
                                                               arg), loc))]
 
                                 val dom = tAll
@@ -742,7 +742,7 @@ fun monoPat env (all as (p, loc)) =
 
 fun strcat loc es =
     case es of
-        [] => (L'.EPrim (Prim.String ""), loc)
+        [] => (L'.EPrim (Prim.String (Prim.Normal, "")), loc)
       | [e] => e
       | _ =>
         let
@@ -757,7 +757,7 @@ fun strcat loc es =
 
 fun strcatComma loc es =
     case es of
-        [] => (L'.EPrim (Prim.String ""), loc)
+        [] => (L'.EPrim (Prim.String (Prim.Normal, "")), loc)
       | [e] => e
       | _ =>
         let
@@ -766,11 +766,11 @@ fun strcatComma loc es =
         in
             foldr (fn (e, e') =>
                       case (e, e') of
-                          ((L'.EPrim (Prim.String ""), _), _) => e'
-                        | (_, (L'.EPrim (Prim.String ""), _)) => e
+                          ((L'.EPrim (Prim.String (_, "")), _), _) => e'
+                        | (_, (L'.EPrim (Prim.String (_, "")), _)) => e
                         | _ =>
                           (L'.EStrcat (e,
-                                       (L'.EStrcat ((L'.EPrim (Prim.String ", "), loc), e'), loc)), loc))
+                                       (L'.EStrcat ((L'.EPrim (Prim.String (Prim.Normal, ", ")), loc), e'), loc)), loc))
             e1 es
         end
 
@@ -788,7 +788,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
     let
         val strcat = strcat loc
         val strcatComma = strcatComma loc
-        fun str s = (L'.EPrim (Prim.String s), loc)
+        fun str s = (L'.EPrim (Prim.String (Prim.Normal, s)), loc)
+        fun strH s = (L'.EPrim (Prim.String (Prim.Html, s)), loc)
 
         fun poly () =
             (E.errorAt loc "Unsupported expression";
@@ -1564,9 +1565,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("c", s, (L'.TFun (rt, (L'.TFun (un, un), loc)), loc),
                            (L'.EAbs ("r", rt, (L'.TFun (un, un), loc),
                                      (L'.EAbs ("_", un, un,
-                                               (L'.EFfiApp ("Basis", "set_cookie", [((L'.EPrim (Prim.String
-                                                                                                    (Settings.getUrlPrefix ())),
-                                                                                      loc), s),
+                                               (L'.EFfiApp ("Basis", "set_cookie", [(str (Settings.getUrlPrefix ()), s),
                                                                                     ((L'.ERel 2, loc), s),
                                                                                     (e, s),
                                                                                     (fd "Expires", (L'.TOption (L'.TFfi ("Basis", "time"), loc), loc)),
@@ -1583,9 +1582,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("c", s, (L'.TFun (un, un), loc),
                            (L'.EAbs ("_", un, un,
                                      (L'.EFfiApp ("Basis", "clear_cookie",
-                                                  [((L'.EPrim (Prim.String
-                                                                   (Settings.getUrlPrefix ())),
-                                                     loc), s),
+                                                  [(str (Settings.getUrlPrefix ()), s),
                                                    ((L'.ERel 1, loc), s)]),
                                       loc)), loc)), loc),
                  fm)
@@ -1612,8 +1609,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
 
           | L.ECApp ((L.EFfi ("Basis", "no_primary_key"), _), _) =>
-            ((L'.EPrim (Prim.String ""), loc),
-             fm)
+            (str "", fm)
           | L.ECApp (
             (L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "primary_key"), _), _), _), t), _),
                       nm), _),
@@ -1623,16 +1619,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val witnesses = (L'.TRecord (map (fn (nm, _) => (monoName env nm, (L'.TRecord [], loc))) unique), loc)
             in
                 ((L'.EAbs ("_", witnesses, (L'.TFfi ("Basis", "string"), loc),
-                           (L'.EPrim (Prim.String
-                                          (String.concatWith ", "
-                                                             (map (fn (x, _) =>
-                                                                      Settings.mangleSql (monoNameLc env x)
-                                                                      ^ (if #textKeysNeedLengths (Settings.currentDbms ())
-                                                                            andalso isBlobby t then
-                                                                             "(767)"
-                                                                         else
-                                                                             "")) unique))),
-                            loc)), loc),
+                           (str
+                                (String.concatWith ", "
+                                                   (map (fn (x, _) =>
+                                                            Settings.mangleSql (monoNameLc env x)
+                                                            ^ (if #textKeysNeedLengths (Settings.currentDbms ())
+                                                                  andalso isBlobby t then
+                                                                   "(767)"
+                                                               else
+                                                                   "")) unique)))),
+                  loc),
                  fm)
             end
 
@@ -1668,15 +1664,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val unique = (nm, t) :: unique
             in
-                ((L'.EPrim (Prim.String ("UNIQUE ("
-                                         ^ String.concatWith ", "
-                                                             (map (fn (x, t) => Settings.mangleSql (monoNameLc env x)
-                                                                                ^ (if #textKeysNeedLengths (Settings.currentDbms ())
-                                                                                      andalso isBlobby t then
-                                                                                       "(767)"
-                                                                                   else
-                                                                                       "")) unique)
-                                         ^ ")")), loc),
+                (str ("UNIQUE ("
+                      ^ String.concatWith ", "
+                                          (map (fn (x, t) => Settings.mangleSql (monoNameLc env x)
+                                                             ^ (if #textKeysNeedLengths (Settings.currentDbms ())
+                                                                   andalso isBlobby t then
+                                                                    "(767)"
+                                                                else
+                                                                    "")) unique)
+                      ^ ")"),
                  fm)
             end
 
@@ -1690,7 +1686,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.EFfi ("Basis", "mat_nil") =>
             let
                 val string = (L'.TFfi ("Basis", "string"), loc)
-                val stringE = (L'.EPrim (Prim.String ""), loc)
+                val stringE = str ""
             in
                 ((L'.ERecord [("1", stringE, string),
                               ("2", stringE, string)], loc), fm)
@@ -1715,21 +1711,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFun (mat, mat), loc),
                            (L'.EAbs ("m", mat, mat,
                                      (L'.ECase ((L'.EField ((L'.ERel 0, loc), "1"), loc),
-                                                [((L'.PPrim (Prim.String ""), loc),
-                                                  (L'.ERecord [("1", (L'.EPrim (Prim.String (Settings.mangleSql (lowercaseFirst nm1))),
-                                                                      loc), string),
-                                                               ("2", (L'.EPrim (Prim.String (Settings.mangleSql (lowercaseFirst nm2))),
-                                                                      loc), string)], loc)),
+                                                [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
+                                                  (L'.ERecord [("1", str (Settings.mangleSql (lowercaseFirst nm1)),
+                                                                string),
+                                                               ("2", str (Settings.mangleSql (lowercaseFirst nm2)),
+                                                                string)], loc)),
                                                  ((L'.PWild, loc),
                                                   (L'.ERecord [("1", (L'.EStrcat (
-                                                                      (L'.EPrim (Prim.String (Settings.mangleSql (lowercaseFirst nm1)
-                                                                                              ^ ", ")),
-                                                                       loc),
+                                                                      str (Settings.mangleSql (lowercaseFirst nm1)
+                                                                            ^ ", "),
                                                                       (L'.EField ((L'.ERel 0, loc), "1"), loc)),
                                                                       loc), string),
                                                                ("2", (L'.EStrcat (
-                                                                      (L'.EPrim (Prim.String (Settings.mangleSql (lowercaseFirst nm2)
-                                                                                              ^ ", ")), loc),
+                                                                      str (Settings.mangleSql (lowercaseFirst nm2)
+                                                                           ^ ", "),
                                                                       (L'.EField ((L'.ERel 0, loc), "2"), loc)),
                                                                       loc), string)],
                                                    loc))],
@@ -1738,10 +1733,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
-          | L.ECApp ((L.EFfi ("Basis", "restrict"), _), _) => ((L'.EPrim (Prim.String "RESTRICT"), loc), fm)
-          | L.ECApp ((L.EFfi ("Basis", "cascade"), _), _) => ((L'.EPrim (Prim.String "CASCADE"), loc), fm)
-          | L.ECApp ((L.EFfi ("Basis", "no_action"), _), _) => ((L'.EPrim (Prim.String "NO ACTION"), loc), fm)
-          | L.ECApp ((L.EFfi ("Basis", "set_null"), _), _) => ((L'.EPrim (Prim.String "SET NULL"), loc), fm)
+          | L.ECApp ((L.EFfi ("Basis", "restrict"), _), _) => (str "RESTRICT", fm)
+          | L.ECApp ((L.EFfi ("Basis", "cascade"), _), _) => (str "CASCADE", fm)
+          | L.ECApp ((L.EFfi ("Basis", "no_action"), _), _) => (str "NO ACTION", fm)
+          | L.ECApp ((L.EFfi ("Basis", "set_null"), _), _) => (str "SET NULL", fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -1773,10 +1768,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                 fun prop (fd, kw) =
                     (L'.ECase ((L'.EField ((L'.ERel 0, loc), fd), loc),
-                               [((L'.PPrim (Prim.String "NO ACTION"), loc),
-                                 (L'.EPrim (Prim.String ""), loc)),
+                               [((L'.PPrim (Prim.String (Prim.Normal, "NO ACTION")), loc),
+                                 str ""),
                                 ((L'.PWild, loc),
-                                 strcat [(L'.EPrim (Prim.String (" ON " ^ kw ^ " ")), loc),
+                                 strcat [str (" ON " ^ kw ^ " "),
                                          (L'.EField ((L'.ERel 0, loc), fd), loc)])],
                                {disc = string,
                                 result = string}), loc)
@@ -1784,13 +1779,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.EAbs ("m", mat, (L'.TFun (string, (L'.TFun (recd, string), loc)), loc),
                            (L'.EAbs ("tab", string, (L'.TFun (recd, string), loc),
                                      (L'.EAbs ("pr", recd, string,
-                                               strcat [(L'.EPrim (Prim.String "FOREIGN KEY ("), loc),
+                                               strcat [str "FOREIGN KEY (",
                                                        (L'.EField ((L'.ERel 2, loc), "1"), loc),
-                                                       (L'.EPrim (Prim.String ") REFERENCES "), loc),
+                                                       str ") REFERENCES ",
                                                        (L'.ERel 1, loc),
-                                                       (L'.EPrim (Prim.String " ("), loc),
+                                                       str " (",
                                                        (L'.EField ((L'.ERel 2, loc), "2"), loc),
-                                                       (L'.EPrim (Prim.String ")"), loc),
+                                                       str ")",
                                                        prop ("OnDelete", "DELETE"),
                                                        prop ("OnUpdate", "UPDATE")]), loc)), loc)), loc),
                  fm)
@@ -1823,7 +1818,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val string = (L'.TFfi ("Basis", "string"), loc)
             in
                 ((L'.EAbs ("e", string, string,
-                           (L'.EStrcat ((L'.EPrim (Prim.String "CHECK "), loc),
+                           (L'.EStrcat (str "CHECK ",
                                         (L'.EFfiApp ("Basis", "checkString",
                                                      [((L'.ERel 0, loc), string)]), loc)), loc)), loc),
                  fm)
@@ -1852,19 +1847,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                      val s = (L'.TFfi ("Basis", "string"), loc)
                      val fields = map (fn (x, _) => (x, s)) fields
                      val rt = (L'.TRecord fields, loc)
-                     fun sc s = (L'.EPrim (Prim.String s), loc)
                  in
                      ((L'.EAbs ("tab", s, (L'.TFun (rt, s), loc),
                                 (L'.EAbs ("fs", rt, s,
-                                          strcat [sc "INSERT INTO ",
+                                          strcat [str "INSERT INTO ",
                                                   (L'.ERel 1, loc),
-                                                  sc " (",
-                                                  strcatComma (map (fn (x, _) => sc (Settings.mangleSql x)) fields),
-                                                  sc ") VALUES (",
+                                                  str " (",
+                                                  strcatComma (map (fn (x, _) => str (Settings.mangleSql x)) fields),
+                                                  str ") VALUES (",
                                                   strcatComma (map (fn (x, _) =>
                                                                        (L'.EField ((L'.ERel 0, loc),
                                                                                    x), loc)) fields),
-                                                  sc ")"]), loc)), loc),
+                                                  str ")"]), loc)), loc),
                       fm)
                  end
                | _ => poly ())
@@ -1876,31 +1870,30 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                      val s = (L'.TFfi ("Basis", "string"), loc)
                      val changed = map (fn (x, _) => (x, s)) changed
                      val rt = (L'.TRecord changed, loc)
-                     fun sc s = (L'.EPrim (Prim.String s), loc)
                  in
                      ((L'.EAbs ("fs", rt, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                                 (L'.EAbs ("tab", s, (L'.TFun (s, s), loc),
                                           (L'.EAbs ("e", s, s,
                                                     if #supportsUpdateAs (Settings.currentDbms ()) then
-                                                        strcat [sc "UPDATE ",
+                                                        strcat [str "UPDATE ",
                                                                 (L'.ERel 1, loc),
-                                                                sc " AS T_T SET ",
+                                                                str " AS T_T SET ",
                                                                 strcatComma (map (fn (x, _) =>
-                                                                                     strcat [sc (Settings.mangleSql x
+                                                                                     strcat [str (Settings.mangleSql x
                                                                                                  ^ " = "),
                                                                                              (L'.EField
                                                                                                   ((L'.ERel 2,
                                                                                                     loc),
                                                                                                    x), loc)])
                                                                                  changed),
-                                                                sc " WHERE ",
+                                                                str " WHERE ",
                                                                 (L'.ERel 0, loc)]
                                                     else
-                                                        strcat [sc "UPDATE ",
+                                                        strcat [str "UPDATE ",
                                                                 (L'.ERel 1, loc),
-                                                                sc " SET ",
+                                                                str " SET ",
                                                                 strcatComma (map (fn (x, _) =>
-                                                                                     strcat [sc (Settings.mangleSql x
+                                                                                     strcat [str (Settings.mangleSql x
                                                                                                  ^ " = "),
                                                                                              (L'.EFfiApp ("Basis", "unAs",
                                                                                                           [((L'.EField
@@ -1909,7 +1902,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                                                   x), loc),
                                                                                                             s)]), loc)])
                                                                                  changed),
-                                                                sc " WHERE ",
+                                                                str " WHERE ",
                                                                 (L'.EFfiApp ("Basis", "unAs", [((L'.ERel 0, loc), s)]), loc)]),
                                            loc)), loc)), loc),
                       fm)
@@ -1919,19 +1912,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "delete"), _), _), _), _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("tab", s, (L'.TFun (s, s), loc),
                            (L'.EAbs ("e", s, s,
                                      if #supportsDeleteAs (Settings.currentDbms ()) then
-                                         strcat [sc "DELETE FROM ",
+                                         strcat [str "DELETE FROM ",
                                                  (L'.ERel 1, loc),
-                                                 sc " AS T_T WHERE ",
+                                                 str " AS T_T WHERE ",
                                                  (L'.ERel 0, loc)]
                                      else
-                                         strcat [sc "DELETE FROM ",
+                                         strcat [str "DELETE FROM ",
                                                  (L'.ERel 1, loc),
-                                                 sc " WHERE ",
+                                                 str " WHERE ",
                                                  (L'.EFfiApp ("Basis", "unAs", [((L'.ERel 0, loc), s)]), loc)]), loc)), loc),
                  fm)
             end
@@ -1991,7 +1983,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.ECApp ((L.ECApp ((L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_query"), _), _), _), _), _), _), _), _), _), _) =>
             let
-                fun sc s = (L'.EPrim (Prim.String s), loc)
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 fun gf s = (L'.EField ((L'.ERel 0, loc), s), loc)
             in
@@ -2000,9 +1991,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            s,
                            strcat [gf "Rows",
                                    (L'.ECase (gf "OrderBy",
-                                              [((L'.PPrim (Prim.String ""), loc), sc ""),
+                                              [((L'.PPrim (Prim.String (Prim.Normal, "")), loc), str ""),
                                                ((L'.PWild, loc),
-                                                strcat [sc " ORDER BY ",
+                                                strcat [str " ORDER BY ",
                                                         gf "OrderBy"])],
                                               {disc = s, result = s}), loc),
                                    gf "Limit",
@@ -2025,7 +2016,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              sexps), _),
             _) =>
             let
-                fun sc s = (L'.EPrim (Prim.String s), loc)
                 val s = (L'.TFfi ("Basis", "string"), loc)
                 val b = (L'.TFfi ("Basis", "bool"), loc)
                 val un = (L'.TRecord [], loc)
@@ -2072,7 +2062,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                 ("SelectExps", (L'.TRecord (map (fn (x, _) => (x, s)) sexps), loc))],
                                     loc),
                                    s,
-                                   strcat [sc "SELECT ",
+                                   strcat [str "SELECT ",
                                            (L'.ECase (gf "Distinct",
                                                       [((L'.PCon (L'.Enum,
                                                                   L'.PConFfi {mod = "Basis",
@@ -2080,41 +2070,41 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                               con = "True",
                                                                               arg = NONE},
                                                                   NONE), loc),
-                                                        (L'.EPrim (Prim.String "DISTINCT "), loc)),
+                                                        str "DISTINCT "),
                                                        ((L'.PCon (L'.Enum,
                                                                   L'.PConFfi {mod = "Basis",
                                                                               datatyp = "bool",
                                                                               con = "False",
                                                                               arg = NONE},
                                                                   NONE), loc),
-                                                        (L'.EPrim (Prim.String ""), loc))],
+                                                        str "")],
                                                       {disc = b, result = s}), loc),
                                            strcatComma (map (fn (x, t) =>
                                                                 strcat [
                                                                 (L'.EField (gf "SelectExps", x), loc),
-                                                                sc (" AS " ^ Settings.mangleSql x)
+                                                                str (" AS " ^ Settings.mangleSql x)
                                                             ]) sexps
                                                         @ map (fn (x, xts) =>
                                                                   strcatComma
                                                                       (map (fn (x', _) =>
-                                                                               sc ("T_" ^ x
+                                                                               str ("T_" ^ x
 										   ^ "."
 										   ^ Settings.mangleSql x'))
                                                                            xts)) stables),
                                            (L'.ECase (gf "From",
-                                                      [((L'.PPrim (Prim.String ""), loc),
-                                                        sc ""),
+                                                      [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
+                                                        str ""),
                                                        ((L'.PVar ("x", s), loc),
-                                                        strcat [sc " FROM ",
+                                                        strcat [str " FROM ",
                                                                 (L'.ERel 0, loc)])],
                                                       {disc = s,
                                                        result = s}), loc),
                                            (L'.ECase (gf "Where",
-                                                      [((L'.PPrim (Prim.String (#trueString (Settings.currentDbms ()))),
+                                                      [((L'.PPrim (Prim.String (Prim.Normal, #trueString (Settings.currentDbms ()))),
                                                          loc),
-                                                        sc ""),
+                                                        str ""),
                                                        ((L'.PWild, loc),
-                                                        strcat [sc " WHERE ", gf "Where"])],
+                                                        strcat [str " WHERE ", gf "Where"])],
                                                       {disc = s,
                                                        result = s}), loc),
 
@@ -2125,14 +2115,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                List.all (fn (x, _) =>
                                                                             List.exists (fn (x', _) => x' = x)
                                                                                         xts') xts) tables then
-                                               sc ""
+                                               str ""
                                            else
                                                strcat [
-                                               sc " GROUP BY ",
+                                               str " GROUP BY ",
                                                strcatComma (map (fn (x, xts) =>
                                                                     strcatComma
                                                                         (map (fn (x', _) =>
-                                                                                 sc ("T_" ^ x
+                                                                                 str ("T_" ^ x
 										     ^ "."
 										     ^ Settings.mangleSql x'))
                                                                              xts)) grouped)
@@ -2140,10 +2130,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                                            (L'.ECase (gf "Having",
                                                       [((L'.PPrim (Prim.String
-                                                                       (#trueString (Settings.currentDbms ()))), loc),
-                                                        sc ""),
+                                                                       (Prim.Normal, #trueString (Settings.currentDbms ()))), loc),
+                                                        str ""),
                                                        ((L'.PWild, loc),
-                                                        strcat [sc " HAVING ", gf "Having"])],
+                                                        strcat [str " HAVING ", gf "Having"])],
                                                       {disc = s,
                                                        result = s}), loc)
                                   ]), loc),
@@ -2234,7 +2224,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                      s,
                                      (L'.ECase ((L'.ERel 0, loc),
                                                 [((L'.PNone t, loc),
-                                                  (L'.EPrim (Prim.String "NULL"), loc)),
+                                                  str "NULL"),
                                                  ((L'.PSome (t, (L'.PVar ("y", t), loc)), loc),
                                                   (L'.EApp ((L'.ERel 2, loc), (L'.ERel 0, loc)), loc))],
                                                 {disc = (L'.TOption t, loc),
@@ -2270,7 +2260,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.ERecord [], loc), fm)
 
           | L.ECApp ((L.EFfi ("Basis", "sql_from_nil"), _), _) =>
-            ((L'.EPrim (Prim.String ""), loc), fm)
+            (str "", fm)
           | L.ECApp ((L.EApp ((L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_from_table"), _), _),
                                                    _), _), _), _), _), _), _),
                      (L.CName name, _)) =>
@@ -2279,7 +2269,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("tab", s, s,
                            strcat [(L'.ERel 0, loc),
-                                   (L'.EPrim (Prim.String (" AS T_" ^ name)), loc)]), loc),
+                                   str (" AS T_" ^ name)]), loc),
                  fm)
             end
           | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_from_query"), _), _),
@@ -2287,12 +2277,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                      (L.CName name, _)) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("q", s, s,
-                           strcat [sc "(",
+                           strcat [str "(",
                                    (L'.ERel 0, loc),
-                                   sc (") AS T_" ^ name)]), loc),
+                                   str (") AS T_" ^ name)]), loc),
                  fm)
             end
           | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_from_comma"), _), _), _), _), _), _) =>
@@ -2303,13 +2292,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            (L'.EAbs ("tab2", s, s,
                                      (L'.ECase ((L'.ERecord [("1", (L'.ERel 1, loc), s),
                                                              ("2", (L'.ERel 0, loc), s)], loc),
-                                                [((L'.PRecord [("1", (L'.PPrim (Prim.String ""), loc), s)], loc),
+                                                [((L'.PRecord [("1", (L'.PPrim (Prim.String (Prim.Normal, "")), loc), s)], loc),
                                                   (L'.ERel 0, loc)),
-                                                 ((L'.PRecord [("2", (L'.PPrim (Prim.String ""), loc), s)], loc),
+                                                 ((L'.PRecord [("2", (L'.PPrim (Prim.String (Prim.Normal, "")), loc), s)], loc),
                                                   (L'.ERel 1, loc)),
                                                  ((L'.PWild, loc),
                                                   strcat [(L'.ERel 1, loc),
-                                                          (L'.EPrim (Prim.String ", "), loc),
+                                                          str ", ",
                                                           (L'.ERel 0, loc)])],
                                                 {disc = (L'.TRecord [("1", s), ("2", s)], loc),
                                                  result = s}), loc)), loc)), loc),
@@ -2324,24 +2313,24 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                      (L'.EAbs ("on", s, s,
                                                (L'.ECase ((L'.ERecord [("1", (L'.ERel 2, loc), s),
                                                                        ("2", (L'.ERel 1, loc), s)], loc),
-                                                          [((L'.PRecord [("1", (L'.PPrim (Prim.String ""), loc), s)], loc),
+                                                          [((L'.PRecord [("1", (L'.PPrim (Prim.String (Prim.Normal, "")), loc), s)], loc),
                                                             (L'.ERel 1, loc)),
-                                                           ((L'.PRecord [("2", (L'.PPrim (Prim.String ""), loc), s)], loc),
+                                                           ((L'.PRecord [("2", (L'.PPrim (Prim.String (Prim.Normal, "")), loc), s)], loc),
                                                             (L'.ERel 2, loc)),
                                                            ((L'.PWild, loc),
                                                             strcat ((if #nestedRelops
                                                                                       (Settings.currentDbms ()) then
-                                                                                   [(L'.EPrim (Prim.String "("), loc)]
+                                                                                   [str "("]
                                                                                else
                                                                                    [])
                                                                     @ [(L'.ERel 2, loc),
-                                                                       (L'.EPrim (Prim.String " JOIN "), loc),
+                                                                       str " JOIN ",
                                                                        (L'.ERel 1, loc),
-                                                                       (L'.EPrim (Prim.String " ON "), loc),
+                                                                       str " ON ",
                                                                        (L'.ERel 0, loc)]
                                                                     @ (if #nestedRelops
                                                                               (Settings.currentDbms ()) then
-                                                                           [(L'.EPrim (Prim.String ")"), loc)]
+                                                                           [str ")"]
                                                                        else
                                                                            [])))],
                                                           {disc = (L'.TRecord [("1", s), ("2", s)], loc),
@@ -2360,27 +2349,26 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                (L'.EAbs ("on", s, s,
                                                          (L'.ECase ((L'.ERecord [("1", (L'.ERel 2, loc), s),
                                                                                  ("2", (L'.ERel 1, loc), s)], loc),
-                                                                    [((L'.PRecord [("1", (L'.PPrim (Prim.String ""),
+                                                                    [((L'.PRecord [("1", (L'.PPrim (Prim.String (Prim.Normal, "")),
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 1, loc)),
-                                                                     ((L'.PRecord [("2", (L'.PPrim (Prim.String ""),
+                                                                     ((L'.PRecord [("2", (L'.PPrim (Prim.String (Prim.Normal, "")),
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 2, loc)),
                                                                      ((L'.PWild, loc),
                                                                       strcat ((if #nestedRelops
                                                                                       (Settings.currentDbms ()) then
-                                                                                   [(L'.EPrim (Prim.String "("), loc)]
+                                                                                   [str "("]
                                                                                else
                                                                                    [])
                                                                               @ [(L'.ERel 2, loc),
-                                                                                 (L'.EPrim (Prim.String " LEFT JOIN "),
-                                                                                  loc),
+                                                                                 str " LEFT JOIN ",
                                                                                  (L'.ERel 1, loc),
-                                                                                 (L'.EPrim (Prim.String " ON "), loc),
+                                                                                 str " ON ",
                                                                                  (L'.ERel 0, loc)]
                                                                               @ (if #nestedRelops
                                                                                         (Settings.currentDbms ()) then
-                                                                                     [(L'.EPrim (Prim.String ")"), loc)]
+                                                                                     [str ")"]
                                                                                  else
                                                                                      [])))],
                                                                     {disc = (L'.TRecord [("1", s), ("2", s)], loc),
@@ -2399,27 +2387,26 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                (L'.EAbs ("on", s, s,
                                                          (L'.ECase ((L'.ERecord [("1", (L'.ERel 2, loc), s),
                                                                                  ("2", (L'.ERel 1, loc), s)], loc),
-                                                                    [((L'.PRecord [("1", (L'.PPrim (Prim.String ""),
+                                                                    [((L'.PRecord [("1", (L'.PPrim (Prim.String (Prim.Normal, "")),
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 1, loc)),
-                                                                     ((L'.PRecord [("2", (L'.PPrim (Prim.String ""),
+                                                                     ((L'.PRecord [("2", (L'.PPrim (Prim.String (Prim.Normal, "")),
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 2, loc)),
                                                                      ((L'.PWild, loc),
                                                                       strcat ((if #nestedRelops
                                                                                       (Settings.currentDbms ()) then
-                                                                                   [(L'.EPrim (Prim.String "("), loc)]
+                                                                                   [str "("]
                                                                                else
                                                                                    [])
                                                                               @ [(L'.ERel 2, loc),
-                                                                                 (L'.EPrim (Prim.String " RIGHT JOIN "),
-                                                                                  loc),
+                                                                                 str " RIGHT JOIN ",
                                                                                  (L'.ERel 1, loc),
-                                                                                 (L'.EPrim (Prim.String " ON "), loc),
+                                                                                 str " ON ",
                                                                                  (L'.ERel 0, loc)]
                                                                               @ (if #nestedRelops
                                                                                         (Settings.currentDbms ()) then
-                                                                                     [(L'.EPrim (Prim.String ")"), loc)]
+                                                                                     [str ")"]
                                                                                  else
                                                                                      [])))],
                                                                     {disc = (L'.TRecord [("1", s), ("2", s)], loc),
@@ -2438,27 +2425,26 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                (L'.EAbs ("on", s, s,
                                                          (L'.ECase ((L'.ERecord [("1", (L'.ERel 2, loc), s),
                                                                                  ("2", (L'.ERel 1, loc), s)], loc),
-                                                                    [((L'.PRecord [("1", (L'.PPrim (Prim.String ""),
+                                                                    [((L'.PRecord [("1", (L'.PPrim (Prim.String (Prim.Normal, "")),
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 1, loc)),
-                                                                     ((L'.PRecord [("2", (L'.PPrim (Prim.String ""),
+                                                                     ((L'.PRecord [("2", (L'.PPrim (Prim.String (Prim.Normal, "")),
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 2, loc)),
                                                                      ((L'.PWild, loc),
                                                                       strcat ((if #nestedRelops
                                                                                       (Settings.currentDbms ()) then
-                                                                                   [(L'.EPrim (Prim.String "("), loc)]
+                                                                                   [str "("]
                                                                                else
                                                                                    [])
                                                                               @ [(L'.ERel 2, loc),
-                                                                                 (L'.EPrim (Prim.String " FULL JOIN "),
-                                                                                  loc),
+                                                                                 str " FULL JOIN ",
                                                                                  (L'.ERel 1, loc),
-                                                                                 (L'.EPrim (Prim.String " ON "), loc),
+                                                                                 str " ON ",
                                                                                  (L'.ERel 0, loc)]
                                                                               @ (if #nestedRelops
                                                                                         (Settings.currentDbms ()) then
-                                                                                     [(L'.EPrim (Prim.String ")"), loc)]
+                                                                                     [str ")"]
                                                                                  else
                                                                                      [])))],
                                                                     {disc = (L'.TRecord [("1", s), ("2", s)], loc),
@@ -2467,9 +2453,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
 
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_order_by_Nil"), _), _), _), _) =>
-            ((L'.EPrim (Prim.String ""), loc), fm)
+            (str "", fm)
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_order_by_random"), _), _), _), _) =>
-            ((L'.EPrim (Prim.String (#randomFunction (Settings.currentDbms ()) ^ "()")), loc), fm)
+            (str (#randomFunction (Settings.currentDbms ()) ^ "()"), fm)
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (
@@ -2481,81 +2467,80 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFun (s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc)), loc),
                            (L'.EAbs ("e1", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                                      (L'.EAbs ("d", s, (L'.TFun (s, s), loc),
                                                (L'.EAbs ("e2", s, s,
                                                          (L'.ECase ((L'.ERel 0, loc),
-                                                                    [((L'.PPrim (Prim.String ""), loc),
+                                                                    [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
                                                                       strcat [(L'.ERel 2, loc),
                                                                               (L'.ERel 1, loc)]),
                                                                      ((L'.PWild, loc),
                                                                       strcat [(L'.ERel 2, loc),
                                                                               (L'.ERel 1, loc),
-                                                                              sc ", ",
+                                                                              str ", ",
                                                                               (L'.ERel 0, loc)])],
                                                                     {disc = s, result = s}), loc)), loc)), loc)), loc)), loc),
                  fm)
             end
 
           | L.EFfi ("Basis", "sql_no_limit") =>
-            ((L'.EPrim (Prim.String ""), loc), fm)
+            (str "", fm)
           | L.EFfiApp ("Basis", "sql_limit", [(e, t)]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
                 (strcat [
-                 (L'.EPrim (Prim.String " LIMIT "), loc),
+                 str " LIMIT ",
                  (L'.EFfiApp ("Basis", "sqlifyInt", [(e, monoType env t)]), loc)
                  ],
                  fm)
             end
 
           | L.EFfi ("Basis", "sql_no_offset") =>
-            ((L'.EPrim (Prim.String ""), loc), fm)
+            (str "", fm)
           | L.EFfiApp ("Basis", "sql_offset", [(e, t)]) =>
             let
                 val (e, fm) = monoExp (env, st, fm) e
             in
                 (strcat [
-                 (L'.EPrim (Prim.String " OFFSET "), loc),
+                 str " OFFSET ",
                  (L'.EFfiApp ("Basis", "sqlifyInt", [(e, monoType env t)]), loc)
                  ],
                  fm)
             end
 
           | L.ECApp ((L.EFfi ("Basis", "sql_eq"), _), _) =>
-            ((L'.EPrim (Prim.String "="), loc), fm)
+            (str "=", fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_ne"), _), _) =>
-            ((L'.EPrim (Prim.String "<>"), loc), fm)
+            (str "<>", fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_lt"), _), _) =>
-            ((L'.EPrim (Prim.String "<"), loc), fm)
+            (str "<", fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_le"), _), _) =>
-            ((L'.EPrim (Prim.String "<="), loc), fm)
+            (str "<=", fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_gt"), _), _) =>
-            ((L'.EPrim (Prim.String ">"), loc), fm)
+            (str ">", fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_ge"), _), _) =>
-            ((L'.EPrim (Prim.String ">="), loc), fm)
+            (str ">=", fm)
 
           | L.ECApp ((L.EFfi ("Basis", "sql_plus"), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EPrim (Prim.String "+"), loc)), loc), fm)
+                       str "+"), loc), fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_minus"), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EPrim (Prim.String "-"), loc)), loc), fm)
+                       str "-"), loc), fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_times"), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EPrim (Prim.String "*"), loc)), loc), fm)
+                       str "*"), loc), fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_div"), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EPrim (Prim.String "/"), loc)), loc), fm)
+                       str "/"), loc), fm)
           | L.EFfi ("Basis", "sql_mod") =>
-            ((L'.EPrim (Prim.String "%"), loc), fm)
+            (str "%", fm)
 
           | L.EFfi ("Basis", "sql_like") =>
-            ((L'.EPrim (Prim.String "LIKE"), loc), fm)
+            (str "LIKE", fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -2570,21 +2555,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                            (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
-                                     strcat [sc "(",
+                                     strcat [str "(",
                                              (L'.ERel 1, loc),
-                                             sc " ",
+                                             str " ",
                                              (L'.ERel 0, loc),
-                                             sc ")"]), loc)), loc),
+                                             str ")"]), loc)), loc),
                  fm)
             end
-          | L.EFfi ("Basis", "sql_not") => ((L'.EPrim (Prim.String "NOT"), loc), fm)
+          | L.EFfi ("Basis", "sql_not") => (str "NOT", fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_neg"), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EPrim (Prim.String "-"), loc)), loc), fm)
+                       str "-"), loc), fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -2601,22 +2585,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                            (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
                                      (L'.EAbs ("e2", s, s,
-                                               strcat [sc "(",
+                                               strcat [str "(",
                                                        (L'.ERel 1, loc),
-                                                       sc " ",
+                                                       str " ",
                                                        (L'.ERel 2, loc),
-                                                       sc " ",
+                                                       str " ",
                                                        (L'.ERel 0, loc),
-                                                       sc ")"]), loc)), loc)), loc),
+                                                       str ")"]), loc)), loc)), loc),
                  fm)
             end
-          | L.EFfi ("Basis", "sql_and") => ((L'.EPrim (Prim.String "AND"), loc), fm)
-          | L.EFfi ("Basis", "sql_or") => ((L'.EPrim (Prim.String "OR"), loc), fm)
+          | L.EFfi ("Basis", "sql_and") => (str "AND", fm)
+          | L.EFfi ("Basis", "sql_or") => (str "OR", fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -2632,7 +2615,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                _), _),
               _), _),
              (L.CName tab, _)), _),
-            (L.CName field, _)) => ((L'.EPrim (Prim.String ("T_" ^ tab ^ "." ^ Settings.mangleSql (lowercaseFirst field))), loc), fm)
+            (L.CName field, _)) => (str ("T_" ^ tab ^ "." ^ Settings.mangleSql (lowercaseFirst field)), fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -2644,7 +2627,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                _), _),
               _), _),
              _), _),
-            (L.CName nm, _)) => ((L'.EPrim (Prim.String (Settings.mangleSql (lowercaseFirst nm))), loc), fm)
+            (L.CName nm, _)) => (str (Settings.mangleSql (lowercaseFirst nm)), fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -2661,49 +2644,48 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 (if #nestedRelops (Settings.currentDbms ()) then
                      (L'.EAbs ("c", s, (L'.TFun ((L'.TFfi ("Basis", "bool"), loc), (L'.TFun (s, (L'.TFun (s, s), loc)), loc)), loc),
                                (L'.EAbs ("all", (L'.TFfi ("Basis", "bool"), loc), (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                                          (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
                                                    (L'.EAbs ("e2", s, s,
-                                                             strcat [sc "((",
+                                                             strcat [str "((",
                                                                      (L'.ERel 1, loc),
-                                                                     sc ") ",
+                                                                     str ") ",
                                                                      (L'.ERel 3, loc),
                                                                      (L'.ECase ((L'.ERel 2, loc),
                                                                                 [((L'.PCon (L'.Enum, L'.PConFfi {mod = "Basis",
                                                                                                                  datatyp = "bool",
                                                                                                                  con = "True",
                                                                                                                  arg = NONE}, NONE), loc),
-                                                                                  sc " ALL"),
+                                                                                  str " ALL"),
                                                                                  ((L'.PWild, loc),
-                                                                                  sc "")],
+                                                                                  str "")],
                                                                                 {disc = (L'.TFfi ("Basis", "bool"), loc),
                                                                                  result = s}), loc),
-                                                                     sc " (",
+                                                                     str " (",
                                                                      (L'.ERel 0, loc),
-                                                                     sc "))"]), loc)), loc)), loc)), loc)
+                                                                     str "))"]), loc)), loc)), loc)), loc)
                  else
                      (L'.EAbs ("c", s, (L'.TFun ((L'.TFfi ("Basis", "bool"), loc), (L'.TFun (s, (L'.TFun (s, s), loc)), loc)), loc),
                                (L'.EAbs ("all", (L'.TFfi ("Basis", "bool"), loc), (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                                          (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
                                                    (L'.EAbs ("e2", s, s,
                                                              strcat [(L'.ERel 1, loc),
-                                                                     sc " ",
+                                                                     str " ",
                                                                      (L'.ERel 3, loc),
                                                                      (L'.ECase ((L'.ERel 2, loc),
                                                                                 [((L'.PCon (L'.Enum, L'.PConFfi {mod = "Basis",
                                                                                                                  datatyp = "bool",
                                                                                                                  con = "True",
                                                                                                                  arg = NONE}, NONE), loc),
-                                                                                  sc " ALL"),
+                                                                                  str " ALL"),
                                                                                  ((L'.PWild, loc),
-                                                                                  sc "")],
+                                                                                  str "")],
                                                                                 {disc = (L'.TFfi ("Basis", "bool"), loc),
                                                                                  result = s}), loc),
-                                                                     sc " ",
+                                                                     str " ",
                                                                      (L'.ERel 0, loc)]), loc)), loc)), loc)), loc),
                  fm)
             end
@@ -2720,25 +2702,24 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("x", s, s, (L'.ERel 0, loc)), loc),
                  fm)
             end
 
-          | L.EFfi ("Basis", "sql_union") => ((L'.EPrim (Prim.String "UNION"), loc), fm)
+          | L.EFfi ("Basis", "sql_union") => (str "UNION", fm)
           | L.EFfi ("Basis", "sql_intersect") =>
             (if #onlyUnion (Settings.currentDbms ()) then
                  ErrorMsg.errorAt loc "The DBMS you've selected doesn't support INTERSECT."
              else
                  ();
-             ((L'.EPrim (Prim.String "INTERSECT"), loc), fm))
+             (str "INTERSECT", fm))
           | L.EFfi ("Basis", "sql_except") =>
             (if #onlyUnion (Settings.currentDbms ()) then
                  ErrorMsg.errorAt loc "The DBMS you've selected doesn't support EXCEPT."
              else
                  ();
-             ((L'.EPrim (Prim.String "EXCEPT"), loc), fm))
+             (str "EXCEPT", fm))
 
           | L.ECApp (
             (L.ECApp (
@@ -2746,8 +2727,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
               (L.EFfi ("Basis", "sql_count"), _),
               _), _),
              _), _),
-            _) => ((L'.EPrim (Prim.String "COUNT(*)"), loc),
-                   fm)
+            _) => (str "COUNT(*)", fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -2762,12 +2742,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             t) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
 
                 val main = strcat [(L'.ERel 1, loc),
-                                   sc "(",
+                                   str "(",
                                    (L'.ERel 0, loc),
-                                   sc ")"]
+                                   str ")"]
             in
                 ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                            (L'.EAbs ("e1", s, (L'.TFun (s, s), loc), main), loc)), loc),
@@ -2775,8 +2754,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
 
           | L.ECApp ((L.EFfi ("Basis", "sql_count_col"), _), _) =>
-            ((L'.EPrim (Prim.String "COUNT"), loc),
-             fm)
+            (str "COUNT", fm)
 
           | L.EFfi ("Basis", "sql_summable_int") => ((L'.ERecord [], loc), fm)
           | L.EFfi ("Basis", "sql_summable_float") => ((L'.ERecord [], loc), fm)
@@ -2786,12 +2764,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
              fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_avg"), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
-                       (L'.EPrim (Prim.String "AVG"), loc)), loc),
+                       str "AVG"), loc),
              fm)
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_sum"), _), _), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFun ((L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc)), loc),
                        (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
-                                 (L'.EPrim (Prim.String "SUM"), loc)), loc)), loc),
+                                 str "SUM"), loc)), loc),
              fm)
 
           | L.EFfi ("Basis", "sql_arith_int") => ((L'.ERecord [], loc), fm)
@@ -2811,16 +2789,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_max"), _), _), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFun ((L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc)), loc),
                        (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
-                                 (L'.EPrim (Prim.String "MAX"), loc)), loc)), loc),
+                                 str "MAX"), loc)), loc),
              fm)
           | L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_min"), _), _), _), _) =>
             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFun ((L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc)), loc),
                        (L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
-                                 (L'.EPrim (Prim.String "MIN"), loc)), loc)), loc),
+                                 str "MIN"), loc)), loc),
              fm)
 
-          | L.EFfi ("Basis", "sql_asc") => ((L'.EPrim (Prim.String ""), loc), fm)
-          | L.EFfi ("Basis", "sql_desc") => ((L'.EPrim (Prim.String " DESC"), loc), fm)
+          | L.EFfi ("Basis", "sql_asc") => (str "", fm)
+          | L.EFfi ("Basis", "sql_desc") => (str " DESC", fm)
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (
@@ -2832,7 +2810,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
            _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("s", s, s, (L'.ERel 0, loc)), loc),
                  fm)
@@ -2860,7 +2837,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
-          | L.EFfi ("Basis", "sql_current_timestamp") => ((L'.EPrim (Prim.String "CURRENT_TIMESTAMP"), loc), fm)
+          | L.EFfi ("Basis", "sql_current_timestamp") => (str "CURRENT_TIMESTAMP", fm)
 
           | L.ECApp (
             (L.ECApp (
@@ -2875,25 +2852,24 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("f", s, (L'.TFun (s, s), loc),
                            (L'.EAbs ("x", s, s,
                                      strcat [(L'.ERel 1, loc),
-                                             sc "(",
+                                             str "(",
                                              (L'.ERel 0, loc),
-                                             sc ")"]), loc)), loc),
+                                             str ")"]), loc)), loc),
                  fm)
             end
           | L.EFfi ("Basis", "sql_octet_length") =>
-            ((L'.EPrim (Prim.String (if #supportsOctetLength (Settings.currentDbms ()) then
-                                         "octet_length"
-                                     else
-                                         "length")), loc), fm)
+            (str (if #supportsOctetLength (Settings.currentDbms ()) then
+                      "octet_length"
+                  else
+                      "length"), fm)
           | L.EFfi ("Basis", "sql_lower") =>
-            ((L'.EPrim (Prim.String "lower"), loc), fm)
+            (str "lower", fm)
           | L.EFfi ("Basis", "sql_upper") =>
-            ((L'.EPrim (Prim.String "upper"), loc), fm)
+            (str "upper", fm)
           | L.ECApp ((L.EFfi ("Basis", "sql_known"), _), _) =>
             ((L'.EFfi ("Basis", "sql_known"), loc), fm)
 
@@ -2907,12 +2883,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
               _), _)) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("s", s, s,
-                           strcat [sc "(",
+                           strcat [str "(",
                                    (L'.ERel 0, loc),
-                                   sc " IS NULL)"]), loc),
+                                   str " IS NULL)"]), loc),
                  fm)
             end
 
@@ -2926,15 +2901,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
               _), _)) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("x1", s, (L'.TFun (s, s), loc),
                            (L'.EAbs ("x1", s, s,
-                                     strcat [sc "COALESCE(",
+                                     strcat [str "COALESCE(",
                                              (L'.ERel 1, loc),
-                                             sc ",",
+                                             str ",",
                                              (L'.ERel 0, loc),
-                                             sc ")"]), loc)), loc),
+                                             str ")"]), loc)), loc),
                  fm)
             end
 
@@ -2948,18 +2922,17 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
               _), _)) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("if", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                            (L'.EAbs ("then", s, (L'.TFun (s, s), loc),
                                      (L'.EAbs ("else", s, s,
-                                               strcat [sc "(CASE WHEN (",
+                                               strcat [str "(CASE WHEN (",
                                                        (L'.ERel 2, loc),
-                                                       sc ") THEN (",
+                                                       str ") THEN (",
                                                        (L'.ERel 1, loc),
-                                                       sc ") ELSE (",
+                                                       str ") ELSE (",
                                                        (L'.ERel 0, loc),
-                                                       sc ") END)"]), loc)), loc)), loc),
+                                                       str ") END)"]), loc)), loc)), loc),
                  fm)
             end
 
@@ -2974,7 +2947,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("u", (L'.TRecord [], loc), (L'.TFun (s, s), loc),
                            (L'.EAbs ("x", s, s,
@@ -2997,13 +2969,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
             in
                 ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFun (s, s), loc),
                            (L'.EAbs ("x", s, s,
-                                     strcat [sc "(",
+                                     strcat [str "(",
                                              (L'.ERel 0, loc),
-                                             sc ")"]), loc)), loc),
+                                             str ")"]), loc)), loc),
                  fm)
             end
 
@@ -3013,7 +2984,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                (L.EFfi ("Basis", "sql_no_partition"), _),
                _), _),
              _), _),
-            _) => ((L'.EPrim (Prim.String ""), loc), fm)
+            _) => (str "", fm)
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (
@@ -3026,7 +2997,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
             in
-                ((L'.EAbs ("e", s, s, strcat [(L'.EPrim (Prim.String "PARTITION BY "), loc), (L'.ERel 0, loc)]), loc),
+                ((L'.EAbs ("e", s, s, strcat [str "PARTITION BY ", (L'.ERel 0, loc)]), loc),
                  fm)
             end
 
@@ -3046,20 +3017,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                              ErrorMsg.errorAt loc "The DBMS you've selected doesn't support window functions."
 
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
 
                 val main = strcat [(L'.ERel 2, loc),
-                                   sc " OVER (",
+                                   str " OVER (",
                                    (L'.ERel 1, loc),
                                    (L'.ECase ((L'.ERel 0, loc),
-                                              [((L'.PPrim (Prim.String ""), loc),
-                                                sc ""),
+                                              [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
+                                                str ""),
                                                ((L'.PWild, loc),
-                                                strcat [sc " ORDER BY ",
+                                                strcat [str " ORDER BY ",
                                                         (L'.ERel 0, loc)])],
                                               {disc = s,
                                                result = s}), loc),
-                                   sc ")"]
+                                   str ")"]
             in
                 ((L'.EAbs ("w", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                            (L'.EAbs ("p", s, (L'.TFun (s, s), loc),
@@ -3081,12 +3051,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
-                fun sc s = (L'.EPrim (Prim.String s), loc)
 
                 val main = strcat [(L'.ERel 1, loc),
-                                   sc "(",
+                                   str "(",
                                    (L'.ERel 0, loc),
-                                   sc ")"]
+                                   str ")"]
             in
                 ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                            (L'.EAbs ("e1", s, s, main), loc)), loc),
@@ -3094,9 +3063,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
 
           | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_window_count"), _), _), _), _), _), _) =>
-            ((L'.EPrim (Prim.String "COUNT(*)"), loc), fm)
+            (str "COUNT(*)", fm)
           | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "sql_rank"), _), _), _), _), _), _) =>
-            ((L'.EPrim (Prim.String "RANK()"), loc), fm)
+            (str "RANK()", fm)
 
           | L.EFfiApp ("Basis", "nextval", [(e, _)]) =>
             let
@@ -3112,19 +3081,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ((L'.ESetval (e1, e2), loc), fm)
             end
 
-          | L.EFfi ("Basis", "null") => ((L'.EPrim (Prim.String ""), loc), fm)
+          | L.EFfi ("Basis", "null") => (str "", fm)
 
           | L.EFfiApp ("Basis", "classes", [(s1, _), (s2, _)]) =>
             let
                 val (s1, fm) = monoExp (env, st, fm) s1
                 val (s2, fm) = monoExp (env, st, fm) s2
             in
-                ((L'.EStrcat (s1, (L'.EStrcat ((L'.EPrim (Prim.String " "), loc), s2), loc)), loc),
+                ((L'.EStrcat (s1, (L'.EStrcat (str " ", s2), loc)), loc),
                  fm)
             end
 
-          | L.EFfi ("Basis", "data_kind") => ((L'.EPrim (Prim.String "data-"), loc), fm)
-          | L.EFfi ("Basis", "aria_kind") => ((L'.EPrim (Prim.String "aria-"), loc), fm)
+          | L.EFfi ("Basis", "data_kind") => (str "data-", fm)
+          | L.EFfi ("Basis", "aria_kind") => (str "aria-", fm)
 
           | L.EFfiApp ("Basis", "data_attr", [(sk, _), (s1, _), (s2, _)]) =>
             let
@@ -3134,9 +3103,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EStrcat (sk,
                               (L'.EStrcat ((L'.EFfiApp ("Basis", "blessData", [(s1, (L'.TFfi ("Basis", "string"), loc))]), loc),
-                                           (L'.EStrcat ((L'.EPrim (Prim.String "=\""), loc),
+                                           (L'.EStrcat (str "=\"",
                                                         (L'.EStrcat ((L'.EFfiApp ("Basis", "attrifyString", [(s2, (L'.TFfi ("Basis", "string"), loc))]), loc),
-                                                                     (L'.EPrim (Prim.String "\""), loc)), loc)),
+                                                                     str "\""), loc)),
                                             loc)), loc)), loc),
                  fm)
             end
@@ -3146,7 +3115,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (s1, fm) = monoExp (env, st, fm) s1
                 val (s2, fm) = monoExp (env, st, fm) s2
             in
-                ((L'.EStrcat (s1, (L'.EStrcat ((L'.EPrim (Prim.String " "), loc), s2), loc)), loc),
+                ((L'.EStrcat (s1, (L'.EStrcat (str " ", s2), loc)), loc),
                  fm)
             end
 
@@ -3154,9 +3123,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val (s, fm) = monoExp (env, st, fm) s
             in
-                ((L'.EStrcat ((L'.EPrim (Prim.String "url("), loc),
+                ((L'.EStrcat (str "url(",
                               (L'.EStrcat ((L'.EFfiApp ("Basis", "css_url", [(s, (L'.TFfi ("Basis", "string"), loc))]), loc),
-                                           (L'.EPrim (Prim.String ")"), loc)), loc)), loc),
+                                           str ")"), loc)), loc),
                  fm)
             end
 
@@ -3165,7 +3134,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (s, fm) = monoExp (env, st, fm) s
             in
                 ((L'.EStrcat ((L'.EFfiApp ("Basis", "property", [(s, (L'.TFfi ("Basis", "string"), loc))]), loc),
-                              (L'.EPrim (Prim.String ":"), loc)), loc),
+                              str ":"), loc),
                  fm)
             end
           | L.EFfiApp ("Basis", "value", [(s1, _), (s2, _)]) =>
@@ -3173,17 +3142,17 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (s1, fm) = monoExp (env, st, fm) s1
                 val (s2, fm) = monoExp (env, st, fm) s2
             in
-                ((L'.EStrcat (s1, (L'.EStrcat ((L'.EPrim (Prim.String " "), loc), s2), loc)), loc),
+                ((L'.EStrcat (s1, (L'.EStrcat (str " ", s2), loc)), loc),
                  fm)
             end
 
-          | L.EFfi ("Basis", "noStyle") => ((L'.EPrim (Prim.String ""), loc), fm)
+          | L.EFfi ("Basis", "noStyle") => (str "", fm)
           | L.EFfiApp ("Basis", "oneProperty", [(s1, _), (s2, _)]) =>
             let
                 val (s1, fm) = monoExp (env, st, fm) s1
                 val (s2, fm) = monoExp (env, st, fm) s2
             in
-                ((L'.EStrcat (s1, (L'.EStrcat (s2, (L'.EPrim (Prim.String ";"), loc)), loc)), loc),
+                ((L'.EStrcat (s1, (L'.EStrcat (s2, str ";"), loc)), loc),
                  fm)
             end
 
@@ -3332,28 +3301,28 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 fun tagStart tag' =
                     let
                         val t = (L'.TFfi ("Basis", "string"), loc)
-                        val s = (L'.EPrim (Prim.String (String.concat ["<", tag'])), loc)
+                        val s = strH (String.concat ["<", tag'])
 
                         val s = (L'.EStrcat (s,
                                              (L'.ECase (class,
-                                                        [((L'.PPrim (Prim.String ""), loc),
-                                                          (L'.EPrim (Prim.String ""), loc)),
+                                                        [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
+                                                          strH ""),
                                                          ((L'.PVar ("x", t), loc),
-                                                          (L'.EStrcat ((L'.EPrim (Prim.String " class=\""), loc),
+                                                          (L'.EStrcat (strH " class=\"",
                                                                        (L'.EStrcat ((L'.ERel 0, loc),
-                                                                                    (L'.EPrim (Prim.String "\""), loc)),
+                                                                                    strH "\""),
                                                                         loc)), loc))],
                                                         {disc = t,
                                                          result = t}), loc)), loc)
 
                         val s = (L'.EStrcat (s,
                                              (L'.ECase (style,
-                                                        [((L'.PPrim (Prim.String ""), loc),
-                                                          (L'.EPrim (Prim.String ""), loc)),
+                                                        [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
+                                                          strH ""),
                                                          ((L'.PVar ("x", t), loc),
-                                                          (L'.EStrcat ((L'.EPrim (Prim.String " style=\""), loc),
+                                                          (L'.EStrcat (strH " style=\"",
                                                                        (L'.EStrcat ((L'.ERel 0, loc),
-                                                                                    (L'.EPrim (Prim.String "\""), loc)),
+                                                                                    strH "\""),
                                                                         loc)), loc))],
                                                         {disc = t,
                                                          result = t}), loc)), loc)
@@ -3363,7 +3332,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                               | (("Data", e, _), (s, fm)) =>
                                                 ((L'.EStrcat (s,
                                                               (L'.EStrcat (
-                                                               (L'.EPrim (Prim.String " "), loc),
+                                                               strH " ",
                                                                e), loc)), loc),
                                                  fm)
                                               | ((x, e, t), (s, fm)) =>
@@ -3380,7 +3349,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                             arg = NONE},
                                                                                 NONE), loc),
                                                                       (L'.EStrcat (s,
-                                                                                   (L'.EPrim (Prim.String s'), loc)), loc)),
+                                                                                   strH s'), loc)),
                                                                      ((L'.PCon (L'.Enum,
                                                                                 L'.PConFfi {mod = "Basis",
                                                                                             datatyp = "bool",
@@ -3409,10 +3378,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                     in
                                                         ((L'.EStrcat (s,
                                                                       (L'.EStrcat (
-                                                                       (L'.EPrim (Prim.String s'), loc),
+                                                                       strH s',
                                                                        (L'.EStrcat (
                                                                         (L'.EJavaScript (L'.Attribute, e), loc),
-                                                                        (L'.EPrim (Prim.String ");return false'"), loc)), loc)),
+                                                                        strH ");return false'"), loc)),
                                                                        loc)), loc),
                                                          fm)
                                                     end
@@ -3438,14 +3407,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                                                         val (e, fm) = fooify env fm (e, t)
                                                         val e = case (tag, x) of
-                                                                    ("coption", "Value") => (L'.EStrcat ((L'.EPrim (Prim.String "x"), loc), e), loc)
+                                                                    ("coption", "Value") => (L'.EStrcat (strH "x", e), loc)
                                                                   | _ => e
                                                     in
                                                         ((L'.EStrcat (s,
-                                                                      (L'.EStrcat ((L'.EPrim (Prim.String xp), loc),
+                                                                      (L'.EStrcat (strH xp,
                                                                                    (L'.EStrcat (e,
-                                                                                                (L'.EPrim (Prim.String "\""),
-                                                                                                 loc)),
+                                                                                                strH "\""),
                                                                                     loc)),
                                                                        loc)), loc),
                                                          fm)
@@ -3454,7 +3422,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     in
                         (if tag = "coption" andalso List.all (fn ("Value", _, _) => false | _ => true) attrs then
                             (L'.EStrcat (s,
-                                         (L'.EPrim (Prim.String " value=\"\""), loc)), loc)
+                                         strH " value=\"\""), loc)
                          else
                              s,
                          fm)
@@ -3467,8 +3435,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             val (ts, fm) = tagStart "input"
                         in
                             ((L'.EStrcat (ts,
-                                          (L'.EPrim (Prim.String (" type=\"" ^ typ ^ "\" name=\"" ^ name ^ "\" />")),
-                                           loc)), loc), fm)
+                                          strH (" type=\"" ^ typ ^ "\" name=\"" ^ name ^ "\" />")), loc), fm)
                         end
                       | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                               raise Fail "No name passed to input tag")
@@ -3488,10 +3455,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                               NONE => xml
                                             | SOME extra => (L'.EStrcat (extra, xml), loc)
                             in
-                                ((L'.EStrcat ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String ">"), loc)), loc),
+                                ((L'.EStrcat ((L'.EStrcat (tagStart, strH ">"), loc),
                                               (L'.EStrcat (xml,
-                                                           (L'.EPrim (Prim.String (String.concat ["</", tag, ">"])),
-                                                            loc)), loc)),
+                                                           strH (String.concat ["</", tag, ">"])), loc)),
                                   loc),
                                  fm)
                             end
@@ -3511,9 +3477,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                        (L.ECApp ((L.EFfi ("Basis", "cdata"), _),
                                                  _), _),
                                        _), _),
-                                      (L.EPrim (Prim.String s), _)), _), NONE) =>
+                                      (L.EPrim (Prim.String (_, s)), _)), _), NONE) =>
                             if CharVector.all Char.isSpace s andalso isSingleton () then
-                                ((L'.EStrcat (tagStart, (L'.EPrim (Prim.String " />"), loc)), loc), fm)
+                                ((L'.EStrcat (tagStart, strH " />"), loc), fm)
                             else
                                 normal ()
                           | _ => normal ()
@@ -3521,7 +3487,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                 fun setAttrs jexp =
                     let
-                        val s = (L'.EPrim (Prim.String (String.concat ["<", tag])), loc)
+                        val s = strH (String.concat ["<", tag])
 
                         val assgns = List.mapPartial
                                      (fn ("Source", _, _) => NONE
@@ -3570,12 +3536,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                         val t = (L'.TFfi ("Basis", "string"), loc)
                         val setClass = (L'.ECase (class,
-                                                  [((L'.PPrim (Prim.String ""), loc),
+                                                  [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
                                                     str ""),
                                                    ((L'.PVar ("x", t), loc),
-                                                    (L'.EStrcat ((L'.EPrim (Prim.String "d.className=\""), loc),
+                                                    (L'.EStrcat (strH "d.className=\"",
                                                                  (L'.EStrcat ((L'.ERel 0, loc),
-                                                                              (L'.EPrim (Prim.String "\";"), loc)), loc)),
+                                                                              strH "\";"), loc)),
                                                      loc))],
                                                   {disc = (L'.TOption t, loc),
                                                    result = t}), loc)
@@ -3594,14 +3560,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                 fun execify e =
                     case e of
-                        NONE => (L'.EPrim (Prim.String ""), loc)
+                        NONE => strH ""
                       | SOME e =>
                         let
                             val e = (L'.EApp (e, (L'.ERecord [], loc)), loc)
                         in
-                            (L'.EStrcat ((L'.EPrim (Prim.String "exec("), loc),
+                            (L'.EStrcat (strH "exec(",
                                          (L'.EStrcat ((L'.EJavaScript (L'.Attribute, e), loc),
-                                                      (L'.EPrim (Prim.String ")"), loc)), loc)), loc)
+                                                      strH ")"), loc)), loc)
                         end
 
                 fun inTag tag' = case ctxOuter of
@@ -3643,10 +3609,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             case attrs of
 				[("Signal", e, _)] =>
 				((L'.EStrcat
-                                      ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">dyn(\""
-                                                               ^ pnode () ^ "\", execD(")), loc),
+                                      (strH ("<script type=\"text/javascript\">dyn(\""
+                                             ^ pnode () ^ "\", execD("),
                                        (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
-                                                    (L'.EPrim (Prim.String ("))</script>")), loc)), loc)), loc),
+                                                    strH ("))</script>")), loc)), loc),
 				 fm)
                               | _ => raise Fail "Monoize: Bad <dyn> attributes"
 			end
@@ -3655,9 +3621,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         (case attrs of
 			     [("Code", e, _)] =>
 			     ((L'.EStrcat
-                                   ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">active(execD(")), loc),
+                                   (strH "<script type=\"text/javascript\">active(execD(",
                                     (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
-                                                 (L'.EPrim (Prim.String ("))</script>")), loc)), loc)), loc),
+                                                 strH "))</script>"), loc)), loc),
 			      fm)
                            | _ => raise Fail "Monoize: Bad <active> attributes")
 
@@ -3665,9 +3631,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         (case attrs of
 			     [("Code", e, _)] =>
 			     ((L'.EStrcat
-                                   ((L'.EPrim (Prim.String ("<script type=\"text/javascript\">execF(execD(")), loc),
+                                   (strH "<script type=\"text/javascript\">execF(execD(",
                                     (L'.EStrcat ((L'.EJavaScript (L'.Script, e), loc),
-                                                 (L'.EPrim (Prim.String ("))</script>")), loc)), loc)), loc),
+                                                 strH "))</script>"), loc)), loc),
 			      fm)
                            | _ => raise Fail "Monoize: Bad <script> attributes")
 
@@ -3684,8 +3650,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                       val (ts, fm) = tagStart "input"
 				  in
                                       ((L'.EStrcat (ts,
-                                                    (L'.EPrim (Prim.String (" type=\"text\" name=\"" ^ name ^ "\" />")),
-                                                     loc)), loc), fm)
+                                                    strH (" type=\"text\" name=\"" ^ name ^ "\" />")),
+                                        loc), fm)
 				  end
 				| SOME (_, src, _) =>
 				  (strcat [str "<script type=\"text/javascript\">inp(exec(",
@@ -3705,10 +3671,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 				 val (xml, fm) = monoExp (env, st, fm) xml
                              in
 				 ((L'.EStrcat ((L'.EStrcat (ts,
-                                                            (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\">")), loc)), loc),
+                                                            strH (" name=\"" ^ name ^ "\">")), loc),
                                                (L'.EStrcat (xml,
-                                                            (L'.EPrim (Prim.String "</textarea>"),
-                                                             loc)), loc)),
+                                                            strH "</textarea>"), loc)),
                                    loc), fm)
                              end
                            | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
@@ -3728,7 +3693,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                              NONE => raise Fail "No name for radioGroup"
                            | SOME name =>
                              normal ("input",
-                                     SOME (L'.EPrim (Prim.String (" type=\"radio\" name=\"" ^ name ^ "\"")), loc)))
+                                     SOME (strH (" type=\"radio\" name=\"" ^ name ^ "\""))))
 
                       | "select" =>
 			(case targs of
@@ -3738,11 +3703,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 				 val (xml, fm) = monoExp (env, st, fm) xml
                              in
 				 ((L'.EStrcat ((L'.EStrcat (ts,
-                                                            (L'.EPrim (Prim.String (" name=\"" ^ name ^ "\">")),
-                                                             loc)), loc),
+                                                            strH (" name=\"" ^ name ^ "\">")), loc),
                                                (L'.EStrcat (xml,
-                                                            (L'.EPrim (Prim.String "</select>"),
-                                                             loc)), loc)),
+                                                            strH "</select>"),
+                                                loc)),
                                    loc),
 				  fm)
                              end
@@ -3756,7 +3720,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 				 val (ts, fm) = tagStart "input"
                              in
 				 ((L'.EStrcat (ts,
-                                               (L'.EPrim (Prim.String " type=\"text\" />"), loc)),
+                                               strH " type=\"text\" />"),
                                    loc), fm)
                              end
                            | SOME (_, src, _) =>
@@ -3779,7 +3743,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 				 val (ts, fm) = tagStart "input type=\"checkbox\""
                              in
 				 ((L'.EStrcat (ts,
-                                               (L'.EPrim (Prim.String " />"), loc)),
+                                               strH " />"),
                                    loc), fm)
                              end
                            | SOME (_, src, _) =>
@@ -3834,7 +3798,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 				 val (ts, fm) = tagStart "textarea"
                              in
 				 ((L'.EStrcat (ts,
-                                               (L'.EPrim (Prim.String " />"), loc)),
+                                               strH " />"),
                                    loc), fm)
                              end
                            | SOME (_, src, _) =>
@@ -3957,7 +3921,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | _ => NotFound
 
                 val (func, action, fm) = case findSubmit xml of
-                    NotFound => (0, (L'.EPrim (Prim.String ""), loc), fm)
+                    NotFound => (0, strH "", fm)
                   | Error => raise Fail "Not ready for multi-submit lforms yet"
                   | Found (action, actionT) =>
                     let
@@ -3969,9 +3933,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                         val (action, fm) = urlifyExp env fm (action, actionT)
                     in
                         (func,
-                         (L'.EStrcat ((L'.EPrim (Prim.String " action=\""), loc),
+                         (L'.EStrcat (strH " action=\"",
                                       (L'.EStrcat (action,
-                                                   (L'.EPrim (Prim.String "\""), loc)), loc)), loc),
+                                                   strH "\""), loc)), loc),
                          fm)
                     end
 
@@ -4010,12 +3974,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                             val sigName = getSigName ()
                             val sigSet = (L'.EFfiApp ("Basis", "sigString", [((L'.ERecord [], loc), (L'.TRecord [], loc))]), loc)
-                            val sigSet = (L'.EStrcat ((L'.EPrim (Prim.String ("<input type=\"hidden\" name=\""
-                                                                              ^ sigName
-                                                                              ^ "\" value=\"")), loc),
+                            val sigSet = (L'.EStrcat (strH ("<input type=\"hidden\" name=\""
+                                                            ^ sigName
+                                                            ^ "\" value=\""),
                                                       sigSet), loc)
                             val sigSet = (L'.EStrcat (sigSet,
-                                                      (L'.EPrim (Prim.String "\" />"), loc)), loc)
+                                                      strH "\" />"), loc)
                         in
                             (L'.EStrcat (sigSet, xml), loc)
                         end
@@ -4024,7 +3988,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                 val action = if hasUpload then
                                  (L'.EStrcat (action,
-                                              (L'.EPrim (Prim.String " enctype=\"multipart/form-data\""), loc)), loc)
+                                              strH " enctype=\"multipart/form-data\""), loc)
                              else
                                  action
 
@@ -4033,19 +3997,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val action = (L'.EStrcat (action,
                                           (L'.ECase (class,
                                                      [((L'.PNone stt, loc),
-                                                       (L'.EPrim (Prim.String ""), loc)),
+                                                       strH ""),
                                                       ((L'.PSome (stt, (L'.PVar ("x", stt), loc)), loc),
-                                                       (L'.EStrcat ((L'.EPrim (Prim.String " class=\""), loc),
+                                                       (L'.EStrcat (strH " class=\"",
                                                                     (L'.EStrcat ((L'.ERel 0, loc),
-                                                                                 (L'.EPrim (Prim.String "\""), loc)), loc)), loc))],
+                                                                                 strH "\""), loc)), loc))],
                                                      {disc = (L'.TOption stt, loc),
                                                       result = stt}), loc)), loc)
             in
-                ((L'.EStrcat ((L'.EStrcat ((L'.EPrim (Prim.String "<form method=\"post\""), loc),
+                ((L'.EStrcat ((L'.EStrcat (strH "<form method=\"post\"",
                                            (L'.EStrcat (action,
-                                                        (L'.EPrim (Prim.String ">"), loc)), loc)), loc),
+                                                        strH ">"), loc)), loc),
                               (L'.EStrcat (xml,
-                                           (L'.EPrim (Prim.String "</form>"), loc)), loc)), loc),
+                                           strH "</form>"), loc)), loc),
                  fm)
             end
 
@@ -4056,10 +4020,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val s = (L'.TFfi ("Basis", "string"), loc)
             in
                 ((L'.EAbs ("xml", s, s,
-                           strcat [(L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".b\" value=\""
-                                                           ^ nm ^ "\" />")), loc),
+                           strcat [strH ("<input type=\"hidden\" name=\".b\" value=\""
+                                         ^ nm ^ "\" />"),
                                    (L'.ERel 0, loc),
-                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\" />")), loc)]),
+                                   strH ("<input type=\"hidden\" name=\".e\" value=\"1\" />")]),
                   loc),
                  fm)
             end
@@ -4071,10 +4035,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val s = (L'.TFfi ("Basis", "string"), loc)
             in
                 ((L'.EAbs ("xml", s, s,
-                           strcat [(L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".s\" value=\""
-                                                           ^ nm ^ "\" />")), loc),
+                           strcat [strH ("<input type=\"hidden\" name=\".s\" value=\""
+                                         ^ nm ^ "\" />"),
                                    (L'.ERel 0, loc),
-                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\" />")), loc)]),
+                                   strH ("<input type=\"hidden\" name=\".e\" value=\"1\" />")]),
                   loc),
                  fm)
             end
@@ -4085,9 +4049,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val s = (L'.TFfi ("Basis", "string"), loc)
             in
                 ((L'.EAbs ("xml", s, s,
-                           strcat [(L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".i\" value=\"1\" />")), loc),
+                           strcat [strH ("<input type=\"hidden\" name=\".i\" value=\"1\" />"),
                                    (L'.ERel 0, loc),
-                                   (L'.EPrim (Prim.String ("<input type=\"hidden\" name=\".e\" value=\"1\" />")), loc)]),
+                                   strH ("<input type=\"hidden\" name=\".e\" value=\"1\" />")]),
                   loc),
                  fm)
             end
@@ -4175,7 +4139,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (e, fm) = monoExp (env, st, fm) e
                 val (e, fm) = urlifyExp env fm (e, dummyTyp)
             in
-                ((L'.EStrcat ((L'.EPrim (Prim.String (Settings.getUrlPrePrefix ())), loc), e), loc), fm)
+                ((L'.EStrcat (str (Settings.getUrlPrePrefix ()), e), loc), fm)
             end
 
           | L.EApp (e1, e2) =>
@@ -4296,14 +4260,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             val (e, fm) = urlifyExp env fm (e, monoType env dom)
                         in
                             encodeArgs (es, ran, e
-                                                 :: (L'.EPrim (Prim.String "/"), loc)
+                                                 :: str "/"
                                                  :: acc, fm)
                         end
                       | _ => raise Fail "Monoize: Not enough arguments visible in RPC function type"
 
                 val (call, fm) = encodeArgs (es, ft, [], fm)
                 val call = foldl (fn (e, call) => (L'.EStrcat (call, e), loc))
-                                 (L'.EPrim (Prim.String name), loc) call
+                                 (str name) call
 
                 val unit = (L'.TRecord [], loc)
 
@@ -4329,6 +4293,9 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             (E.errorAt loc "Unsupported declaration";
              Print.eprefaces' [("Declaration", CorePrint.p_decl env all)];
              NONE)
+
+        fun str s = (L'.EPrim (Prim.String (Prim.Normal, s)), loc)
+        fun strH s = (L'.EPrim (Prim.String (Prim.Html, s)), loc)
     in
         case d of
             L.DCon _ => NONE
@@ -4426,7 +4393,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                 val t = (L.CFfi ("Basis", "string"), loc)
                 val t' = (L'.TFfi ("Basis", "string"), loc)
                 val s = Settings.mangleSqlTable s
-                val e_name = (L'.EPrim (Prim.String s), loc)
+                val e_name = str s
 
                 val xts = map (fn (x, t) => (monoName env x, monoType env t)) xts
 
@@ -4444,7 +4411,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                 val t = (L.CFfi ("Basis", "string"), loc)
                 val t' = (L'.TFfi ("Basis", "string"), loc)
                 val s = Settings.mangleSqlTable s
-                val e_name = (L'.EPrim (Prim.String s), loc)
+                val e_name = str s
 
                 val xts = map (fn (x, t) => (monoName env x, monoType env t)) xts
 
@@ -4462,7 +4429,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                 val t = (L.CFfi ("Basis", "string"), loc)
                 val t' = (L'.TFfi ("Basis", "string"), loc)
                 val s = Settings.mangleSql s
-                val e = (L'.EPrim (Prim.String s), loc)
+                val e = str s
             in
                 SOME (Env.pushENamed env x n t NONE s,
                       fm,
@@ -4474,7 +4441,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             let
                 val t = (L.CFfi ("Basis", "string"), loc)
                 val t' = (L'.TFfi ("Basis", "string"), loc)
-                val e = (L'.EPrim (Prim.String s), loc)
+                val e = str s
             in
                 SOME (Env.pushENamed env x n t NONE s,
                       fm,
@@ -4485,7 +4452,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
             let
                 val t = (L.CFfi ("Basis", "string"), loc)
                 val t' = (L'.TFfi ("Basis", "string"), loc)
-                val e = (L'.EPrim (Prim.String s), loc)
+                val e = strH s
             in
                 SOME (Env.pushENamed env x n t NONE s,
                       fm,
@@ -4581,6 +4548,9 @@ fun monoize env file =
         val client = (L'.TFfi ("Basis", "client"), loc)
         val unit = (L'.TRecord [], loc)
 
+        fun str s = (L'.EPrim (Prim.String (Prim.Normal, s)), loc)
+        fun strH s = (L'.EPrim (Prim.String (Prim.Html, s)), loc)
+
         fun calcClientish xts =
             foldl (fn ((x : L.con, t : L.con), st as (nullable, notNullable)) =>
                       case #1 x of
@@ -4610,22 +4580,22 @@ fun monoize env file =
                             val (nullable, notNullable) = calcClientish xts
 
                             fun cond (x, v) =
-                                (L'.EStrcat ((L'.EPrim (Prim.String (Settings.mangleSql x
-                                                                     ^ (case v of
-                                                                            Client => ""
-                                                                          | Channel => " >> 32")
-                                                                     ^ " = ")), loc),
+                                (L'.EStrcat (str (Settings.mangleSql x
+                                                  ^ (case v of
+                                                         Client => ""
+                                                       | Channel => " >> 32")
+                                                  ^ " = "),
                                              target), loc)
 
                             val e =
                                 foldl (fn ((x, v), e) =>
                                           (L'.ESeq (
                                            (L'.EDml ((L'.EStrcat (
-                                                      (L'.EPrim (Prim.String ("UPDATE "
-                                                                              ^ Settings.mangleSql tab
-                                                                              ^ " SET "
-                                                                              ^ Settings.mangleSql x
-                                                                              ^ " = NULL WHERE ")), loc),
+                                                      str ("UPDATE "
+                                                           ^ Settings.mangleSql tab
+                                                           ^ " SET "
+                                                           ^ Settings.mangleSql x
+                                                           ^ " = NULL WHERE "),
                                                       cond (x, v)), loc), L'.Error), loc),
                                            e), loc))
                                       e nullable
@@ -4638,12 +4608,11 @@ fun monoize env file =
                                      (L'.EDml (foldl
                                                    (fn (eb, s) =>
                                                        (L'.EStrcat (s,
-                                                                    (L'.EStrcat ((L'.EPrim (Prim.String " OR "),
-                                                                                  loc),
+                                                                    (L'.EStrcat (str " OR ",
                                                                                  cond eb), loc)), loc))
-                                                   (L'.EStrcat ((L'.EPrim (Prim.String ("DELETE FROM "
-                                                                                        ^ Settings.mangleSql tab
-                                                                                        ^ " WHERE ")), loc),
+                                                   (L'.EStrcat (str ("DELETE FROM "
+                                                                     ^ Settings.mangleSql tab
+                                                                     ^ " WHERE "),
                                                                 cond eb), loc)
                                                    ebs, L'.Error), loc),
                                      e), loc)
@@ -4673,15 +4642,15 @@ fun monoize env file =
                                     [] => e
                                   | (x, _) :: ebs =>
                                     (L'.ESeq (
-                                     (L'.EDml ((L'.EPrim (Prim.String
-                                                              (foldl (fn ((x, _), s) =>
-                                                                         s ^ ", " ^ Settings.mangleSql x ^ " = NULL")
-                                                                     ("UPDATE uw_"
-                                                                      ^ tab
-                                                                      ^ " SET "
-                                                                      ^ Settings.mangleSql x
+                                     (L'.EDml (str
+                                                   (foldl (fn ((x, _), s) =>
+                                                              s ^ ", " ^ Settings.mangleSql x ^ " = NULL")
+                                                          ("UPDATE uw_"
+                                                           ^ tab
+                                                           ^ " SET "
+                                                           ^ Settings.mangleSql x
                                                                       ^ " = NULL")
-                                                                     ebs)), loc), L'.Error), loc),
+                                                          ebs), L'.Error), loc),
                                      e), loc)
 
                             val e =
@@ -4689,8 +4658,8 @@ fun monoize env file =
                                     [] => e
                                   | eb :: ebs =>
                                     (L'.ESeq (
-                                     (L'.EDml ((L'.EPrim (Prim.String ("DELETE FROM "
-                                                                       ^ Settings.mangleSql tab)), loc), L'.Error), loc),
+                                     (L'.EDml (str ("DELETE FROM "
+                                                    ^ Settings.mangleSql tab), L'.Error), loc),
                                      e), loc)
                         in
                             e

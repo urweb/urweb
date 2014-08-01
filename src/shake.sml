@@ -44,7 +44,7 @@ type free = {
 }
 
 val dummyt = (TRecord (CRecord ((KType, ErrorMsg.dummySpan), []), ErrorMsg.dummySpan), ErrorMsg.dummySpan)
-val dummye = (EPrim (Prim.String ""), ErrorMsg.dummySpan)
+val dummye = (EPrim (Prim.String (Prim.Normal, "")), ErrorMsg.dummySpan)
 
 fun tupleC cs = (CTuple cs, ErrorMsg.dummySpan)
 fun tupleE es = (ERecord (map (fn e => (dummyt, e, dummyt)) es), ErrorMsg.dummySpan)

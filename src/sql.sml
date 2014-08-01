@@ -47,7 +47,7 @@ datatype chunk =
 
 fun chunkify e =
     case #1 e of
-        EPrim (Prim.String s) => [String s]
+        EPrim (Prim.String (_, s)) => [String s]
       | EStrcat (e1, e2) =>
         let
             val chs1 = chunkify e1
@@ -248,7 +248,7 @@ val prim =
                               (Option.map Prim.Int o Int64.fromString))
                        (opt (const "::int8"))) #1,
           wrap (follow (opt (const "E")) (follow string (opt (const "::text"))))
-               (Prim.String o #1 o #2)]
+               ((fn s => Prim.String (Prim.Normal, s)) o #1 o #2)]
 
 fun known' chs =
     case chs of
@@ -263,9 +263,9 @@ fun sqlify chs =
         else
             NONE
       | Exp (ECase (e, [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, NONE), _),
-                         (EPrim (Prim.String "TRUE"), _)),
+                         (EPrim (Prim.String (Prim.Normal, "TRUE")), _)),
                         ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, NONE), _),
-                         (EPrim (Prim.String "FALSE"), _))], _), _) :: chs =>
+                         (EPrim (Prim.String (Prim.Normal, "FALSE")), _))], _), _) :: chs =>
         SOME (e, chs)
                           
       | _ => NONE

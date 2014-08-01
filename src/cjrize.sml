@@ -242,7 +242,7 @@ fun cifyExp (eAll as (e, loc), sm) =
     let
         fun fail msg =
             (ErrorMsg.errorAt loc msg;
-             ((L'.EPrim (Prim.String ""), loc), sm))
+             ((L'.EPrim (Prim.String (Prim.Normal, "")), loc), sm))
     in
         case e of
             L.EPrim p => ((L'.EPrim p, loc), sm)
@@ -632,7 +632,7 @@ fun cifyDecl ((d, loc), sm) =
             fun flatten e =
                 case #1 e of
                     L.ERecord [] => []
-                  | L.ERecord [(x, (L.EPrim (Prim.String v), _), _)] => [(x, v)]
+                  | L.ERecord [(x, (L.EPrim (Prim.String (_, v)), _), _)] => [(x, v)]
                   | L.EStrcat (e1, e2) => flatten e1 @ flatten e2
                   | _ => (ErrorMsg.errorAt loc "Constraint has not been fully determined";
                           Print.prefaces "Undetermined constraint"
@@ -640,7 +640,7 @@ fun cifyDecl ((d, loc), sm) =
                           [])
 
             val pe = case #1 pe of
-                         L.EPrim (Prim.String s) => s
+                         L.EPrim (Prim.String (_, s)) => s
                        | _ => (ErrorMsg.errorAt loc "Primary key has not been fully determined";
                                Print.prefaces "Undetermined constraint"
                                               [("e", MonoPrint.p_exp MonoEnv.empty pe)];
@@ -662,7 +662,7 @@ fun cifyDecl ((d, loc), sm) =
             fun flatten e =
                 case #1 e of
                     L.ERecord [] => []
-                  | L.ERecord [(x, (L.EPrim (Prim.String v), _), _)] => [(x, v)]
+                  | L.ERecord [(x, (L.EPrim (Prim.String (_, v)), _), _)] => [(x, v)]
                   | L.EStrcat (e1, e2) => flatten e1 @ flatten e2
                   | _ => (ErrorMsg.errorAt loc "Constraint has not been fully determined";
                           Print.prefaces "Undetermined constraint"
@@ -670,7 +670,7 @@ fun cifyDecl ((d, loc), sm) =
                           [])
 
             val e = case #1 e of
-                        L.EPrim (Prim.String s) => s
+                        L.EPrim (Prim.String (_, s)) => s
                       | _ => (ErrorMsg.errorAt loc "VIEW query has not been fully determined";
                               Print.prefaces "Undetermined VIEW query"
                                              [("e", MonoPrint.p_exp MonoEnv.empty e)];

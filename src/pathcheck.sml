@@ -88,7 +88,7 @@ fun checkDecl ((d, loc), (funcs, rels, cookies, styles)) =
 
                 val rels = #2 (doRel s)
                 val rels = case #1 pe of
-                               EPrim (Prim.String "") => rels
+                               EPrim (Prim.String (_, "")) => rels
                              | _ =>
                                let
                                    val s' = s ^ "_Pkey"
