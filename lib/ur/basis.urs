@@ -797,9 +797,13 @@ val active : unit
 val script : unit
              -> tag [Code = transaction unit] head [] [] []
 
-(* Type for HTML5 "data-*" attributes. *)
+(* Type for HTML5 "data-*" and "aria-*" attributes. *)
+type data_attr_kind
+val data_kind : data_attr_kind
+val aria_kind : data_attr_kind
+
 type data_attr
-val data_attr : string (* Key *) -> string (* Value *) -> data_attr
+val data_attr : data_attr_kind -> string (* Key *) -> string (* Value *) -> data_attr
 (* This function will fail if the key doesn't meet HTML's lexical rules! *)
 val data_attrs : data_attr -> data_attr -> data_attr
 

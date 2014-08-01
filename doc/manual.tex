@@ -2065,7 +2065,7 @@ $$\begin{array}{l}
 
 We will not list here the different HTML tags and related functions from the standard library.  They should be easy enough to understand from the code in \texttt{basis.urs}.  The set of tags in the library is not yet claimed to be complete for HTML standards.  Also note that there is currently no way for the programmer to add his own tags, without using the foreign function interface (Section \ref{ffi}).
 
-Some tags support HTML5 \texttt{data-*} attributes, which in Ur/Web are encoded as a single attribute $\mt{Data}$ with type $\mt{data\_attrs}$ encoding one or more attributes of this kind.  See \texttt{basis.urs} for details.  The usual HTML5 syntax for these attributes is supported by the Ur/Web parser as syntactic sugar.
+Some tags support HTML5 \texttt{data-*} attributes, which in Ur/Web are encoded as a single attribute $\mt{Data}$ with type $\mt{data\_attrs}$ encoding one or more attributes of this kind.  See \texttt{basis.urs} for details.  The usual HTML5 syntax for these attributes is supported by the Ur/Web parser as syntactic sugar, and the same mechanism is reused to support \texttt{aria-*} attributes.
 
 One last useful function is for aborting any page generation, returning some XML as an error message.  This function takes the place of some uses of a general exception mechanism.
 $$\begin{array}{l}

@@ -225,7 +225,7 @@ fun tagIn bt =
 
 datatype prop_kind = Delete | Update
 
-datatype attr = Class of exp | DynClass of exp | Style of exp | DynStyle of exp | Normal of con * exp | Data of string * exp
+datatype attr = Class of exp | DynClass of exp | Style of exp | DynStyle of exp | Normal of con * exp | Data of string * string * exp
 
 fun patType loc (p : pat) =
     case #1 p of
@@ -486,7 +486,7 @@ fun patternOut (e : exp) =
  | rpat of (string * pat) list * bool
  | ptuple of pat list
 
- | attrs of exp option * exp option * exp option * exp option * (string * exp) list * (con * exp) list
+ | attrs of exp option * exp option * exp option * exp option * (string * string * exp) list * (con * exp) list
  | attr of attr
  | attrv of exp
 
@@ -1652,9 +1652,10 @@ tag    : tagHead attrs                  (let
                                                             [] => #6 attrs
                                                           | data :: datas =>
                                                             let
-                                                                fun doOne (name, value) =
+                                                                fun doOne (kind, name, value) =
                                                                     let
                                                                         val e = (EVar (["Basis"], "data_attr", Infer), pos)
+                                                                        val e = (EApp (e, (EVar (["Basis"], kind ^ "_kind", Infer), pos)), pos)
                                                                         val e = (EApp (e, (EPrim (Prim.String name), pos)), pos)
                                                                     in
                                                                         (EApp (e, value), pos)
@@ -1725,7 +1726,9 @@ attr   : SYMBOL EQ attrv                (case SYMBOL of
 					   | "dynStyle" => DynStyle attrv
 					   | _ =>
                                              if String.isPrefix "data-" SYMBOL then
-                                                 Data (String.extract (SYMBOL, 5, NONE), attrv)
+                                                 Data ("data", String.extract (SYMBOL, 5, NONE), attrv)
+                                             else if String.isPrefix "aria-" SYMBOL then
+                                                 Data ("aria", String.extract (SYMBOL, 5, NONE), attrv)
                                              else
                                                  let
                                                      val sym = makeAttr SYMBOL

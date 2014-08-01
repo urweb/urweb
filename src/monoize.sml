@@ -235,6 +235,7 @@ fun monoType env =
                   | L.CFfi ("Basis", "requestHeader") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "responseHeader") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "envVar") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "data_attr_kind") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "data_attr") => (L'.TFfi ("Basis", "string"), loc)
 
                   | L.CApp ((L.CFfi ("Basis", "serialized"), _), _) =>
@@ -3122,12 +3123,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  fm)
             end
 
-          | L.EFfiApp ("Basis", "data_attr", [(s1, _), (s2, _)]) =>
+          | L.EFfi ("Basis", "data_kind") => ((L'.EPrim (Prim.String "data-"), loc), fm)
+          | L.EFfi ("Basis", "aria_kind") => ((L'.EPrim (Prim.String "aria-"), loc), fm)
+
+          | L.EFfiApp ("Basis", "data_attr", [(sk, _), (s1, _), (s2, _)]) =>
             let
+                val (sk, fm) = monoExp (env, st, fm) sk
                 val (s1, fm) = monoExp (env, st, fm) s1
                 val (s2, fm) = monoExp (env, st, fm) s2
             in
-                ((L'.EStrcat ((L'.EPrim (Prim.String "data-"), loc),
+                ((L'.EStrcat (sk,
                               (L'.EStrcat ((L'.EFfiApp ("Basis", "blessData", [(s1, (L'.TFfi ("Basis", "string"), loc))]), loc),
                                            (L'.EStrcat ((L'.EPrim (Prim.String "=\""), loc),
                                                         (L'.EStrcat ((L'.EFfiApp ("Basis", "attrifyString", [(s2, (L'.TFfi ("Basis", "string"), loc))]), loc),
