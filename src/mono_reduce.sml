@@ -685,7 +685,7 @@ fun reduce (file : file) =
                                                           map (fn (p, (EAbs (_, _, _, e), _)) =>
                                                                   (p, swapExpVarsPat (0, patBinds p) e)
                                                                 | (p, (EError (e, (TFun (_, t), _)), loc)) =>
-                                                                  (p, (EError (e, t), loc))
+                                                                  (p, (EError (liftExpInExp (patBinds p) e, t), loc))
                                                                 | (p, e) =>
                                                                   (p, (EApp (liftExpInExp (patBinds p) e,
                                                                              (ERel (patBinds p), loc)), loc)))
