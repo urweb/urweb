@@ -1,4 +1,14 @@
 ========
+20140807
+========
+
+- New .urp directive: 'file'
+- Support for 'aria-*' attributes in HTML
+- Default value of 'jsFunc' for less-safe FFI
+- Client-side implementation of Basis function 'strsindex'
+- Bug fixes and improvements to type inference and documentation
+
+========
 20140704
 ========
 
