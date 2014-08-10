@@ -3276,14 +3276,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                     (rest, SOME value)
                                                   | _ => (attrs, NONE))
                                              | _ => (attrs, NONE)
-                                       
+
 
                 val (class, fm) = monoExp (env, st, fm) class
                 val (dynClass, fm) = monoExp (env, st, fm) dynClass
                 val (style, fm) = monoExp (env, st, fm) style
                 val (dynStyle, fm) = monoExp (env, st, fm) dynStyle
 
-                val dynamics = ["dyn", "ctextbox", "ccheckbox", "cselect", "coption", "ctextarea", "active", "script"]
+                val dynamics = ["dyn", "ctextbox", "cpassword", "ccheckbox", "cselect", "coption", "ctextarea", "active", "script"]
 
                 fun isSome (e, _) =
                     case e of
@@ -3726,6 +3726,29 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            | SOME (_, src, _) =>
                              let
 				 val sc = strcat [str "inp(exec(",
+						  (L'.EJavaScript (L'.Script, src), loc),
+						  str "))"]
+				 val sc = setAttrs sc
+                             in
+				 (strcat [str "<script type=\"text/javascript\">",
+					  sc,
+					  str "</script>"],
+				  fm)
+                             end)
+
+                      | "cpassword" =>
+			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
+                             NONE =>
+                             let
+				 val (ts, fm) = tagStart "input"
+                             in
+				 ((L'.EStrcat (ts,
+                                               strH " type=\"password\" />"),
+                                   loc), fm)
+                             end
+                           | SOME (_, src, _) =>
+                             let
+				 val sc = strcat [str "password(exec(",
 						  (L'.EJavaScript (L'.Script, src), loc),
 						  str "))"]
 				 val sc = setAttrs sc
@@ -4477,7 +4500,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
                             (L'.TFfi ("Basis", "int"), loc)
                         else
                             un
-                            
+
                 val e2 = (L'.EAbs ("$x", t, (L'.TFun (un, un), loc),
                                    (L'.EAbs ("$y", un, un,
                                              (L'.EApp (

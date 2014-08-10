@@ -1013,6 +1013,8 @@ con cformTag = fn (attrs :: {Type}) (inner :: {Unit}) =>
 
 val ctextbox : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
                           Ontext = transaction unit] ++ boxAttrs) []
+val cpassword : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
+                          Ontext = transaction unit] ++ boxAttrs) []
 val button : cformTag ([Value = string] ++ boxAttrs) []
 
 val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool, Onchange = transaction unit] ++ boxAttrs) []
