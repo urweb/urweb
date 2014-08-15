@@ -66,6 +66,8 @@ install-sh
 ltmain.sh
 missing
 
+tests/*.db
+
 syntax: regexp
 
 ^Makefile$

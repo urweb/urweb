@@ -1043,12 +1043,12 @@ int uw_set_file_input(uw_context ctx, const char *name, uw_Basis_file f) {
   int n = ctx->app->input_num(name);
 
   if (n < 0) {
-    uw_set_error(ctx, "Bad file input name %s", uw_Basis_htmlifyString(ctx, name));
+    uw_set_error(ctx, "Bad file input name");
     return -1;
   }
 
   if (n >= ctx->app->inputs_len) {
-    uw_set_error(ctx, "For file input name %s, index %d is out of range", uw_Basis_htmlifyString(ctx, name), n);
+    uw_set_error(ctx, "For file input name, index %d is out of range", n);
     return -1;
   }
 
