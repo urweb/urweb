@@ -730,12 +730,14 @@ fun cjrize (ds, sideInfo) =
                                           end)
                                       ([], [], [], Sm.empty) ds
 
-        val sideInfo = foldl (fn ((n, mode), mp) => IM.insert (mp, n, mode)) IM.empty sideInfo
+        val sideInfo = foldl (fn ((n, mode, dbmode), mp) => IM.insert (mp, n, (mode, dbmode))) IM.empty sideInfo
 
         val ps = map (fn (ek, s, n, ts, t, _, b) =>
-                         (ek, s, n, ts, t,
-                          getOpt (IM.find (sideInfo, n), L'.ServerOnly),
-                          b)) ps
+                         let
+                             val (side, db) = getOpt (IM.find (sideInfo, n), (L'.ServerOnly, L'.AnyDb))
+                         in
+                             (ek, s, n, ts, t, side, db, b)
+                         end) ps
     in
         (List.revAppend (dsF, rev ds),
          ps)

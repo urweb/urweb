@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, 2013, Adam Chlipala
+(* Copyright (c) 2008-2010, 2013-2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -162,6 +162,11 @@ datatype sidedness =
        | ServerAndPull
        | ServerAndPullAndPush
 
-type file = decl list * (int * sidedness) list
+datatype dbmode =
+         NoDb
+       | OneQuery
+       | AnyDb
+
+type file = decl list * (int * sidedness * dbmode) list
 
 end

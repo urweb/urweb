@@ -223,6 +223,9 @@ $(SRC)/cjrize.sml
 $(SRC)/scriptcheck.sig
 $(SRC)/scriptcheck.sml
 
+$(SRC)/dbmodecheck.sig
+$(SRC)/dbmodecheck.sml
+
 $(SRC)/prepare.sig
 $(SRC)/prepare.sml
 

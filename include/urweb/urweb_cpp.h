@@ -90,6 +90,7 @@ uw_Basis_string uw_Basis_maybe_onunload(struct uw_context *, uw_Basis_string);
 void uw_set_needs_push(struct uw_context *, int);
 void uw_set_needs_sig(struct uw_context *, int);
 void uw_set_could_write_db(struct uw_context *, int);
+void uw_set_at_most_one_query(struct uw_context *, int);
 
 char *uw_Basis_htmlifyInt(struct uw_context *, uw_Basis_int);
 char *uw_Basis_htmlifyFloat(struct uw_context *, uw_Basis_float);

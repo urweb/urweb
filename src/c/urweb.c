@@ -441,7 +441,7 @@ struct uw_context {
 
   const char *script_header;
 
-  int needs_push, needs_sig, could_write_db;
+  int needs_push, needs_sig, could_write_db, at_most_one_query;
 
   size_t n_deltas, used_deltas;
   delta *deltas;
@@ -520,6 +520,7 @@ uw_context uw_init(int id, uw_loggers *lg) {
   ctx->needs_push = 0;
   ctx->needs_sig = 0;
   ctx->could_write_db = 1;
+  ctx->at_most_one_query = 0;
 
   ctx->source_count = 0;
 
@@ -786,7 +787,7 @@ failure_kind uw_begin(uw_context ctx, char *path) {
 }
 
 void uw_ensure_transaction(uw_context ctx) {
-  if (!ctx->transaction_started) {
+  if (!ctx->transaction_started && !ctx->at_most_one_query) {
     if (ctx->app->db_begin(ctx, ctx->could_write_db))
       uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
     ctx->transaction_started = 1;
@@ -1203,6 +1204,10 @@ void uw_set_needs_sig(uw_context ctx, int n) {
 
 void uw_set_could_write_db(uw_context ctx, int n) {
   ctx->could_write_db = n;
+}
+
+void uw_set_at_most_one_query(uw_context ctx, int n) {
+  ctx->at_most_one_query = n;
 }
 
 

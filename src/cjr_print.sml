@@ -2634,7 +2634,7 @@ fun p_file env (ds, ps) =
                 end
               | _ => NONE
 
-        val fields = foldl (fn ((ek, _, _, ts, _, _, _), fields) =>
+        val fields = foldl (fn ((ek, _, _, ts, _, _, _, _), fields) =>
                                case ek of
                                    Action eff =>
                                    (case List.nth (ts, length ts - 2) of
@@ -2956,7 +2956,7 @@ fun p_file env (ds, ps) =
                       scripts (Settings.getScripts ())
             end
 
-        fun p_page (ek, s, n, ts, ran, side, tellSig) =
+        fun p_page (ek, s, n, ts, ran, side, dbmode, tellSig) =
             let
                 val (ts, defInputs, inputsVar, fields) =
                     case ek of
@@ -3104,6 +3104,10 @@ fun p_file env (ds, ps) =
                                     newline]),
                      string "uw_set_could_write_db(ctx, ",
                      string (if couldWriteDb ek then "1" else "0"),
+                     string ");",
+                     newline,
+                     string "uw_set_at_most_one_query(ctx, ",
+                     string (case dbmode of OneQuery => "1" | _ => "0"),
                      string ");",
                      newline,
                      string "uw_set_needs_push(ctx, ",

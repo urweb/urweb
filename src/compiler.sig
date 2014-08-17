@@ -172,6 +172,7 @@ signature COMPILER = sig
     val toNamejs : (string, Mono.file) transform
     val toNamejs_untangle : (string, Mono.file) transform
     val toScriptcheck : (string, Mono.file) transform
+    val toDbmodecheck : (string, Mono.file) transform
     val toJscomp : (string, Mono.file) transform
     val toMono_opt3 : (string, Mono.file) transform
     val toFuse : (string, Mono.file) transform

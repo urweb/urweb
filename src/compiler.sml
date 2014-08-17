@@ -1401,12 +1401,19 @@ val scriptcheck = {
 
 val toScriptcheck = transform scriptcheck "scriptcheck" o toNamejs_untangle
 
+val dbmodecheck = {
+    func = DbModeCheck.classify,
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toDbmodecheck = transform dbmodecheck "dbmodecheck" o toScriptcheck
+
 val jscomp = {
     func = JsComp.process,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toJscomp = transform jscomp "jscomp" o toScriptcheck
+val toJscomp = transform jscomp "jscomp" o toDbmodecheck
 
 val toMono_opt3 = transform mono_opt "mono_opt3" o toJscomp
 

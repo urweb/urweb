@@ -98,7 +98,7 @@ fun classify (ds, ps) =
                              else if IS.member (pull_ids, n) then
                                  ServerAndPull
                              else
-                                 ServerOnly)) (IS.listItems all_ids)
+                                 ServerOnly, AnyDb)) (IS.listItems all_ids)
     in
         (ds, ps)
     end
