@@ -1008,8 +1008,8 @@ val label : bodyTag ([For = id, Accesskey = string] ++ tableAttrs)
 
 con cformTag = fn (attrs :: {Type}) (inner :: {Unit}) =>
                   ctx ::: {Unit}
-                  -> [[Body] ~ ctx] =>
-                        unit -> tag attrs ([Body] ++ ctx) inner [] []
+                  -> [[Body] ~ ctx] => [[Body] ~ inner] =>
+                        unit -> tag attrs ([Body] ++ ctx) ([Body] ++ inner) [] []
 
 val ctextbox : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
                           Ontext = transaction unit] ++ boxAttrs) []
