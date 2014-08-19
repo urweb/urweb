@@ -1019,9 +1019,8 @@ val button : cformTag ([Value = string] ++ boxAttrs) []
 
 val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool, Onchange = transaction unit] ++ boxAttrs) []
 
-con cselect = [Cselect]
-val cselect : cformTag ([Source = source string, Onchange = transaction unit] ++ boxAttrs) cselect
-val coption : unit -> tag [Value = string, Selected = bool] cselect [] [] []
+val cselect : cformTag ([Source = source string, Onchange = transaction unit] ++ boxAttrs) [Cselect]
+val coption : unit -> tag [Value = string, Selected = bool] [Cselect, Body] [] [] []
 
 val ctextarea : cformTag ([Value = string, Rows = int, Cols = int, Source = source string, Onchange = transaction unit,
                            Ontext = transaction unit] ++ boxAttrs) []
