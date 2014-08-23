@@ -444,8 +444,12 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       int len = strlen(inputs);
 
       if (len+1 > rc->queryString_size) {
-        rc->queryString_size = len+1;
         rc->queryString = realloc(rc->queryString, len+1);
+        if(rc->queryString == NULL) {
+          log_error(logger_data, "queryString is too long (not enough memory)\n");
+          return FAILED;
+        }
+        rc->queryString_size = len+1;
       }
       strcpy(rc->queryString, inputs);
 
@@ -480,8 +484,12 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       on_success(ctx);
 
       if (path_len + 1 > rc->path_copy_size) {
+        rc->path_copy = realloc(rc->path_copy, path_len + 1);
+        if(rc->path_copy == NULL) {
+          log_error(logger_data, "Path is too long (not enough memory)\n");
+          return FAILED;
+        }
         rc->path_copy_size = path_len + 1;
-        rc->path_copy = realloc(rc->path_copy, rc->path_copy_size);
       }
       strcpy(rc->path_copy, path);
 
