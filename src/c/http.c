@@ -97,8 +97,15 @@ static void *worker(void *data) {
 
       if (back - buf == buf_size - 1) {
         char *new_buf;
-        buf_size *= 2;
-        new_buf = realloc(buf, buf_size);
+        size_t new_buf_size = buf_size*2;
+        new_buf = realloc(buf, new_buf_size);
+        if(!new_buf) {
+          qfprintf(stderr, "Realloc failed while receiving header\n");
+          close(sock);
+          sock = 0;
+          break;
+        }
+        buf_size = new_buf_size;
         back = new_buf + (back - buf);
         buf = new_buf;
       }
@@ -146,9 +153,16 @@ static void *worker(void *data) {
           while (back - body < clen) {
             if (back - buf == buf_size - 1) {
               char *new_buf;
-              buf_size *= 2;
-              new_buf = realloc(buf, buf_size);
+              size_t new_buf_size = buf_size * 2;
+              new_buf = realloc(buf, new_buf_size);
+              if(!new_buf) {
+                qfprintf(stderr, "Realloc failed while receiving content\n");
+                close(sock);
+                sock = 0;
+                goto done;
+              }
 
+              buf_size = new_buf_size;
               back = new_buf + (back - buf);
               body = new_buf + (body - buf);
               s = new_buf + (s - buf);
