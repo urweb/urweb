@@ -23,6 +23,9 @@ extern uw_app uw_application;
 int uw_backlog = SOMAXCONN;
 static int keepalive = 0, quiet = 0;
 
+#define qfprintf(f, fmt, args...) do { if(!quiet) fprintf(f, fmt, ##args); } while(0)
+#define qprintf(fmt, args...) do { if(!quiet) printf(fmt, ##args); } while(0)
+
 static char *get_header(void *data, const char *h) {
   char *s = data;
   int len = strlen(h);
@@ -86,8 +89,7 @@ static void *worker(void *data) {
       sock = uw_dequeue();
     }
 
-    if (!quiet)
-      printf("Handling connection with thread #%d.\n", me);
+    qprintf("Handling connection with thread #%d.\n", me);
 
     while (1) {
       int r;
@@ -107,16 +109,14 @@ static void *worker(void *data) {
         r = recv(sock, back, buf_size - 1 - (back - buf), 0);
 
         if (r < 0) {
-          if (!quiet)
-            fprintf(stderr, "Recv failed\n");
+          qfprintf(stderr, "Recv failed while receiving header\n");
           close(sock);
           sock = 0;
           break;
         }
 
         if (r == 0) {
-          if (!quiet)
-            printf("Connection closed.\n");
+          qprintf("Connection closed.\n");
           close(sock);
           sock = 0;
           break;
@@ -159,16 +159,14 @@ static void *worker(void *data) {
             r = recv(sock, back, buf_size - 1 - (back - buf), 0);
 
             if (r < 0) {
-              if (!quiet)
-                fprintf(stderr, "Recv failed\n");
+              qfprintf(stderr, "Recv failed\n");
               close(sock);
               sock = 0;
               goto done;
             }
 
             if (r == 0) {
-              if (!quiet)
-                fprintf(stderr, "Connection closed.\n");
+              qfprintf(stderr, "Connection closed.\n");
               close(sock);
               sock = 0;
               goto done;
@@ -236,8 +234,7 @@ static void *worker(void *data) {
         uw_set_headers(ctx, get_header, headers);
         uw_set_env(ctx, get_env, NULL);
 
-        if (!quiet)
-          printf("Serving URI %s....\n", path);
+        qprintf("Serving URI %s....\n", path);
         rr = uw_request(rc, ctx, method, path, query_string, body, back - body,
                         on_success, on_failure,
                         NULL, log_error, log_debug,
@@ -405,8 +402,7 @@ int main(int argc, char *argv[]) {
 
   sin_size = sizeof their_addr;
 
-  if (!quiet)
-    printf("Listening on port %d....\n", uw_port);
+  qprintf("Listening on port %d....\n", uw_port);
 
   {
     pthread_t thread;
@@ -434,11 +430,9 @@ int main(int argc, char *argv[]) {
     int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
 
     if (new_fd < 0) {
-      if (!quiet)
-        fprintf(stderr, "Socket accept failed\n");
+      qfprintf(stderr, "Socket accept failed\n");
     } else {
-      if (!quiet)
-        printf("Accepted connection.\n");
+      qprintf("Accepted connection.\n");
 
       if (keepalive) {
         int flag = 1; 
