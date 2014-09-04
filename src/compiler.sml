@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2012, Adam Chlipala
+(* Copyright (c) 2008-2012, 2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1483,7 +1483,10 @@ val sqlify = {
 
 val toSqlify = transform sqlify "sqlify" o toMono_opt2
 
-val escapeFilename = String.translate (fn #" " => "\\ " | #"\"" => "\\\"" | #"'" => "\\'" | ch => str ch)
+fun escapeFilename s =
+    "\""
+    ^ String.translate (fn #"\"" => "\\\"" | #"\\" => "\\\\" | ch => str ch) s
+    ^ "\""
 
 val beforeC = ref (fn () => ())
 
