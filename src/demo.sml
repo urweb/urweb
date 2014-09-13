@@ -410,7 +410,7 @@ fun make' {prefix, dirname, guided} =
                 app (fn rule =>
                         (TextIO.output (outf, "rewrite ");
                          TextIO.output (outf, case #pkind rule of
-                                                  Settings.Any => "any"
+                                                  Settings.Any => "all"
                                                 | Settings.Url => "url"
                                                 | Settings.Table => "table"
                                                 | Settings.Sequence => "sequence"

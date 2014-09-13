@@ -1,0 +1,6 @@
+database dbname=test
+sql tags.sql
+rewrite url Tags/*
+
+$/list
+tags

@@ -703,6 +703,7 @@ type css_value
 val atom : string -> css_value
 type url
 val css_url : url -> css_value
+val sql_url : sql_injectable_prim url
 type css_property
 val property : string -> css_property
 val value : css_property -> css_value -> css_property
@@ -796,9 +797,13 @@ val active : unit
 val script : unit
              -> tag [Code = transaction unit] head [] [] []
 
-(* Type for HTML5 "data-*" attributes. *)
+(* Type for HTML5 "data-*" and "aria-*" attributes. *)
+type data_attr_kind
+val data_kind : data_attr_kind
+val aria_kind : data_attr_kind
+
 type data_attr
-val data_attr : string (* Key *) -> string (* Value *) -> data_attr
+val data_attr : data_attr_kind -> string (* Key *) -> string (* Value *) -> data_attr
 (* This function will fail if the key doesn't meet HTML's lexical rules! *)
 val data_attrs : data_attr -> data_attr -> data_attr
 
@@ -843,7 +848,7 @@ con scrollEvents = [Onscroll = transaction unit]
 con boxEvents = focusEvents ++ mouseEvents ++ keyEvents ++ resizeEvents ++ scrollEvents
 con tableEvents = focusEvents ++ mouseEvents ++ keyEvents
 
-con boxAttrs = [Data = data_attr, Id = id, Title = string] ++ boxEvents
+con boxAttrs = [Data = data_attr, Id = id, Title = string, Role = string] ++ boxEvents
 con tableAttrs = [Data = data_attr, Id = id, Title = string] ++ tableEvents
 
 val span : bodyTag boxAttrs
@@ -946,11 +951,11 @@ con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
 val hidden : formTag string [] [Data = data_attr, Id = string, Value = string]
 val textbox : formTag string [] ([Value = string, Size = int, Placeholder = string, Source = source string, Onchange = transaction unit,
                                   Ontext = transaction unit] ++ boxAttrs)
-val password : formTag string [] ([Value = string, Size = int, Placeholder = string] ++ boxAttrs)
+val password : formTag string [] ([Value = string, Size = int, Placeholder = string, Onchange = transaction unit] ++ boxAttrs)
 val textarea : formTag string [] ([Rows = int, Cols = int, Onchange = transaction unit,
                                    Ontext = transaction unit] ++ boxAttrs)
 
-val checkbox : formTag bool [] ([Checked = bool] ++ boxAttrs)
+val checkbox : formTag bool [] ([Checked = bool, Onchange = transaction unit] ++ boxAttrs)
 
 type file
 val fileName : file -> option string
@@ -1003,18 +1008,19 @@ val label : bodyTag ([For = id, Accesskey = string] ++ tableAttrs)
 
 con cformTag = fn (attrs :: {Type}) (inner :: {Unit}) =>
                   ctx ::: {Unit}
-                  -> [[Body] ~ ctx] =>
-                        unit -> tag attrs ([Body] ++ ctx) inner [] []
+                  -> [[Body] ~ ctx] => [[Body] ~ inner] =>
+                        unit -> tag attrs ([Body] ++ ctx) ([Body] ++ inner) [] []
 
 val ctextbox : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
                           Ontext = transaction unit] ++ boxAttrs) []
+val cpassword : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
+                          Ontext = transaction unit] ++ boxAttrs) []
 val button : cformTag ([Value = string] ++ boxAttrs) []
 
-val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool] ++ boxAttrs) []
+val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool, Onchange = transaction unit] ++ boxAttrs) []
 
-con cselect = [Cselect]
-val cselect : cformTag ([Source = source string, Onchange = transaction unit] ++ boxAttrs) cselect
-val coption : unit -> tag [Value = string, Selected = bool] cselect [] [] []
+val cselect : cformTag ([Source = source string, Onchange = transaction unit] ++ boxAttrs) [Cselect]
+val coption : unit -> tag [Value = string, Selected = bool] [Cselect, Body] [] [] []
 
 val ctextarea : cformTag ([Value = string, Rows = int, Cols = int, Source = source string, Onchange = transaction unit,
                            Ontext = transaction unit] ++ boxAttrs) []

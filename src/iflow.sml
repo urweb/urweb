@@ -1446,7 +1446,7 @@ fun evalExp env (e as (_, loc)) k =
                                  case es of
                                      [_, (cname, _), _, _, _] =>
                                      (case #1 cname of
-                                          EPrim (Prim.String cname) =>
+                                          EPrim (Prim.String (_, cname)) =>
                                           St.havocCookie cname
                                         | _ => ())
                                    | _ => ()
@@ -1637,7 +1637,7 @@ fun evalExp env (e as (_, loc)) k =
                                                                                        | Update (tab, _, _) =>
                                                                                          (cs, SS.add (ts, tab)))
                                                                               | EFfiApp ("Basis", "set_cookie",
-                                                                                         [_, ((EPrim (Prim.String cname), _), _),
+                                                                                         [_, ((EPrim (Prim.String (_, cname)), _), _),
                                                                                           _, _, _]) =>
                                                                                 (SS.add (cs, cname), ts)
                                                                               | _ => st}
@@ -1765,7 +1765,7 @@ fun evalExp env (e as (_, loc)) k =
                                     handle Cc.Contradiction => ())
                      end)
                      
-          | ENextval (EPrim (Prim.String seq), _) =>
+          | ENextval (EPrim (Prim.String (_, seq)), _) =>
             let
                 val nv = St.nextVar ()
             in
@@ -1775,7 +1775,7 @@ fun evalExp env (e as (_, loc)) k =
           | ENextval _ => default ()
           | ESetval _ => default ()
 
-          | EUnurlify ((EFfiApp ("Basis", "get_cookie", [((EPrim (Prim.String cname), _), _)]), _), _, _) =>
+          | EUnurlify ((EFfiApp ("Basis", "get_cookie", [((EPrim (Prim.String (_, cname)), _), _)]), _), _, _) =>
             let
                 val e = Var (St.nextVar ())
                 val e' = Func (Other ("cookie/" ^ cname), [])
@@ -1843,9 +1843,9 @@ fun nameSubexps k (e : Mono.exp) =
                                 (e', fn e' => (EFfiApp (m, f, [(e', t)]), #2 e))
                           | ECase (e', ps as
                                           [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, NONE), _),
-                                            (EPrim (Prim.String "TRUE"), _)),
+                                            (EPrim (Prim.String (_, "TRUE")), _)),
                                            ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, NONE), _),
-                                            (EPrim (Prim.String "FALSE"), _))], q) =>
+                                            (EPrim (Prim.String (_, "FALSE")), _))], q) =>
                             (e', fn e' => (ECase (e', ps, q), #2 e))
                           | _ => (e, fn x => x)
                 in
@@ -1907,7 +1907,7 @@ fun check (file : file) =
                 let
                     val ks =
                         case #1 pk of
-                            EPrim (Prim.String s) =>
+                            EPrim (Prim.String (_, s)) =>
                             (case String.tokens (fn ch => ch = #"," orelse ch = #" ") s of
                                  [] => []
                                | pk => [pk])
@@ -1974,7 +1974,7 @@ fun check (file : file) =
                           | EFfi _ => e
                           | EFfiApp (m, f, es) =>
                             (case (m, f, es) of
-                                 ("Basis", "set_cookie", [_, ((EPrim (Prim.String cname), _), _), _, _, _]) =>
+                                 ("Basis", "set_cookie", [_, ((EPrim (Prim.String (_, cname)), _), _), _, _, _]) =>
                                  cookies := SS.add (!cookies, cname)
                                | _ => ();
                              (EFfiApp (m, f, map (fn (e, t) => (doExp env e, t)) es), loc))
@@ -2150,7 +2150,7 @@ fun check (file : file) =
                               | _ => raise Fail "Iflow: No New or Old in mayUpdate policy") e
                       | PolSequence e =>
                         (case #1 e of
-                             EPrim (Prim.String seq) =>
+                             EPrim (Prim.String (_, seq)) =>
                              let
                                  val p = AReln (Sql (String.extract (seq, 3, NONE)), [Lvar 0])
                                  val outs = [Lvar 0]

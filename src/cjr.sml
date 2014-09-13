@@ -129,10 +129,11 @@ datatype decl' =
 withtype decl = decl' located
 
 datatype sidedness = datatype Mono.sidedness
+datatype dbmode = datatype Mono.dbmode
 
 datatype effect = datatype Export.effect
 datatype export_kind = datatype Export.export_kind
 
-type file = decl list * (export_kind * string * int * typ list * typ * sidedness * bool) list
+type file = decl list * (export_kind * string * int * typ list * typ * sidedness * dbmode * bool) list
 
 end

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2013, Adam Chlipala
+(* Copyright (c) 2008-2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1191,6 +1191,12 @@
                  (L'.CProj (c1, n1), _) => projSpecial1 (c1, n1, isRecord')
                | (_, L'.CProj (c2, n2)) => projSpecial2 (c2, n2, isRecord')
                | _ => isRecord' ()
+
+         fun maybeIsRecord c =
+             case c of
+                 L'.CRecord _ => isRecord ()
+               | L'.CConcat _ => isRecord ()
+               | _ => err COccursCheckFailed
      in
          (*eprefaces "unifyCons''" [("c1", p_con env c1All),
                                   ("c2", p_con env c2All)];*)
@@ -1220,26 +1226,29 @@
              else
                  err (fn _ => TooLifty (loc1, loc2))
 
-           | (L'.CUnif (0, _, _, _, r as ref (L'.Unknown f)), _) =>
-             if occursCon r c2All then
-                 err COccursCheckFailed
-             else if f c2All then
-                 r := L'.Known c2All
-             else
-                 err CScope
-           | (_, L'.CUnif (0, _, _, _, r as ref (L'.Unknown f))) =>
-             if occursCon r c1All then
-                 err COccursCheckFailed
-             else if f c1All then
-                 r := L'.Known c1All
-             else
-                 err CScope
+           | (L'.CUnif (0, _, k1, _, r as ref (L'.Unknown f)), _) =>
+             (unifyKinds env k1 (kindof env c2All);
+              if occursCon r c2All then
+                  maybeIsRecord c2
+              else if f c2All then
+                  r := L'.Known c2All
+              else
+                  err CScope)
+           | (_, L'.CUnif (0, _, k2, _, r as ref (L'.Unknown f))) =>
+             (unifyKinds env (kindof env c1All) k2;
+              if occursCon r c1All then
+                  maybeIsRecord c1
+              else if f c1All then
+                  r := L'.Known c1All
+              else
+                  err CScope)
 
-           | (L'.CUnif (nl, _, _, _, r as ref (L'.Unknown f)), _) =>
+           | (L'.CUnif (nl, _, k1, _, r as ref (L'.Unknown f)), _) =>
              if occursCon r c2All then
-                 err COccursCheckFailed
+                 maybeIsRecord c2
              else
-                 (let
+                 (unifyKinds env k1 (kindof env c2All);
+                  let
                       val sq = squish nl c2All
                   in
                       if f sq then
@@ -1248,11 +1257,12 @@
                           err CScope
                   end
                   handle CantSquish => err (fn _ => TooDeep))
-           | (_, L'.CUnif (nl, _, _, _, r as ref (L'.Unknown f))) =>
+           | (_, L'.CUnif (nl, _, k2, _, r as ref (L'.Unknown f))) =>
              if occursCon r c1All then
-                 err COccursCheckFailed
+                 maybeIsRecord c1
              else
-                 (let
+                 (unifyKinds env (kindof env c1All) k2;
+                  let
                       val sq = squish nl c1All
                   in
                       if f sq then

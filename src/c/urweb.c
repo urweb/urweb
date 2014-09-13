@@ -441,7 +441,7 @@ struct uw_context {
 
   const char *script_header;
 
-  int needs_push, needs_sig, could_write_db;
+  int needs_push, needs_sig, could_write_db, at_most_one_query;
 
   size_t n_deltas, used_deltas;
   delta *deltas;
@@ -523,6 +523,7 @@ uw_context uw_init(int id, uw_loggers *lg) {
   ctx->needs_push = 0;
   ctx->needs_sig = 0;
   ctx->could_write_db = 1;
+  ctx->at_most_one_query = 0;
 
   ctx->source_count = 0;
 
@@ -791,7 +792,7 @@ failure_kind uw_begin(uw_context ctx, char *path) {
 }
 
 void uw_ensure_transaction(uw_context ctx) {
-  if (!ctx->transaction_started) {
+  if (!ctx->transaction_started && !ctx->at_most_one_query) {
     if (ctx->app->db_begin(ctx, ctx->could_write_db))
       uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
     ctx->transaction_started = 1;
@@ -1048,12 +1049,12 @@ int uw_set_file_input(uw_context ctx, const char *name, uw_Basis_file f) {
   int n = ctx->app->input_num(name);
 
   if (n < 0) {
-    uw_set_error(ctx, "Bad file input name %s", uw_Basis_htmlifyString(ctx, name));
+    uw_set_error(ctx, "Bad file input name");
     return -1;
   }
 
   if (n >= ctx->app->inputs_len) {
-    uw_set_error(ctx, "For file input name %s, index %d is out of range", uw_Basis_htmlifyString(ctx, name), n);
+    uw_set_error(ctx, "For file input name, index %d is out of range", n);
     return -1;
   }
 
@@ -1208,6 +1209,10 @@ void uw_set_needs_sig(uw_context ctx, int n) {
 
 void uw_set_could_write_db(uw_context ctx, int n) {
   ctx->could_write_db = n;
+}
+
+void uw_set_at_most_one_query(uw_context ctx, int n) {
+  ctx->at_most_one_query = n;
 }
 
 
@@ -3317,6 +3322,8 @@ static char *find_sig(char *haystack) {
   return s;
 }
 
+static pthread_mutex_t message_send_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 int uw_commit(uw_context ctx) {
   int i;
   char *sig;
@@ -3336,10 +3343,17 @@ int uw_commit(uw_context ctx) {
         }
       }
 
+  // Here's an important lock to provide the abstraction that all messages from one transaction are sent as an atomic unit.
+  if (ctx->used_deltas > 0)
+    pthread_mutex_lock(&message_send_mutex);
+
   if (ctx->transaction_started) {
     int code = ctx->app->db_commit(ctx);
 
     if (code) {
+      if (ctx->used_deltas > 0)
+        pthread_mutex_unlock(&message_send_mutex);
+
       if (ctx->client)
         release_client(ctx->client);
 
@@ -3356,7 +3370,7 @@ int uw_commit(uw_context ctx) {
           if (ctx->transactionals[i].free)
             ctx->transactionals[i].free(ctx->transactionals[i].data, 1);
 
-	return 1;
+        return 1;
       }
 
       for (i = ctx->used_transactionals-1; i >= 0; --i)
@@ -3373,16 +3387,19 @@ int uw_commit(uw_context ctx) {
       if (ctx->transactionals[i].commit) {
         ctx->transactionals[i].commit(ctx->transactionals[i].data);
         if (uw_has_error(ctx)) {
-           if (ctx->client)
-             release_client(ctx->client);
+          if (ctx->used_deltas > 0)
+            pthread_mutex_unlock(&message_send_mutex);
 
-           for (i = ctx->used_transactionals-1; i >= 0; --i)
-             if (ctx->transactionals[i].rollback != NULL)
-               ctx->transactionals[i].rollback(ctx->transactionals[i].data);
+          if (ctx->client)
+            release_client(ctx->client);
 
-           for (i = ctx->used_transactionals-1; i >= 0; --i)
-             if (ctx->transactionals[i].free)
-               ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
+          for (i = ctx->used_transactionals-1; i >= 0; --i)
+            if (ctx->transactionals[i].rollback != NULL)
+              ctx->transactionals[i].rollback(ctx->transactionals[i].data);
+
+          for (i = ctx->used_transactionals-1; i >= 0; --i)
+            if (ctx->transactionals[i].free)
+              ctx->transactionals[i].free(ctx->transactionals[i].data, 0);
 
           return 0;
         }
@@ -3397,6 +3414,9 @@ int uw_commit(uw_context ctx) {
 
     client_send(c, &d->msgs, ctx->script.start, uw_buffer_used(&ctx->script));
   }
+
+  if (ctx->used_deltas > 0)
+    pthread_mutex_unlock(&message_send_mutex);
 
   if (ctx->client)
     release_client(ctx->client);
@@ -3617,7 +3637,7 @@ uw_Basis_string uw_Basis_checkUrl(uw_context ctx, uw_Basis_string s) {
 
 static int mime_format(const char *s) {
   for (; *s; ++s)
-    if (!isalnum((int)*s) && *s != '/' && *s != '-' && *s != '.')
+    if (!isalnum((int)*s) && *s != '/' && *s != '-' && *s != '.' && *s != '+')
       return 0;
 
   return 1;
@@ -3857,6 +3877,11 @@ __attribute__((noreturn)) void uw_return_blob(uw_context ctx, uw_Basis_blob b, u
   ctx->cleanup_front = ctx->cleanup;
 
   longjmp(ctx->jmp_buf, RETURN_INDIRECTLY);
+}
+
+void uw_replace_page(uw_context ctx, const char *data, size_t size) {
+  uw_buffer_reset(&ctx->page);
+  ctx_uw_buffer_append(ctx, "page", &ctx->page, data, size);
 }
 
 __attribute__((noreturn)) void uw_return_blob_from_page(uw_context ctx, uw_Basis_string mimeType) {
@@ -4269,7 +4294,7 @@ uw_Basis_bool uw_Basis_eq_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t
 }
 
 uw_Basis_bool uw_Basis_lt_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t2) {
-  return !!(t1.seconds < t2.seconds || t1.microseconds < t2.microseconds);
+  return !!(t1.seconds < t2.seconds || (t1.seconds == t2.seconds && t1.microseconds < t2.microseconds));
 }
 
 uw_Basis_bool uw_Basis_le_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t2) {

@@ -1,5 +1,5 @@
 fun dynd r = return <xml><body>
-  <div data={data_attr r.Attr r.Value}>How about that?</div>
+  <div data={data_attr data_kind r.Attr r.Value}>How about that?</div>
 </body></xml>
 
 fun main () : transaction page =
@@ -7,7 +7,7 @@ fun main () : transaction page =
   a <- source "";
   v <- source "";
   return <xml><body>
-    <div data-foo="hi" data-bar="bye" data-baz="why">Whoa there, cowboy!</div>
+    <div data-foo="hi" aria-something="wow" data-bar="bye" data-baz="why">Whoa there, cowboy!</div>
 
     <hr/>
 
@@ -20,7 +20,7 @@ fun main () : transaction page =
 
     <ctextbox source={a}/> = <ctextbox source={v}/>
     <button onclick={fn _ =>
-      a <- get a; v <- get v; set s <xml><div data={data_attr a v}>OHO!</div></xml>}/>
+      a <- get a; v <- get v; set s <xml><div data={data_attr data_kind a v}>OHO!</div></xml>}/>
     <hr/>
     <dyn signal={signal s}/>
   </body></xml>

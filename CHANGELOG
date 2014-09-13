@@ -1,4 +1,48 @@
 ========
+20140830
+========
+
+- New HTML attribute: 'role'
+- Bug fixes
+
+========
+20140819
+========
+
+- Improvements to HTML model
+- Bug fixes and optimization improvements
+
+========
+20140807
+========
+
+- New .urp directive: 'file'
+- Support for 'aria-*' attributes in HTML
+- Default value of 'jsFunc' for less-safe FFI
+- Client-side implementation of Basis function 'strsindex'
+- Bug fixes and improvements to type inference and documentation
+
+========
+20140704
+========
+
+- New syntactic shorthand for antiquoting subqueries
+- New Top members: max and min
+- 'sql_injectable_prim' instance for 'url'
+- Bug fixes
+
+========
+20140615
+========
+
+- New syntactic sugar: 'let E where DS end' for 'let DS in E end'
+- Add 'onChange' attributes to more tags.
+- New standard library function: String.trim
+- Start treating Ur/Web tag <button> as real HTML tag <button>,
+  with special handling of 'value' attribute as tag content.
+- Bug fixes
+
+========
 20140531
 ========
 

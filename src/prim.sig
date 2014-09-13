@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2008, 2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,12 @@
 
 signature PRIM = sig
 
+    datatype string_mode = Normal | Html
+
     datatype t =
              Int of Int64.int
            | Float of Real64.real
-           | String of string
+           | String of string_mode * string
            | Char of char
 
     val p_t : t Print.printer

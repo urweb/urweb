@@ -94,6 +94,7 @@ uw_Basis_string uw_Basis_maybe_onunload(struct uw_context *, uw_Basis_string);
 void uw_set_needs_push(struct uw_context *, int);
 void uw_set_needs_sig(struct uw_context *, int);
 void uw_set_could_write_db(struct uw_context *, int);
+void uw_set_at_most_one_query(struct uw_context *, int);
 
 char *uw_Basis_htmlifyInt(struct uw_context *, uw_Basis_int);
 char *uw_Basis_htmlifyFloat(struct uw_context *, uw_Basis_float);
@@ -267,6 +268,7 @@ void uw_mayReturnIndirectly(struct uw_context *);
 __attribute__((noreturn)) void uw_return_blob(struct uw_context *, uw_Basis_blob, uw_Basis_string mimeType);
 __attribute__((noreturn)) void uw_return_blob_from_page(struct uw_context *, uw_Basis_string mimeType);
 __attribute__((noreturn)) void uw_redirect(struct uw_context *, uw_Basis_string url);
+void uw_replace_page(struct uw_context *, const char *data, size_t size);
 
 uw_Basis_time uw_Basis_now(struct uw_context *);
 uw_Basis_time uw_Basis_addSeconds(struct uw_context *, uw_Basis_time, uw_Basis_int);

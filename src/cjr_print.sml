@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2012, Adam Chlipala
+(* Copyright (c) 2008-2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -203,10 +203,10 @@ fun p_patMatch (env, disc) (p, loc) =
                                    Prim.p_t_GCC (Prim.Int n),
                                    string ")"]
       | PPrim (Prim.String s) => box [string ("!strcmp(" ^ disc),
-                                      string ",",
-                                      space,
-                                      Prim.p_t_GCC (Prim.String s),
-                                      string ")"]
+                                           string ",",
+                                           space,
+                                           Prim.p_t_GCC (Prim.String s),
+                                           string ")"]
       | PPrim (Prim.Char ch) => box [string ("(" ^ disc),
                                      space,
                                      string "==",
@@ -503,16 +503,16 @@ fun getPargs (e, _) =
 
       | ECase (e,
                [((PNone _, _),
-                 (EPrim (Prim.String "NULL"), _)),
+                 (EPrim (Prim.String (_, "NULL")), _)),
                 ((PSome (_, (PVar _, _)), _),
                  (EFfiApp (m, x, [((ERel 0, _), _)]), _))],
                {disc = t, ...}) => map (fn (x, y) => (x, Nullable y)) (getPargs (EFfiApp (m, x, [(e, t)]), #2 e))
 
       | ECase (e,
                [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, _), _),
-                 (EPrim (Prim.String "TRUE"), _)),
+                 (EPrim (Prim.String (_, "TRUE")), _)),
                 ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, _), _),
-                 (EPrim (Prim.String "FALSE"), _))],
+                 (EPrim (Prim.String (_, "FALSE")), _))],
                _) => [(e, Bool)]
 
       | _ => raise Fail "CjrPrint: getPargs"
@@ -2218,7 +2218,7 @@ and p_exp' par tail env (e, loc) =
                  NONE => #nextval (Settings.currentDbms ()) {loc = loc,
                                                              seqE = p_exp' false false env seq,
                                                              seqName = case #1 seq of
-                                                                           EPrim (Prim.String s) => SOME s
+                                                                           EPrim (Prim.String (_, s)) => SOME s
                                                                          | _ => NONE}
                | SOME {id, query} => #nextvalPrepared (Settings.currentDbms ()) {loc = loc,
                                                                                  id = id,
@@ -2634,7 +2634,7 @@ fun p_file env (ds, ps) =
                 end
               | _ => NONE
 
-        val fields = foldl (fn ((ek, _, _, ts, _, _, _), fields) =>
+        val fields = foldl (fn ((ek, _, _, ts, _, _, _, _), fields) =>
                                case ek of
                                    Action eff =>
                                    (case List.nth (ts, length ts - 2) of
@@ -2956,7 +2956,7 @@ fun p_file env (ds, ps) =
                       scripts (Settings.getScripts ())
             end
 
-        fun p_page (ek, s, n, ts, ran, side, tellSig) =
+        fun p_page (ek, s, n, ts, ran, side, dbmode, tellSig) =
             let
                 val (ts, defInputs, inputsVar, fields) =
                     case ek of
@@ -3104,6 +3104,10 @@ fun p_file env (ds, ps) =
                                     newline]),
                      string "uw_set_could_write_db(ctx, ",
                      string (if couldWriteDb ek then "1" else "0"),
+                     string ");",
+                     newline,
+                     string "uw_set_at_most_one_query(ctx, ",
+                     string (case dbmode of OneQuery => "1" | _ => "0"),
                      string ");",
                      newline,
                      string "uw_set_needs_push(ctx, ",
@@ -3293,6 +3297,17 @@ fun p_file env (ds, ps) =
         val now = Time.now ()
         val nowD = Date.fromTimeUniv now
         val rfcFmt = "%a, %d %b %Y %H:%M:%S GMT"
+
+        fun hexifyByte (b : Word8.word) : string =
+            let
+                val s = Int.fmt StringCvt.HEX (Word8.toInt b)
+            in
+                "\\x" ^ (if size s < 2 then "0" else "") ^ s
+            end
+
+        fun hexify (v : Word8Vector.vector) : string =
+            String.concat (Word8Vector.foldr (fn (b, ls) =>
+                                                 hexifyByte b :: ls) [] v)
     in
         box [string "#include \"",
              string (OS.Path.joinDirFile {dir = !Settings.configInclude,
@@ -3520,9 +3535,9 @@ fun p_file env (ds, ps) =
                   string "}",
                   newline,
                   newline,
-                  string "uw_write_header(ctx, \"Content-type: text/javascript\\r\\n\");",
+                  string "uw_write_header(ctx, \"Content-Type: text/javascript\\r\\n\");",
                   newline,
-                  string ("uw_write_header(ctx, \"Last-modified: " ^ Date.fmt rfcFmt nowD ^ "\\r\\n\");"),
+                  string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt nowD ^ "\\r\\n\");"),
                   newline,
                   string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),
                   newline,
@@ -3531,6 +3546,37 @@ fun p_file env (ds, ps) =
                   string "return;",
                   newline],
              string "}",
+             newline,
+             newline,
+
+             p_list_sep newline (fn r =>
+                                    box [string "if (!strcmp(request, \"",
+                                         string (String.toCString (#Uri r)),
+                                         string "\")) {",
+                                         newline,
+                                         box [(case #ContentType r of
+                                                   NONE => box []
+                                                 | SOME ct => box [string "uw_write_header(ctx, \"Content-Type: ",
+                                                                   string (String.toCString ct),
+                                                                   string "\\r\\n\");",
+                                                                   newline]),
+                                              string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt (Date.fromTimeUniv (#LastModified r)) ^ "\\r\\n\");"),
+                                              newline,
+                                              string ("uw_write_header(ctx, \"Content-Length: " ^ Int.toString (Word8Vector.length (#Bytes r)) ^ "\\r\\n\");"),
+                                              newline,
+                                              string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),                  
+                                              newline,
+                                              string "uw_replace_page(ctx, \"",
+                                              string (hexify (#Bytes r)),
+                                              string "\", ",
+                                              string (Int.toString (Word8Vector.length (#Bytes r))),
+                                              string ");",
+                                              newline,
+                                              string "return;",
+                                              newline],
+                                         string "};",
+                                         newline]) (Settings.listFiles ()),
+
              newline,
              p_list_sep newline (fn x => x) pds',
              newline,

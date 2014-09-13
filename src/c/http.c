@@ -23,6 +23,9 @@ extern uw_app uw_application;
 int uw_backlog = SOMAXCONN;
 static int keepalive = 0, quiet = 0;
 
+#define qfprintf(f, fmt, args...) do { if(!quiet) fprintf(f, fmt, ##args); } while(0)
+#define qprintf(fmt, args...) do { if(!quiet) printf(fmt, ##args); } while(0)
+
 static char *get_header(void *data, const char *h) {
   char *s = data;
   int len = strlen(h);
@@ -86,8 +89,7 @@ static void *worker(void *data) {
       sock = uw_dequeue();
     }
 
-    if (!quiet)
-      printf("Handling connection with thread #%d.\n", me);
+    qprintf("Handling connection with thread #%d.\n", me);
 
     while (1) {
       int r;
@@ -95,8 +97,15 @@ static void *worker(void *data) {
 
       if (back - buf == buf_size - 1) {
         char *new_buf;
-        buf_size *= 2;
-        new_buf = realloc(buf, buf_size);
+        size_t new_buf_size = buf_size*2;
+        new_buf = realloc(buf, new_buf_size);
+        if(!new_buf) {
+          qfprintf(stderr, "Realloc failed while receiving header\n");
+          close(sock);
+          sock = 0;
+          break;
+        }
+        buf_size = new_buf_size;
         back = new_buf + (back - buf);
         buf = new_buf;
       }
@@ -107,16 +116,14 @@ static void *worker(void *data) {
         r = recv(sock, back, buf_size - 1 - (back - buf), 0);
 
         if (r < 0) {
-          if (!quiet)
-            fprintf(stderr, "Recv failed\n");
+          qfprintf(stderr, "Recv failed while receiving header, retcode %d errno %m\n", r);
           close(sock);
           sock = 0;
           break;
         }
 
         if (r == 0) {
-          if (!quiet)
-            printf("Connection closed.\n");
+          qprintf("Connection closed.\n");
           close(sock);
           sock = 0;
           break;
@@ -146,9 +153,16 @@ static void *worker(void *data) {
           while (back - body < clen) {
             if (back - buf == buf_size - 1) {
               char *new_buf;
-              buf_size *= 2;
-              new_buf = realloc(buf, buf_size);
+              size_t new_buf_size = buf_size * 2;
+              new_buf = realloc(buf, new_buf_size);
+              if(!new_buf) {
+                qfprintf(stderr, "Realloc failed while receiving content\n");
+                close(sock);
+                sock = 0;
+                goto done;
+              }
 
+              buf_size = new_buf_size;
               back = new_buf + (back - buf);
               body = new_buf + (body - buf);
               s = new_buf + (s - buf);
@@ -159,16 +173,14 @@ static void *worker(void *data) {
             r = recv(sock, back, buf_size - 1 - (back - buf), 0);
 
             if (r < 0) {
-              if (!quiet)
-                fprintf(stderr, "Recv failed\n");
+              qfprintf(stderr, "Recv failed while receiving content, retcode %d errno %m\n", r);
               close(sock);
               sock = 0;
               goto done;
             }
 
             if (r == 0) {
-              if (!quiet)
-                fprintf(stderr, "Connection closed.\n");
+              qfprintf(stderr, "Connection closed.\n");
               close(sock);
               sock = 0;
               goto done;
@@ -236,8 +248,7 @@ static void *worker(void *data) {
         uw_set_headers(ctx, get_header, headers);
         uw_set_env(ctx, get_env, NULL);
 
-        if (!quiet)
-          printf("Serving URI %s....\n", path);
+        qprintf("Serving URI %s....\n", path);
         rr = uw_request(rc, ctx, method, path, query_string, body, back - body,
                         on_success, on_failure,
                         NULL, log_error, log_debug,
@@ -301,7 +312,7 @@ static void *worker(void *data) {
 }
 
 static void help(char *cmd) {
-  printf("Usage: %s [-p <port>] [-a <IP address>] [-t <thread count>] [-k] [-q]\nThe '-k' option turns on HTTP keepalive.\nThe '-q' option turns off some chatter on stdout.\n", cmd);
+  printf("Usage: %s [-p <port>] [-a <IP address>] [-t <thread count>] [-k] [-q] [-T SEC]\nThe '-k' option turns on HTTP keepalive.\nThe '-q' option turns off some chatter on stdout.\nThe -T option sets socket recv timeout (0 disables timeout, default is 5 sec)", cmd);
 }
 
 static void sigint(int signum) {
@@ -316,6 +327,7 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in their_addr; // connector's address information
   socklen_t sin_size;
   int yes = 1, uw_port = 8080, nthreads = 1, i, *names, opt;
+  int recv_timeout_sec = 5;
  
   signal(SIGINT, sigint);
   signal(SIGPIPE, SIG_IGN); 
@@ -323,7 +335,7 @@ int main(int argc, char *argv[]) {
   my_addr.sin_addr.s_addr = INADDR_ANY; // auto-fill with my IP
   memset(my_addr.sin_zero, '\0', sizeof my_addr.sin_zero);
 
-  while ((opt = getopt(argc, argv, "hp:a:t:kq")) != -1) {
+  while ((opt = getopt(argc, argv, "hp:a:t:kqT:")) != -1) {
     switch (opt) {
     case '?':
       fprintf(stderr, "Unknown command-line option\n");
@@ -362,6 +374,15 @@ int main(int argc, char *argv[]) {
 
     case 'k':
       keepalive = 1;
+      break;
+
+    case 'T':
+      recv_timeout_sec = atoi(optarg);
+      if (recv_timeout_sec < 0) {
+        fprintf(stderr, "Invalid recv timeout\n");
+        help(argv[0]);
+        return 1;
+      }
       break;
 
     case 'q':
@@ -405,8 +426,7 @@ int main(int argc, char *argv[]) {
 
   sin_size = sizeof their_addr;
 
-  if (!quiet)
-    printf("Listening on port %d....\n", uw_port);
+  qprintf("Listening on port %d....\n", uw_port);
 
   {
     pthread_t thread;
@@ -434,15 +454,24 @@ int main(int argc, char *argv[]) {
     int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
 
     if (new_fd < 0) {
-      if (!quiet)
-        fprintf(stderr, "Socket accept failed\n");
+      qfprintf(stderr, "Socket accept failed\n");
     } else {
-      if (!quiet)
-        printf("Accepted connection.\n");
+      qprintf("Accepted connection.\n");
 
       if (keepalive) {
         int flag = 1; 
         setsockopt(new_fd, IPPROTO_TCP, TCP_NODELAY, (char *) &flag, sizeof(int));
+      }
+
+      if(recv_timeout_sec>0) {
+        int ret;
+        struct timeval tv;
+        memset(&tv, 0, sizeof(struct timeval));
+        tv.tv_sec = recv_timeout_sec;
+        ret = setsockopt(new_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
+        if(ret != 0) {
+          qfprintf(stderr, "Timeout setting failed, errcode %d errno '%m'\n", ret);
+        }
       }
 
       uw_enqueue(new_fd);

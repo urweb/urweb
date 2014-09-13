@@ -145,7 +145,7 @@ fun checkProperty s = size s > 0
 
 fun exp e =
     case e of
-        EPrim (Prim.String s) =>
+        EPrim (Prim.String (Prim.Html, s)) =>
         if CharVector.exists Char.isSpace s then
             let
                 val (_, chs) =
@@ -160,14 +160,14 @@ fun exp e =
                                          end)
                                      (false, []) s
             in
-                EPrim (Prim.String (String.implode (rev chs)))
+                EPrim (Prim.String (Prim.Html, String.implode (rev chs)))
             end
         else
             e
 
       | EFfiApp ("Basis", "strcat", [(e1, _), (e2, _)]) => exp (EStrcat (e1, e2))
-                                       
-      | EStrcat ((EPrim (Prim.String s1), loc), (EPrim (Prim.String s2), _)) =>
+           
+      | EStrcat ((EPrim (Prim.String (Prim.Html, s1)), loc), (EPrim (Prim.String (Prim.Html, s2)), _)) =>
         let
             val s =
                 if size s1 > 0 andalso size s2 > 0
@@ -177,21 +177,27 @@ fun exp e =
                 else
                     s1 ^ s2
         in
-            EPrim (Prim.String s)
+            EPrim (Prim.String (Prim.Html, s))
+        end
+                            
+      | EStrcat ((EPrim (Prim.String (_, s1)), loc), (EPrim (Prim.String (_, s2)), _)) =>
+        EPrim (Prim.String (Prim.Normal, s1 ^ s2))
+
+      | EStrcat ((EPrim (Prim.String (Prim.Html, s1)), loc), (EStrcat ((EPrim (Prim.String (Prim.Html, s2)), _), rest), _)) =>
+        let
+            val s =
+                if size s1 > 0 andalso size s2 > 0
+                   andalso Char.isSpace (String.sub (s1, size s1 - 1))
+                   andalso Char.isSpace (String.sub (s2, 0)) then
+                    s1 ^ String.extract (s2, 1, NONE)
+                else
+                    s1 ^ s2
+        in
+            EStrcat ((EPrim (Prim.String (Prim.Html, s)), loc), rest)
         end
 
-      | EStrcat ((EPrim (Prim.String s1), loc), (EStrcat ((EPrim (Prim.String s2), _), rest), _)) =>
-        let
-            val s =
-                if size s1 > 0 andalso size s2 > 0
-                   andalso Char.isSpace (String.sub (s1, size s1 - 1))
-                   andalso Char.isSpace (String.sub (s2, 0)) then
-                    s1 ^ String.extract (s2, 1, NONE)
-                else
-                    s1 ^ s2
-        in
-            EStrcat ((EPrim (Prim.String s), loc), rest)
-        end
+      | EStrcat ((EPrim (Prim.String (_, s1)), loc), (EStrcat ((EPrim (Prim.String (_, s2)), _), rest), _)) =>
+        EStrcat ((EPrim (Prim.String (Prim.Normal, s1 ^ s2)), loc), rest)
 
       | EStrcat ((EStrcat (e1, e2), loc), e3) =>
         optExp (EStrcat (e1, (EStrcat (e2, e3), loc)), loc)
@@ -200,27 +206,27 @@ fun exp e =
         ESeq ((optExp (EWrite e1, loc), loc),
               (optExp (EWrite e2, loc), loc))
 
-      | ESeq ((EWrite (EPrim (Prim.String s1), _), loc),
-              (EWrite (EPrim (Prim.String s2), _), _)) =>
-        EWrite (EPrim (Prim.String (s1 ^ s2)), loc)
-      | ESeq ((EWrite (EPrim (Prim.String s1), _), loc),
-              (ESeq ((EWrite (EPrim (Prim.String s2), _), _),
+      | ESeq ((EWrite (EPrim (Prim.String (_, s1)), _), loc),
+              (EWrite (EPrim (Prim.String (_, s2)), _), _)) =>
+        EWrite (EPrim (Prim.String (Prim.Normal, s1 ^ s2)), loc)
+      | ESeq ((EWrite (EPrim (Prim.String (_, s1)), _), loc),
+              (ESeq ((EWrite (EPrim (Prim.String (_, s2)), _), _),
                      e), _)) =>
-        ESeq ((EWrite (EPrim (Prim.String (s1 ^ s2)), loc), loc),
+        ESeq ((EWrite (EPrim (Prim.String (Prim.Normal, s1 ^ s2)), loc), loc),
               e)
 
       | EFfiApp ("Basis", "htmlifySpecialChar", [((EPrim (Prim.Char ch), _), _)]) =>
-        EPrim (Prim.String (htmlifySpecialChar ch))
+        EPrim (Prim.String (Prim.Html, htmlifySpecialChar ch))
       | EWrite (EFfiApp ("Basis", "htmlifySpecialChar", [e]), _) =>
         EFfiApp ("Basis", "htmlifySpecialChar_w", [e])
 
       | EFfiApp ("Basis", "htmlifyString", [((EFfiApp ("Basis", "intToString", [((EPrim (Prim.Int n), _), _)]), _), _)]) =>
-        EPrim (Prim.String (htmlifyInt n))
+        EPrim (Prim.String (Prim.Html, htmlifyInt n))
       | EFfiApp ("Basis", "htmlifyString", [((EFfiApp ("Basis", "intToString", es), _), _)]) =>
         EFfiApp ("Basis", "htmlifyInt", es)
       | EFfiApp ("Basis", "htmlifyString", [((EApp ((EFfi ("Basis", "intToString"), _),
                                                     (EPrim (Prim.Int n), _)), _), _)]) =>
-        EPrim (Prim.String (htmlifyInt n))
+        EPrim (Prim.String (Prim.Html, htmlifyInt n))
       | EFfiApp ("Basis", "htmlifyString", [((EApp ((EFfi ("Basis", "intToString"), _),
                                                     e), loc), _)]) =>
         EFfiApp ("Basis", "htmlifyInt", [(e, (TFfi ("Basis", "int"), loc))])
@@ -228,12 +234,12 @@ fun exp e =
         EFfiApp ("Basis", "htmlifyInt_w", [e])
 
       | EFfiApp ("Basis", "htmlifyString", [((EFfiApp ("Basis", "floatToString", [((EPrim (Prim.Float n), _), _)]), _), _)]) =>
-        EPrim (Prim.String (htmlifyFloat n))
+        EPrim (Prim.String (Prim.Html, htmlifyFloat n))
       | EFfiApp ("Basis", "htmlifyString", [((EFfiApp ("Basis", "floatToString", es), _), _)]) =>
         EFfiApp ("Basis", "htmlifyFloat", es)
       | EFfiApp ("Basis", "htmlifyString", [((EApp ((EFfi ("Basis", "floatToString"), _),
                                                     (EPrim (Prim.Float n), _)), _), _)]) =>
-        EPrim (Prim.String (htmlifyFloat n))
+        EPrim (Prim.String (Prim.Html, htmlifyFloat n))
       | EFfiApp ("Basis", "htmlifyString", [((EApp ((EFfi ("Basis", "floatToString"), _),
                                                     e), loc), _)]) =>
         EFfiApp ("Basis", "htmlifyFloat", [(e, (TFfi ("Basis", "float"), loc))])
@@ -242,18 +248,18 @@ fun exp e =
 
       | EFfiApp ("Basis", "htmlifyString", [((EFfiApp ("Basis", "boolToString",
                                                        [((ECon (Enum, PConFfi {con = "True", ...}, NONE), _), _)]), _), _)]) =>
-        EPrim (Prim.String "True")
+        EPrim (Prim.String (Prim.Html, "True"))
       | EFfiApp ("Basis", "htmlifyString", [((EFfiApp ("Basis", "boolToString",
                                                        [((ECon (Enum, PConFfi {con = "False", ...}, NONE), _), _)]), _), _)]) =>
-        EPrim (Prim.String "False")
+        EPrim (Prim.String (Prim.Html, "False"))
       | EFfiApp ("Basis", "htmlifyString", [((EFfiApp ("Basis", "boolToString", es), _), _)]) =>
         EFfiApp ("Basis", "htmlifyBool", es)
       | EFfiApp ("Basis", "htmlifyString", [((EApp ((EFfi ("Basis", "boolToString"), _),
                                                     (ECon (Enum, PConFfi {con = "True", ...}, NONE), _)), _), _)]) =>
-        EPrim (Prim.String "True")
+        EPrim (Prim.String (Prim.Html, "True"))
       | EFfiApp ("Basis", "htmlifyString", [((EApp ((EFfi ("Basis", "boolToString"), _),
                                                     (ECon (Enum, PConFfi {con = "False", ...}, NONE), _)), _), _)]) =>
-        EPrim (Prim.String "False")
+        EPrim (Prim.String (Prim.Html, "False"))
       | EFfiApp ("Basis", "htmlifyString", [((EApp ((EFfi ("Basis", "boolToString"), _),
                                                     e), loc), _)]) =>
         EFfiApp ("Basis", "htmlifyBool", [(e, (TFfi ("Basis", "bool"), loc))])
@@ -267,106 +273,106 @@ fun exp e =
       | EWrite (EFfiApp ("Basis", "htmlifyTime", [e]), _) =>
         EFfiApp ("Basis", "htmlifyTime_w", [e])
 
-      | EFfiApp ("Basis", "htmlifyString", [((EPrim (Prim.String s), _), _)]) =>
-        EPrim (Prim.String (htmlifyString s))
-      | EWrite (EFfiApp ("Basis", "htmlifyString", [((EPrim (Prim.String s), _), _)]), loc) =>
-        EWrite (EPrim (Prim.String (htmlifyString s)), loc)
+      | EFfiApp ("Basis", "htmlifyString", [((EPrim (Prim.String (_, s)), _), _)]) =>
+        EPrim (Prim.String (Prim.Html, htmlifyString s))
+      | EWrite (EFfiApp ("Basis", "htmlifyString", [((EPrim (Prim.String (_, s)), _), _)]), loc) =>
+        EWrite (EPrim (Prim.String (Prim.Html, htmlifyString s)), loc)
       | EWrite (EFfiApp ("Basis", "htmlifyString", [e]), _) =>
         EFfiApp ("Basis", "htmlifyString_w", [e])
-      | EFfiApp ("Basis", "htmlifyString_w", [((EPrim (Prim.String s), loc), _)]) =>
-        EWrite (EPrim (Prim.String (htmlifyString s)), loc)
+      | EFfiApp ("Basis", "htmlifyString_w", [((EPrim (Prim.String (_, s)), loc), _)]) =>
+        EWrite (EPrim (Prim.String (Prim.Html, htmlifyString s)), loc)
 
       | EWrite (EFfiApp ("Basis", "htmlifySource", [e]), _) =>
         EFfiApp ("Basis", "htmlifySource_w", [e])
 
       | EFfiApp ("Basis", "attrifyInt", [((EPrim (Prim.Int n), _), _)]) =>
-        EPrim (Prim.String (attrifyInt n))
+        EPrim (Prim.String (Prim.Html, attrifyInt n))
       | EWrite (EFfiApp ("Basis", "attrifyInt", [((EPrim (Prim.Int n), _), _)]), loc) =>
-        EWrite (EPrim (Prim.String (attrifyInt n)), loc)
+        EWrite (EPrim (Prim.String (Prim.Html, attrifyInt n)), loc)
       | EWrite (EFfiApp ("Basis", "attrifyInt", [e]), _) =>
         EFfiApp ("Basis", "attrifyInt_w", [e])
 
       | EFfiApp ("Basis", "attrifyFloat", [((EPrim (Prim.Float n), _), _)]) =>
-        EPrim (Prim.String (attrifyFloat n))
+        EPrim (Prim.String (Prim.Html, attrifyFloat n))
       | EWrite (EFfiApp ("Basis", "attrifyFloat", [((EPrim (Prim.Float n), _), _)]), loc) =>
-        EWrite (EPrim (Prim.String (attrifyFloat n)), loc)
+        EWrite (EPrim (Prim.String (Prim.Html, attrifyFloat n)), loc)
       | EWrite (EFfiApp ("Basis", "attrifyFloat", [e]), _) =>
         EFfiApp ("Basis", "attrifyFloat_w", [e])
 
-      | EFfiApp ("Basis", "attrifyString", [((EPrim (Prim.String s), _), _)]) =>
-        EPrim (Prim.String (attrifyString s))
-      | EWrite (EFfiApp ("Basis", "attrifyString", [((EPrim (Prim.String s), _), _)]), loc) =>
-        EWrite (EPrim (Prim.String (attrifyString s)), loc)
+      | EFfiApp ("Basis", "attrifyString", [((EPrim (Prim.String (_, s)), _), _)]) =>
+        EPrim (Prim.String (Prim.Html, attrifyString s))
+      | EWrite (EFfiApp ("Basis", "attrifyString", [((EPrim (Prim.String (_, s)), _), _)]), loc) =>
+        EWrite (EPrim (Prim.String (Prim.Html, attrifyString s)), loc)
       | EWrite (EFfiApp ("Basis", "attrifyString", [e]), _) =>
         EFfiApp ("Basis", "attrifyString_w", [e])
 
       | EFfiApp ("Basis", "attrifyChar", [((EPrim (Prim.Char s), _), _)]) =>
-        EPrim (Prim.String (attrifyChar s))
+        EPrim (Prim.String (Prim.Html, attrifyChar s))
       | EWrite (EFfiApp ("Basis", "attrifyChar", [((EPrim (Prim.Char s), _), _)]), loc) =>
-        EWrite (EPrim (Prim.String (attrifyChar s)), loc)
+        EWrite (EPrim (Prim.String (Prim.Html, attrifyChar s)), loc)
       | EWrite (EFfiApp ("Basis", "attrifyChar", [e]), _) =>
         EFfiApp ("Basis", "attrifyChar_w", [e])
 
-      | EFfiApp ("Basis", "attrifyCss_class", [((EPrim (Prim.String s), _), _)]) =>
-        EPrim (Prim.String s)
-      | EWrite (EFfiApp ("Basis", "attrifyCss_class", [((EPrim (Prim.String s), _), _)]), loc) =>
-        EWrite (EPrim (Prim.String s), loc)
+      | EFfiApp ("Basis", "attrifyCss_class", [((EPrim (Prim.String (_, s)), _), _)]) =>
+        EPrim (Prim.String (Prim.Html, s))
+      | EWrite (EFfiApp ("Basis", "attrifyCss_class", [((EPrim (Prim.String (_, s)), _), _)]), loc) =>
+        EWrite (EPrim (Prim.String (Prim.Html, s)), loc)
       | EWrite (EFfiApp ("Basis", "attrifyCss_class", [e]), _) =>
         EFfiApp ("Basis", "attrifyString_w", [e])
 
       | EFfiApp ("Basis", "urlifyInt", [((EPrim (Prim.Int n), _), _)]) =>
-        EPrim (Prim.String (urlifyInt n))
+        EPrim (Prim.String (Prim.Normal, urlifyInt n))
       | EWrite (EFfiApp ("Basis", "urlifyInt", [((EPrim (Prim.Int n), _), _)]), loc) =>
-        EWrite (EPrim (Prim.String (urlifyInt n)), loc)
+        EWrite (EPrim (Prim.String (Prim.Normal, urlifyInt n)), loc)
       | EWrite (EFfiApp ("Basis", "urlifyInt", [e]), _) =>
         EFfiApp ("Basis", "urlifyInt_w", [e])
 
       | EFfiApp ("Basis", "urlifyFloat", [((EPrim (Prim.Float n), _), _)]) =>
-        EPrim (Prim.String (urlifyFloat n))
+        EPrim (Prim.String (Prim.Normal, urlifyFloat n))
       | EWrite (EFfiApp ("Basis", "urlifyFloat", [((EPrim (Prim.Float n), _), _)]), loc) =>
-        EWrite (EPrim (Prim.String (urlifyFloat n)), loc)
+        EWrite (EPrim (Prim.String (Prim.Normal, urlifyFloat n)), loc)
       | EWrite (EFfiApp ("Basis", "urlifyFloat", [e]), _) =>
         EFfiApp ("Basis", "urlifyFloat_w", [e])
 
-      | EFfiApp ("Basis", "urlifyString", [((EPrim (Prim.String s), _), _)]) =>
-        EPrim (Prim.String (urlifyString s))
-      | EWrite (EFfiApp ("Basis", "urlifyString", [((EPrim (Prim.String s), _), _)]), loc) =>
-        EWrite (EPrim (Prim.String (urlifyString s)), loc)
+      | EFfiApp ("Basis", "urlifyString", [((EPrim (Prim.String (_, s)), _), _)]) =>
+        EPrim (Prim.String (Prim.Normal, urlifyString s))
+      | EWrite (EFfiApp ("Basis", "urlifyString", [((EPrim (Prim.String (Prim.Normal, s)), _), _)]), loc) =>
+        EWrite (EPrim (Prim.String (Prim.Normal, urlifyString s)), loc)
       | EWrite (EFfiApp ("Basis", "urlifyString", [e]), _) =>
         EFfiApp ("Basis", "urlifyString_w", [e])
 
       | EFfiApp ("Basis", "urlifyBool", [((ECon (Enum, PConFfi {con = "True", ...}, NONE), _), _)]) =>
-        EPrim (Prim.String "1")
+        EPrim (Prim.String (Prim.Normal, "1"))
       | EFfiApp ("Basis", "urlifyBool", [((ECon (Enum, PConFfi {con = "False", ...}, NONE), _), _)]) =>
-        EPrim (Prim.String "0")
+        EPrim (Prim.String (Prim.Normal, "0"))
       | EWrite (EFfiApp ("Basis", "urlifyBool", [((ECon (Enum, PConFfi {con = "True", ...}, NONE), _), _)]), loc) =>
-        EWrite (EPrim (Prim.String "1"), loc)
+        EWrite (EPrim (Prim.String (Prim.Normal, "1")), loc)
       | EWrite (EFfiApp ("Basis", "urlifyBool", [((ECon (Enum, PConFfi {con = "False", ...}, NONE), _), _)]), loc) =>
-        EWrite (EPrim (Prim.String "0"), loc)
+        EWrite (EPrim (Prim.String (Prim.Normal, "0")), loc)
       | EWrite (EFfiApp ("Basis", "urlifyBool", [e]), _) =>
         EFfiApp ("Basis", "urlifyBool_w", [e])
 
       | EFfiApp ("Basis", "sqlifyInt", [((EPrim (Prim.Int n), _), _)]) =>
-        EPrim (Prim.String (sqlifyInt n))
+        EPrim (Prim.String (Prim.Normal, sqlifyInt n))
       | EFfiApp ("Basis", "sqlifyIntN", [((ENone _, _), _)]) =>
-        EPrim (Prim.String "NULL")
+        EPrim (Prim.String (Prim.Normal, "NULL"))
       | EFfiApp ("Basis", "sqlifyIntN", [((ESome (_, (EPrim (Prim.Int n), _)), _), _)]) =>
-        EPrim (Prim.String (sqlifyInt n))
+        EPrim (Prim.String (Prim.Normal, sqlifyInt n))
 
       | EFfiApp ("Basis", "sqlifyFloat", [((EPrim (Prim.Float n), _), _)]) =>
-        EPrim (Prim.String (sqlifyFloat n))
+        EPrim (Prim.String (Prim.Normal, sqlifyFloat n))
       | EFfiApp ("Basis", "sqlifyBool", [(b as (_, loc), _)]) =>
         optExp (ECase (b,
                        [((PCon (Enum, PConFfi {mod = "Basis", datatyp = "bool", con = "True", arg = NONE}, NONE), loc),
-                         (EPrim (Prim.String (#trueString (Settings.currentDbms ()))), loc)),
+                         (EPrim (Prim.String (Prim.Normal, #trueString (Settings.currentDbms ()))), loc)),
                         ((PCon (Enum, PConFfi {mod = "Basis", datatyp = "bool", con = "False", arg = NONE}, NONE), loc),
-                         (EPrim (Prim.String (#falseString (Settings.currentDbms ()))), loc))],
+                         (EPrim (Prim.String (Prim.Normal, #falseString (Settings.currentDbms ()))), loc))],
                        {disc = (TFfi ("Basis", "bool"), loc),
                         result = (TFfi ("Basis", "string"), loc)}), loc)
-      | EFfiApp ("Basis", "sqlifyString", [((EPrim (Prim.String n), _), _)]) =>
-        EPrim (Prim.String (sqlifyString n))
+      | EFfiApp ("Basis", "sqlifyString", [((EPrim (Prim.String (_, n)), _), _)]) =>
+        EPrim (Prim.String (Prim.Normal, sqlifyString n))
       | EFfiApp ("Basis", "sqlifyChar", [((EPrim (Prim.Char n), _), _)]) =>
-        EPrim (Prim.String (sqlifyChar n))
+        EPrim (Prim.String (Prim.Normal, sqlifyChar n))
 
       | EWrite (ECase (discE, pes, {disc, ...}), loc) =>
         optExp (ECase (discE,
@@ -388,11 +394,11 @@ fun exp e =
         end
 
       | EWrite (EQuery {exps, tables, state, query,
-                        initial = (EPrim (Prim.String ""), _),
-                        body = (EStrcat ((EPrim (Prim.String s), _),
+                        initial = (EPrim (Prim.String (k, "")), _),
+                        body = (EStrcat ((EPrim (Prim.String (_, s)), _),
                                          (EStrcat ((ERel 0, _),
                                                    e'), _)), _)}, loc) =>
-        if CharVector.all Char.isSpace s then
+        if (case k of Prim.Normal => s = "" | Prim.Html => CharVector.all Char.isSpace s) then
             EQuery {exps = exps, tables = tables, query = query,
                     state = (TRecord [], loc),
                     initial = (ERecord [], loc),
@@ -401,7 +407,7 @@ fun exp e =
             e
 
       | EWrite (EQuery {exps, tables, state, query,
-                        initial = (EPrim (Prim.String ""), _),
+                        initial = (EPrim (Prim.String (_, "")), _),
                         body}, loc) =>
         let
             fun passLets (depth, (e', _), lets) =
@@ -439,94 +445,94 @@ fun exp e =
       | EWrite (ELet (x, t, e1, e2), loc) =>
         optExp (ELet (x, t, e1, (EWrite e2, loc)), loc)
 
-      | EWrite (EPrim (Prim.String ""), loc) =>
+      | EWrite (EPrim (Prim.String (_, "")), loc) =>
         ERecord []
 
       | ESignalBind ((ESignalReturn e1, loc), e2) =>
         optExp (EApp (e2, e1), loc)
 
-      | EFfiApp ("Basis", "blessData", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "blessData", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if checkData s then
              ()
          else
              ErrorMsg.errorAt loc ("Invalid HTML5 data-* attribute " ^ s);
          se)
 
-      | EFfiApp ("Basis", "bless", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "bless", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if checkUrl s then
              ()
          else
              ErrorMsg.errorAt loc ("Invalid URL " ^ s ^ " passed to 'bless'");
          se)
-      | EFfiApp ("Basis", "checkUrl", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "checkUrl", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if checkUrl s then
              ESome ((TFfi ("Basis", "string"), loc), (se, loc))
          else
              ENone (TFfi ("Basis", "string"), loc))
-      | EFfiApp ("Basis", "blessMime", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "blessMime", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if Settings.checkMime s then
              ()
          else
              ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'blessMime'");
          se)
-      | EFfiApp ("Basis", "checkMime", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "checkMime", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if Settings.checkMime s then
              ESome ((TFfi ("Basis", "string"), loc), (se, loc))
          else
              ENone (TFfi ("Basis", "string"), loc))
-      | EFfiApp ("Basis", "atom", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "atom", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if checkAtom s then
              ()
          else
              ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'atom'");
          se)
-      | EFfiApp ("Basis", "css_url", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "css_url", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if checkCssUrl s then
              ()
          else
              ErrorMsg.errorAt loc ("Invalid URL " ^ s ^ " passed to 'css_url'");
          se)
-      | EFfiApp ("Basis", "property", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "property", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if checkProperty s then
              ()
          else
              ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'property'");
          se)
-      | EFfiApp ("Basis", "blessRequestHeader", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "blessRequestHeader", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if Settings.checkRequestHeader s then
              ()
          else
              ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'blessRequestHeader'");
          se)
-      | EFfiApp ("Basis", "checkRequestHeader", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "checkRequestHeader", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if Settings.checkRequestHeader s then
              ESome ((TFfi ("Basis", "string"), loc), (se, loc))
          else
              ENone (TFfi ("Basis", "string"), loc))
-      | EFfiApp ("Basis", "blessResponseHeader", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "blessResponseHeader", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if Settings.checkResponseHeader s then
              ()
          else
              ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'blessResponseHeader'");
          se)
-      | EFfiApp ("Basis", "checkResponseHeader", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "checkResponseHeader", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if Settings.checkResponseHeader s then
              ESome ((TFfi ("Basis", "string"), loc), (se, loc))
          else
              ENone (TFfi ("Basis", "string"), loc))
-      | EFfiApp ("Basis", "blessEnvVar", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "blessEnvVar", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if Settings.checkEnvVar s then
              ()
          else
              ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'blessEnvVar'");
          se)
-      | EFfiApp ("Basis", "checkEnvVar", [((se as EPrim (Prim.String s), loc), _)]) =>
+      | EFfiApp ("Basis", "checkEnvVar", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
         (if Settings.checkEnvVar s then
              ESome ((TFfi ("Basis", "string"), loc), (se, loc))
          else
              ENone (TFfi ("Basis", "string"), loc))
 
-      | EFfiApp ("Basis", "checkString", [((EPrim (Prim.String s), loc), _)]) => 
+      | EFfiApp ("Basis", "checkString", [((EPrim (Prim.String (_, s)), loc), _)]) => 
         let
             fun uwify (cs, acc) =
                 case cs of
@@ -551,10 +557,10 @@ fun exp e =
                         #"_" :: cs => uwify (cs, ["uw_"])
                       | cs => uwify (cs, [])
         in
-            EPrim (Prim.String s)
+            EPrim (Prim.String (Prim.Normal, s))
         end
 
-      | EFfiApp ("Basis", "viewify", [((EPrim (Prim.String s), loc), _)]) => 
+      | EFfiApp ("Basis", "viewify", [((EPrim (Prim.String (_, s)), loc), _)]) => 
         let
             fun uwify (cs, acc) =
                 case cs of
@@ -576,11 +582,11 @@ fun exp e =
 
             val s = uwify (String.explode s, [])
         in
-            EPrim (Prim.String s)
+            EPrim (Prim.String (Prim.Normal, s))
         end
 
-      | EFfiApp ("Basis", "unAs", [((EPrim (Prim.String s), _), _)]) => 
-        EPrim (Prim.String (unAs s))
+      | EFfiApp ("Basis", "unAs", [((EPrim (Prim.String (_, s)), _), _)]) => 
+        EPrim (Prim.String (Prim.Normal, unAs s))
       | EFfiApp ("Basis", "unAs", [(e', _)]) =>
         let
             fun parts (e as (_, loc)) =
@@ -589,7 +595,7 @@ fun exp e =
                     (case (parts s1, parts s2) of
                          (SOME p1, SOME p2) => SOME (p1 @ p2)
                        | _ => NONE)
-                  | EPrim (Prim.String s) => SOME [(EPrim (Prim.String (unAs s)), loc)]
+                  | EPrim (Prim.String (_, s)) => SOME [(EPrim (Prim.String (Prim.Normal, unAs s)), loc)]
                   | EFfiApp ("Basis", f, [_]) =>
                     if String.isPrefix "sqlify" f then
                         SOME [e]
@@ -607,7 +613,7 @@ fun exp e =
         end
 
       | EFfiApp ("Basis", "str1", [((EPrim (Prim.Char ch), _), _)]) =>
-        EPrim (Prim.String (str ch))
+        EPrim (Prim.String (Prim.Normal, str ch))
       | EFfiApp ("Basis", "attrifyString", [((EFfiApp ("Basis", "str1", [e]), _), _)]) =>
         EFfiApp ("Basis", "attrifyChar", [e])
       | EFfiApp ("Basis", "attrifyString_w", [((EFfiApp ("Basis", "str1", [e]), _), _)]) =>

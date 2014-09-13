@@ -405,3 +405,8 @@ fun postFields pb =
             "application/x-www-form-urlencoded" => postFields' (postData pb)
           | _ => error <xml>Tried to get POST fields, but MIME type is not "application/x-www-form-urlencoded"</xml>
     end
+
+fun max [t] ( _ : ord t) (x : t) (y : t) : t =
+    if x > y then x else y
+fun min [t] ( _ : ord t) (x : t) (y : t) : t =
+    if x < y then x else y

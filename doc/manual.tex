@@ -146,7 +146,8 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
 \item \texttt{database DBSTRING} sets the string to pass to libpq to open a database connection.
 \item \texttt{debug} saves some intermediate C files, which is mostly useful to help in debugging the compiler itself.
 \item \texttt{effectful Module.ident} registers an FFI function or transaction as having side effects.  The optimizer avoids removing, moving, or duplicating calls to such functions.  This is the default behavior for \texttt{transaction}-based types.
-\item \texttt{exe FILENAME} sets the filename to which to write the output executable.  The default for file \texttt{P.urp} is \texttt{P.exe}.  
+\item \texttt{exe FILENAME} sets the filename to which to write the output executable.  The default for file \texttt{P.urp} is \texttt{P.exe}.
+\item \texttt{file URI FILENAME} asks for the application executable to respond to requests for \texttt{URI} by serving a snapshot of the contents of \texttt{FILENAME} as of compile time.  That is, the file contents are baked into the executable.  System file \texttt{/etc/mime.types} is consulted (again, at compile time) to figure out the right MIME type to suggest in the HTTP response.
 \item \texttt{ffi FILENAME} reads the file \texttt{FILENAME.urs} to determine the interface to a new FFI module.  The name of the module is calculated from \texttt{FILENAME} in the same way as for normal source files.  See the files \texttt{include/urweb/urweb\_cpp.h} and \texttt{src/c/urweb.c} for examples of C headers and implementations for FFI modules.  In general, every type or value \texttt{Module.ident} becomes \texttt{uw\_Module\_ident} in C.
 \item \texttt{html5} activates work-in-progress support for generating HTML5 instead of XHTML.  For now, this option only affects the first few tokens on any page, which are always the same.
 \item \texttt{include FILENAME} adds \texttt{FILENAME} to the list of files to be \texttt{\#include}d in C sources.  This is most useful for interfacing with new FFI modules.
@@ -376,6 +377,10 @@ Compiled applications consult a few environment variables to modify their behavi
   \item \cd{URWEB\_STACK\_SIZE}: size of per-thread stacks, in bytes
   \item \cd{URWEB\_PQ\_CON}: when using PostgreSQL, overrides the compiled-in connection string
 \end{itemize}
+
+\subsection{A Word of Warning on Heuristic Compilation}
+
+For server-side code, Ur/Web follows an unusual compilation model, where not all type-correct programs can be compiled successfully, especially when using functions as data not known until runtime.  See Section \ref{phases} for more detail.
 
 
 \section{Ur Syntax}
@@ -624,6 +629,8 @@ The syntax $\mt{if} \; e \; \mt{then} \; e_1 \; \mt{else} \; e_2$ expands to $\m
 There are infix operator syntaxes for a number of functions defined in the $\mt{Basis}$ module.  There is $=$ for $\mt{eq}$, $\neq$ for $\mt{neq}$, $-$ for $\mt{neg}$ (as a prefix operator) and $\mt{minus}$, $+$ for $\mt{plus}$, $\times$ for $\mt{times}$, $/$ for $\mt{div}$, $\%$ for $\mt{mod}$, $<$ for $\mt{lt}$, $\leq$ for $\mt{le}$, $>$ for $\mt{gt}$, and $\geq$ for $\mt{ge}$.
 
 A signature item $\mt{table} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{sql\_table} \; c \; []$.  $\mt{view} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{sql\_view} \; c$, $\mt{sequence} \; x$ is short for $\mt{val} \; x : \mt{Basis}.\mt{sql\_sequence}$.  $\mt{cookie} \; x : \tau$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{http\_cookie} \; \tau$, and $\mt{style} \; x$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{css\_class}$.
+
+It is possible to write a $\mt{let}$ expression with its constituents in reverse order, along the lines of Haskell's \cd{where}.  An expression $\mt{let} \; e \; \mt{where} \; ed^* \; \mt{end}$ desugars to $\mt{let} \; ed^* \; \mt{in} \; e \; \mt{end}$.
 
 
 \section{Static Semantics}
@@ -2058,7 +2065,7 @@ $$\begin{array}{l}
 
 We will not list here the different HTML tags and related functions from the standard library.  They should be easy enough to understand from the code in \texttt{basis.urs}.  The set of tags in the library is not yet claimed to be complete for HTML standards.  Also note that there is currently no way for the programmer to add his own tags, without using the foreign function interface (Section \ref{ffi}).
 
-Some tags support HTML5 \texttt{data-*} attributes, which in Ur/Web are encoded as a single attribute $\mt{Data}$ with type $\mt{data\_attrs}$ encoding one or more attributes of this kind.  See \texttt{basis.urs} for details.  The usual HTML5 syntax for these attributes is supported by the Ur/Web parser as syntactic sugar.
+Some tags support HTML5 \texttt{data-*} attributes, which in Ur/Web are encoded as a single attribute $\mt{Data}$ with type $\mt{data\_attrs}$ encoding one or more attributes of this kind.  See \texttt{basis.urs} for details.  The usual HTML5 syntax for these attributes is supported by the Ur/Web parser as syntactic sugar, and the same mechanism is reused to support \texttt{aria-*} attributes.
 
 One last useful function is for aborting any page generation, returning some XML as an error message.  This function takes the place of some uses of a general exception mechanism.
 $$\begin{array}{l}
@@ -2278,7 +2285,7 @@ $$\begin{array}{rrcll}
   &&& \{\{e\}\} \; \mt{AS} \; \{c\} & \textrm{computed table expression, with computed local name} \\
   \textrm{$\mt{FROM}$ items} & F &::=& T \mid \{\{e\}\} \mid F \; J \; \mt{JOIN} \; F \; \mt{ON} \; E \\
   &&& \mid F \; \mt{CROSS} \; \mt{JOIN} \ F \\
-  &&& \mid (Q) \; \mt{AS} \; t \\
+  &&& \mid (Q) \; \mt{AS} \; t \mid (\{\{e\}\}) \; \mt{AS} \; t \\
   \textrm{Joins} & J &::=& [\mt{INNER}] \\
   &&& \mid [\mt{LEFT} \mid \mt{RIGHT} \mid \mt{FULL}] \; [\mt{OUTER}] \\
   \textrm{SQL expressions} & E &::=& t.f & \textrm{column references} \\
@@ -2550,10 +2557,12 @@ Now \texttt{foo} is available as a normal function.  If called in server-side co
 \item \texttt{jsFunc "putJsFuncNameHere"}
 \end{itemize}
 
+When no \texttt{jsFunc} directive is present, the function is assumed to map to a JavaScript function of the same name, if used in a client-side context.
 
-\section{Compiler Phases}
 
-The Ur/Web compiler is unconventional in that it relies on a kind of \emph{heuristic compilation}.  Not all valid programs will compile successfully.  Informally, programs fail to compile when they are ``too higher order.''  Compiler phases do their best to eliminate different kinds of higher order-ness, but some programs just won't compile.  This is a trade-off for producing very efficient executables.  Compiled Ur/Web programs use native C representations and require no garbage collection.
+\section{\label{phases}Compiler Phases}
+
+The Ur/Web compiler is unconventional in that it relies on a kind of \emph{heuristic compilation}.  Not all valid programs will compile successfully.  Informally, programs fail to compile when they are ``too higher order.''  Compiler phases do their best to eliminate different kinds of higher order-ness, but some programs just won't compile.  This is a trade-off for producing very efficient executables.  Compiled Ur/Web programs use native C representations and require no garbage collection.  Also, this warning only applies to server-side code, as client-side code runs in a normal JavaScript environment with garbage collection.
 
 In this section, we step through the main phases of compilation, noting what consequences each phase has for effective programming.
 

@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2012, Adam Chlipala
+(* Copyright (c) 2008-2012, 2014, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -462,6 +462,8 @@ fun parseUrp' accLibs fname =
          end
      else
          let
+             val thisPath = OS.Path.dir fname
+
              val pathmap = ref (!pathmap)
              val bigLibs = ref []
 
@@ -876,6 +878,13 @@ fun parseUrp' accLibs fname =
                                    | "noMangleSql" => Settings.setMangleSql false
                                    | "html5" => Settings.setIsHtml5 true
                                    | "lessSafeFfi" => Settings.setLessSafeFfi true
+
+                                   | "file" =>
+                                     (case String.fields Char.isSpace arg of
+                                          [uri, fname] => (Settings.setFilePath thisPath;
+                                                           Settings.addFile {Uri = uri,
+                                                                             LoadFromFilename = fname})
+                                        | _ => ErrorMsg.error "Bad 'file' arguments")
 
                                    | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                                  read ()
@@ -1393,12 +1402,19 @@ val scriptcheck = {
 
 val toScriptcheck = transform scriptcheck "scriptcheck" o toNamejs_untangle
 
+val dbmodecheck = {
+    func = DbModeCheck.classify,
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toDbmodecheck = transform dbmodecheck "dbmodecheck" o toScriptcheck
+
 val jscomp = {
     func = JsComp.process,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toJscomp = transform jscomp "jscomp" o toScriptcheck
+val toJscomp = transform jscomp "jscomp" o toDbmodecheck
 
 val toMono_opt3 = transform mono_opt "mono_opt3" o toJscomp
 
@@ -1475,7 +1491,10 @@ val sqlify = {
 
 val toSqlify = transform sqlify "sqlify" o toMono_opt2
 
-val escapeFilename = String.translate (fn #" " => "\\ " | #"\"" => "\\\"" | #"'" => "\\'" | ch => str ch)
+fun escapeFilename s =
+    "\""
+    ^ String.translate (fn #"\"" => "\\\"" | #"\\" => "\\\\" | ch => str ch) s
+    ^ "\""
 
 val beforeC = ref (fn () => ())
 
