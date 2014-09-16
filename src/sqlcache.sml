@@ -12,6 +12,37 @@ structure SIMM = MultimapFn (structure KeyMap = SM structure ValSet = IS)
 
 val ffiIndices : int list ref = ref []
 
+(* Expression construction utilities. *)
+
+fun intExp (n, loc) = (EPrim (Prim.Int (Int64.fromInt n)), loc)
+fun intTyp loc = (TFfi ("Basis", "int"), loc)
+fun boolPat (b, loc) = (PCon (Enum,
+                              PConFfi {mod = "Basis", datatyp = "bool", arg = NONE,
+                                       con = if b then "True" else "False"},
+                              NONE),
+                        loc)
+fun boolTyp loc = (TFfi ("Basis", "int"), loc)
+
+fun ffiAppExp (module, func, index, loc) =
+    (EFfiApp (module, func ^ Int.toString index, []), loc)
+
+fun sequence ((exp :: exps), loc) =
+    List.foldl (fn (exp, seq) => (ESeq (seq, exp), loc)) exp exps
+
+fun antiguardUnit (cond, exp, loc) =
+    (ECase (cond,
+            [(boolPat (false, loc), exp),
+             (boolPat (true, loc), (ERecord [], loc))],
+            {disc = boolTyp loc, result = (TRecord [], loc)}),
+     loc)
+
+fun underAbs f (exp as (exp', loc)) =
+    case exp' of
+        EAbs (x, y, z, body) => (EAbs (x, y, z, underAbs f body), loc)
+      | _ => f exp
+
+(* Program analysis and augmentation. *)
+
 val rec tablesRead =
  fn Query1 {From=tablePairs, ...} => SS.fromList (map #1 tablePairs)
   | Union (q1,q2) => SS.union (tablesRead q1, tablesRead q2)
@@ -47,37 +78,6 @@ val tablesInExp =
                           {read = SS.empty, written = SS.empty}
     end
 
-fun intExp (n, loc) = (EPrim (Prim.Int (Int64.fromInt n)), loc)
-fun intTyp loc = (TFfi ("Basis", "int"), loc)
-fun boolPat (b, loc) = (PCon (Enum,
-                              PConFfi {mod = "Basis", datatyp = "bool", arg = NONE,
-                                       con = if b then "True" else "False"},
-                              NONE),
-                        loc)
-fun boolTyp loc = (TFfi ("Basis", "int"), loc)
-
-fun ffiAppExp (module, func, index, loc) =
-    (EFfiApp (module, func ^ Int.toString index, []), loc)
-
-fun sequence (befores, center, afters, loc) =
-    List.foldr (fn (exp, seq) => (ESeq (exp, seq), loc))
-               (List.foldl (fn (exp, seq) => (ESeq (seq, exp), loc))
-                           center
-                           afters)
-               befores
-
-fun antiguardUnit (cond, exp, loc) =
-    (ECase (cond,
-            [(boolPat (false, loc), exp),
-             (boolPat (true, loc), (ERecord [], loc))],
-            {disc = boolTyp loc, result = (TRecord [], loc)}),
-     loc)
-
-fun underAbs f (exp as (exp', loc)) =
-    case exp' of
-        EAbs (x, y, z, body) => (EAbs (x, y, z, underAbs f body), loc)
-      | _ => f exp
-
 fun addCacheCheck (index, exp) =
     let
         fun f (body as (_, loc)) =
@@ -85,7 +85,7 @@ fun addCacheCheck (index, exp) =
                 val check = ffiAppExp ("Cache", "check", index, loc)
                 val store = ffiAppExp ("Cache", "store", index, loc)
             in
-                antiguardUnit (check, sequence ([], body, [store], loc), loc)
+                antiguardUnit (check, sequence ([body, store], loc), loc)
             end
     in
         underAbs f exp
@@ -99,9 +99,8 @@ fun addCacheFlush (exp, tablesToIndices) =
                 fun mapFfi func = List.map (fn i => ffiAppExp ("Cache", func, i, loc))
                 val flushes =
                     IS.listItems (SS.foldr addIndices IS.empty (#written (tablesInExp body)))
-
             in
-                sequence (mapFfi "flush" flushes, body, mapFfi "ready" flushes, loc)
+                sequence (mapFfi "flush" flushes @ [body] @ mapFfi "ready" flushes, loc)
             end
     in
         underAbs f exp

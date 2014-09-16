@@ -3393,7 +3393,7 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
-             (* For caching. *)
+             (* For sqlcache. *)
              box (List.map
                       (fn index =>
                           let val i = Int.toString index
@@ -3403,19 +3403,21 @@ fun p_file env (ds, ps) =
                                   newline,
                                   string "static uw_Basis_bool uw_Cache_check",
                                   string i,
-                                  string "(uw_context ctx) { puts(\"Checked cache ",
+                                  string "(uw_context ctx) { puts(\"SQLCACHE: checked ",
                                   string i,
                                   string ".\"); if (cache",
                                   string i,
                                   string " == NULL) { uw_recordingStart(ctx); return uw_Basis_False; } else { uw_write(ctx, cache",
                                   string i,
-                                  string "); return uw_Basis_True; } };",
+                                  string "); puts(\"SQLCACHE: used ",
+                                  string i,
+                                  string ".\"); return uw_Basis_True; } };",
                                   newline,
                                   string "static uw_unit uw_Cache_store",
                                   string i,
                                   string "(uw_context ctx) { cache",
                                   string i,
-                                  string " = uw_recordingRead(ctx); puts(\"Stored cache ",
+                                  string " = uw_recordingRead(ctx); puts(\"SQLCACHE: stored ",
                                   string i,
                                   string ".\"); return uw_unit_v; };",
                                   newline,
@@ -3425,7 +3427,7 @@ fun p_file env (ds, ps) =
                                   string i,
                                   string "); cache",
                                   string i,
-                                  string " = NULL; puts(\"Flushed cache ",
+                                  string " = NULL; puts(\"SQLCACHE: flushed ",
                                   string i,
                                   string ".\"); return uw_unit_v; };",
                                   newline,
@@ -3564,7 +3566,7 @@ fun p_file env (ds, ps) =
                                               newline,
                                               string ("uw_write_header(ctx, \"Content-Length: " ^ Int.toString (Word8Vector.length (#Bytes r)) ^ "\\r\\n\");"),
                                               newline,
-                                              string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),                  
+                                              string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),
                                               newline,
                                               string "uw_replace_page(ctx, \"",
                                               string (hexify (#Bytes r)),

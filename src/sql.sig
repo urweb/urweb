@@ -39,11 +39,7 @@ datatype prop =
        | Reln of reln * exp list
        | Cond of exp * prop
 
-datatype chunk =
-         String of string
-       | Exp of Mono.exp
-
-type 'a parser = chunk list -> ('a * chunk list) option
+type 'a parser
 
 val parse : 'a parser -> Mono.exp -> 'a option
 
