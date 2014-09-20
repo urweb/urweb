@@ -2897,13 +2897,17 @@ uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
     }
   }
   else {
-    if (strptime(s, TIME_FMT_PG, &stm) == end) {
+    if (strptime(s, ctx->app->time_format, &stm) == end) {
       uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
       r->seconds = mktime(&stm);
       r->microseconds = 0;
       return r;
-    }
-    else if (strptime(s, TIME_FMT, &stm) == end) {
+    } else if (strptime(s, TIME_FMT_PG, &stm) == end) {
+      uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
+      r->seconds = mktime(&stm);
+      r->microseconds = 0;
+      return r;
+    } else if (strptime(s, TIME_FMT, &stm) == end) {
       uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
       r->seconds = mktime(&stm);
       r->microseconds = 0;
@@ -3047,7 +3051,10 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
     }
   }
   else {
-    if (strptime(s, TIME_FMT_PG, &stm) == end) {
+    if (strptime(s, ctx->app->time_format, &stm) == end) {
+      uw_Basis_time r = { mktime(&stm) };
+      return r;
+    } else if (strptime(s, TIME_FMT_PG, &stm) == end) {
       uw_Basis_time r = { mktime(&stm) };
       return r;
     } else if (strptime(s, TIME_FMT, &stm) == end) {
