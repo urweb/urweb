@@ -3663,6 +3663,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                    raise Fail "No name passed to textbox tag"))
                       | "password" => input "password"
+                      | "email" => input "email"
                       | "textarea" =>
 			(case targs of
                              [_, (L.CName name, _)] =>

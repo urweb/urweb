@@ -948,14 +948,19 @@ con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                   -> [[Form] ~ ctx] =>
                         nm :: Name -> unit
                         -> tag attrs ([Form] ++ ctx) inner [] [nm = ty]
+
+con inputAttrs = [Required = string, Autofocus = string]
+
+
 val hidden : formTag string [] [Data = data_attr, Id = string, Value = string]
 val textbox : formTag string [] ([Value = string, Size = int, Placeholder = string, Source = source string, Onchange = transaction unit,
-                                  Ontext = transaction unit] ++ boxAttrs)
-val password : formTag string [] ([Value = string, Size = int, Placeholder = string, Onchange = transaction unit] ++ boxAttrs)
+                                  Ontext = transaction unit] ++ boxAttrs ++ inputAttrs)
+val password : formTag string [] ([Value = string, Size = int, Placeholder = string, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val email : formTag string [] ([Value = string, Size = int, Placeholder = string, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
 val textarea : formTag string [] ([Rows = int, Cols = int, Onchange = transaction unit,
-                                   Ontext = transaction unit] ++ boxAttrs)
+                                   Ontext = transaction unit] ++ boxAttrs ++ inputAttrs)
 
-val checkbox : formTag bool [] ([Checked = bool, Onchange = transaction unit] ++ boxAttrs)
+val checkbox : formTag bool [] ([Checked = bool, Onchange = transaction unit, Value = string] ++ boxAttrs)
 
 type file
 val fileName : file -> option string
@@ -1012,18 +1017,18 @@ con cformTag = fn (attrs :: {Type}) (inner :: {Unit}) =>
                         unit -> tag attrs ([Body] ++ ctx) ([Body] ++ inner) [] []
 
 val ctextbox : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
-                          Ontext = transaction unit] ++ boxAttrs) []
+                          Ontext = transaction unit] ++ boxAttrs ++ inputAttrs) []
 val cpassword : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
-                          Ontext = transaction unit] ++ boxAttrs) []
+                          Ontext = transaction unit] ++ boxAttrs ++ inputAttrs) []
 val button : cformTag ([Value = string] ++ boxAttrs) []
 
-val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool, Onchange = transaction unit] ++ boxAttrs) []
+val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
 
 val cselect : cformTag ([Source = source string, Onchange = transaction unit] ++ boxAttrs) [Cselect]
 val coption : unit -> tag [Value = string, Selected = bool] [Cselect, Body] [] [] []
 
 val ctextarea : cformTag ([Value = string, Rows = int, Cols = int, Source = source string, Onchange = transaction unit,
-                           Ontext = transaction unit] ++ boxAttrs) []
+                           Ontext = transaction unit] ++ boxAttrs ++ inputAttrs) []
 
 (*** Tables *)
 
