@@ -1,21 +1,247 @@
-structure Sqlcache :> SQLCACHE = struct
+structure Sqlcache (* :> SQLCACHE *) = struct
 
 open Sql
 open Mono
 
 structure IS = IntBinarySet
 structure IM = IntBinaryMap
-structure StringKey = struct type ord_key = string val compare = String.compare end
-structure SS = BinarySetFn (StringKey)
-structure SM = BinaryMapFn (StringKey)
-structure SIMM = MultimapFn (structure KeyMap = SM structure ValSet = IS)
+structure SK = struct type ord_key = string val compare = String.compare end
+structure SS = BinarySetFn(SK)
+structure SM = BinaryMapFn(SK)
+structure SIMM = MultimapFn(structure KeyMap = SM structure ValSet = IS)
 
-val ffiIndices : int list ref = ref []
+(* Filled in by cacheWrap during Sqlcache. *)
+val ffiInfo : {index : int, params : int} list ref = ref []
 
-(* Expression construction utilities. *)
+fun getFfiInfo () = !ffiInfo
+
+(* Program analysis. *)
+
+val useInjIfPossible =
+ fn SqConst prim => Inj (EPrim (Prim.String (Prim.Normal, Prim.toString prim)), ErrorMsg.dummySpan)
+  | sqexp => sqexp
+
+fun equalities (canonicalTable : string -> string) :
+    sqexp -> ((string * string) * Mono.exp) list option =
+    let
+        val rec eqs =
+         fn Binop (Exps f, e1, e2) =>
+            (* TODO: use a custom datatype in Exps instead of a function. *)
+            (case f (Var 1, Var 2) of
+                 Reln (Eq, [Var 1, Var 2]) =>
+                 let
+                     val (e1', e2') = (useInjIfPossible e1, useInjIfPossible e2)
+                 in
+                     case (e1', e2') of
+                         (Field (t, f), Inj i) => SOME [((canonicalTable t, f), i)]
+                       | (Inj i, Field (t, f)) => SOME [((canonicalTable t, f), i)]
+                       | _ => NONE
+                 end
+               | _ => NONE)
+          | Binop (Props f, e1, e2) =>
+            (* TODO: use a custom datatype in Props instead of a function. *)
+            (case f (True, False) of
+                 And (True, False) =>
+                 (case (eqs e1, eqs e2) of
+                      (SOME eqs1, SOME eqs2) => SOME (eqs1 @ eqs2)
+                    | _ => NONE)
+               | _ => NONE)
+          | _ => NONE
+    in
+        eqs
+    end
+
+val equalitiesQuery =
+ fn Query1 {From = tablePairs, Where = SOME exp, ...} =>
+    equalities
+        (* If we have [SELECT ... FROM T AS T' ...], use T, not T'. *)
+        (fn t =>
+            case List.find (fn (_, tAs) => t = tAs) tablePairs of
+                NONE => t
+              | SOME (tOrig, _) => tOrig)
+        exp
+  | Query1 {Where = NONE, ...} => SOME []
+  | _ => NONE
+
+val equalitiesDml =
+ fn Insert (tab, eqs) => SOME (List.mapPartial
+                                   (fn (name, sqexp) =>
+                                       case useInjIfPossible sqexp of
+                                           Inj e => SOME ((tab, name), e)
+                                         | _ => NONE)
+                                   eqs)
+  | Delete (tab, exp) => equalities (fn _ => tab) exp
+  (* TODO: examine the updated values and not just the way they're filtered. *)
+  (* For example, UPDATE foo SET Id = 9001 WHERE Id = 42 should update both the
+     Id = 42 and Id = 9001 cache entries. Could also think of it as doing a
+     Delete immediately followed by an Insert. *)
+  | Update (tab, _, exp) => equalities (fn _ => tab) exp
+
+val rec tablesQuery =
+ fn Query1 {From = tablePairs, ...} => SS.fromList (map #1 tablePairs)
+  | Union (q1, q2) => SS.union (tablesQuery q1, tablesQuery q2)
+
+val tableDml =
+ fn Insert (tab, _) => tab
+  | Delete (tab, _) => tab
+  | Update (tab, _, _) => tab
+
+
+(* Program instrumentation. *)
+
+val stringTyp = (TFfi ("Basis", "string"), ErrorMsg.dummySpan)
+
+val sequence =
+ fn (exp :: exps) =>
+    let
+        val loc = ErrorMsg.dummySpan
+    in
+        List.foldl (fn (e', seq) => ESeq ((seq, loc), (e', loc))) exp exps
+    end
+  | _ => raise Match
+
+fun ffiAppCache' (func, index, args) : Mono.exp' =
+    EFfiApp ("Sqlcache", func ^ Int.toString index, args)
+
+fun ffiAppCache (func, index, args) : Mono. exp =
+    (ffiAppCache' (func, index, args), ErrorMsg.dummySpan)
+
+val varPrefix = "queryResult"
+
+fun indexOfName varName =
+    if String.isPrefix varPrefix varName
+    then Int.fromString (String.extract (varName, String.size varPrefix, NONE))
+    else NONE
+
+val incRels = MonoUtil.Exp.map {typ = fn x => x, exp = fn ERel n => ERel (n + 1) | x => x}
+
+(* Filled in by instrumentQuery during Monoize, used during Sqlcache. *)
+val urlifiedRel0s : Mono.exp IM.map ref = ref IM.empty
+
+(* Used by Monoize. *)
+val instrumentQuery =
+    let
+        val nextQuery = ref 0
+        fun iq (query, urlifiedRel0) =
+            case query of
+                (EQuery {state = typ, ...}, loc) =>
+                let
+                    val i = !nextQuery before nextQuery := !nextQuery + 1
+                in
+                    urlifiedRel0s := IM.insert (!urlifiedRel0s, i, urlifiedRel0);
+                    (* ASK: name variables properly? *)
+                    (ELet (varPrefix ^ Int.toString i, typ, query,
+                           (* Uses a dummy FFI call to keep the urlified expression around, which
+                              in turn keeps the declarations required for urlification safe from
+                              MonoShake. The dummy call is removed during Sqlcache. *)
+                           (* ASK: is there a better way? *)
+                           (ESeq ((EFfiApp ("Sqlcache", "dummy", [(urlifiedRel0, stringTyp)]), loc),
+                                  (ERel 0, loc)),
+                            loc)),
+                     loc)
+                end
+              | _ => raise Match
+    in
+        iq
+    end
+
+val gunk : ((string * string) * Mono.exp) list list ref = ref [[]]
+
+fun cacheWrap (query, i, urlifiedRel0, eqs) =
+    case query of
+        (EQuery {state = typ, ...}, _) =>
+        let
+            val loc = ErrorMsg.dummySpan
+            (* TODO: deal with effectful injected expressions. *)
+            val args = (ffiInfo := {index = i, params = length eqs} :: !ffiInfo;
+                        map (fn (_, e) => (e, stringTyp)) eqs) before gunk := eqs :: !gunk
+            val argsInc = map (fn (e, t) => (incRels e, t)) args
+        in
+            (ECase (ffiAppCache ("check", i, args),
+                    [((PNone stringTyp, loc),
+                      (ELet ("q", typ, query,
+                             (ESeq (ffiAppCache ("store", i, (urlifiedRel0, stringTyp) :: argsInc),
+                                    (ERel 0, loc)),
+                              loc)),
+                       loc)),
+                     ((PSome (stringTyp, (PVar ("hit", stringTyp), loc)), loc),
+                      (* ASK: what does this bool do? *)
+                      (EUnurlify ((ERel 0, loc), typ, false), loc))],
+                    {disc = stringTyp, result = typ}),
+             loc)
+        end
+      | _ => raise Match
+
+fun fileMapfold doExp file start =
+    case MonoUtil.File.mapfold {typ = Search.return2,
+                                exp = fn x => (fn s => Search.Continue (doExp x s)),
+                                decl = Search.return2} file start of
+        Search.Continue x => x
+      | Search.Return _ => raise Match
+
+fun fileMap doExp file = #1 (fileMapfold (fn x => fn _ => (doExp x, ())) file ())
+
+val addChecking =
+    let
+        fun doExp queryInfo =
+         fn e' as ELet (v, t, queryExp as (EQuery {query = queryText, ...}, _), body) =>
+            let
+                fun bind x f = Option.mapPartial f x
+                val attempt =
+                    (* Ziv misses Haskell's do notation.... *)
+                    bind (parse query queryText) (fn queryParsed =>
+                    (Print.preface ("gunk> ", (MonoPrint.p_exp MonoEnv.empty queryExp));
+                    bind (indexOfName v) (fn i =>
+                    bind (equalitiesQuery queryParsed) (fn eqs =>
+                    bind (IM.find (!urlifiedRel0s, i)) (fn urlifiedRel0 =>
+                    SOME (ELet (v, t, cacheWrap (queryExp, i, urlifiedRel0, eqs), body),
+                          SS.foldr (fn (tab, qi) => SIMM.insert (qi, tab, i))
+                                   queryInfo
+                                   (tablesQuery queryParsed)))))))
+            in
+                case attempt of
+                    SOME pair => pair
+                  | NONE => (e', queryInfo)
+            end
+          | ESeq ((EFfiApp ("Sqlcache", "dummy", _), _), (e', _)) => (e', queryInfo)
+          | e' => (e', queryInfo)
+    in
+        fn file => fileMapfold (fn exp => fn state => doExp state exp) file SIMM.empty
+    end
+
+fun addFlushing (file, queryInfo) =
+    let
+        val allIndices : int list = SM.foldr (fn (x, acc) => IS.listItems x @ acc) [] queryInfo
+        fun flushes indices = map (fn i => ffiAppCache' ("flush", i, [])) indices
+        val doExp =
+         fn dmlExp as EDml (dmlText, _) =>
+            let
+                val indices =
+                    case parse dml dmlText of
+                        SOME dmlParsed => SIMM.findList (queryInfo, tableDml dmlParsed)
+                      | NONE => allIndices
+            in
+                sequence (flushes indices @ [dmlExp])
+            end
+          | e' => e'
+    in
+        fileMap doExp file
+    end
+
+fun go file =
+    let
+        val () = Sql.sqlcacheMode := true
+    in
+        addFlushing (addChecking file) before Sql.sqlcacheMode := false
+    end
+
+
+(* BEGIN OLD
 
 fun intExp (n, loc) = (EPrim (Prim.Int (Int64.fromInt n)), loc)
 fun intTyp loc = (TFfi ("Basis", "int"), loc)
+fun stringExp (s, loc) = (EPrim (Prim.String (Prim.Normal, s)), loc)
+
 fun boolPat (b, loc) = (PCon (Enum,
                               PConFfi {mod = "Basis", datatyp = "bool", arg = NONE,
                                        con = if b then "True" else "False"},
@@ -23,11 +249,13 @@ fun boolPat (b, loc) = (PCon (Enum,
                         loc)
 fun boolTyp loc = (TFfi ("Basis", "int"), loc)
 
-fun ffiAppExp (module, func, index, loc) =
-    (EFfiApp (module, func ^ Int.toString index, []), loc)
+fun ffiAppExp (module, func, index, args, loc) =
+    (EFfiApp (module, func ^ Int.toString index, args), loc)
 
-fun sequence ((exp :: exps), loc) =
+val sequence =
+ fn ((exp :: exps), loc) =>
     List.foldl (fn (exp, seq) => (ESeq (seq, exp), loc)) exp exps
+  | _ => raise Match
 
 fun antiguardUnit (cond, exp, loc) =
     (ECase (cond,
@@ -41,11 +269,10 @@ fun underAbs f (exp as (exp', loc)) =
         EAbs (x, y, z, body) => (EAbs (x, y, z, underAbs f body), loc)
       | _ => f exp
 
-(* Program analysis and augmentation. *)
 
 val rec tablesRead =
- fn Query1 {From=tablePairs, ...} => SS.fromList (map #1 tablePairs)
-  | Union (q1,q2) => SS.union (tablesRead q1, tablesRead q2)
+ fn Query1 {From = tablePairs, ...} => SS.fromList (map #1 tablePairs)
+  | Union (q1, q2) => SS.union (tablesRead q1, tablesRead q2)
 
 val tableWritten =
  fn Insert (tab, _) => tab
@@ -57,7 +284,7 @@ fun tablesInExp' exp' =
         val nothing = {read = SS.empty, written = SS.empty}
     in
         case exp' of
-            EQuery {query=e, ...} =>
+            EQuery {query = e, ...} =>
             (case parse query e of
                  SOME q => {read = tablesRead q, written = SS.empty}
                | NONE => nothing)
@@ -71,8 +298,11 @@ fun tablesInExp' exp' =
 val tablesInExp =
     let
         fun addTables (exp', {read, written}) =
-            let val {read = r, written = w} = tablesInExp' exp'
-            in {read = SS.union (r, read), written = SS.union (w, written)} end
+            let
+                val {read = r, written = w} = tablesInExp' exp'
+            in
+                {read = SS.union (r, read), written = SS.union (w, written)}
+            end
     in
         MonoUtil.Exp.fold {typ = #2, exp = addTables}
                           {read = SS.empty, written = SS.empty}
@@ -150,7 +380,7 @@ fun fileFoldMapiSelected f init (file, indices) =
     in
         case MonoUtil.File.mapfold {typ = nada, exp = nada, decl = doDecl} file init of
             Search.Continue x => x
-          | _ => (file, init) (* Should never happen. *)
+          | _ => raise Match (* Should never happen. *)
     end
 
 fun fileMapSelected f = #1 o fileFoldMapiSelected (fn (_, x, _) => (f x, ())) ()
@@ -177,5 +407,7 @@ fun go file =
         ffiIndices := IS.listItems readers;
         addCacheFlushing (fileWithChecks, tablesToIndices, writers)
     end
+
+END OLD *)
 
 end

@@ -83,7 +83,6 @@ type ('src, 'dst) transform = {
 val debug = ref false
 val dumpSource = ref false
 val doIflow = ref false
-val doSqlcache = ref false
 
 val doDumpSource = ref (fn () => ())
 
@@ -1457,7 +1456,10 @@ val sigcheck = {
 val toSigcheck = transform sigcheck "sigcheck" o toSidecheck
 
 val sqlcache = {
-    func = (fn file => (if !doSqlcache then Sqlcache.go file else file)),
+    func = (fn file =>
+               if Settings.getSqlcache ()
+               then let val file = MonoInline.inlineFull file in Sqlcache.go file end
+               else file),
     print = MonoPrint.p_file MonoEnv.empty
 }
 

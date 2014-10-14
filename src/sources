@@ -212,6 +212,8 @@ $(SRC)/multimap_fn.sml
 $(SRC)/sqlcache.sig
 $(SRC)/sqlcache.sml
 
+$(SRC)/mono_inline.sml
+
 $(SRC)/cjr.sml
 
 $(SRC)/postgres.sig

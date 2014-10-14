@@ -3395,49 +3395,77 @@ fun p_file env (ds, ps) =
 
              (* For sqlcache. *)
              box (List.map
-                      (fn index =>
+                      (fn {index, params} =>
                           let val i = Int.toString index
+                              fun paramRepeat itemi sep =
+                                  let
+                                      val rec f =
+                                       fn 0 => itemi (Int.toString 0)
+                                        | n => f (n-1) ^ itemi (Int.toString n)
+                                  in
+                                      f (params - 1)
+                                  end
+                              val args = paramRepeat (fn p => "uw_Basis_string p" ^ p) ", "
+                              val decls = paramRepeat (fn p => "uw_Basis_string param" ^ i ^ "_" ^ p ^ " = NULL;") "\n"
+                              val sets = paramRepeat (fn p => "param" ^ i ^ "_" ^ p
+                                                             ^ " = strdup(p" ^ p ^ ");") "\n"
+                              val frees = paramRepeat (fn p => "free(param" ^ i ^ "_" ^ p ^ ");") "\n"
+                              val eqs = paramRepeat (fn p => "strcmp(param" ^ i ^ "_" ^ p
+                                                             ^ ", p" ^ p ^ ")") " || "
                           in box [string "static char *cache",
                                   string i,
                                   string " = NULL;",
                                   newline,
-                                  string "static uw_Basis_bool uw_Cache_check",
-                                  string i,
-                                  string "(uw_context ctx) { puts(\"SQLCACHE: checked ",
-                                  string i,
-                                  string ".\"); if (cache",
-                                  string i,
-                                  string " == NULL) { uw_recordingStart(ctx); return uw_Basis_False; } else { uw_write(ctx, cache",
-                                  string i,
-                                  string "); puts(\"SQLCACHE: used ",
-                                  string i,
-                                  string ".\"); return uw_Basis_True; } };",
+                                  string decls,
                                   newline,
-                                  string "static uw_unit uw_Cache_store",
+                                  string "static uw_Basis_string uw_Sqlcache_check",
                                   string i,
-                                  string "(uw_context ctx) { cache",
+                                  string "(uw_context ctx, ",
+                                  string args,
+                                  string ") {\n puts(\"SQLCACHE: checked ",
                                   string i,
-                                  string " = uw_recordingRead(ctx); puts(\"SQLCACHE: stored ",
+                                  string ".\");\n if (cache",
                                   string i,
-                                  string ".\"); return uw_unit_v; };",
+                                  (* ASK: is returning the pointer okay? Should we duplicate? *)
+                                  string " == NULL || ",
+                                  string eqs,
+                                  string ") {\n puts(\"miss D:\"); puts(p0);\n return NULL;\n } else {\n puts(\"hit :D\");\n return cache",
+                                  string i,
+                                  string ";\n } };",
                                   newline,
-                                  string "static uw_unit uw_Cache_flush",
+                                  string "static uw_unit uw_Sqlcache_store",
                                   string i,
-                                  string "(uw_context ctx) { free(cache",
+                                  string "(uw_context ctx, uw_Basis_string s, ",
+                                  string args,
+                                  string ") {\n free(cache",
                                   string i,
-                                  string "); cache",
-                                  string i,
-                                  string " = NULL; puts(\"SQLCACHE: flushed ",
-                                  string i,
-                                  string ".\"); return uw_unit_v; };",
+                                  string ");",
                                   newline,
-                                  string "static uw_unit uw_Cache_ready",
+                                  string frees,
+                                  newline,
+                                  string "cache",
                                   string i,
-                                  string "(uw_context ctx) { return uw_unit_v; };",
+                                  string " = strdup(s);",
+                                  newline,
+                                  string sets,
+                                  newline,
+                                  string "puts(\"SQLCACHE: stored ",
+                                  string i,
+                                  string ".\"); puts(p0);\n return uw_unit_v;\n };",
+                                  newline,
+                                  string "static uw_unit uw_Sqlcache_flush",
+                                  string i,
+                                  string "(uw_context ctx) {\n free(cache",
+                                  string i,
+                                  string ");\n cache",
+                                  string i,
+                                  string " = NULL;\n puts(\"SQLCACHE: flushed ",
+                                  string i,
+                                  string ".\");\n return uw_unit_v;\n };",
                                   newline,
                                   newline]
                           end)
-                      (!Sqlcache.ffiIndices)),
+                      (Sqlcache.getFfiInfo ())),
              newline,
 
              p_list_sep newline (fn x => x) pds,

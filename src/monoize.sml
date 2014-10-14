@@ -1957,20 +1957,26 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                           (L'.TFun (un, state), loc)),
                                                  loc)), loc)
 
-                             val body' = (L'.EApp (
+                             val body'' = (L'.EApp (
                                           (L'.EApp (
                                            (L'.EApp ((L'.ERel 4, loc),
                                                      (L'.ERel 1, loc)), loc),
                                            (L'.ERel 0, loc)), loc),
                                           (L'.ERecord [], loc)), loc)
-
-                             val body = (L'.EQuery {exps = exps,
-                                                    tables = tables,
-                                                    state = state,
-                                                    query = (L'.ERel 3, loc),
-                                                    body = body',
-                                                    initial = (L'.ERel 1, loc)},
-                                         loc)
+                             val body' = (L'.EQuery {exps = exps,
+                                                      tables = tables,
+                                                      state = state,
+                                                      query = (L'.ERel 3, loc),
+                                                      body = body'',
+                                                      initial = (L'.ERel 1, loc)},
+                                           loc)
+                             val (body, fm) = if Settings.getSqlcache () then
+                                                  let
+                                                      val (urlifiedRel0, fm) = urlifyExp env fm ((L'.ERel 0, loc), state)
+                                                  in
+                                                      (Sqlcache.instrumentQuery (body', urlifiedRel0), fm)
+                                                  end
+                                              else (body', fm)
                          in
                              ((L'.EAbs ("q", s, (L'.TFun (ft, (L'.TFun (state, (L'.TFun (un, state), loc)), loc)), loc),
                                         (L'.EAbs ("f", ft, (L'.TFun (state, (L'.TFun (un, state), loc)), loc),

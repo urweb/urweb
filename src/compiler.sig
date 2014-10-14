@@ -199,7 +199,6 @@ signature COMPILER = sig
     val enableBoot : unit -> unit
 
     val doIflow : bool ref
-    val doSqlcache : bool ref
 
     val addPath : string * string -> unit
     val addModuleRoot : string * string -> unit

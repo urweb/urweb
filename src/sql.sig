@@ -2,6 +2,8 @@ signature SQL = sig
 
 val debug : bool ref
 
+val sqlcacheMode : bool ref
+
 type lvar = int
 
 datatype func =

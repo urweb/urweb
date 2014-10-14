@@ -270,6 +270,22 @@ fun sqlify chs =
 
       | _ => NONE
 
+fun sqlifySqlcache chs =
+    case chs of
+        (* Match entire FFI application, not just its argument. *)
+        Exp (e' as EFfiApp ("Basis", f, [(_, _)]), _) :: chs =>
+        if String.isPrefix "sqlify" f then
+            SOME ((e', ErrorMsg.dummySpan), chs)
+        else
+            NONE
+      | Exp (ECase (e, [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, NONE), _),
+                         (EPrim (Prim.String (Prim.Normal, "TRUE")), _)),
+                        ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, NONE), _),
+                         (EPrim (Prim.String (Prim.Normal, "FALSE")), _))], _), _) :: chs =>
+        SOME (e, chs)
+
+      | _ => NONE
+
 fun constK s = wrap (const s) (fn () => s)
 
 val funcName = altL [constK "COUNT",
@@ -280,6 +296,8 @@ val funcName = altL [constK "COUNT",
 
 val unmodeled = altL [const "COUNT(*)",
                       const "CURRENT_TIMESTAMP"]
+
+val sqlcacheMode = ref false;
 
 fun sqexp chs =
     log "sqexp"
@@ -292,7 +310,7 @@ fun sqexp chs =
            wrap known SqKnown,
            wrap func SqFunc,
            wrap unmodeled (fn () => Unmodeled),
-           wrap sqlify Inj,
+           wrap (if !sqlcacheMode then sqlifySqlcache else sqlify) Inj,
            wrap (follow (const "COALESCE(") (follow sqexp (follow (const ",")
                                                                   (follow (keep (fn ch => ch <> #")")) (const ")")))))
                 (fn ((), (e, _)) => e),

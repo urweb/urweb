@@ -744,6 +744,10 @@ val less = ref false
 fun setLessSafeFfi b = less := b
 fun getLessSafeFfi () = !less
 
+val sqlcache = ref false
+fun setSqlcache b = sqlcache := b
+fun getSqlcache () = !sqlcache
+
 structure SM = BinaryMapFn(struct
                            type ord_key = string
                            val compare = String.compare
