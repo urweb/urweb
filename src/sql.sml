@@ -272,10 +272,12 @@ fun sqlify chs =
 
 fun sqlifySqlcache chs =
     case chs of
-        (* Match entire FFI application, not just its argument. *)
-        Exp (e' as EFfiApp ("Basis", f, [(_, _)]), _) :: chs =>
+      (* Could have variables as well as FFIs. *)
+        Exp (e as (ERel _, _)) :: chs => SOME (e, chs)
+      (* If it is an FFI, match the entire expression. *)
+      | Exp (e as (EFfiApp ("Basis", f, [(_, _)]), _)) :: chs =>
         if String.isPrefix "sqlify" f then
-            SOME ((e', ErrorMsg.dummySpan), chs)
+            SOME (e, chs)
         else
             NONE
       | Exp (ECase (e, [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, NONE), _),

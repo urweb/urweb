@@ -47,7 +47,6 @@ fun oneRun args =
                   Elaborate.unifyMore := false;
                   Compiler.dumpSource := false;
                   Compiler.doIflow := false;
-                  Compiler.doSqlcache := false;
                   Demo.noEmacs := false;
                   Settings.setDebug false)
 
@@ -161,7 +160,7 @@ fun oneRun args =
                 (Compiler.doIflow := true;
                  doArgs rest)
               | "-sqlcache" :: rest =>
-                (Compiler.doSqlcache := true;
+                (Settings.setSqlcache true;
                  doArgs rest)
               | "-moduleOf" :: fname :: _ =>
                 (print (Compiler.moduleOf fname ^ "\n");

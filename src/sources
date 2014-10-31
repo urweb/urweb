@@ -168,6 +168,14 @@ $(SRC)/mono_env.sml
 $(SRC)/mono_print.sig
 $(SRC)/mono_print.sml
 
+$(SRC)/sql.sig
+$(SRC)/sql.sml
+
+$(SRC)/multimap_fn.sml
+
+$(SRC)/sqlcache.sig
+$(SRC)/sqlcache.sml
+
 $(SRC)/monoize.sig
 $(SRC)/monoize.sml
 
@@ -186,9 +194,6 @@ $(SRC)/mono_shake.sml
 $(SRC)/fuse.sig
 $(SRC)/fuse.sml
 
-$(SRC)/sql.sig
-$(SRC)/sql.sml
-
 $(SRC)/iflow.sig
 $(SRC)/iflow.sml
 
@@ -206,11 +211,6 @@ $(SRC)/sidecheck.sml
 
 $(SRC)/sigcheck.sig
 $(SRC)/sigcheck.sml
-
-$(SRC)/multimap_fn.sml
-
-$(SRC)/sqlcache.sig
-$(SRC)/sqlcache.sml
 
 $(SRC)/mono_inline.sml
 

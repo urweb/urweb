@@ -4,6 +4,12 @@ val debug : bool ref
 
 val sqlcacheMode : bool ref
 
+datatype chunk =
+         String of string
+       | Exp of Mono.exp
+
+val chunkify : Mono.exp -> chunk list
+
 type lvar = int
 
 datatype func =

@@ -12,12 +12,11 @@ fun cache01 () =
     </body></xml>
 
 fun cache10 () =
-    res <- oneOrNoRows (SELECT foo10.Bar FROM foo10 WHERE foo10.Id = 42);
+    res <- queryX (SELECT foo10.Bar FROM foo10 WHERE foo10.Id = 42)
+                  (fn row => <xml>{[row.Foo10.Bar]}</xml>);
     return <xml><body>
       Reading 2.
-      {case res of
-           None => <xml>?</xml>
-         | Some row => <xml>{[row.Foo10.Bar]}</xml>}
+      {res}
     </body></xml>
 
 fun cache11 () =
