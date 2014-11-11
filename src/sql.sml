@@ -20,24 +20,30 @@ datatype exp =
        | Recd of (string * exp) list
        | Proj of exp * string
 
-datatype reln =
-         Known
-       | Sql of string
-       | PCon0 of string
-       | PCon1 of string
-       | Eq
+datatype cmp =
+         Eq
        | Ne
        | Lt
        | Le
        | Gt
        | Ge
 
+datatype reln =
+         Known
+       | Sql of string
+       | PCon0 of string
+       | PCon1 of string
+       | Cmp of cmp
+
+datatype lop =
+         And
+       | Or
+
 datatype prop =
          True
        | False
        | Unknown
-       | And of prop * prop
-       | Or of prop * prop
+       | Lop of lop * prop * prop
        | Reln of reln * exp list
        | Cond of exp * prop
 
@@ -183,8 +189,8 @@ val field = wrap (follow (opt (follow t_ident (const ".")))
                    | (NONE, f) => ("T", f)) (* Should probably deal with this MySQL/SQLite case better some day. *)
 
 datatype Rel =
-         Exps of exp * exp -> prop
-       | Props of prop * prop -> prop
+         RCmp of cmp
+       | RLop of lop
 
 datatype sqexp =
          SqConst of Prim.t
@@ -200,7 +206,7 @@ datatype sqexp =
        | Unmodeled
        | Null
 
-fun cmp s r = wrap (const s) (fn () => Exps (fn (e1, e2) => Reln (r, [e1, e2])))
+fun cmp s r = wrap (const s) (fn () => RCmp r)
 
 val sqbrel = altL [cmp "=" Eq,
                    cmp "<>" Ne,
@@ -208,8 +214,8 @@ val sqbrel = altL [cmp "=" Eq,
                    cmp "<" Lt,
                    cmp ">=" Ge,
                    cmp ">" Gt,
-                   wrap (const "AND") (fn () => Props And),
-                   wrap (const "OR") (fn () => Props Or)]
+                   wrap (const "AND") (fn () => RLop Or),
+                   wrap (const "OR") (fn () => RLop And)]
 
 datatype ('a, 'b) sum = inl of 'a | inr of 'b
 

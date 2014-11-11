@@ -3400,19 +3400,24 @@ fun p_file env (ds, ps) =
                           let val i = Int.toString index
                               fun paramRepeat itemi sep =
                                   let
-                                      val rec f =
-                                       fn 0 => itemi (Int.toString 0)
-                                        | n => f (n-1) ^ itemi (Int.toString n)
+                                      fun f n =
+                                          if n < 0 then ""
+                                          else if n = 0 then itemi (Int.toString 0)
+                                          else f (n-1) ^ sep ^ itemi (Int.toString n)
                                   in
                                       f (params - 1)
                                   end
-                              val args = paramRepeat (fn p => "uw_Basis_string p" ^ p) ", "
+                              fun paramRepeatInit itemi sep =
+                                  if params = 0 then "" else sep ^ paramRepeat itemi sep
+                              val args = paramRepeatInit (fn p => "uw_Basis_string p" ^ p) ", "
                               val decls = paramRepeat (fn p => "uw_Basis_string param" ^ i ^ "_" ^ p ^ " = NULL;") "\n"
                               val sets = paramRepeat (fn p => "param" ^ i ^ "_" ^ p
                                                              ^ " = strdup(p" ^ p ^ ");") "\n"
                               val frees = paramRepeat (fn p => "free(param" ^ i ^ "_" ^ p ^ ");") "\n"
-                              val eqs = paramRepeat (fn p => "strcmp(param" ^ i ^ "_" ^ p
-                                                             ^ ", p" ^ p ^ ")") " || "
+                              (* Starting || makes logic easier when there are no parameters. *)
+                              val eqs = paramRepeatInit (fn p => "strcmp(param" ^ i ^ "_" ^ p
+                                                                 ^ ", p" ^ p ^ ")")
+                                                        " || "
                           in box [string "static char *cacheQuery",
                                   string i,
                                   string " = NULL;",
@@ -3425,14 +3430,14 @@ fun p_file env (ds, ps) =
                                   newline,
                                   string "static uw_Basis_string uw_Sqlcache_check",
                                   string i,
-                                  string "(uw_context ctx, ",
+                                  string "(uw_context ctx",
                                   string args,
                                   string ") {\n puts(\"SQLCACHE: checked ",
                                   string i,
                                   string ".\");\n if (cacheQuery",
                                   string i,
                                   (* ASK: is returning the pointer okay? Should we duplicate? *)
-                                  string " == NULL || ",
+                                  string " == NULL",
                                   string eqs,
                                   string ") {\n puts(\"miss D:\");\n uw_recordingStart(ctx);\n return NULL;\n } else {\n puts(\"hit :D\");\n uw_write(ctx, cacheWrite",
                                   string i,
@@ -3442,7 +3447,7 @@ fun p_file env (ds, ps) =
                                   newline,
                                   string "static uw_unit uw_Sqlcache_store",
                                   string i,
-                                  string "(uw_context ctx, uw_Basis_string s, ",
+                                  string "(uw_context ctx, uw_Basis_string s",
                                   string args,
                                   string ") {\n free(cacheQuery",
                                   string i,

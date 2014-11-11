@@ -26,24 +26,30 @@ datatype exp =
        | Recd of (string * exp) list
        | Proj of exp * string
 
-datatype reln =
-         Known
-       | Sql of string
-       | PCon0 of string
-       | PCon1 of string
-       | Eq
+datatype cmp =
+         Eq
        | Ne
        | Lt
        | Le
        | Gt
        | Ge
 
+datatype reln =
+         Known
+       | Sql of string
+       | PCon0 of string
+       | PCon1 of string
+       | Cmp of cmp
+
+datatype lop =
+         And
+       | Or
+
 datatype prop =
          True
        | False
        | Unknown
-       | And of prop * prop
-       | Or of prop * prop
+       | Lop of lop * prop * prop
        | Reln of reln * exp list
        | Cond of exp * prop
 
@@ -52,8 +58,8 @@ type 'a parser
 val parse : 'a parser -> Mono.exp -> 'a option
 
 datatype Rel =
-         Exps of exp * exp -> prop
-       | Props of prop * prop -> prop
+         RCmp of cmp
+       | RLop of lop
 
 datatype sqexp =
          SqConst of Prim.t

@@ -1,6 +1,5 @@
 structure Sqlcache (* :> SQLCACHE *) = struct
 
-open Sql
 open Mono
 
 structure IS = IntBinarySet
@@ -10,13 +9,14 @@ structure SS = BinarySetFn(SK)
 structure SM = BinaryMapFn(SK)
 structure SIMM = MultimapFn(structure KeyMap = SM structure ValSet = IS)
 
-(* Filled in by cacheWrap during Sqlcache. *)
+(* Filled in by [cacheWrap] during [Sqlcache]. *)
 val ffiInfo : {index : int, params : int} list ref = ref []
 
 fun getFfiInfo () = !ffiInfo
 
 (* Some FFIs have writing as their only effect, which the caching records. *)
 val ffiEffectful =
+    (* TODO: have this less hard-coded. *)
     let
         val fs = SS.fromList ["htmlifyInt_w",
                               "htmlifyFloat_w",
@@ -40,7 +40,7 @@ val ffiEffectful =
 
 (* Effect analysis. *)
 
-(* Makes an exception for EWrite (which is recorded when caching). *)
+(* Makes an exception for [EWrite] (which is recorded when caching). *)
 fun effectful doPrint (effs : IS.set) (inFunction : bool) (bound : int) : Mono.exp -> bool =
     (* If result is true, expression is definitely effectful. If result is
        false, then expression is definitely not effectful if effs is fully
@@ -62,7 +62,6 @@ fun effectful doPrint (effs : IS.set) (inFunction : bool) (bound : int) : Mono.e
           | ECon (_, _, SOME e) => eff e
           | ENone _ => false
           | ESome (_, e) => eff e
-          (* TODO: use FFI whitelist. *)
           | EFfi (m, f) => if ffiEffectful (m, f) then tru "ffi" else false
           | EFfiApp (m, f, _) => if ffiEffectful (m, f) then tru "ffiapp" else false
           (* ASK: we're calling functions effectful if they have effects when
@@ -131,82 +130,188 @@ val effectfulMap =
     end
 
 
-(* SQL analysis. *)
+(* Boolean formula normalization. *)
 
-val useInjIfPossible =
- fn SqConst prim => Inj (EPrim (Prim.String (Prim.Normal, Prim.toString prim)),
-                         ErrorMsg.dummySpan)
-  | sqexp => sqexp
+datatype normalForm = Cnf | Dnf
 
-fun equalities (canonicalTable : string -> string) :
-    sqexp -> ((string * string) * Mono.exp) list option =
+datatype 'atom formula =
+         Atom of 'atom
+       | Negate of 'atom formula
+       | Combo of normalForm * 'atom formula list
+
+val flipNf = fn Cnf => Dnf | Dnf => Cnf
+
+fun bind xs f = List.concat (map f xs)
+
+val rec cartesianProduct : 'a list list -> 'a list list =
+ fn [] => [[]]
+  | (xs :: xss) => bind (cartesianProduct xss)
+                        (fn ys => bind xs (fn x => [x :: ys]))
+
+fun normalize (negate : 'atom -> 'atom) (norm : normalForm) =
+ fn Atom x => [[x]]
+  | Negate f => map (map negate) (normalize negate (flipNf norm) f)
+  | Combo (n, fs) =>
     let
-        val rec eqs =
-         fn Binop (Exps f, e1, e2) =>
-            (* TODO: use a custom datatype in Exps instead of a function. *)
-            (case f (Var 1, Var 2) of
-                 Reln (Eq, [Var 1, Var 2]) =>
-                 let
-                     val (e1', e2') = (useInjIfPossible e1, useInjIfPossible e2)
-                 in
-                     case (e1', e2') of
-                         (Field (t, f), Inj i) => SOME [((canonicalTable t, f), i)]
-                       | (Inj i, Field (t, f)) => SOME [((canonicalTable t, f), i)]
-                       | _ => NONE
-                 end
-               | _ => NONE)
-          | Binop (Props f, e1, e2) =>
-            (* TODO: use a custom datatype in Props instead of a function. *)
-            (case f (True, False) of
-                 And (True, False) =>
-                 (case (eqs e1, eqs e2) of
-                      (SOME eqs1, SOME eqs2) => SOME (eqs1 @ eqs2)
-                    | _ => NONE)
-               | _ => NONE)
-          | _ => NONE
+        val fss = bind fs (normalize negate n)
     in
-        eqs
+        if n = norm then fss else cartesianProduct fss
     end
 
-val equalitiesQuery =
- fn Query1 {From = tablePairs, Where = SOME exp, ...} =>
-    equalities
-        (* If we have [SELECT ... FROM T AS T' ...], use T, not T'. *)
-        (fn t =>
-            case List.find (fn (_, tAs) => t = tAs) tablePairs of
-                NONE => t
-              | SOME (tOrig, _) => tOrig)
-        exp
-  | Query1 {Where = NONE, ...} => SOME []
-  | _ => NONE
+fun mapFormula mf =
+ fn Atom x => Atom (mf x)
+  | Negate f => Negate (mapFormula mf f)
+  | Combo (n, fs) => Combo (n, map (mapFormula mf) fs)
 
-val equalitiesDml =
- fn Insert (tab, eqs) => SOME (List.mapPartial
-                                   (fn (name, sqexp) =>
-                                       case useInjIfPossible sqexp of
-                                           Inj e => SOME ((tab, name), e)
-                                         | _ => NONE)
-                                   eqs)
-  | Delete (tab, exp) => equalities (fn _ => tab) exp
-  (* TODO: examine the updated values and not just the way they're filtered. *)
-  (* For example, UPDATE foo SET Id = 9001 WHERE Id = 42 should update both the
-     Id = 42 and Id = 9001 cache entries. Could also think of it as doing a
-     Delete immediately followed by an Insert. *)
-  | Update (tab, _, exp) => equalities (fn _ => tab) exp
+
+(* SQL analysis. *)
+
+val rec chooseTwos : 'a list -> ('a * 'a) list =
+ fn [] => []
+  | x :: ys => map (fn y => (x, y)) ys @ chooseTwos ys
+
+datatype atomExp =
+         QueryArg of int
+       | DmlRel of int
+       | Prim of Prim.t
+       | Field of string * string
+
+structure AtomExpKey : ORD_KEY = struct
+
+type ord_key = atomExp
+
+val compare =
+ fn (QueryArg n1, QueryArg n2) => Int.compare (n1, n2)
+  | (QueryArg _, _) => LESS
+  | (_, QueryArg _) => GREATER
+  | (DmlRel n1, DmlRel n2) => Int.compare (n1, n2)
+  | (DmlRel _, _) => LESS
+  | (_, DmlRel _) => GREATER
+  | (Prim p1, Prim p2) => Prim.compare (p1, p2)
+  | (Prim _, _) => LESS
+  | (_, Prim _) => GREATER
+  | (Field (t1, f1), Field (t2, f2)) => String.compare (t1 ^ "." ^ f1, t2 ^ "." ^ f2)
+
+end
+
+structure UF = UnionFindFn(AtomExpKey)
+
+fun conflictMaps (fQuery : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula,
+                  fDml : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula) =
+    let
+        val toKnownEquality =
+         (* [NONE] here means unkown. Anything that isn't a comparison between
+            two knowns shouldn't be used, and simply dropping unused terms is
+            okay in disjunctive normal form. *)
+         fn (Sql.Eq, SOME e1, SOME e2) => SOME (e1, e2)
+          | _ => NONE
+        val equivClasses : (Sql.cmp * atomExp option * atomExp option) list -> atomExp list list =
+            UF.classes
+            o List.foldl UF.union' UF.empty
+            o List.mapPartial toKnownEquality
+        fun addToEqs (eqs, n, e) =
+            case IM.find (eqs, n) of
+                (* Comparing to a constant seems better? *)
+                SOME (EPrim _) => eqs
+              | _ => IM.insert (eqs, n, e)
+        val accumulateEqs =
+         (* [NONE] means we have a contradiction. *)
+         fn (_, NONE) => NONE
+          | ((Prim p1, Prim p2), eqso) =>
+            (case Prim.compare (p1, p2) of
+                 EQUAL => eqso
+               | _ => NONE)
+          | ((QueryArg n, Prim p), SOME eqs) => SOME (addToEqs (eqs, n, EPrim p))
+          | ((QueryArg n, DmlRel r), SOME eqs) => SOME (addToEqs (eqs, n, ERel r))
+          | ((Prim p, QueryArg n), SOME eqs) => SOME (addToEqs (eqs, n, EPrim p))
+          | ((DmlRel r, QueryArg n), SOME eqs) => SOME (addToEqs (eqs, n, ERel r))
+          (* TODO: deal with equalities involving just [DmlRel]s and [Prim]s. *)
+          | (_, eqso) => eqso
+        val eqsOfClass : atomExp list -> Mono.exp' IM.map option =
+            List.foldl accumulateEqs (SOME IM.empty)
+            o chooseTwos
+        fun toAtomExps rel (cmp, e1, e2) =
+            let
+                val qa =
+                 (* Here [NONE] means unkown. *)
+                 fn Sql.SqConst p => SOME (Prim p)
+                  | Sql.Field tf => SOME (Field tf)
+                  | Sql.Inj (EPrim p, _) => SOME (Prim p)
+                  | Sql.Inj (ERel n, _) => SOME (rel n)
+                  (* We can't deal with anything else. *)
+                  | _ => NONE
+            in
+                (cmp, qa e1, qa e2)
+            end
+        fun negateCmp (cmp, e1, e2) =
+            (case cmp of
+                 Sql.Eq => Sql.Ne
+               | Sql.Ne => Sql.Eq
+               | Sql.Lt => Sql.Ge
+               | Sql.Le => Sql.Gt
+               | Sql.Gt => Sql.Le
+               | Sql.Ge => Sql.Lt,
+             e1, e2)
+        val markQuery = mapFormula (toAtomExps QueryArg)
+        val markDml = mapFormula (toAtomExps DmlRel)
+        val dnf = normalize negateCmp Dnf (Combo (Cnf, [markQuery fQuery, markDml fDml]))
+        (* If one of the terms in a conjunction leads to a contradiction, which
+           is represented by [NONE], drop the entire conjunction. *)
+        val sequenceOption = List.foldr (fn (SOME x, SOME xs) => SOME (x :: xs) | _ => NONE)
+                                        (SOME [])
+    in
+        List.mapPartial (sequenceOption o map eqsOfClass o equivClasses) dnf
+    end
+
+val rec sqexpToFormula =
+ fn Sql.SqTrue => Combo (Cnf, [])
+  | Sql.SqFalse => Combo (Dnf, [])
+  | Sql.SqNot e => Negate (sqexpToFormula e)
+  | Sql.Binop (Sql.RCmp c, e1, e2) => Atom (c, e1, e2)
+  | Sql.Binop (Sql.RLop l, p1, p2) => Combo (case l of Sql.And => Cnf | Sql.Or => Dnf,
+                                             [sqexpToFormula p1, sqexpToFormula p2])
+  (* ASK: any other sqexps that can be props? *)
+  | _ => raise Match
+
+val rec queryToFormula =
+ fn Sql.Query1 {From = tablePairs, Where = NONE, ...} => Combo (Cnf, [])
+  | Sql.Query1 {From = tablePairs, Where = SOME e, ...} =>
+    let
+        fun renameString table =
+            case List.find (fn (_, t) => table = t) tablePairs of
+                NONE => table
+              | SOME (realTable, _) => realTable
+        val renameSqexp =
+         fn Sql.Field (table, field) => Sql.Field (renameString table, field)
+          | e => e
+         fun renameAtom (cmp, e1, e2) = (cmp, renameSqexp e1, renameSqexp e2)
+    in
+        mapFormula renameAtom (sqexpToFormula e)
+    end
+  | Sql.Union (q1, q2) => Combo (Dnf, [queryToFormula q1, queryToFormula q2])
+
+val rec dmlToFormula =
+ fn Sql.Insert (table, vals) =>
+    Combo (Cnf, map (fn (field, v) => Atom (Sql.Eq, Sql.Field (table, field), v)) vals)
+  | Sql.Delete (_, wher) => sqexpToFormula wher
+  (* TODO: refine formula for the vals part, which could take into account the wher part. *)
+  | Sql.Update (table, vals, wher) => Combo (Dnf, [dmlToFormula (Sql.Insert (table, vals)),
+                                                   dmlToFormula (Sql.Delete (table, wher))])
 
 val rec tablesQuery =
- fn Query1 {From = tablePairs, ...} => SS.fromList (map #1 tablePairs)
-  | Union (q1, q2) => SS.union (tablesQuery q1, tablesQuery q2)
+ fn Sql.Query1 {From = tablePairs, ...} => SS.fromList (map #1 tablePairs)
+  | Sql.Union (q1, q2) => SS.union (tablesQuery q1, tablesQuery q2)
 
 val tableDml =
- fn Insert (tab, _) => tab
-  | Delete (tab, _) => tab
-  | Update (tab, _, _) => tab
+ fn Sql.Insert (tab, _) => tab
+  | Sql.Delete (tab, _) => tab
+  | Sql.Update (tab, _, _) => tab
 
 
 (* Program instrumentation. *)
 
 fun stringExp s = (EPrim (Prim.String (Prim.Normal, s)), ErrorMsg.dummySpan)
+
 val stringTyp = (TFfi ("Basis", "string"), ErrorMsg.dummySpan)
 
 val sequence =
@@ -243,10 +348,10 @@ fun incRelsBound bound inc =
 
 val incRels = incRelsBound 0
 
-(* Filled in by instrumentQuery during Monoize, used during Sqlcache. *)
+(* Filled in by instrumentQuery during [Monoize], used during [Sqlcache]. *)
 val urlifiedRel0s : Mono.exp IM.map ref = ref IM.empty
 
-(* Used by Monoize. *)
+(* Used by [Monoize]. *)
 val instrumentQuery =
     let
         val nextQuery = ref 0
@@ -260,9 +365,12 @@ val instrumentQuery =
                     (ELet (varPrefix ^ Int.toString i, typ, query,
                            (* Uses a dummy FFI call to keep the urlified expression around, which
                               in turn keeps the declarations required for urlification safe from
-                              MonoShake. The dummy call is removed during Sqlcache. *)
-                           (* TODO: thread a Monoize.Fm.t through this module. *)
-                           (ESeq ((EFfiApp ("Sqlcache", "dummy", [(urlifiedRel0, stringTyp)]), loc),
+                              [MonoShake]. The dummy call is removed during [Sqlcache]. *)
+                           (* TODO: thread a [Monoize.Fm.t] through this module. *)
+                           (ESeq ((EFfiApp ("Sqlcache",
+                                            "dummy",
+                                            [(urlifiedRel0, stringTyp)]),
+                                   loc),
                                   (ERel 0, loc)),
                             loc)),
                      loc)
@@ -272,18 +380,18 @@ val instrumentQuery =
         iq
     end
 
-fun cacheWrap (query, i, urlifiedRel0, eqs) =
+fun cacheWrap (query, i, urlifiedRel0, args) =
     case query of
         (EQuery {state = typ, ...}, _) =>
         let
-            val () = ffiInfo := {index = i, params = length eqs} :: !ffiInfo
+            val () = ffiInfo := {index = i, params = length args} :: !ffiInfo
             val loc = ErrorMsg.dummySpan
             (* We ensure before this step that all arguments aren't effectful.
                by turning them into local variables as needed. *)
-            val args = map (fn (_, e) => (e, stringTyp)) eqs
-            val argsInc = map (fn (e, typ) => (incRels 1 e, typ)) args
-            val check = ffiAppCache ("check", i, args)
-            val store = ffiAppCache ("store", i, (urlifiedRel0, stringTyp) :: argsInc)
+            val argTyps = map (fn e => (e, stringTyp)) args
+            val argTypsInc = map (fn (e, typ) => (incRels 1 e, typ)) argTyps
+            val check = ffiAppCache ("check", i, argTyps)
+            val store = ffiAppCache ("store", i, (urlifiedRel0, stringTyp) :: argTypsInc)
             val rel0 = (ERel 0, loc)
         in
             (ECase (check,
@@ -315,18 +423,16 @@ fun addChecking file =
                         letBody) =>
             let
                 val loc = ErrorMsg.dummySpan
-                val chunks = chunkify origQueryText
+                val chunks = Sql.chunkify origQueryText
                 fun strcat (e1, e2) = (EStrcat (e1, e2), loc)
                 val (newQueryText, newVariables) =
                     (* Important that this is foldr (to oppose foldl below). *)
                     List.foldr
                         (fn (chunk, (qText, newVars)) =>
+                            (* Variable bound to the head of newBs will have the lowest index. *)
                             case chunk of
-                                Exp (e as (EPrim _, _)) => (strcat (e, qText), newVars)
-                              | Exp (e as (ERel _, _)) => (strcat (e, qText), newVars)
-                              | Exp (e as (ENamed _, _)) => (strcat (e, qText), newVars)
-                              (* Head of newVars has lowest index. *)
-                              | Exp e =>
+                                Sql.Exp (e as (EPrim _, _)) => (strcat (e, qText), newVars)
+                              | Sql.Exp e =>
                                 let
                                     val n = length newVars
                                 in
@@ -335,12 +441,15 @@ fun addChecking file =
                                        so we increment indices by n. *)
                                     (strcat ((ERel (~(n+1)), loc), qText), incRels n e :: newVars)
                                 end
-                              | String s => (strcat (stringExp s, qText), newVars))
+                              | Sql.String s => (strcat (stringExp s, qText), newVars))
                         (stringExp "", [])
                         chunks
                 fun wrapLets e' =
                     (* Important that this is foldl (to oppose foldr above). *)
-                    List.foldl (fn (v, e') => ELet ("sqlArgz", stringTyp, v, (e', loc))) e' newVariables
+                    List.foldl (fn (v, e') => ELet ("sqlArgz", stringTyp, v, (e', loc)))
+                               e'
+                               newVariables
+                val numArgs = length newVariables
                 (* Increment once for each new variable just made. *)
                 val queryExp = incRels (length newVariables)
                                        (EQuery {query = newQueryText,
@@ -352,6 +461,7 @@ fun addChecking file =
                                         queryLoc)
                 val (EQuery {query = queryText, ...}, _) = queryExp
                 (* val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty queryText)); *)
+                val args = List.tabulate (numArgs, fn n => (ERel n, loc))
                 fun bind x f = Option.mapPartial f x
                 fun guard b x = if b then x else NONE
                 (* DEBUG: set first boolean argument to true to turn on printing. *)
@@ -359,16 +469,15 @@ fun addChecking file =
                 val attempt =
                     (* Ziv misses Haskell's do notation.... *)
                     guard (safe 0 queryText andalso safe 0 initial andalso safe 2 body) (
-                    bind (parse query queryText) (fn queryParsed =>
+                    bind (Sql.parse Sql.query queryText) (fn queryParsed =>
                     bind (indexOfName v) (fn i =>
-                    bind (equalitiesQuery queryParsed) (fn eqs =>
                     bind (IM.find (!urlifiedRel0s, i)) (fn urlifiedRel0 =>
                     SOME (wrapLets (ELet (v, t,
-                                          cacheWrap (queryExp, i, urlifiedRel0, eqs),
+                                          cacheWrap (queryExp, i, urlifiedRel0, args),
                                           incRelsBound 1 (length newVariables) letBody)),
                           SS.foldr (fn (tab, qi) => SIMM.insert (qi, tab, i))
                                    queryInfo
-                                   (tablesQuery queryParsed)))))))
+                                   (tablesQuery queryParsed))))))
             in
                 case attempt of
                     SOME pair => pair
@@ -380,6 +489,22 @@ fun addChecking file =
         fileMapfold (fn exp => fn state => doExp state exp) file SIMM.empty
     end
 
+fun invalidations (nQueryArgs, query, dml) =
+    let
+        val loc = ErrorMsg.dummySpan
+        val optionToExp =
+         fn NONE => (ENone stringTyp, loc)
+          | SOME e => (ESome (stringTyp, (e, loc)), loc)
+        fun eqsToInvalidation eqs =
+            let
+                fun inv n = if n < 0 then [] else optionToExp (IM.find (eqs, n)) :: inv (n - 1)
+            in
+                inv (nQueryArgs - 1)
+            end
+    in
+        map (map eqsToInvalidation) (conflictMaps (queryToFormula query, dmlToFormula dml))
+    end
+
 fun addFlushing (file, queryInfo) =
     let
         val allIndices : int list = SM.foldr (fn (x, acc) => IS.listItems x @ acc) [] queryInfo
@@ -388,7 +513,7 @@ fun addFlushing (file, queryInfo) =
          fn dmlExp as EDml (dmlText, _) =>
             let
                 val indices =
-                    case parse dml dmlText of
+                    case Sql.parse Sql.dml dmlText of
                         SOME dmlParsed => SIMM.findList (queryInfo, tableDml dmlParsed)
                       | NONE => allIndices
             in
@@ -407,180 +532,5 @@ fun go file =
     in
          file'
     end
-
-
-(* BEGIN OLD
-
-fun intExp (n, loc) = (EPrim (Prim.Int (Int64.fromInt n)), loc)
-fun intTyp loc = (TFfi ("Basis", "int"), loc)
-fun stringExp (s, loc) = (EPrim (Prim.String (Prim.Normal, s)), loc)
-
-fun boolPat (b, loc) = (PCon (Enum,
-                              PConFfi {mod = "Basis", datatyp = "bool", arg = NONE,
-                                       con = if b then "True" else "False"},
-                              NONE),
-                        loc)
-fun boolTyp loc = (TFfi ("Basis", "int"), loc)
-
-fun ffiAppExp (module, func, index, args, loc) =
-    (EFfiApp (module, func ^ Int.toString index, args), loc)
-
-val sequence =
- fn ((exp :: exps), loc) =>
-    List.foldl (fn (exp, seq) => (ESeq (seq, exp), loc)) exp exps
-  | _ => raise Match
-
-fun antiguardUnit (cond, exp, loc) =
-    (ECase (cond,
-            [(boolPat (false, loc), exp),
-             (boolPat (true, loc), (ERecord [], loc))],
-            {disc = boolTyp loc, result = (TRecord [], loc)}),
-     loc)
-
-fun underAbs f (exp as (exp', loc)) =
-    case exp' of
-        EAbs (x, y, z, body) => (EAbs (x, y, z, underAbs f body), loc)
-      | _ => f exp
-
-
-val rec tablesRead =
- fn Query1 {From = tablePairs, ...} => SS.fromList (map #1 tablePairs)
-  | Union (q1, q2) => SS.union (tablesRead q1, tablesRead q2)
-
-val tableWritten =
- fn Insert (tab, _) => tab
-  | Delete (tab, _) => tab
-  | Update (tab, _, _) => tab
-
-fun tablesInExp' exp' =
-    let
-        val nothing = {read = SS.empty, written = SS.empty}
-    in
-        case exp' of
-            EQuery {query = e, ...} =>
-            (case parse query e of
-                 SOME q => {read = tablesRead q, written = SS.empty}
-               | NONE => nothing)
-          | EDml (e, _) =>
-            (case parse dml e of
-                 SOME q => {read = SS.empty, written = SS.singleton (tableWritten q)}
-               | NONE => nothing)
-          | _ => nothing
-    end
-
-val tablesInExp =
-    let
-        fun addTables (exp', {read, written}) =
-            let
-                val {read = r, written = w} = tablesInExp' exp'
-            in
-                {read = SS.union (r, read), written = SS.union (w, written)}
-            end
-    in
-        MonoUtil.Exp.fold {typ = #2, exp = addTables}
-                          {read = SS.empty, written = SS.empty}
-    end
-
-fun addCacheCheck (index, exp) =
-    let
-        fun f (body as (_, loc)) =
-            let
-                val check = ffiAppExp ("Cache", "check", index, loc)
-                val store = ffiAppExp ("Cache", "store", index, loc)
-            in
-                antiguardUnit (check, sequence ([body, store], loc), loc)
-            end
-    in
-        underAbs f exp
-    end
-
-fun addCacheFlush (exp, tablesToIndices) =
-    let
-        fun addIndices (table, indices) = IS.union (indices, SIMM.find (tablesToIndices, table))
-        fun f (body as (_, loc)) =
-            let
-                fun mapFfi func = List.map (fn i => ffiAppExp ("Cache", func, i, loc))
-                val flushes =
-                    IS.listItems (SS.foldr addIndices IS.empty (#written (tablesInExp body)))
-            in
-                sequence (mapFfi "flush" flushes @ [body] @ mapFfi "ready" flushes, loc)
-            end
-    in
-        underAbs f exp
-    end
-
-val handlerIndices =
-    let
-        val isUnit =
-         fn (TRecord [], _) => true
-          | _ => false
-        fun maybeAdd (d, soFar as {readers, writers}) =
-            case d of
-                DExport (Link ReadOnly, _, name, typs, typ, _) =>
-                if List.all isUnit (typ::typs)
-                then {readers = IS.add (readers, name), writers = writers}
-                else soFar
-              | DExport (_, _, name, _, _, _) => (* Not read only. *)
-                {readers = readers, writers = IS.add (writers, name)}
-              | _ => soFar
-    in
-        MonoUtil.File.fold {typ = #2, exp = #2, decl = maybeAdd}
-                           {readers = IS.empty, writers = IS.empty}
-    end
-
-fun fileFoldMapiSelected f init (file, indices) =
-    let
-        fun doExp (original as ((a, index, b, exp, c), state)) =
-            if IS.member (indices, index)
-            then let val (newExp, newState) = f (index, exp, state)
-                 in ((a, index, b, newExp, c), newState) end
-            else original
-        fun doDecl decl state =
-            let
-                val result =
-                    case decl of
-                        DVal x =>
-                        let val (y, newState) = doExp (x, state)
-                        in (DVal y, newState) end
-                      | DValRec xs =>
-                        let val (ys, newState) = ListUtil.foldlMap doExp state xs
-                        in (DValRec ys, newState) end
-                      | _ => (decl, state)
-            in
-                Search.Continue result
-            end
-        fun nada x y = Search.Continue (x, y)
-    in
-        case MonoUtil.File.mapfold {typ = nada, exp = nada, decl = doDecl} file init of
-            Search.Continue x => x
-          | _ => raise Match (* Should never happen. *)
-    end
-
-fun fileMapSelected f = #1 o fileFoldMapiSelected (fn (_, x, _) => (f x, ())) ()
-
-val addCacheChecking =
-    let
-        fun f (index, exp, tablesToIndices) =
-            (addCacheCheck (index, exp),
-             SS.foldr (fn (table, tsToIs) => SIMM.insert (tsToIs, table, index))
-                      tablesToIndices
-                      (#read (tablesInExp exp)))
-    in
-        fileFoldMapiSelected f (SM.empty)
-    end
-
-fun addCacheFlushing (file, tablesToIndices, writers) =
-    fileMapSelected (fn exp => addCacheFlush (exp, tablesToIndices)) (file, writers)
-
-fun go file =
-    let
-        val {readers, writers} = handlerIndices file
-        val (fileWithChecks, tablesToIndices) = addCacheChecking (file, readers)
-    in
-        ffiIndices := IS.listItems readers;
-        addCacheFlushing (fileWithChecks, tablesToIndices, writers)
-    end
-
-END OLD *)
 
 end
