@@ -148,21 +148,40 @@ val rec cartesianProduct : 'a list list -> 'a list list =
   | (xs :: xss) => bind (cartesianProduct xss)
                         (fn ys => bind xs (fn x => [x :: ys]))
 
-fun normalize (negate : 'atom -> 'atom) (norm : normalForm) =
+(* Pushes all negation to the atoms.*)
+fun pushNegate (negate : 'atom -> 'atom) (negating : bool) =
+ fn Atom x => Atom (if negating then negate x else x)
+  | Negate f => pushNegate negate (not negating) f
+  | Combo (n, fs) => Combo (if negating then flipNf n else n, map (pushNegate negate negating) fs)
+
+val rec flatten =
+ fn Combo (n, fs) =>
+    Combo (n, List.foldr (fn (f, acc) =>
+                             case f of
+                                 Combo (n', fs') => if n = n' then fs' @ acc else f :: acc
+                               | _ => f :: acc)
+                         []
+                         (map flatten fs))
+  | f => f
+
+fun normalize' (negate : 'atom -> 'atom) (norm : normalForm) =
  fn Atom x => [[x]]
-  | Negate f => map (map negate) (normalize negate (flipNf norm) f)
+  | Negate f => map (map negate) (normalize' negate (flipNf norm) f)
   | Combo (n, fs) =>
     let
-        val fss = bind fs (normalize negate n)
+        val fss = bind fs (normalize' negate n)
     in
         if n = norm then fss else cartesianProduct fss
     end
 
-fun mapFormula mf =
- fn Atom x => Atom (mf x)
-  | Negate f => Negate (mapFormula mf f)
-  | Combo (n, fs) => Combo (n, map (mapFormula mf) fs)
+fun normalize negate norm = normalize' negate norm o flatten o pushNegate negate false
 
+fun mapFormulaSigned positive mf =
+ fn Atom x => Atom (mf (positive, x))
+  | Negate f => Negate (mapFormulaSigned (not positive) mf f)
+  | Combo (n, fs) => Combo (n, map (mapFormulaSigned positive mf) fs)
+
+fun mapFormula mf = mapFormulaSigned true (fn (_, x) => mf x)
 
 (* SQL analysis. *)
 
@@ -175,6 +194,17 @@ datatype atomExp =
        | DmlRel of int
        | Prim of Prim.t
        | Field of string * string
+
+val equalAtomExp =
+    let
+        val isEqual = fn EQUAL => true | _ => false
+    in
+     fn (QueryArg n1, QueryArg n2) => n1 = n2
+      | (DmlRel n1, DmlRel n2) => n1 = n2
+      | (Prim p1, Prim p2) => isEqual (Prim.compare (p1, p2))
+      | (Field (t1, f1), Field (t2, f2)) => isEqual (String.compare (t1 ^ "." ^ f1, t2 ^ "." ^ f2))
+      | _ => false
+    end
 
 structure AtomExpKey : ORD_KEY = struct
 
@@ -196,9 +226,10 @@ end
 
 structure UF = UnionFindFn(AtomExpKey)
 
-fun conflictMaps (fQuery : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula,
-                  fDml : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula) =
-    let
+(* val conflictMaps : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula *)
+(*                    * (Sql.cmp * Sql.sqexp * Sql.sqexp) formula *)
+(*                    -> Mono.exp' IM.map list = *)
+(*     let *)
         val toKnownEquality =
          (* [NONE] here means unkown. Anything that isn't a comparison between
             two knowns shouldn't be used, and simply dropping unused terms is
@@ -212,7 +243,7 @@ fun conflictMaps (fQuery : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula,
         fun addToEqs (eqs, n, e) =
             case IM.find (eqs, n) of
                 (* Comparing to a constant seems better? *)
-                SOME (EPrim _) => eqs
+                SOME (Prim _) => eqs
               | _ => IM.insert (eqs, n, e)
         val accumulateEqs =
          (* [NONE] means we have a contradiction. *)
@@ -221,13 +252,13 @@ fun conflictMaps (fQuery : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula,
             (case Prim.compare (p1, p2) of
                  EQUAL => eqso
                | _ => NONE)
-          | ((QueryArg n, Prim p), SOME eqs) => SOME (addToEqs (eqs, n, EPrim p))
-          | ((QueryArg n, DmlRel r), SOME eqs) => SOME (addToEqs (eqs, n, ERel r))
-          | ((Prim p, QueryArg n), SOME eqs) => SOME (addToEqs (eqs, n, EPrim p))
-          | ((DmlRel r, QueryArg n), SOME eqs) => SOME (addToEqs (eqs, n, ERel r))
+          | ((QueryArg n, Prim p), SOME eqs) => SOME (addToEqs (eqs, n, Prim p))
+          | ((QueryArg n, DmlRel r), SOME eqs) => SOME (addToEqs (eqs, n, DmlRel r))
+          | ((Prim p, QueryArg n), SOME eqs) => SOME (addToEqs (eqs, n, Prim p))
+          | ((DmlRel r, QueryArg n), SOME eqs) => SOME (addToEqs (eqs, n, DmlRel r))
           (* TODO: deal with equalities involving just [DmlRel]s and [Prim]s. *)
           | (_, eqso) => eqso
-        val eqsOfClass : atomExp list -> Mono.exp' IM.map option =
+        val eqsOfClass : atomExp list -> atomExp IM.map option =
             List.foldl accumulateEqs (SOME IM.empty)
             o chooseTwos
         fun toAtomExps rel (cmp, e1, e2) =
@@ -252,16 +283,26 @@ fun conflictMaps (fQuery : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula,
                | Sql.Gt => Sql.Le
                | Sql.Ge => Sql.Lt,
              e1, e2)
-        val markQuery = mapFormula (toAtomExps QueryArg)
-        val markDml = mapFormula (toAtomExps DmlRel)
-        val dnf = normalize negateCmp Dnf (Combo (Cnf, [markQuery fQuery, markDml fDml]))
-        (* If one of the terms in a conjunction leads to a contradiction, which
-           is represented by [NONE], drop the entire conjunction. *)
-        val sequenceOption = List.foldr (fn (SOME x, SOME xs) => SOME (x :: xs) | _ => NONE)
-                                        (SOME [])
-    in
-        List.mapPartial (sequenceOption o map eqsOfClass o equivClasses) dnf
-    end
+        val markQuery : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula ->
+                        (Sql.cmp * atomExp option * atomExp option) formula =
+            mapFormula (toAtomExps QueryArg)
+        val markDml : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula ->
+                      (Sql.cmp * atomExp option * atomExp option) formula =
+            mapFormula (toAtomExps DmlRel)
+        (* No eqs should have key conflicts because no variable is in two
+           equivalence classes, so the [#1] can be anything. *)
+        val mergeEqs : (atomExp IntBinaryMap.map option list
+                        -> atomExp IntBinaryMap.map option) =
+            List.foldr (fn (SOME eqs, SOME acc) => SOME (IM.unionWith #1 (eqs, acc)) | _ => NONE)
+                       (SOME IM.empty)
+        fun dnf (fQuery, fDml) =
+            normalize negateCmp Dnf (Combo (Cnf, [markQuery fQuery, markDml fDml]))
+    (* in *)
+        val conflictMaps : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula
+                           * (Sql.cmp * Sql.sqexp * Sql.sqexp) formula
+                           -> atomExp IM.map list =
+            List.mapPartial (mergeEqs o map eqsOfClass o equivClasses) o dnf
+    (* end *)
 
 val rec sqexpToFormula =
  fn Sql.SqTrue => Combo (Cnf, [])
@@ -273,9 +314,7 @@ val rec sqexpToFormula =
   (* ASK: any other sqexps that can be props? *)
   | _ => raise Match
 
-val rec queryToFormula =
- fn Sql.Query1 {From = tablePairs, Where = NONE, ...} => Combo (Cnf, [])
-  | Sql.Query1 {From = tablePairs, Where = SOME e, ...} =>
+fun renameTables tablePairs =
     let
         fun renameString table =
             case List.find (fn (_, t) => table = t) tablePairs of
@@ -284,19 +323,47 @@ val rec queryToFormula =
         val renameSqexp =
          fn Sql.Field (table, field) => Sql.Field (renameString table, field)
           | e => e
-         fun renameAtom (cmp, e1, e2) = (cmp, renameSqexp e1, renameSqexp e2)
+        fun renameAtom (cmp, e1, e2) = (cmp, renameSqexp e1, renameSqexp e2)
     in
-        mapFormula renameAtom (sqexpToFormula e)
+        mapFormula renameAtom
     end
+
+val rec queryToFormula =
+ fn Sql.Query1 {Where = NONE, ...} => Combo (Cnf, [])
+  | Sql.Query1 {From = tablePairs, Where = SOME e, ...} =>
+    renameTables tablePairs (sqexpToFormula e)
   | Sql.Union (q1, q2) => Combo (Dnf, [queryToFormula q1, queryToFormula q2])
 
-val rec dmlToFormula =
- fn Sql.Insert (table, vals) =>
+fun valsToFormula (table, vals) =
     Combo (Cnf, map (fn (field, v) => Atom (Sql.Eq, Sql.Field (table, field), v)) vals)
-  | Sql.Delete (_, wher) => sqexpToFormula wher
+
+val rec dmlToFormula =
+ fn Sql.Insert tableVals => valsToFormula tableVals
+  | Sql.Delete (table, wher) => renameTables [(table, "T")] (sqexpToFormula wher)
   (* TODO: refine formula for the vals part, which could take into account the wher part. *)
-  | Sql.Update (table, vals, wher) => Combo (Dnf, [dmlToFormula (Sql.Insert (table, vals)),
-                                                   dmlToFormula (Sql.Delete (table, wher))])
+  | Sql.Update (table, vals, wher) =>
+    let
+        val f = sqexpToFormula wher
+        fun update (positive, a) =
+            let
+                fun updateIfNecessary field =
+                    case List.find (fn (f, _) => field = f) vals of
+                        SOME (_, v) => (if positive then Sql.Eq else Sql.Ne,
+                                        Sql.Field (table, field),
+                                        v)
+                      | NONE => a
+            in
+                case a of
+                    (_, Sql.Field (_, field), _) => updateIfNecessary field
+                  | (_, _, Sql.Field (_, field)) => updateIfNecessary field
+                  | _ => a
+            end
+    in
+        renameTables [(table, "T")]
+                     (Combo (Dnf, [f,
+                                   Combo (Cnf, [valsToFormula (table, vals),
+                                                mapFormulaSigned true update f])]))
+    end
 
 val rec tablesQuery =
  fn Sql.Query1 {From = tablePairs, ...} => SS.fromList (map #1 tablePairs)
@@ -416,7 +483,7 @@ fun fileMap doExp file = #1 (fileMapfold (fn x => fn _ => (doExp x, ())) file ()
 
 fun addChecking file =
     let
-        fun doExp queryInfo =
+        fun doExp (queryInfo as (tableToIndices, indexToQuery)) =
          fn e' as ELet (v, t,
                         queryExp' as (EQuery {query = origQueryText,
                                               initial, body, state, tables, exps}, queryLoc),
@@ -460,7 +527,7 @@ fun addChecking file =
                                                 exps = exps},
                                         queryLoc)
                 val (EQuery {query = queryText, ...}, _) = queryExp
-                (* val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty queryText)); *)
+                val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty queryText));
                 val args = List.tabulate (numArgs, fn n => (ERel n, loc))
                 fun bind x f = Option.mapPartial f x
                 fun guard b x = if b then x else NONE
@@ -470,14 +537,15 @@ fun addChecking file =
                     (* Ziv misses Haskell's do notation.... *)
                     guard (safe 0 queryText andalso safe 0 initial andalso safe 2 body) (
                     bind (Sql.parse Sql.query queryText) (fn queryParsed =>
-                    bind (indexOfName v) (fn i =>
-                    bind (IM.find (!urlifiedRel0s, i)) (fn urlifiedRel0 =>
+                    bind (indexOfName v) (fn index =>
+                    bind (IM.find (!urlifiedRel0s, index)) (fn urlifiedRel0 =>
                     SOME (wrapLets (ELet (v, t,
-                                          cacheWrap (queryExp, i, urlifiedRel0, args),
+                                          cacheWrap (queryExp, index, urlifiedRel0, args),
                                           incRelsBound 1 (length newVariables) letBody)),
-                          SS.foldr (fn (tab, qi) => SIMM.insert (qi, tab, i))
-                                   queryInfo
-                                   (tablesQuery queryParsed))))))
+                          (SS.foldr (fn (tab, qi) => SIMM.insert (qi, tab, index))
+                                    tableToIndices
+                                    (tablesQuery queryParsed),
+                           IM.insert (indexToQuery, index, (queryParsed, numArgs))))))))
             in
                 case attempt of
                     SOME pair => pair
@@ -486,35 +554,69 @@ fun addChecking file =
           | ESeq ((EFfiApp ("Sqlcache", "dummy", _), _), (e', _)) => (e', queryInfo)
           | e' => (e', queryInfo)
     in
-        fileMapfold (fn exp => fn state => doExp state exp) file SIMM.empty
+        fileMapfold (fn exp => fn state => doExp state exp) file (SIMM.empty, IM.empty)
     end
+
+val gunk' : (((Sql.cmp * Sql.sqexp * Sql.sqexp) formula)
+             * ((Sql.cmp * Sql.sqexp * Sql.sqexp) formula)) list ref = ref []
 
 fun invalidations (nQueryArgs, query, dml) =
     let
         val loc = ErrorMsg.dummySpan
-        val optionToExp =
+        val optionAtomExpToExp =
          fn NONE => (ENone stringTyp, loc)
-          | SOME e => (ESome (stringTyp, (e, loc)), loc)
+          | SOME e => (ESome (stringTyp,
+                              (case e of
+                                   DmlRel n => ERel n
+                                 | Prim p => EPrim p
+                                 (* TODO: make new type containing only these two. *)
+                                 | _ => raise Match,
+                               loc)),
+                       loc)
         fun eqsToInvalidation eqs =
             let
-                fun inv n = if n < 0 then [] else optionToExp (IM.find (eqs, n)) :: inv (n - 1)
+                fun inv n = if n < 0 then [] else IM.find (eqs, n) :: inv (n - 1)
             in
                 inv (nQueryArgs - 1)
             end
+        (* *)
+        val rec madeRedundantBy : atomExp option list * atomExp option list -> bool =
+         fn ([], []) => true
+          | (NONE :: xs, _ :: ys) => madeRedundantBy (xs, ys)
+          | (SOME x :: xs, SOME y :: ys) => equalAtomExp (x, y) andalso madeRedundantBy (xs, ys)
+          | _ => false
+        fun removeRedundant' (xss, yss) =
+            case xss of
+                [] => yss
+              | xs :: xss' =>
+                removeRedundant' (xss',
+                                  if List.exists (fn ys => madeRedundantBy (xs, ys)) (xss' @ yss)
+                                  then yss
+                                  else xs :: yss)
+        fun removeRedundant xss = removeRedundant' (xss, [])
+        val eqss = conflictMaps (queryToFormula query, dmlToFormula dml)
     in
-        map (map eqsToInvalidation) (conflictMaps (queryToFormula query, dmlToFormula dml))
+        gunk' := (queryToFormula query, dmlToFormula dml) :: !gunk';
+        (map (map optionAtomExpToExp) o removeRedundant o map eqsToInvalidation) eqss
     end
 
-fun addFlushing (file, queryInfo) =
+val gunk : Mono.exp list list list ref = ref []
+
+fun addFlushing (file, queryInfo as (tableToIndices, indexToQuery)) =
     let
-        val allIndices : int list = SM.foldr (fn (x, acc) => IS.listItems x @ acc) [] queryInfo
-        fun flushes indices = map (fn i => ffiAppCache' ("flush", i, [])) indices
+        val allIndices = SM.foldr (fn (x, acc) => IS.listItems x @ acc) [] tableToIndices
+        val flushes = map (fn i => ffiAppCache' ("flush", i, []))
         val doExp =
          fn dmlExp as EDml (dmlText, _) =>
             let
                 val indices =
                     case Sql.parse Sql.dml dmlText of
-                        SOME dmlParsed => SIMM.findList (queryInfo, tableDml dmlParsed)
+                        SOME dmlParsed =>
+                        map (fn i => ((case IM.find (indexToQuery, i) of
+                                           NONE => ()
+                                         | SOME (queryParsed, numArgs) =>
+                                           gunk := invalidations (numArgs, queryParsed, dmlParsed) :: !gunk);
+                                      i)) (SIMM.findList (tableToIndices, tableDml dmlParsed))
                       | NONE => allIndices
             in
                 sequence (flushes indices @ [dmlExp])

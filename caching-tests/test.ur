@@ -3,7 +3,7 @@ table foo10 : {Id : int, Bar : string} PRIMARY KEY Id
 table tab : {Id : int, Val : int} PRIMARY KEY Id
 
 fun cache01 () =
-    res <- oneOrNoRows (SELECT foo01.Bar FROM foo01 WHERE foo01.Id = 42);
+    res <- oneOrNoRows (SELECT foo01.Bar FROM foo01 WHERE foo01.Id = 43);
     return <xml><body>
       Reading 1.
       {case res of
@@ -33,7 +33,8 @@ fun cache11 () =
     </body></xml>
 
 fun flush01 () =
-    dml (UPDATE foo01 SET Bar = "baz01" WHERE Id = 42);
+    dml (INSERT INTO foo01 (Id, Bar) VALUES (42, "baz01"));
+    (* dml (UPDATE foo01 SET Bar = "baz01" WHERE Id = 42); *)
     return <xml><body>
       Flushed 1!
     </body></xml>
