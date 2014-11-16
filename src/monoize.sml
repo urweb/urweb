@@ -3757,6 +3757,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | "ctel" => cinput ("tel", "tel")
                       | "ccolor" => cinput ("color", "color")
 
+                      | "cnumber" => cinput ("number", "number")
+                      | "crange" => cinput ("range", "range")
+                      | "cdate" => cinput ("date", "date")
+                      | "cdatetime" => cinput ("datetime", "datetime")
+                      | "cdatetime_local" => cinput ("datetime-local", "datetime_local")
+                      | "cmonth" => cinput ("month", "month")
+                      | "cweek" => cinput ("week", "week")
+                      | "ctime" => cinput ("time", "time")
+
                       | "ccheckbox" => cinput ("checkbox", "chk")
                       | "cselect" =>
 			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of

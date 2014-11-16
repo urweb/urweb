@@ -9,6 +9,15 @@ fun main () : transaction page =
     d <- source "";
     e <- source "";
     f <- source "";
+    g <- source 1.0;
+    h <- source 1.0;
+    i <- source "#CCCCCC";
+    j <- source "2014/11/16";
+    k <- source "2014/11/16 12:30:45";
+    l <- source "2014/11/16 12:30:45";
+    m <- source "2014/11";
+    n <- source "2014-W7";
+    o <- source "12:30:45";
 
     return <xml><body>
       <ctextbox source={a}/>
@@ -17,6 +26,15 @@ fun main () : transaction page =
       <curl source={d}/>
       <ctel source={e}/>
       <csearch source={f}/>
+      <cnumber source={g} min={-10.0} max={10.0} step={0.5}/>
+      <crange source={h} min={-10.0} max={10.0}/>
+      <ccolor source={i}/>
+      <cdate source={j}/>
+      <cdatetime source={k}/>
+      <cdatetime-local source={l}/>
+      <cmonth source={m}/>
+      <cweek source={n}/>
+      <ctime source={o}/>
 
       <hr/>
         
@@ -25,5 +43,14 @@ fun main () : transaction page =
       {dn c};
       {dn d};
       {dn e};
-      {dn f}
+      {dn f};
+      {dn g};
+      {dn h};
+      {dn i};
+      {dn j};
+      {dn k};
+      {dn l};
+      {dn m};
+      {dn n};
+      {dn o}
     </body></xml>

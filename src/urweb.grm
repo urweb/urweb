@@ -223,6 +223,7 @@ fun tagIn bt =
         "table" => "tabl"
       | "url" => "url_"
       | "datetime-local" => "datetime_local"
+      | "cdatetime-local" => "cdatetime_local"
       | _ => bt
 
 datatype prop_kind = Delete | Update
