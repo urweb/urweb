@@ -393,4 +393,7 @@ uw_Basis_string uw_Basis_blessData(struct uw_context *, uw_Basis_string);
 
 extern const char uw_begin_xhtml[], uw_begin_html5[];
 
+int uw_remoteSock(struct uw_context *);
+void uw_set_remoteSock(struct uw_context *, int sock);
+
 #endif

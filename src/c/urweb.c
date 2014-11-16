@@ -476,6 +476,8 @@ struct uw_context {
 
   char *output_buffer;
   size_t output_buffer_size;
+
+  int remoteSock;
 };
 
 size_t uw_headers_max = SIZE_MAX;
@@ -558,6 +560,8 @@ uw_context uw_init(int id, uw_loggers *lg) {
 
   ctx->output_buffer = malloc(1);
   ctx->output_buffer_size = 1;
+
+  ctx->remoteSock = -1;
 
   return ctx;
 }
@@ -646,6 +650,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->amInitializing = 0;
   ctx->usedSig = 0;
   ctx->needsResig = 0;
+  ctx->remoteSock = -1;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -4457,4 +4462,12 @@ uw_Basis_string uw_Basis_blessData(uw_context ctx, uw_Basis_string s) {
       uw_error(ctx, FATAL, "Illegal HTML5 data-* attribute: %s", s);
 
   return s;
+}
+
+int uw_remoteSock(uw_context ctx) {
+  return ctx->remoteSock;
+}
+
+void uw_set_remoteSock(uw_context ctx, int sock) {
+  ctx->remoteSock = sock;
 }

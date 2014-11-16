@@ -89,6 +89,8 @@ static void *worker(void *data) {
       sock = uw_dequeue();
     }
 
+    uw_set_remoteSock(ctx, sock);
+
     qprintf("Handling connection with thread #%d.\n", me);
 
     while (1) {
