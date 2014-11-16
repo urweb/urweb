@@ -956,11 +956,20 @@ val hidden : formTag string [] [Data = data_attr, Id = string, Value = string]
 val textbox : formTag string [] ([Value = string, Size = int, Placeholder = string, Source = source string, Onchange = transaction unit,
                                   Ontext = transaction unit] ++ boxAttrs ++ inputAttrs)
 val password : formTag string [] ([Value = string, Size = int, Placeholder = string, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
-val email : formTag string [] ([Value = string, Size = int, Placeholder = string, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
 val textarea : formTag string [] ([Rows = int, Cols = int, Onchange = transaction unit,
                                    Ontext = transaction unit] ++ boxAttrs ++ inputAttrs)
 
 val checkbox : formTag bool [] ([Checked = bool, Onchange = transaction unit] ++ boxAttrs)
+
+(* HTML5 widgets galore! *)
+
+type textWidget = formTag string [] ([Value = string, Size = int, Placeholder = string, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+
+val email : textWidget
+val search : textWidget
+val url_ : textWidget
+val tel : textWidget
+
 
 type file
 val fileName : file -> option string

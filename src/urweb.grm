@@ -221,6 +221,7 @@ val inDml = ref false
 fun tagIn bt =
     case bt of
         "table" => "tabl"
+      | "url" => "url_"
       | _ => bt
 
 datatype prop_kind = Delete | Update

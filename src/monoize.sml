@@ -3664,6 +3664,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                    raise Fail "No name passed to textbox tag"))
                       | "password" => input "password"
                       | "email" => input "email"
+                      | "search" => input "search"
+                      | "url_" => input "url"
+                      | "tel" => input "tel"
                       | "textarea" =>
 			(case targs of
                              [_, (L.CName name, _)] =>
