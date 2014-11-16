@@ -1036,10 +1036,17 @@ con cformTag = fn (attrs :: {Type}) (inner :: {Unit}) =>
                   -> [[Body] ~ ctx] => [[Body] ~ inner] =>
                         unit -> tag attrs ([Body] ++ ctx) ([Body] ++ inner) [] []
 
-val ctextbox : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
-                          Ontext = transaction unit] ++ boxAttrs ++ inputAttrs) []
-val cpassword : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
-                          Ontext = transaction unit] ++ boxAttrs ++ inputAttrs) []
+type ctext = cformTag ([Value = string, Size = int, Source = source string, Placeholder = string,
+                        Onchange = transaction unit, Ontext = transaction unit] ++ boxAttrs ++ inputAttrs) []
+
+val ctextbox : ctext
+val cpassword : ctext
+val cemail : ctext
+val csearch : ctext
+val curl : ctext
+val ctel : ctext
+val ccolor : ctext
+
 val button : cformTag ([Value = string] ++ boxAttrs) []
 
 val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []

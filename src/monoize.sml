@@ -3283,7 +3283,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 val (style, fm) = monoExp (env, st, fm) style
                 val (dynStyle, fm) = monoExp (env, st, fm) dynStyle
 
-                val dynamics = ["dyn", "ctextbox", "cpassword", "ccheckbox", "cselect", "coption", "ctextarea", "active", "script"]
+                val dynamics = ["dyn", "ctextbox", "cpassword", "ccheckbox", "cselect", "coption", "ctextarea", "active", "script", "cemail", "csearch", "curl", "ctel", "ccolor"]
 
                 fun isSome (e, _) =
                     case e of
@@ -3583,6 +3583,29 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                else
 			           "span"
 
+                fun cinput (fallback, dynamic) =
+		    case List.find (fn ("Source", _, _) => true | _ => false) attrs of
+                        NONE =>
+                        let
+			    val (ts, fm) = tagStart "input"
+                        in
+			    ((L'.EStrcat (ts,
+                                          strH (" type=\"" ^ fallback ^ "\" />")),
+                              loc), fm)
+                        end
+                      | SOME (_, src, _) =>
+                        let
+			    val sc = strcat [str (dynamic ^ "(exec("),
+					     (L'.EJavaScript (L'.Script, src), loc),
+					     str "))"]
+			    val sc = setAttrs sc
+                        in
+			    (strcat [str "<script type=\"text/javascript\">",
+				     sc,
+				     str "</script>"],
+			     fm)
+                        end
+
 		val baseAll as (base, fm) =
                     case tag of
 			"body" => let
@@ -3726,75 +3749,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            | _ => (Print.prefaces "Targs" (map (fn t => ("T", CorePrint.p_con env t)) targs);
                                    raise Fail "No name passed to lselect tag"))
 
-                      | "ctextbox" =>
-			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
-                             NONE =>
-                             let
-				 val (ts, fm) = tagStart "input"
-                             in
-				 ((L'.EStrcat (ts,
-                                               strH " type=\"text\" />"),
-                                   loc), fm)
-                             end
-                           | SOME (_, src, _) =>
-                             let
-				 val sc = strcat [str "inp(exec(",
-						  (L'.EJavaScript (L'.Script, src), loc),
-						  str "))"]
-				 val sc = setAttrs sc
-                             in
-				 (strcat [str "<script type=\"text/javascript\">",
-					  sc,
-					  str "</script>"],
-				  fm)
-                             end)
+                      | "ctextbox" => cinput ("text", "inp")
+                      | "cpassword" => cinput ("password", "password")
+                      | "cemail" => cinput ("email", "email")
+                      | "csearch" => cinput ("search", "search")
+                      | "curl" => cinput ("url", "url")
+                      | "ctel" => cinput ("tel", "tel")
+                      | "ccolor" => cinput ("color", "color")
 
-                      | "cpassword" =>
-			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
-                             NONE =>
-                             let
-				 val (ts, fm) = tagStart "input"
-                             in
-				 ((L'.EStrcat (ts,
-                                               strH " type=\"password\" />"),
-                                   loc), fm)
-                             end
-                           | SOME (_, src, _) =>
-                             let
-				 val sc = strcat [str "password(exec(",
-						  (L'.EJavaScript (L'.Script, src), loc),
-						  str "))"]
-				 val sc = setAttrs sc
-                             in
-				 (strcat [str "<script type=\"text/javascript\">",
-					  sc,
-					  str "</script>"],
-				  fm)
-                             end)
-
-                      | "ccheckbox" =>
-			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
-                             NONE =>
-                             let
-				 val (ts, fm) = tagStart "input type=\"checkbox\""
-                             in
-				 ((L'.EStrcat (ts,
-                                               strH " />"),
-                                   loc), fm)
-                             end
-                           | SOME (_, src, _) =>
-                             let
-				 val sc = strcat [str "chk(exec(",
-						  (L'.EJavaScript (L'.Script, src), loc),
-						  str "))"]
-				 val sc = setAttrs sc
-                             in
-				 (strcat [str "<script type=\"text/javascript\">",
-					  sc,
-					  str "</script>"],
-				  fm)
-                             end)
-
+                      | "ccheckbox" => cinput ("checkbox", "chk")
                       | "cselect" =>
 			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
                              NONE =>
