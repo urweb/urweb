@@ -960,7 +960,7 @@ val email : formTag string [] ([Value = string, Size = int, Placeholder = string
 val textarea : formTag string [] ([Rows = int, Cols = int, Onchange = transaction unit,
                                    Ontext = transaction unit] ++ boxAttrs ++ inputAttrs)
 
-val checkbox : formTag bool [] ([Checked = bool, Onchange = transaction unit, Value = string] ++ boxAttrs)
+val checkbox : formTag bool [] ([Checked = bool, Onchange = transaction unit] ++ boxAttrs)
 
 type file
 val fileName : file -> option string
