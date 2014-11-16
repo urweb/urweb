@@ -2348,12 +2348,14 @@ $$\begin{array}{rrcll}
   &&& \texttt{<}g\texttt{>}l^*\texttt{</}x\texttt{>} & \textrm{tag with children} \\
   &&& \{e\} & \textrm{computed XML fragment} \\
   &&& \{[e]\} & \textrm{injection of an Ur expression, via the $\mt{Top}.\mt{txt}$ function} \\
-  \textrm{Tag} & g &::=& h \; (x = v)^* \\
+  \textrm{Tag} & g &::=& h \; (x [= v])^* \\
   \textrm{Tag head} & h &::=& x & \textrm{tag name} \\
   &&& h\{c\} & \textrm{constructor parameter} \\
   \textrm{Attribute value} & v &::=& \ell & \textrm{literal value} \\
   &&& \{e\} & \textrm{computed value} \\
 \end{array}$$
+
+When the optional $= v$ is omitted in an XML attribute, the attribute is assigned value $\mt{True}$ in Ur/Web, and it is rendered to HTML merely as including the attribute name without a value.  If such a Boolean attribute is manually set to value $\mt{False}$, then it is omitted altogether in generating HTML.
 
 Further, there is a special convenience and compatibility form for setting CSS classes of tags.  If a \cd{class} attribute has a value that is a string literal, the literal is parsed in the usual HTML way and replaced with calls to appropriate Ur/Web combinators.  Any dashes in the text are replaced with underscores to determine Ur identifiers.  The same desugaring can be accessed in a normal expression context by calling the pseudo-function \cd{CLASS} on a string literal.
 

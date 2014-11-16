@@ -949,7 +949,7 @@ con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                         nm :: Name -> unit
                         -> tag attrs ([Form] ++ ctx) inner [] [nm = ty]
 
-con inputAttrs = [Required = string, Autofocus = string]
+con inputAttrs = [Required = bool, Autofocus = bool]
 
 
 val hidden : formTag string [] [Data = data_attr, Id = string, Value = string]

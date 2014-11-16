@@ -1747,6 +1747,12 @@ attr   : SYMBOL EQ attrv                (case SYMBOL of
                                                              else
                                                                  attrv)
                                                  end)
+       | SYMBOL                         (let
+                                             val loc = s (SYMBOLleft, SYMBOLright)
+                                         in
+                                             Normal ((CName (makeAttr SYMBOL), loc),
+                                                     (EVar (["Basis"], "True", Infer), loc))
+                                         end)
                 
 attrv  : INT                            (EPrim (Prim.Int INT), s (INTleft, INTright))
        | FLOAT                          (EPrim (Prim.Float FLOAT), s (FLOATleft, FLOATright))
