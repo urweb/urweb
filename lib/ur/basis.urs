@@ -969,6 +969,17 @@ val email : textWidget
 val search : textWidget
 val url_ : textWidget
 val tel : textWidget
+val color : textWidget
+
+val number : formTag float [] ([Value = float, Min = float, Max = float, Step = float, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val range : formTag float [] ([Value = float, Min = float, Max = float, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val date : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val datetime : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val datetime_local : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val month : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val week : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val timeInput : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+
 
 
 type file

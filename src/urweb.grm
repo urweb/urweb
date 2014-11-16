@@ -222,6 +222,7 @@ fun tagIn bt =
     case bt of
         "table" => "tabl"
       | "url" => "url_"
+      | "datetime-local" => "datetime_local"
       | _ => bt
 
 datatype prop_kind = Delete | Update

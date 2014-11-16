@@ -3667,6 +3667,15 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | "search" => input "search"
                       | "url_" => input "url"
                       | "tel" => input "tel"
+                      | "color" => input "color"
+                      | "number" => input "number"
+                      | "range" => input "range"
+                      | "date" => input "date"
+                      | "datetime" => input "datetime"
+                      | "datetime_local" => input "datetime-local"
+                      | "month" => input "month"
+                      | "week" => input "week"
+                      | "timeInput" => input "time"
                       | "textarea" =>
 			(case targs of
                              [_, (L.CName name, _)] =>
