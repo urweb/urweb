@@ -277,19 +277,19 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
                                    continue ())
                           end);
 
-<INITIAL> "<" {id} "/>"=>(let
+<INITIAL> "<" {xmlid} "/>"=>(let
 			      val tag = String.substring (yytext, 1, size yytext - 3)
 			  in
 			      Tokens.XML_BEGIN_END (tag, yypos, yypos + size yytext)
 			  end);
-<INITIAL> "<" {id} ">"=> (let
+<INITIAL> "<" {xmlid} ">"=> (let
 			      val tag = String.substring (yytext, 1, size yytext - 2)
 			  in
 			      YYBEGIN XML;
 			      xmlTag := tag :: (!xmlTag);
 			      Tokens.XML_BEGIN (tag, yypos, yypos + size yytext)
 			  end);
-<XML> "</" {id} ">"   => (let
+<XML> "</" {xmlid} ">" => (let
 			      val id = String.substring (yytext, 2, size yytext - 3)
 			  in
 			      case !xmlTag of
@@ -304,7 +304,7 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 			          Tokens.END_TAG (id, yypos, yypos + size yytext)
 			  end);
 
-<XML> "<" {id}        => (YYBEGIN XMLTAG;
+<XML> "<" {xmlid}     => (YYBEGIN XMLTAG;
 			  Tokens.BEGIN_TAG (String.extract (yytext, 1, NONE),
 					    yypos, yypos + size yytext));
 

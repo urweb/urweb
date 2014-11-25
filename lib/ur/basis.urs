@@ -948,14 +948,39 @@ con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                   -> [[Form] ~ ctx] =>
                         nm :: Name -> unit
                         -> tag attrs ([Form] ++ ctx) inner [] [nm = ty]
+
+con inputAttrs = [Required = bool, Autofocus = bool]
+
+
 val hidden : formTag string [] [Data = data_attr, Id = string, Value = string]
 val textbox : formTag string [] ([Value = string, Size = int, Placeholder = string, Source = source string, Onchange = transaction unit,
-                                  Ontext = transaction unit] ++ boxAttrs)
-val password : formTag string [] ([Value = string, Size = int, Placeholder = string, Onchange = transaction unit] ++ boxAttrs)
+                                  Ontext = transaction unit] ++ boxAttrs ++ inputAttrs)
+val password : formTag string [] ([Value = string, Size = int, Placeholder = string, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
 val textarea : formTag string [] ([Rows = int, Cols = int, Onchange = transaction unit,
-                                   Ontext = transaction unit] ++ boxAttrs)
+                                   Ontext = transaction unit] ++ boxAttrs ++ inputAttrs)
 
 val checkbox : formTag bool [] ([Checked = bool, Onchange = transaction unit] ++ boxAttrs)
+
+(* HTML5 widgets galore! *)
+
+type textWidget = formTag string [] ([Value = string, Size = int, Placeholder = string, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+
+val email : textWidget
+val search : textWidget
+val url_ : textWidget
+val tel : textWidget
+val color : textWidget
+
+val number : formTag float [] ([Value = float, Min = float, Max = float, Step = float, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val range : formTag float [] ([Value = float, Min = float, Max = float, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val date : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val datetime : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val datetime_local : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val month : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val week : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+val timeInput : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs)
+
+
 
 type file
 val fileName : file -> option string
@@ -1011,19 +1036,35 @@ con cformTag = fn (attrs :: {Type}) (inner :: {Unit}) =>
                   -> [[Body] ~ ctx] => [[Body] ~ inner] =>
                         unit -> tag attrs ([Body] ++ ctx) ([Body] ++ inner) [] []
 
-val ctextbox : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
-                          Ontext = transaction unit] ++ boxAttrs) []
-val cpassword : cformTag ([Value = string, Size = int, Source = source string, Placeholder = string, Onchange = transaction unit,
-                          Ontext = transaction unit] ++ boxAttrs) []
+type ctext = cformTag ([Value = string, Size = int, Source = source string, Placeholder = string,
+                        Onchange = transaction unit, Ontext = transaction unit] ++ boxAttrs ++ inputAttrs) []
+
+val ctextbox : ctext
+val cpassword : ctext
+val cemail : ctext
+val csearch : ctext
+val curl : ctext
+val ctel : ctext
+val ccolor : ctext
+
+val cnumber : cformTag ([Source = source float, Value = float, Min = float, Max = float, Step = float, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
+val crange : cformTag ([Source = source float, Value = float, Min = float, Max = float, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
+val cdate : cformTag ([Source = source string, Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
+val cdatetime : cformTag ([Source = source string, Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
+val cdatetime_local : cformTag ([Source = source string, Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
+val cmonth : cformTag ([Source = source string, Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
+val cweek : cformTag ([Source = source string, Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
+val ctime : cformTag ([Source = source string, Value = string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
+
 val button : cformTag ([Value = string] ++ boxAttrs) []
 
-val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool, Onchange = transaction unit] ++ boxAttrs) []
+val ccheckbox : cformTag ([Value = bool, Size = int, Source = source bool, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
 
 val cselect : cformTag ([Source = source string, Onchange = transaction unit] ++ boxAttrs) [Cselect]
 val coption : unit -> tag [Value = string, Selected = bool] [Cselect, Body] [] [] []
 
 val ctextarea : cformTag ([Value = string, Rows = int, Cols = int, Source = source string, Onchange = transaction unit,
-                           Ontext = transaction unit] ++ boxAttrs) []
+                           Ontext = transaction unit] ++ boxAttrs ++ inputAttrs) []
 
 (*** Tables *)
 
