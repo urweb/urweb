@@ -177,7 +177,7 @@ fun unescape loc s =
 %s COMMENT STRING CHAR XML XMLTAG;
 
 id = [a-z_][A-Za-z0-9_']*;
-xmlid = [A-Za-z][A-Za-z0-9-_]*;
+xmlid = [A-Za-z][A-Za-z0-9_-]*;
 cid = [A-Z][A-Za-z0-9_]*;
 ws = [\ \t\012\r];
 intconst = [0-9]+;
