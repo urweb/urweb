@@ -341,6 +341,7 @@ val rec dmlToFormula =
  fn Sql.Insert tableVals => valsToFormula tableVals
   | Sql.Delete (table, wher) => renameTables [(table, "T")] (sqexpToFormula wher)
   (* TODO: refine formula for the vals part, which could take into account the wher part. *)
+  (* TODO: use pushNegate instead of mapFormulaSigned? *)
   | Sql.Update (table, vals, wher) =>
     let
         val f = sqexpToFormula wher

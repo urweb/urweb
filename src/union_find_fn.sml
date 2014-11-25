@@ -1,4 +1,10 @@
-functor UnionFindFn(K : ORD_KEY) = struct
+functor UnionFindFn(K : ORD_KEY) :> sig
+    type unionFind
+    val empty : unionFind
+    val union : unionFind * K.ord_key * K.ord_key -> unionFind
+    val union' : (K.ord_key * K.ord_key) * unionFind -> unionFind
+    val classes : unionFind -> K.ord_key list list
+end = struct
 
 structure M = BinaryMapFn(K)
 structure S = BinarySetFn(K)
