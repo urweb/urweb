@@ -3394,7 +3394,6 @@ fun p_file env (ds, ps) =
              newline,
 
              (* For sqlcache. *)
-             (* TODO: also record between Cache.check and Cache.store. *)
              box (List.map
                       (fn {index, params} =>
                           let val i = Int.toString index
@@ -3440,14 +3439,16 @@ fun p_file env (ds, ps) =
                                   string i,
                                   string "(uw_context ctx",
                                   string args,
-                                  string ") {\n puts(\"SQLCACHE: checked ",
-                                  string i,
-                                  string ".\");\n if (cacheQuery",
+                                  string ") {\n if (cacheQuery",
                                   string i,
                                   (* ASK: is returning the pointer okay? Should we duplicate? *)
                                   string " == NULL",
                                   string eqs,
-                                  string ") {\n puts(\"miss D:\");\n uw_recordingStart(ctx);\n return NULL;\n } else {\n puts(\"hit :D\");\n uw_write(ctx, cacheWrite",
+                                  string ") {\n puts(\"SQLCACHE: miss ",
+                                  string i,
+                                  string ".\");\n uw_recordingStart(ctx);\n return NULL;\n } else {\n puts(\"SQLCACHE: hit ",
+                                  string i,
+                                  string ".\");\n uw_write(ctx, cacheWrite",
                                   string i,
                                   string ");\n return cacheQuery",
                                   string i,
@@ -3473,7 +3474,7 @@ fun p_file env (ds, ps) =
                                   newline,
                                   string sets,
                                   newline,
-                                  string "puts(\"SQLCACHE: stored ",
+                                  string "puts(\"SQLCACHE: store ",
                                   string i,
                                   string ".\");\n return uw_unit_v;\n };",
                                   newline,
@@ -3489,11 +3490,11 @@ fun p_file env (ds, ps) =
                                   string i,
                                   string ");\n cacheQuery",
                                   string i,
-                                  string " = NULL;\n puts(\"SQLCACHE: flushed ",
+                                  string " = NULL;\n puts(\"SQLCACHE: flush ",
                                   string i,
-                                  string ".\");}\n else { puts(\"SQLCACHE: keeping ",
+                                  string ".\");}\n else { puts(\"SQLCACHE: keep ",
                                   string i,
-                                  string "\"); } return uw_unit_v;\n };",
+                                  string ".\"); } return uw_unit_v;\n };",
                                   newline,
                                   newline]
                           end)

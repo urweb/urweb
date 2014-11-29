@@ -1982,9 +1982,6 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                     initial = (L'.ERel 1, loc),
                                                     sqlcacheInfo = urlifiedRel0},
                                          loc)
-                             val body = if Settings.getSqlcache ()
-                                        then Sqlcache.instrumentQuery (body, urlifiedRel0)
-                                        else body
                          in
                              ((L'.EAbs ("q", s, (L'.TFun (ft, (L'.TFun (state, (L'.TFun (un, state), loc)), loc)), loc),
                                         (L'.EAbs ("f", ft, (L'.TFun (state, (L'.TFun (un, state), loc)), loc),
