@@ -681,6 +681,16 @@ fun fooifyExp fk env =
 val attrifyExp = fooifyExp Attr
 val urlifyExp = fooifyExp Url
 
+val urlifiedUnit =
+    let
+        val loc = ErrorMsg.dummySpan
+        (* Urlifies [ERel 0] to match the [sqlcacheInfo] field of [EQuery]s. *)
+        val (urlified, _) = urlifyExp CoreEnv.empty (Fm.empty 0)
+                                      ((L'.ERel 0, loc), (L'.TRecord [], loc))
+    in
+        urlified
+    end
+
 datatype 'a failable_search =
          Found of 'a
        | NotFound
@@ -1957,26 +1967,24 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                           (L'.TFun (un, state), loc)),
                                                  loc)), loc)
 
-                             val body'' = (L'.EApp (
+                             val body' = (L'.EApp (
                                           (L'.EApp (
                                            (L'.EApp ((L'.ERel 4, loc),
                                                      (L'.ERel 1, loc)), loc),
                                            (L'.ERel 0, loc)), loc),
                                           (L'.ERecord [], loc)), loc)
-                             val body' = (L'.EQuery {exps = exps,
-                                                      tables = tables,
-                                                      state = state,
-                                                      query = (L'.ERel 3, loc),
-                                                      body = body'',
-                                                      initial = (L'.ERel 1, loc)},
-                                           loc)
-                             val (body, fm) = if Settings.getSqlcache () then
-                                                  let
-                                                      val (urlifiedRel0, fm) = urlifyExp env fm ((L'.ERel 0, loc), state)
-                                                  in
-                                                      (Sqlcache.instrumentQuery (body', urlifiedRel0), fm)
-                                                  end
-                                              else (body', fm)
+                             val (urlifiedRel0, fm) = urlifyExp env fm ((L'.ERel 0, loc), state)
+                             val body = (L'.EQuery {exps = exps,
+                                                    tables = tables,
+                                                    state = state,
+                                                    query = (L'.ERel 3, loc),
+                                                    body = body',
+                                                    initial = (L'.ERel 1, loc),
+                                                    sqlcacheInfo = urlifiedRel0},
+                                         loc)
+                             val body = if Settings.getSqlcache ()
+                                        then Sqlcache.instrumentQuery (body, urlifiedRel0)
+                                        else body
                          in
                              ((L'.EAbs ("q", s, (L'.TFun (ft, (L'.TFun (state, (L'.TFun (un, state), loc)), loc)), loc),
                                         (L'.EAbs ("f", ft, (L'.TFun (state, (L'.TFun (un, state), loc)), loc),

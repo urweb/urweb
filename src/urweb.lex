@@ -18,7 +18,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -50,7 +50,7 @@ in
        else
            ();
        commentLevel := !commentLevel + 1)
-    
+
   fun exitComment () =
       (ignore (commentLevel := !commentLevel - 1);
        if !commentLevel = 0 then
@@ -58,15 +58,15 @@ in
        else
            ())
 
-  fun eof () = 
-    let 
+  fun eof () =
+    let
       val pos = ErrorMsg.lastLineStart ()
     in
       if !commentLevel > 0 then
           ErrorMsg.errorAt' (!commentPos, !commentPos) "Unterminated comment"
       else
           ();
-      Tokens.EOF (pos, pos) 
+      Tokens.EOF (pos, pos)
     end
 end
 
@@ -177,7 +177,7 @@ fun unescape loc s =
 %s COMMENT STRING CHAR XML XMLTAG;
 
 id = [a-z_][A-Za-z0-9_']*;
-xmlid = [A-Za-z][A-Za-z0-9-_]*;
+xmlid = [A-Za-z][A-Za-z0-9_-]*;
 cid = [A-Z][A-Za-z0-9_]*;
 ws = [\ \t\012\r];
 intconst = [0-9]+;
@@ -300,7 +300,7 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 				       Tokens.XML_END (yypos, yypos + size yytext))
 			          else
 				      Tokens.END_TAG (id, yypos, yypos + size yytext)
-			        | _ => 
+			        | _ =>
 			          Tokens.END_TAG (id, yypos, yypos + size yytext)
 			  end);
 

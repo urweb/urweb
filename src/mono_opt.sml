@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -166,7 +166,7 @@ fun exp e =
             e
 
       | EFfiApp ("Basis", "strcat", [(e1, _), (e2, _)]) => exp (EStrcat (e1, e2))
-           
+
       | EStrcat ((EPrim (Prim.String (Prim.Html, s1)), loc), (EPrim (Prim.String (Prim.Html, s2)), _)) =>
         let
             val s =
@@ -179,7 +179,7 @@ fun exp e =
         in
             EPrim (Prim.String (Prim.Html, s))
         end
-                            
+
       | EStrcat ((EPrim (Prim.String (_, s1)), loc), (EPrim (Prim.String (_, s2)), _)) =>
         EPrim (Prim.String (Prim.Normal, s1 ^ s2))
 
@@ -397,18 +397,20 @@ fun exp e =
                         initial = (EPrim (Prim.String (k, "")), _),
                         body = (EStrcat ((EPrim (Prim.String (_, s)), _),
                                          (EStrcat ((ERel 0, _),
-                                                   e'), _)), _)}, loc) =>
+                                                   e'), _)), _),
+                        sqlcacheInfo}, loc) =>
         if (case k of Prim.Normal => s = "" | Prim.Html => CharVector.all Char.isSpace s) then
             EQuery {exps = exps, tables = tables, query = query,
                     state = (TRecord [], loc),
                     initial = (ERecord [], loc),
-                    body = (optExp (EWrite e', loc), loc)}
+                    body = (optExp (EWrite e', loc), loc),
+                    sqlcacheInfo = Monoize.urlifiedUnit}
         else
             e
 
       | EWrite (EQuery {exps, tables, state, query,
                         initial = (EPrim (Prim.String (_, "")), _),
-                        body}, loc) =>
+                        body, sqlcacheInfo}, loc) =>
         let
             fun passLets (depth, (e', _), lets) =
                 case e' of
@@ -423,7 +425,8 @@ fun exp e =
                             EQuery {exps = exps, tables = tables, query = query,
                                     state = (TRecord [], loc),
                                     initial = (ERecord [], loc),
-                                    body = body}
+                                    body = body,
+                                    sqlcacheInfo = Monoize.urlifiedUnit}
                         end
                     else
                         e
@@ -532,7 +535,7 @@ fun exp e =
          else
              ENone (TFfi ("Basis", "string"), loc))
 
-      | EFfiApp ("Basis", "checkString", [((EPrim (Prim.String (_, s)), loc), _)]) => 
+      | EFfiApp ("Basis", "checkString", [((EPrim (Prim.String (_, s)), loc), _)]) =>
         let
             fun uwify (cs, acc) =
                 case cs of
@@ -560,7 +563,7 @@ fun exp e =
             EPrim (Prim.String (Prim.Normal, s))
         end
 
-      | EFfiApp ("Basis", "viewify", [((EPrim (Prim.String (_, s)), loc), _)]) => 
+      | EFfiApp ("Basis", "viewify", [((EPrim (Prim.String (_, s)), loc), _)]) =>
         let
             fun uwify (cs, acc) =
                 case cs of
@@ -585,7 +588,7 @@ fun exp e =
             EPrim (Prim.String (Prim.Normal, s))
         end
 
-      | EFfiApp ("Basis", "unAs", [((EPrim (Prim.String (_, s)), _), _)]) => 
+      | EFfiApp ("Basis", "unAs", [((EPrim (Prim.String (_, s)), _), _)]) =>
         EPrim (Prim.String (Prim.Normal, unAs s))
       | EFfiApp ("Basis", "unAs", [(e', _)]) =>
         let
@@ -620,7 +623,7 @@ fun exp e =
         EFfiApp ("Basis", "attrifyChar_w", [e])
 
       | EBinop (_, "+", (EPrim (Prim.Int n1), _), (EPrim (Prim.Int n2), _)) => EPrim (Prim.Int (Int64.+ (n1, n2)))
-        
+
       | _ => e
 
 and optExp e = #1 (U.Exp.map {typ = typ, exp = exp} e)

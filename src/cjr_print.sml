@@ -3410,14 +3410,22 @@ fun p_file env (ds, ps) =
                               fun paramRepeatInit itemi sep =
                                   if params = 0 then "" else sep ^ paramRepeat itemi sep
                               val args = paramRepeatInit (fn p => "uw_Basis_string p" ^ p) ", "
-                              val decls = paramRepeat (fn p => "uw_Basis_string param" ^ i ^ "_" ^ p ^ " = NULL;") "\n"
+                              val decls = paramRepeat (fn p => "uw_Basis_string param" ^ i ^ "_"
+                                                               ^ p ^ " = NULL;")
+                                                      "\n"
                               val sets = paramRepeat (fn p => "param" ^ i ^ "_" ^ p
-                                                             ^ " = strdup(p" ^ p ^ ");") "\n"
-                              val frees = paramRepeat (fn p => "free(param" ^ i ^ "_" ^ p ^ ");") "\n"
-                              (* Starting || makes logic easier when there are no parameters. *)
+                                                              ^ " = strdup(p" ^ p ^ ");")
+                                                     "\n"
+                              val frees = paramRepeat (fn p => "free(param" ^ i ^ "_" ^ p ^ ");")
+                                                      "\n"
                               val eqs = paramRepeatInit (fn p => "strcmp(param" ^ i ^ "_" ^ p
                                                                  ^ ", p" ^ p ^ ")")
                                                         " || "
+                              (* Using [!=] instead of [==] to mimic [strcmp]. *)
+                              val eqsNull = paramRepeatInit (fn p => "(p" ^ p ^ " == NULL || "
+                                                                     ^ "!strcmp(param" ^ i ^ "_"
+                                                                     ^ p ^ ", p" ^ p ^ "))")
+                                                            " && "
                           in box [string "static char *cacheQuery",
                                   string i,
                                   string " = NULL;",
@@ -3471,13 +3479,21 @@ fun p_file env (ds, ps) =
                                   newline,
                                   string "static uw_unit uw_Sqlcache_flush",
                                   string i,
-                                  string "(uw_context ctx) {\n free(cacheQuery",
+                                  string "(uw_context ctx",
+                                  string args,
+                                  string ") {\n if (cacheQuery",
+                                  string i,
+                                  string " != NULL",
+                                  string eqsNull,
+                                  string ") {\n free(cacheQuery",
                                   string i,
                                   string ");\n cacheQuery",
                                   string i,
                                   string " = NULL;\n puts(\"SQLCACHE: flushed ",
                                   string i,
-                                  string ".\");\n return uw_unit_v;\n };",
+                                  string ".\");}\n else { puts(\"SQLCACHE: keeping ",
+                                  string i,
+                                  string "\"); } return uw_unit_v;\n };",
                                   newline,
                                   newline]
                           end)
