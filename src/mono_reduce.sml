@@ -208,6 +208,20 @@ fun match (env, p : pat, e : exp) =
         else
             No
 
+      | (PPrim (Prim.String (_, s)), _) =>
+        let
+            fun lengthLb (e : exp) =
+                case #1 e of
+                    EStrcat (e1, e2) => lengthLb e1 + lengthLb e2
+                  | EPrim (Prim.String (_, s)) => size s
+                  | _ => 0
+        in
+            if lengthLb e > size s then
+                No
+            else
+                Maybe
+        end
+
       | (PCon (_, PConVar n1, po), ECon (_, PConVar n2, eo)) =>
         if n1 = n2 then
             case (po, eo) of

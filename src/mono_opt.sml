@@ -220,6 +220,11 @@ fun exp e =
       | EWrite (EFfiApp ("Basis", "htmlifySpecialChar", [e]), _) =>
         EFfiApp ("Basis", "htmlifySpecialChar_w", [e])
 
+      | EWrite (EFfiApp ("Basis", "intToString", [e]), _) =>
+        EFfiApp ("Basis", "htmlifyInt_w", [e])
+      | EApp ((EFfi ("Basis", "intToString"), loc), e) =>
+        EFfiApp ("Basis", "intToString", [(e, (TFfi ("Basis", "int"), loc))])
+
       | EFfiApp ("Basis", "htmlifyString", [((EFfiApp ("Basis", "intToString", [((EPrim (Prim.Int n), _), _)]), _), _)]) =>
         EPrim (Prim.String (Prim.Html, htmlifyInt n))
       | EFfiApp ("Basis", "htmlifyString", [((EFfiApp ("Basis", "intToString", es), _), _)]) =>
