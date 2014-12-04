@@ -1992,9 +1992,9 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                            strcat [gf "Rows",
                                    (L'.ECase (gf "OrderBy",
                                               [((L'.PPrim (Prim.String (Prim.Normal, "")), loc), str ""),
-                                               ((L'.PWild, loc),
+                                               ((L'.PVar ("orderby", s), loc),
                                                 strcat [str " ORDER BY ",
-                                                        gf "OrderBy"])],
+                                                        (L'.ERel 0, loc)])],
                                               {disc = s, result = s}), loc),
                                    gf "Limit",
                                    gf "Offset"]), loc), fm)
@@ -2103,8 +2103,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                       [((L'.PPrim (Prim.String (Prim.Normal, #trueString (Settings.currentDbms ()))),
                                                          loc),
                                                         str ""),
-                                                       ((L'.PWild, loc),
-                                                        strcat [str " WHERE ", gf "Where"])],
+                                                       ((L'.PVar ("where", s), loc),
+                                                        strcat [str " WHERE ", (L'.ERel 0, loc)])],
                                                       {disc = s,
                                                        result = s}), loc),
 
@@ -2132,8 +2132,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                       [((L'.PPrim (Prim.String
                                                                        (Prim.Normal, #trueString (Settings.currentDbms ()))), loc),
                                                         str ""),
-                                                       ((L'.PWild, loc),
-                                                        strcat [str " HAVING ", gf "Having"])],
+                                                       ((L'.PVar ("having", s), loc),
+                                                        strcat [str " HAVING ", (L'.ERel 0, loc)])],
                                                       {disc = s,
                                                        result = s}), loc)
                                   ]), loc),

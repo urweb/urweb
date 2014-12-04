@@ -39,6 +39,10 @@ structure U = MonoUtil
 structure IM = IntBinaryMap
 structure IS = IntBinarySet
 
+structure SS = BinarySetFn(struct
+                            type ord_key = string
+                            val compare = String.compare
+                            end)
 
 fun simpleTypeImpure tsyms =
     U.Typ.exists (fn TFun _ => true
@@ -592,6 +596,75 @@ fun reduce (file : file) =
                                  case e' of
                                      (ECase _, _) => e
                                    | _ => doSub ())
+
+                        fun isRecord () =
+                            case #1 e' of
+                                ERecord _ => true
+                              | _ => false
+
+                        fun whichProj i (e : exp) =
+                            case #1 e of
+                                EPrim _ => SOME SS.empty
+                              | ERel i' => if i' = i then NONE else SOME SS.empty
+                              | ENamed _ => SOME SS.empty
+                              | ECon (_, _, NONE) => SOME SS.empty
+                              | ECon (_, _, SOME e') => whichProj i e'
+                              | ENone _ => SOME SS.empty
+                              | ESome (_, e') => whichProj i e'
+                              | EFfi _ => SOME SS.empty
+                              | EFfiApp (_, _, es) => whichProjs i (map #1 es)
+                              | EApp (e1, e2) => whichProjs i [e1, e2]
+                              | EAbs (_, _, _, e) => whichProj (i + 1) e
+                              | EUnop (_, e1) => whichProj i e1
+                              | EBinop (_, _, e1, e2) => whichProjs i [e1, e2]
+                              | ERecord xets => whichProjs i (map #2 xets)
+                              | EField ((ERel i', _), s) =>
+                                if i' = i then
+                                    SOME (SS.singleton s)
+                                else
+                                    SOME SS.empty
+                              | EField (e1, _) => whichProj i e1
+                              | ECase (e1, pes, _) =>
+                                whichProjs' i ((0, e1)
+                                               :: map (fn (p, e) => (patBinds p, e)) pes)
+                              | EStrcat (e1, e2) => whichProjs i [e1, e2]
+                              | EError (e1, _) => whichProj i e1
+                              | EReturnBlob {blob = NONE, mimeType = e2, ...} => whichProj i e2
+                              | EReturnBlob {blob = SOME e1, mimeType = e2, ...} => whichProjs i [e1, e2]
+                              | ERedirect (e1, _) => whichProj i e1
+                              | EWrite e1 => whichProj i e1
+                              | ESeq (e1, e2) => whichProjs i [e1, e2]
+                              | ELet (_, _, e1, e2) => whichProjs' i [(0, e1), (1, e2)]
+                              | EClosure (_, es) => whichProjs i es
+                              | EQuery {query = e1, body = e2, initial = e3, ...} =>
+                                whichProjs' i [(0, e1), (2, e2), (0, e3)]
+                              | EDml (e1, _) => whichProj i e1
+                              | ENextval e1 => whichProj i e1
+                              | ESetval (e1, e2) => whichProjs i [e1, e2]
+                              | EUnurlify (e1, _, _) => whichProj i e1
+                              | EJavaScript (_, e1) => whichProj i e1
+                              | ESignalReturn e1 => whichProj i e1
+                              | ESignalBind (e1, e2) => whichProjs i [e1, e2]
+                              | ESignalSource e1 => whichProj i e1
+                              | EServerCall (e1, _, _, _) => whichProj i e1
+                              | ERecv (e1, _) => whichProj i e1
+                              | ESleep e1 => whichProj i e1
+                              | ESpawn e1 => whichProj i e1
+
+                        and whichProjs i es =
+                            whichProjs' i (map (fn e => (0, e)) es)
+
+                        and whichProjs' i es =
+                            case es of
+                                [] => SOME SS.empty
+                              | (n, e) :: es' =>
+                                case (whichProj (i + n) e, whichProjs' i es') of
+                                    (SOME m1, SOME m2) =>
+                                    if SS.isEmpty (SS.intersection (m1, m2)) then
+                                        SOME (SS.union (m1, m2))
+                                    else
+                                        NONE
+                                  | _ => NONE
                     in
                         if impure env e' then
                             let
@@ -650,7 +723,10 @@ fun reduce (file : file) =
                                 else
                                     e
                             end
-                        else if countFree 0 0 b > 1 andalso not (!fullMode) andalso not (passive e') then
+                        else if countFree 0 0 b > 1
+                                andalso not (!fullMode)
+                                andalso not (passive e')
+                                andalso not (isRecord () andalso Option.isSome (whichProj 0 b)) then
                             e
                         else
                             trySub ()
