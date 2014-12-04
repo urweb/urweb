@@ -166,6 +166,9 @@ fun exp e =
             e
 
       | EFfiApp ("Basis", "strcat", [(e1, _), (e2, _)]) => exp (EStrcat (e1, e2))
+
+      | EStrcat (e1, (EPrim (Prim.String (_, "")), _)) => #1 e1
+      | EStrcat ((EPrim (Prim.String (_, "")), _), e2) => #1 e2
            
       | EStrcat ((EPrim (Prim.String (Prim.Html, s1)), loc), (EPrim (Prim.String (Prim.Html, s2)), _)) =>
         let
