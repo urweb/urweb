@@ -626,6 +626,8 @@ fun exp e =
         EFfiApp ("Basis", "attrifyChar", [e])
       | EFfiApp ("Basis", "attrifyString_w", [((EFfiApp ("Basis", "str1", [e]), _), _)]) =>
         EFfiApp ("Basis", "attrifyChar_w", [e])
+      | EWrite (EFfiApp ("Basis", "str1", [e]), _) =>
+        EFfiApp ("Basis", "writec", [e])
 
       | EBinop (_, "+", (EPrim (Prim.Int n1), _), (EPrim (Prim.Int n2), _)) => EPrim (Prim.Int (Int64.+ (n1, n2)))
         

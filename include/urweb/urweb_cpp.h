@@ -396,4 +396,6 @@ extern const char uw_begin_xhtml[], uw_begin_html5[];
 int uw_remoteSock(struct uw_context *);
 void uw_set_remoteSock(struct uw_context *, int sock);
 
+void uw_Basis_writec(struct uw_context *, char);
+
 #endif

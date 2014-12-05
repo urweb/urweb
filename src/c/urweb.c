@@ -1659,6 +1659,10 @@ void uw_writec(uw_context ctx, char c) {
   uw_writec_unsafe(ctx, c);
 }
 
+void uw_Basis_writec(uw_context ctx, char c) {
+  uw_writec(ctx, c);
+}
+
 static void uw_write_unsafe(uw_context ctx, const char* s) {
   int len = strlen(s);
   memcpy(ctx->page.front, s, len);
