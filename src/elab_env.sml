@@ -1114,24 +1114,7 @@ and hnormSgn env (all as (sgn, loc)) =
     case sgn of
         SgnError => all
       | SgnVar n => hnormSgn env (#2 (lookupSgnNamed env n))
-      | SgnConst sgis =>
-        let
-            (* This reshuffling was added to avoid some unfortunate unification behavior.
-             * In particular, in sub-signature checking, constraints might be unified,
-             * even when we don't expect them to be unifiable, deciding on bad values
-             * for unification variables and dooming later unification.
-             * By putting all the constraints _last_, we allow all the other unifications
-             * to happen first, hoping that no unification variables survive to confuse
-             * constraint unification. *)
-
-            val (constraint, others) = List.partition
-                                           (fn (SgiConstraint _, _) => true
-                                           | _ => false) sgis
-        in
-            case constraint of
-                [] => all
-              | _ => (SgnConst (others @ constraint), loc)
-        end
+      | SgnConst _ => all
       | SgnFun _ => all
       | SgnProj (m, ms, x) =>
         let

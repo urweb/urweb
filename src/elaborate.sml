@@ -3020,6 +3020,25 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
 
       | (L'.SgnConst sgis1, L'.SgnConst sgis2) =>
         let
+            (* This reshuffling was added to avoid some unfortunate unification behavior.
+             * In particular, in sub-signature checking, constraints might be unified,
+             * even when we don't expect them to be unifiable, deciding on bad values
+             * for unification variables and dooming later unification.
+             * By putting all the constraints _last_, we allow all the other unifications
+             * to happen first, hoping that no unification variables survive to confuse
+             * constraint unification. *)
+
+            val sgis2 =
+                let
+                    val (constraints, others) = List.partition
+                                                   (fn (L'.SgiConstraint _, _) => true
+                                                   | _ => false) sgis2
+                in
+                    case constraints of
+                        [] => sgis2
+                      | _ => others @ constraints
+                end
+
             (*val () = prefaces "subSgn" [("sgn1", p_sgn env sgn1),
                                         ("sgn2", p_sgn env sgn2),
                                         ("sgis1", p_sgn env (L'.SgnConst sgis1, loc2)),
