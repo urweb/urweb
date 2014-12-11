@@ -1,4 +1,13 @@
 ========
+20141206
+========
+
+- New HTML5 form widget tags and attributes
+- New command-line option for HTTP servers: '-T', to set recv() timeout
+- New C function uw_remoteSock() for use in FFI code
+- Bug fixes and improvements to type inference and optimization
+
+========
 20140830
 ========
 

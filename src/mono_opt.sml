@@ -167,6 +167,9 @@ fun exp e =
 
       | EFfiApp ("Basis", "strcat", [(e1, _), (e2, _)]) => exp (EStrcat (e1, e2))
 
+      | EStrcat (e1, (EPrim (Prim.String (_, "")), _)) => #1 e1
+      | EStrcat ((EPrim (Prim.String (_, "")), _), e2) => #1 e2
+
       | EStrcat ((EPrim (Prim.String (Prim.Html, s1)), loc), (EPrim (Prim.String (Prim.Html, s2)), _)) =>
         let
             val s =
@@ -219,6 +222,11 @@ fun exp e =
         EPrim (Prim.String (Prim.Html, htmlifySpecialChar ch))
       | EWrite (EFfiApp ("Basis", "htmlifySpecialChar", [e]), _) =>
         EFfiApp ("Basis", "htmlifySpecialChar_w", [e])
+
+      | EWrite (EFfiApp ("Basis", "intToString", [e]), _) =>
+        EFfiApp ("Basis", "htmlifyInt_w", [e])
+      | EApp ((EFfi ("Basis", "intToString"), loc), e) =>
+        EFfiApp ("Basis", "intToString", [(e, (TFfi ("Basis", "int"), loc))])
 
       | EFfiApp ("Basis", "htmlifyString", [((EFfiApp ("Basis", "intToString", [((EPrim (Prim.Int n), _), _)]), _), _)]) =>
         EPrim (Prim.String (Prim.Html, htmlifyInt n))
@@ -621,6 +629,8 @@ fun exp e =
         EFfiApp ("Basis", "attrifyChar", [e])
       | EFfiApp ("Basis", "attrifyString_w", [((EFfiApp ("Basis", "str1", [e]), _), _)]) =>
         EFfiApp ("Basis", "attrifyChar_w", [e])
+      | EWrite (EFfiApp ("Basis", "str1", [e]), _) =>
+        EFfiApp ("Basis", "writec", [e])
 
       | EBinop (_, "+", (EPrim (Prim.Int n1), _), (EPrim (Prim.Int n2), _)) => EPrim (Prim.Int (Int64.+ (n1, n2)))
 
