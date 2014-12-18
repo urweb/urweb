@@ -3447,6 +3447,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                            NONE => tagStart
                                          | SOME extra => (L'.EStrcat (tagStart, extra), loc)
 
+                        val firstWord = Substring.string o #1 o Substring.splitl (fn ch => not (Char.isSpace ch)) o Substring.full
+
                         fun normal () =
                             let
                                 val (xml, fm) = monoExp (env, st, fm) xml
@@ -3457,7 +3459,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                             in
                                 ((L'.EStrcat ((L'.EStrcat (tagStart, strH ">"), loc),
                                               (L'.EStrcat (xml,
-                                                           strH (String.concat ["</", tag, ">"])), loc)),
+                                                           strH (String.concat ["</", firstWord tag, ">"])), loc)),
                                   loc),
                                  fm)
                             end
