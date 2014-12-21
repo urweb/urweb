@@ -2,6 +2,7 @@
 #define REQUEST_H
 
 #include <sys/types.h>
+#include <pthread.h>
 
 #include "types.h"
 
