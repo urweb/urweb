@@ -2263,7 +2263,7 @@ $$\begin{array}{rrcll}
   \textrm{Pre-queries} & q &::=& \mt{SELECT} \; [\mt{DISTINCT}] \; P \; \mt{FROM} \; F,^+ \; [\mt{WHERE} \; E] \; [\mt{GROUP} \; \mt{BY} \; p,^+] \; [\mt{HAVING} \; E] \\
   &&& \mid q \; R \; q \mid \{\{\{e\}\}\} \\
   \textrm{Relational operators} & R &::=& \mt{UNION} \mid \mt{INTERSECT} \mid \mt{EXCEPT} \\
-  \textrm{$\mt{ORDER \; BY}$ items} & O &::=& \mt{RANDOM} [()] \mid \hat{E} \; [o] \mid \hat{E} \; [o], O
+  \textrm{$\mt{ORDER \; BY}$ items} & O &::=& \mt{RANDOM} [()] \mid \hat{E} \; [o] \mid \hat{E} \; [o], O \mid \{\{\{e\}\}\}
 \end{array}$$
 
 $$\begin{array}{rrcll}

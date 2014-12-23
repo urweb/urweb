@@ -2235,6 +2235,7 @@ obopt  :                                (ECApp ((EVar (["Basis"], "sql_order_by_
                                                 (CWild (KRecord (KType, dummy), dummy), dummy)),
                                          dummy)
        | ORDER BY obexps                (obexps)
+       | ORDER BY LBRACE LBRACE LBRACE eexp RBRACE RBRACE RBRACE (eexp)
 
 obitem : sqlexp diropt                  (sqlexp, diropt)
 
