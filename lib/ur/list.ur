@@ -216,6 +216,16 @@ fun foldlMap [a] [b] [c] f =
         fold []
     end
 
+fun mem [a] (_ : eq a) (x : a) =
+    let
+        fun mm ls =
+            case ls of
+                [] => False
+              | y :: ls => y = x || mm ls
+    in
+        mm
+    end
+
 fun find [a] f =
     let
         fun find' ls =
