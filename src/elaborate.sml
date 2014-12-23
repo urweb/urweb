@@ -3699,19 +3699,23 @@ and wildifyStr env (str, sgn) =
                                             fun should t =
                                                 let
                                                     val t = normClassConstraint env' t
+
+                                                    fun shouldR c =
+                                                        case hnormCon env' c of
+                                                            (L'.CApp (f, _), _) =>
+                                                            (case hnormCon env' f of
+                                                                 (L'.CApp (f, cl), loc) =>
+                                                                 (case hnormCon env' f of
+                                                                      (L'.CMap _, _) => isClassOrFolder env' cl
+                                                                    | _ => false)
+                                                               | _ => false)
+                                                            | (L'.CConcat (c1, c2), _) =>
+                                                              shouldR c1 orelse shouldR c2
+                                                            | c => false
                                                 in
                                                     case #1 t of
                                                         L'.CApp (f, _) => isClassOrFolder env' f
-                                                      | L'.TRecord t =>
-                                                        (case hnormCon env' t of
-                                                             (L'.CApp (f, _), _) =>
-                                                             (case hnormCon env' f of
-                                                                  (L'.CApp (f, cl), loc) =>
-                                                                  (case hnormCon env' f of
-                                                                       (L'.CMap _, _) => isClassOrFolder env' cl
-                                                                     | _ => false)
-                                                                | _ => false)
-                                                           | _ => false)
+                                                      | L'.TRecord t => shouldR t
                                                       | _ => false
                                                 end
                                          in
