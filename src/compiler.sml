@@ -693,8 +693,8 @@ fun parseUrp' accLibs fname =
                            | _ => (ErrorMsg.error "Bad path kind spec";
                                    Settings.Any)
 
-                     fun parseFrom s =
-                         if size s > 1 andalso String.sub (s, size s - 2) = #"/" andalso String.sub (s, size s - 1) = #"*" then
+                     fun parsePattern s =
+                         if size s > 0 andalso String.sub (s, size s - 1) = #"*" then
                              (Settings.Prefix, String.substring (s, 0, size s - 1))
                          else
                              (Settings.Exact, s)
@@ -708,12 +708,6 @@ fun parseUrp' accLibs fname =
                            | "env" => env
                            | _ => (ErrorMsg.error "Bad filter kind";
                                    url)
-
-                     fun parsePattern s =
-                         if size s > 0 andalso String.sub (s, size s - 1) = #"*" then
-                             (Settings.Prefix, String.substring (s, 0, size s - 1))
-                         else
-                             (Settings.Exact, s)
 
                      fun read () =
                          case inputCommentableLine inf of
@@ -801,7 +795,7 @@ fun parseUrp' accLibs fname =
                                          fun doit (pkind, from, to, hyph) =
                                              let
                                                  val pkind = parsePkind pkind
-                                                 val (kind, from) = parseFrom from
+                                                 val (kind, from) = parsePattern from
                                              in
                                                  rewrites := {pkind = pkind, kind = kind, from = from, to = to, hyphenate = hyph} :: !rewrites
                                              end

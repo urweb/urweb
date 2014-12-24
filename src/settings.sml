@@ -378,6 +378,22 @@ type rule = { action : action, kind : pattern_kind, pattern : string }
 datatype path_kind = Any | Url | Table | Sequence | View | Relation | Cookie | Style
 type rewrite = { pkind : path_kind, kind : pattern_kind, from : string, to : string, hyphenate : bool }
 
+fun pak2s pak =
+    case pak of
+        Exact => "Exact"
+      | Prefix => "Prefix"
+fun pk2s pk =
+    case pk of
+        Any => "Any"
+      | Url => "Url"
+      | Table => "Table"
+      | Sequence => "Sequence"
+      | View => "View"
+      | Relation => "Relation"
+      | Cookie => "Cookie"
+      | Style => "Style"
+fun r2s (r : rewrite) = pak2s (#kind r) ^ " " ^ pk2s (#pkind r) ^ ", from<" ^ #from r ^ ">, to<" ^ #to r ^ ">"
+
 val rewrites = ref ([] : rewrite list)
 
 fun subsume (pk1, pk2) =
