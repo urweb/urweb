@@ -297,6 +297,8 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("mouseEvent", "uw_mouseEvent"),
                           ("keyEvent", "uw_keyEvent"),
                           ("minTime", "0"),
+                          ("stringToBool_error", "s2be"),
+                          ("stringToBool", "s2b"),
 
                           ("islower", "isLower"),
                           ("isupper", "isUpper"),
