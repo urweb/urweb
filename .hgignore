@@ -62,6 +62,7 @@ m4/lt*.m4
 config.*
 configure
 depcomp
+compile
 install-sh
 ltmain.sh
 missing
