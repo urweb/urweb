@@ -3345,7 +3345,12 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                      L'.SgiStr (x', n1, sgn1) =>
                                      if x = x' then
                                          let
+                                             (* Don't forget to save & restore the
+                                              * counterparts map around recursive calls!
+                                              * Otherwise, all sorts of mayhem may result. *)
+                                             val saved = !counterparts
                                              val () = subSgn' counterparts env loc sgn1 sgn2
+                                             val () = counterparts := saved
                                              val env = E.pushStrNamedAs env x n1 sgn1
                                              val env = if n1 = n2 then
                                                            env
