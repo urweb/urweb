@@ -2043,6 +2043,10 @@ val consEqSimple =
                   | (L'.CTuple cs1, L'.CTuple cs2) => ListPair.all (ces env) (cs1, cs2)
                   | (L'.CProj (c1, n1), L'.CProj (c2, n2)) => ces env (c1, c2) andalso n1 = n2
                   | (L'.CUnif (_, _, _, _, r1), L'.CUnif (_, _, _, _, r2)) => r1 = r2
+
+                  | (L'.TFun (d1, r1), L'.TFun (d2, r2)) => ces env (d1, d2) andalso ces env (r1, r2)
+                  | (L'.TRecord c1, L'.TRecord c2) => ces env (c1, c2)
+                  
                   | _ => false
             end
     in
