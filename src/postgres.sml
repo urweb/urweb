@@ -340,14 +340,12 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                   newline,
                   newline,
 
-                  p_list_sepi newline (fn i => fn (s, n) =>
+                  p_list_sepi newline (fn i => fn (s, _) =>
                                                   box [string "res = PQprepare(conn, \"uw",
                                                        string (Int.toString i),
                                                        string "\", \"",
                                                        string (Prim.toCString s),
-                                                       string "\", ",
-                                                       string (Int.toString n),
-                                                       string ", NULL);",
+                                                       string "\", 0, NULL);",
                                                        newline,
                                                        string "if (PQresultStatus(res) != PGRES_COMMAND_OK) {",
                                                        newline,
