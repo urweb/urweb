@@ -744,15 +744,46 @@ fun capitalize s =
         "" => ""
       | _ => str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
 
+val allLower = CharVector.map Char.toLower
+
 val mangle = ref true
 fun setMangleSql x = mangle := x
-fun mangleSqlTable s = if !mangle then "uw_" ^ capitalize s
-                       else if #name (currentDbms ()) = "mysql" then capitalize s
-                       else lowercase s
-fun mangleSql s = if !mangle then "uw_" ^ s
-                  else if #name (currentDbms ()) = "mysql" then lowercase s
-                  else lowercase s
-fun mangleSqlCatalog s = if !mangle then "uw_" ^ s else lowercase s
+
+fun mangleSqlTable s =
+    if #name (currentDbms ()) = "mysql" then
+        if !mangle then
+            "uw_" ^ allLower s
+        else
+            allLower s
+    else
+        if !mangle then
+            "uw_" ^ capitalize s
+        else
+            lowercase s
+
+fun mangleSql s =
+    if #name (currentDbms ()) = "mysql" then
+        if !mangle then
+            "uw_" ^ allLower s 
+        else
+            allLower s
+    else
+        if !mangle then
+            "uw_" ^ s
+        else
+            lowercase s
+
+fun mangleSqlCatalog s =
+    if #name (currentDbms ()) = "mysql" then
+        if !mangle then
+            "uw_" ^ allLower s
+        else
+            allLower s
+    else
+        if !mangle then
+            "uw_" ^ s
+        else
+            lowercase s
 
 val html5 = ref false
 fun setIsHtml5 b = html5 := b
