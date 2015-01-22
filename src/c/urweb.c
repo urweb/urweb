@@ -171,11 +171,11 @@ static pthread_mutex_t rand_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static uw_Basis_int my_rand() {
   pthread_mutex_lock(&rand_mutex);
-  int r = RAND_bytes((unsigned char *)&ret, sizeof ret);
+  int ret, r = RAND_bytes((unsigned char *)&ret, sizeof ret);
   pthread_mutex_unlock(&rand_mutex);
 
   if (r)
-    return abs(r);
+    return abs(ret);
   else
     return -1;
 }
@@ -362,8 +362,6 @@ extern void uw_global_custom();
 extern void uw_init_crypto();
 
 void uw_global_init() {
-  srand(time(NULL) ^ getpid());
-
   clients = malloc(0);
 
   uw_global_custom();

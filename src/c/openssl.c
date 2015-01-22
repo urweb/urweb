@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include <openssl/sha.h>
+#include <openssl/rand.h>
 
 #define PASSSIZE 4
 
@@ -19,10 +20,11 @@ static int password[PASSSIZE];
 char *uw_sig_file = NULL;
 
 static void random_password() {
-  int i;
-
-  for (i = 0; i < PASSSIZE; ++i)
-    password[i] = rand();
+  if (!RAND_bytes((unsigned char *)password, sizeof password)) {
+    fprintf(stderr, "Error generating random password\n");
+    perror("RAND_bytes");
+    exit(1);
+  }
 }
 
 void uw_init_crypto() {
