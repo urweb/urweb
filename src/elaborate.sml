@@ -3697,6 +3697,21 @@ and wildifyStr env (str, sgn) =
 
                        | c => ((*Print.preface ("WTF?", p_con env (c, loc));*) NONE)
 
+                 fun isClassOrFolder' env (c : L'.con) =
+                     case #1 c of
+                         L'.CAbs (x, k, c) =>
+                         let
+                             val env = E.pushCRel env x k
+
+                             fun toHead (c : L'.con) =
+                                 case #1 c of
+                                     L'.CApp (c, _) => toHead c
+                                   | _ => isClassOrFolder env c
+                         in
+                             toHead (hnormCon env c)
+                         end
+                       | _ => isClassOrFolder env c
+
                  fun buildNeeded env sgis =
                      #1 (foldl (fn ((sgi, loc), (nd, env')) =>
                                    (case sgi of
@@ -3715,7 +3730,7 @@ and wildifyStr env (str, sgn) =
                                                             (case hnormCon env' f of
                                                                  (L'.CApp (f, cl), loc) =>
                                                                  (case hnormCon env' f of
-                                                                      (L'.CMap _, _) => isClassOrFolder env' cl
+                                                                      (L'.CMap _, _) => isClassOrFolder' env' cl
                                                                     | _ => false)
                                                                | _ => false)
                                                             | (L'.CConcat (c1, c2), _) =>
