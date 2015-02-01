@@ -724,6 +724,8 @@ fun process (file : file) =
                                              | "<" => "lt"
                                              | "<=" => "le"
                                              | "strcmp" => "strcmp"
+                                             | "powl" => "pow"
+                                             | "powf" => "pow"
                                              | _ => raise Fail ("Jscomp: Unknown binary operator " ^ s)
 
                                 val (e1, st) = jsE inner (e1, st)

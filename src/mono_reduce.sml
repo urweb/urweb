@@ -818,10 +818,19 @@ fun reduce (file : file) =
                                 search pes
                         end
 
-                      | EField ((ERecord xes, _), x) =>
-                        (case List.find (fn (x', _, _) => x' = x) xes of
-                             SOME (_, e, _) => #1 e
-                           | NONE => e)
+                      | EField (e1, x) =>
+                        let
+                            fun yankLets (e : exp) =
+                                case #1 e of
+                                    ELet (x, t, e1, e2) => (ELet (x, t, e1, yankLets e2), #2 e)
+                                  | ERecord xes =>
+                                    (case List.find (fn (x', _, _) => x' = x) xes of
+                                         SOME (_, e, _) => e
+                                       | NONE => (EField (e, x), #2 e))
+                                  | _ => (EField (e, x), #2 e)
+                        in
+                            #1 (yankLets e1)
+                        end
 
                       | ELet (x1, t1, (ELet (x2, t2, e1, b1), loc), b2) =>
                         let
