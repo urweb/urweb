@@ -79,6 +79,8 @@ fun effectize file =
         fun exp evs e =
             case e of
                 EFfi ("Basis", "getCookie") => true
+              | EFfiApp ("Basis", "getHeader", _) => true
+              | EFfiApp ("Basis", "getenv", _) => true
               | ENamed n => IM.inDomain (evs, n)
               | EServerCall (n, _, _, _) => IM.inDomain (evs, n)
               | _ => false
