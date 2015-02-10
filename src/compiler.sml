@@ -461,14 +461,13 @@ fun parseUrp' accLibs fname =
          end
      else
          let
-             val thisPath = OS.Path.dir fname
-
              val pathmap = ref (!pathmap)
              val bigLibs = ref []
 
              fun pu filename =
                  let
                      val filename = OS.Path.mkAbsolute {path = filename, relativeTo = OS.FileSys.getDir ()}
+                     val thisPath = OS.Path.dir filename
 
                      val dir = OS.Path.dir filename
                      fun opener () = TextIO.openIn (OS.Path.joinBaseExt {base = filename, ext = SOME "urp"})
