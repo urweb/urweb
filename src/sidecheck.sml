@@ -31,29 +31,54 @@ open Mono
 
 structure E = ErrorMsg
 
+structure SK = struct
+type ord_key = string
+val compare = String.compare
+end
+
+structure SS = BinarySetFn(SK)
+
+val envVars = ref SS.empty
+
 fun check ds =
-    (MonoUtil.File.appLoc (fn (e, loc) =>
-                              let
-                                  fun error (k as (k1, k2)) =
-                                      if Settings.isClientOnly k then
-                                          let
-                                              val k2 = case k1 of
-                                                           "Basis" =>
-                                                           (case k2 of
-                                                                "get_client_source" => "get"
-                                                              | _ => k2)
-                                                         | _ => k2
-                                          in
-                                              E.errorAt loc ("Server-side code uses client-side-only identifier \"" ^ k1 ^ "." ^ k2 ^ "\"")
-                                          end
-                                      else
-                                          ()
-                              in
-                                  case e of
-                                      EFfi k => error k
-                                    | EFfiApp (k1, k2, _) => error (k1, k2)
-                                    | _ => ()
-                              end) ds;
-     ds)
+    let
+        val alreadyWarned = ref false
+    in
+        envVars := SS.empty;
+        MonoUtil.File.appLoc (fn (e, loc) =>
+                                 let
+                                     fun error (k as (k1, k2)) =
+                                         if Settings.isClientOnly k then
+                                             let
+                                                 val k2 = case k1 of
+                                                              "Basis" =>
+                                                              (case k2 of
+                                                                   "get_client_source" => "get"
+                                                                 | _ => k2)
+                                                            | _ => k2
+                                             in
+                                                 E.errorAt loc ("Server-side code uses client-side-only identifier \"" ^ k1 ^ "." ^ k2 ^ "\"")
+                                             end
+                                         else
+                                             ()
+                                 in
+                                     case e of
+                                         EFfi k => error k
+                                       | EFfiApp ("Basis", "getenv", [(e, _)]) =>
+                                         (case #1 e of
+                                              EPrim (Prim.String (_, s)) =>
+                                              envVars := SS.add (!envVars, s)
+                                            | _ => if !alreadyWarned then
+                                                       ()
+                                                   else
+                                                       (alreadyWarned := true;
+                                                        TextIO.output (TextIO.stdErr, "WARNING: " ^ ErrorMsg.spanToString loc ^ ": reading from an environment variable not determined at compile time, which can confuse CSRF protection")))
+                                       | EFfiApp (k1, k2, _) => error (k1, k2)
+                                       | _ => ()
+                                 end) ds;
+        ds
+    end
+
+fun readEnvVars () = SS.listItems (!envVars)
 
 end

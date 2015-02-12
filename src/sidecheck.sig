@@ -29,4 +29,9 @@ signature SIDE_CHECK = sig
 
     val check : Mono.file -> Mono.file
 
+    (* While we're checking, we'll do some other signature-related work, recording
+     * which environment variables are read.  This function conveys the list,
+     * coming from the most recent call to [check]. *)
+    val readEnvVars : unit -> string list
+
 end
