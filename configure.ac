@@ -1,5 +1,5 @@
-AC_INIT([urweb], [20150103])
-WORKING_VERSION=1
+AC_INIT([urweb], [20150214])
+WORKING_VERSION=0
 AC_USE_SYSTEM_EXTENSIONS
 
 # automake 1.12 requires this, but automake 1.11 doesn't recognize it
