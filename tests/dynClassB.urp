@@ -1,0 +1,5 @@
+rewrite all DynClassB/*
+file /style.css style.css
+allow url /style.css
+
+dynClassB

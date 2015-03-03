@@ -3267,6 +3267,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                     else
                         (NONE, NONE, attrs)
 
+                val (class, fm) = monoExp (env, st, fm) class
+                val (dynClass, fm) = monoExp (env, st, fm) dynClass
+                val (style, fm) = monoExp (env, st, fm) style
+                val (dynStyle, fm) = monoExp (env, st, fm) dynStyle
+
                 (* Special case for <button value=""> *)
                 val (attrs, extraString) = case tag of
                                                "button" =>
@@ -3274,13 +3279,30 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                     ([(_, value, _)], rest) =>
                                                     (rest, SOME value)
                                                   | _ => (attrs, NONE))
+                                             | "body" =>
+                                               (attrs,
+                                                if (case (#1 dynClass, #1 dynStyle) of
+                                                        (L'.ESome _, _) => true
+                                                      | (_, L'.ESome _) => true
+                                                      | _ => false) then
+                                                    let
+                                                        fun jsify (e : L'.exp) =
+                                                            case #1 e of
+                                                                L'.ESome (_, ds) => strcat [str "execD(",
+                                                                                            (L'.EJavaScript (L'.Script, ds), loc),
+                                                                                            str ")"]
+                                                              | _ => str "null"
+                                                    in
+                                                        SOME (strcat [str "<script type=\"text/javascript\">bodyDynClass(",
+                                                                      jsify dynClass,
+                                                                      str ",",
+                                                                      jsify dynStyle,
+				                                      str ")</script>"])
+                                                    end
+                                                else
+                                                    NONE)
                                              | _ => (attrs, NONE)
 
-
-                val (class, fm) = monoExp (env, st, fm) class
-                val (dynClass, fm) = monoExp (env, st, fm) dynClass
-                val (style, fm) = monoExp (env, st, fm) style
-                val (dynStyle, fm) = monoExp (env, st, fm) dynStyle
 
                 val dynamics = ["dyn", "ctextbox", "cpassword", "ccheckbox", "cselect", "coption", "ctextarea", "active", "script", "cemail", "csearch", "curl", "ctel", "ccolor"]
 
@@ -3825,10 +3847,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                       | "tabl" => normal ("table", NONE)
                       | _ => normal (tag, NONE)
+
+                val (dynClass', dynStyle') =
+                    case tag of
+                        "body" => ((L'.ENone dummyTyp, ErrorMsg.dummySpan),
+                                   (L'.ENone dummyTyp, ErrorMsg.dummySpan))
+                      | _ => (dynClass, dynStyle)
 	    in
-		case #1 dynClass of
+		case #1 dynClass' of
 		    L'.ENone _ =>
-		    (case #1 dynStyle of
+		    (case #1 dynStyle' of
 		         L'.ENone _ => baseAll
 		       | L'.ESome (_, ds) => (strcat [str "<script type=\"text/javascript\">dynClass(\"",
                                                       str (pnode ()),
@@ -3842,7 +3870,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                baseAll))
 		  | L'.ESome (_, dc) =>
                     let
-                        val e = case #1 dynStyle of
+                        val e = case #1 dynStyle' of
                                     L'.ENone _ => str "null"
                                   | L'.ESome (_, ds) => strcat [str "execD(",
                                                                 (L'.EJavaScript (L'.Script, ds), loc),
