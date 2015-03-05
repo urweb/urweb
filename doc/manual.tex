@@ -634,6 +634,8 @@ It is possible to write a $\mt{let}$ expression with its constituents in reverse
 
 Ur/Web also includes a few more infix operators: $f \; \texttt{<|} \; x$ desugars to $f \; x$, $x \; \texttt{|>} \; f$ to $f \; x$, $f \; \texttt{<{}<{}<} \; g$ to $\mt{Top}.\mt{compose} \; f \; g$, and $g \; \texttt{>{}>{}>} \; f$ to $\mt{Top}.\mt{compose} \; f \; g$.  (The latter two are doing function composition in the usual way.)  Furthermore, any identifier may be changed into an infix operator by placing it between backticks, e.g. a silly way to do addition is $x \; \texttt{`}\mt{plus}\texttt{`} \; y$ instead of $x + y$.
 
+Hexadecimal integer literals are supported like \texttt{0xDEADBEEF}.  Only capital letters are allowed.
+
 
 \section{Static Semantics}
 
