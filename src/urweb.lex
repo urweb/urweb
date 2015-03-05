@@ -182,6 +182,7 @@ cid = [A-Z][A-Za-z0-9_]*;
 ws = [\ \t\012\r];
 intconst = [0-9]+;
 realconst = [0-9]+\.[0-9]*;
+hexconst = 0x[0-9A-F]{1,8};
 notags = ([^<{\n(]|(\([^\*<{\n]))+;
 xcom = ([^\-]|(-[^\-]))+;
 oint = [0-9][0-9][0-9];
@@ -540,6 +541,12 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 
 <INITIAL> {id}        => (Tokens.SYMBOL (yytext, pos yypos, pos yypos + size yytext));
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));
+
+<INITIAL> {hexconst}  => (case StringCvt.scanString (Int64.scan StringCvt.HEX) (String.extract (yytext, 2, NONE)) of
+                              SOME x => Tokens.INT (x, pos yypos, pos yypos + size yytext)
+                            | NONE   => (ErrorMsg.errorAt' (pos yypos, pos yypos)
+                                                           ("Expected hexInt, received: " ^ yytext);
+                                         continue ()));
 
 <INITIAL> {intconst}  => (case Int64.fromString yytext of
                               SOME x => Tokens.INT (x, pos yypos, pos yypos + size yytext)
