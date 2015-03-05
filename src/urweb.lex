@@ -376,6 +376,15 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> "&&"        => (Tokens.ANDALSO (pos yypos, pos yypos + size yytext));
 <INITIAL> "||"        => (Tokens.ORELSE (pos yypos, pos yypos + size yytext));
 
+<INITIAL> "<<<"       => (Tokens.COMPOSE (pos yypos, pos yypos + size yytext));
+<INITIAL> ">>>"       => (Tokens.ANDTHEN (pos yypos, pos yypos + size yytext));
+<INITIAL> "<|"        => (Tokens.FWDAPP (pos yypos, pos yypos + size yytext));
+<INITIAL> "|>"        => (Tokens.REVAPP (pos yypos, pos yypos + size yytext));
+
+<INITIAL> "`" ({cid} ".")* {id} "`"  => (Tokens.BACKTICK_PATH ( (* strip backticks *)
+                                                              substring (yytext,1,size yytext -2),
+                                                              pos yypos, pos yypos + size yytext));
+
 <INITIAL> "="         => (Tokens.EQ (pos yypos, pos yypos + size yytext));
 <INITIAL> "<>"        => (Tokens.NE (pos yypos, pos yypos + size yytext));
 <INITIAL> "<"         => (Tokens.LT (pos yypos, pos yypos + size yytext));

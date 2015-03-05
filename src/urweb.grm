@@ -216,6 +216,14 @@ fun native_op (oper, e1, e2, loc) =
         (EApp (e, e2), loc)
     end
 
+fun top_binop (oper, e1, e2, loc) =
+    let
+        val e = (EVar (["Top"], oper, Infer), loc)
+        val e = (EApp (e, e1), loc)
+    in
+        (EApp (e, e2), loc)
+    end
+
 val inDml = ref false
 
 fun tagIn bt =
@@ -395,6 +403,8 @@ fun patternOut (e : exp) =
  | CCONSTRAINT | UNIQUE | CHECK | PRIMARY | FOREIGN | KEY | ON | NO | ACTION | RESTRICT | CASCADE | REFERENCES
  | JOIN | INNER | CROSS | OUTER | LEFT | RIGHT | FULL
  | CIF | CTHEN | CELSE
+ | FWDAPP | REVAPP | COMPOSE | ANDTHEN
+ | BACKTICK_PATH of string
 
 %nonterm
    file of decl list
@@ -565,6 +575,12 @@ fun patternOut (e : exp) =
 %right CAND
 %nonassoc EQ NE LT LE GT GE IS
 %right ARROW
+
+%left REVAPP
+%right FWDAPP
+%left BACKTICK_PATH
+%right COMPOSE ANDTHEN
+
 %right CARET PLUSPLUS
 %left MINUSMINUS MINUSMINUSMINUS
 %left PLUS MINUS
@@ -1201,6 +1217,22 @@ eexp   : eapps                          (case #1 eapps of
        | eexp LE eexp                   (native_op ("le", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp GT eexp                   (native_op ("gt", eexp1, eexp2, s (eexp1left, eexp2right)))
        | eexp GE eexp                   (native_op ("ge", eexp1, eexp2, s (eexp1left, eexp2right)))
+
+       | eexp FWDAPP eexp               (EApp (eexp1, eexp2), s (eexp1left, eexp2right))
+       | eexp REVAPP eexp               (EApp (eexp2, eexp1), s (eexp1left, eexp2right))
+       | eexp COMPOSE eexp              (top_binop ("compose", eexp1, eexp2, s (eexp1left, eexp2right)))
+       | eexp ANDTHEN eexp              (top_binop ("compose", eexp2, eexp1, s (eexp1left, eexp2right)))
+       | eexp BACKTICK_PATH eexp        (let
+                                                val path = String.tokens (fn ch => ch = #".") BACKTICK_PATH
+                                                val pathModules = List.take (path, (length path -1))
+                                                val pathOp = List.last path
+
+                                                val e = (EVar (pathModules, pathOp, Infer)
+                                                        , s (BACKTICK_PATHleft, BACKTICK_PATHright))
+                                                val e = (EApp (e, eexp1), s (eexp1left, BACKTICK_PATHright))
+                                        in
+                                                (EApp (e, eexp2), s (eexp1left, eexp2right))
+                                        end)
 
        | eexp ANDALSO eexp              (let
                                              val loc = s (eexp1left, eexp2right)
