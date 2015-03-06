@@ -330,7 +330,9 @@ val freeInAbs = U.Exp.existsB {typ = fn _ => false,
                                              U.Exp.RelE _ => n + 1
                                            | _ => n} 0
 
-fun reduce (file : file) =
+val yankedCase = ref false
+
+fun reduce' (file : file) =
     let
         val (timpures, impures, absCounts) =
             foldl (fn ((d, _), (timpures, impures, absCounts)) =>
@@ -770,17 +772,18 @@ fun reduce (file : file) =
                                                                       Print.PD.string "}"]
                                     in
                                         if List.all (safe o #2) pes then
-                                            EAbs ("y", dom, result,
-                                                  (ECase (liftExpInExp 0 e',
-                                                          map (fn (p, (EAbs (_, _, _, e), _)) =>
-                                                                  (p, swapExpVarsPat (0, patBinds p) e)
-                                                                | (p, (EError (e, (TFun (_, t), _)), loc)) =>
-                                                                  (p, (EError (liftExpInExp (patBinds p) e, t), loc))
-                                                                | (p, e) =>
-                                                                  (p, (EApp (liftExpInExp (patBinds p) e,
-                                                                             (ERel (patBinds p), loc)), loc)))
-                                                              pes,
-                                                          {disc = disc, result = result}), loc))
+                                            (yankedCase := true;
+                                             EAbs ("y", dom, result,
+                                                   (ECase (liftExpInExp 0 e',
+                                                           map (fn (p, (EAbs (_, _, _, e), _)) =>
+                                                                   (p, swapExpVarsPat (0, patBinds p) e)
+                                                               | (p, (EError (e, (TFun (_, t), _)), loc)) =>
+                                                                 (p, (EError (liftExpInExp (patBinds p) e, t), loc))
+                                                               | (p, e) =>
+                                                                 (p, (EApp (liftExpInExp (patBinds p) e,
+                                                                            (ERel (patBinds p), loc)), loc)))
+                                                               pes,
+                                                           {disc = disc, result = result}), loc)))
                                         else
                                             e
                                     end
@@ -893,5 +896,17 @@ fun reduce (file : file) =
     in
         U.File.mapB {typ = typ, exp = exp, decl = decl, bind = bind} E.empty file
     end
+
+fun reduce file =
+    let
+        val () = yankedCase := false
+        val file' = reduce' file
+    in
+        if !yankedCase then
+            reduce file'
+        else
+            file'
+    end
+
 
 end
