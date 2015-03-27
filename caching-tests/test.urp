@@ -1,8 +1,5 @@
 database test.db
 sql test.sql
-safeGet Test/flush01
-safeGet Test/flush10
-safeGet Test/flush11
 safeGet Test/flush
 
 test
