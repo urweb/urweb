@@ -2015,6 +2015,45 @@ fun chaseUnifs c =
         L'.CUnif (_, _, _, _, ref (L'.Known c)) => chaseUnifs c
       | _ => c
 
+val consEqSimple =
+    let
+        fun ces env (c1 : L'.con, c2 : L'.con) =
+            let
+                val c1 = hnormCon env c1
+                val c2 = hnormCon env c2
+            in
+                case (#1 c1, #1 c2) of
+                    (L'.CRel n1, L'.CRel n2) => n1 = n2
+                  | (L'.CNamed n1, L'.CNamed n2) =>
+                    n1 = n2 orelse
+                    (case #3 (E.lookupCNamed env n1) of
+                         SOME (L'.CNamed n2', _) => n2' = n1
+                       | _ => false)
+                  | (L'.CModProj n1, L'.CModProj n2) => n1 = n2
+                  | (L'.CApp (f1, x1), L'.CApp (f2, x2)) => ces env (f1, f2) andalso ces env (x1, x2)
+                  | (L'.CAbs (x1, k1, c1), L'.CAbs (_, _, c2)) => ces (E.pushCRel env x1 k1) (c1, c2)
+                  | (L'.CName x1, L'.CName x2) => x1 = x2
+                  | (L'.CRecord (_, xts1), L'.CRecord (_, xts2)) =>
+                    ListPair.all (fn ((x1, t1), (x2, t2)) =>
+                                     ces env (x1, x2) andalso ces env (t2, t2)) (xts1, xts2)
+                  | (L'.CConcat (x1, y1), L'.CConcat (x2, y2)) =>
+                    ces env (x1, x2) andalso ces env (y1, y2)
+                  | (L'.CMap _, L'.CMap _) => true
+                  | (L'.CUnit, L'.CUnit) => true
+                  | (L'.CTuple cs1, L'.CTuple cs2) => ListPair.all (ces env) (cs1, cs2)
+                  | (L'.CProj (c1, n1), L'.CProj (c2, n2)) => ces env (c1, c2) andalso n1 = n2
+                  | (L'.CUnif (_, _, _, _, r1), L'.CUnif (_, _, _, _, r2)) => r1 = r2
+
+                  | (L'.TFun (d1, r1), L'.TFun (d2, r2)) => ces env (d1, d2) andalso ces env (r1, r2)
+                  | (L'.TRecord c1, L'.TRecord c2) => ces env (c1, c2)
+                  
+                  | _ => false
+            end
+    in
+        ces
+    end
+    
+
 fun elabExp (env, denv) (eAll as (e, loc)) =
     let
         (*val () = eprefaces "elabExp" [("eAll", SourcePrint.p_exp eAll)]*)
@@ -3020,26 +3059,7 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
 
       | (L'.SgnConst sgis1, L'.SgnConst sgis2) =>
         let
-            (* This reshuffling was added to avoid some unfortunate unification behavior.
-             * In particular, in sub-signature checking, constraints might be unified,
-             * even when we don't expect them to be unifiable, deciding on bad values
-             * for unification variables and dooming later unification.
-             * By putting all the constraints _last_, we allow all the other unifications
-             * to happen first, hoping that no unification variables survive to confuse
-             * constraint unification. *)
-
-            val sgis2 =
-                let
-                    val (constraints, others) = List.partition
-                                                   (fn (L'.SgiConstraint _, _) => true
-                                                   | _ => false) sgis2
-                in
-                    case constraints of
-                        [] => sgis2
-                      | _ => others @ constraints
-                end
-
-            (*val () = prefaces "subSgn" [("sgn1", p_sgn env sgn1),
+           (*val () = prefaces "subSgn" [("sgn1", p_sgn env sgn1),
                                         ("sgn2", p_sgn env sgn2),
                                         ("sgis1", p_sgn env (L'.SgnConst sgis1, loc2)),
                                         ("sgis2", p_sgn env (L'.SgnConst sgis2, loc2))]*)
@@ -3329,7 +3349,12 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                      L'.SgiStr (x', n1, sgn1) =>
                                      if x = x' then
                                          let
+                                             (* Don't forget to save & restore the
+                                              * counterparts map around recursive calls!
+                                              * Otherwise, all sorts of mayhem may result. *)
+                                             val saved = !counterparts
                                              val () = subSgn' counterparts env loc sgn1 sgn2
+                                             val () = counterparts := saved
                                              val env = E.pushStrNamedAs env x n1 sgn1
                                              val env = if n1 = n2 then
                                                            env
@@ -3370,8 +3395,11 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                         seek (fn (env, sgi1All as (sgi1, loc)) =>
                                  case sgi1 of
                                      L'.SgiConstraint (c1, d1) =>
-                                     if consEq env loc (c1, c2)
-					andalso consEq env loc (d1, d2) then
+                                     (* It's important to do only simple equality checking here,
+                                      * with no unification, because constraints are unnamed.
+                                      * It's too easy to pick the wrong pair to unify! *)
+                                     if consEqSimple env (c1, c2)
+					andalso consEqSimple env (d1, d2) then
                                          SOME env
                                      else
                                          NONE
@@ -3669,6 +3697,21 @@ and wildifyStr env (str, sgn) =
 
                        | c => ((*Print.preface ("WTF?", p_con env (c, loc));*) NONE)
 
+                 fun isClassOrFolder' env (c : L'.con) =
+                     case #1 c of
+                         L'.CAbs (x, k, c) =>
+                         let
+                             val env = E.pushCRel env x k
+
+                             fun toHead (c : L'.con) =
+                                 case #1 c of
+                                     L'.CApp (c, _) => toHead c
+                                   | _ => isClassOrFolder env c
+                         in
+                             toHead (hnormCon env c)
+                         end
+                       | _ => isClassOrFolder env c
+
                  fun buildNeeded env sgis =
                      #1 (foldl (fn ((sgi, loc), (nd, env')) =>
                                    (case sgi of
@@ -3680,19 +3723,23 @@ and wildifyStr env (str, sgn) =
                                             fun should t =
                                                 let
                                                     val t = normClassConstraint env' t
+
+                                                    fun shouldR c =
+                                                        case hnormCon env' c of
+                                                            (L'.CApp (f, _), _) =>
+                                                            (case hnormCon env' f of
+                                                                 (L'.CApp (f, cl), loc) =>
+                                                                 (case hnormCon env' f of
+                                                                      (L'.CMap _, _) => isClassOrFolder' env' cl
+                                                                    | _ => false)
+                                                               | _ => false)
+                                                            | (L'.CConcat (c1, c2), _) =>
+                                                              shouldR c1 orelse shouldR c2
+                                                            | c => false
                                                 in
                                                     case #1 t of
                                                         L'.CApp (f, _) => isClassOrFolder env' f
-                                                      | L'.TRecord t =>
-                                                        (case hnormCon env' t of
-                                                             (L'.CApp (f, _), _) =>
-                                                             (case hnormCon env' f of
-                                                                  (L'.CApp (f, cl), loc) =>
-                                                                  (case hnormCon env' f of
-                                                                       (L'.CMap _, _) => isClassOrFolder env' cl
-                                                                     | _ => false)
-                                                                | _ => false)
-                                                           | _ => false)
+                                                      | L'.TRecord t => shouldR t
                                                       | _ => false
                                                 end
                                          in

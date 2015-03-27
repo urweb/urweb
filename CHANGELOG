@@ -1,4 +1,18 @@
 ========
+20150214
+========
+
+- Bug fixes and improvements to type inference and optimization
+
+========
+20150103
+========
+
+- New antiquote syntax for 'ORDER BY' clauses
+- New standard library function: List.mem
+- Bug fixes and improvements to type inference
+
+========
 20141206
 ========
 

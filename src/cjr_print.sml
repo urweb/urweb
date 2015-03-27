@@ -3260,6 +3260,16 @@ fun p_file env (ds, ps) =
                                                               string "))"]))
                          NONE cookies
 
+        val cookieCode = foldl (fn (evar, acc) =>
+                                   SOME (case acc of
+                                             NONE => string ("uw_unnull(uw_Basis_getenv(ctx, \""
+                                                             ^ Prim.toCString evar ^ "\"))")
+                                           | SOME acc => box [string ("uw_Basis_strcat(ctx, uw_unnull(uw_Basis_getenv(ctx, \""
+                                                                      ^ Prim.toCString evar ^ "\")), uw_Basis_strcat(ctx, \"/\", "),
+                                                              acc,
+                                                              string "))"]))
+                         cookieCode (SideCheck.readEnvVars ())
+
         fun makeChecker (name, rules : Settings.rule list) =
             box [string "static int ",
                  string name,

@@ -167,6 +167,19 @@ void *uw_init_client_data();
 void uw_free_client_data(void *);
 void uw_copy_client_data(void *dst, void *src);
 
+static pthread_mutex_t rand_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static uw_Basis_int my_rand() {
+  pthread_mutex_lock(&rand_mutex);
+  int ret, r = RAND_bytes((unsigned char *)&ret, sizeof ret);
+  pthread_mutex_unlock(&rand_mutex);
+
+  if (r)
+    return abs(ret);
+  else
+    return -1;
+}
+
 static client *new_client() {
   client *c;
 
@@ -192,7 +205,7 @@ static client *new_client() {
 
   pthread_mutex_lock(&c->lock);
   c->mode = USED;
-  c->pass = rand();
+  c->pass = my_rand();
   c->sock = -1;
   c->last_contact = time(NULL);
   uw_buffer_reset(&c->msgs);
@@ -349,8 +362,6 @@ extern void uw_global_custom();
 extern void uw_init_crypto();
 
 void uw_global_init() {
-  srand(time(NULL) ^ getpid());
-
   clients = malloc(0);
 
   uw_global_custom();
@@ -4234,16 +4245,11 @@ uw_Basis_unit uw_Basis_debug(uw_context ctx, uw_Basis_string s) {
   return uw_unit_v;
 }
 
-static pthread_mutex_t rand_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 uw_Basis_int uw_Basis_rand(uw_context ctx) {
-  uw_Basis_int ret;
-  pthread_mutex_lock(&rand_mutex);
-  int r = RAND_bytes((unsigned char *)&ret, sizeof ret);
-  pthread_mutex_unlock(&rand_mutex);
+  int r = my_rand();
 
-  if (r)
-    return abs(ret);
+  if (r >= 0)
+    return r;
   else
     uw_error(ctx, FATAL, "Random number generation failed");
 }

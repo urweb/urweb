@@ -914,7 +914,7 @@ val time  : bodyTag boxAttrs
 val wbr : bodyTag boxAttrs
 val bdi : bodyTag boxAttrs
 
-val a : bodyTag ([Link = transaction page, Href = url, Target = string, Rel = string] ++ boxAttrs)
+val a : bodyTag ([Link = transaction page, Href = url, Target = string, Rel = string, Download = string] ++ boxAttrs)
 
 val img : bodyTag ([Alt = string, Src = url, Width = int, Height = int,
                     Onabort = transaction unit, Onerror = transaction unit,

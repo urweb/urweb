@@ -333,7 +333,7 @@ static void *worker(void *data) {
   size_t path_size = 0;
   char *path_buf = malloc(0);
 
-  hs.uppercased = malloc(0);
+  hs.uppercased = malloc(6);
   hs.uppercased_len = 0;
   hs.nvps = malloc(sizeof(nvp));
   hs.n_nvps = 1;

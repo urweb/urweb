@@ -6,8 +6,8 @@
 \newcommand{\mt}[1]{\mathsf{#1}}
 
 \newcommand{\rc}{+ \hspace{-.075in} + \;}
-\newcommand{\rcut}{\; \texttt{--} \;}
-\newcommand{\rcutM}{\; \texttt{---} \;}
+\newcommand{\rcut}{\; \texttt{-{}-} \;}
+\newcommand{\rcutM}{\; \texttt{-{}-{}-} \;}
 
 \begin{document}
 
@@ -631,6 +631,10 @@ There are infix operator syntaxes for a number of functions defined in the $\mt{
 A signature item $\mt{table} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{sql\_table} \; c \; []$.  $\mt{view} \; x : c$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{sql\_view} \; c$, $\mt{sequence} \; x$ is short for $\mt{val} \; x : \mt{Basis}.\mt{sql\_sequence}$.  $\mt{cookie} \; x : \tau$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{http\_cookie} \; \tau$, and $\mt{style} \; x$ is shorthand for $\mt{val} \; x : \mt{Basis}.\mt{css\_class}$.
 
 It is possible to write a $\mt{let}$ expression with its constituents in reverse order, along the lines of Haskell's \cd{where}.  An expression $\mt{let} \; e \; \mt{where} \; ed^* \; \mt{end}$ desugars to $\mt{let} \; ed^* \; \mt{in} \; e \; \mt{end}$.
+
+Ur/Web also includes a few more infix operators: $f \; \texttt{<|} \; x$ desugars to $f \; x$, $x \; \texttt{|>} \; f$ to $f \; x$, $f \; \texttt{<{}<{}<} \; g$ to $\mt{Top}.\mt{compose} \; f \; g$, and $g \; \texttt{>{}>{}>} \; f$ to $\mt{Top}.\mt{compose} \; f \; g$.  (The latter two are doing function composition in the usual way.)  Furthermore, any identifier may be changed into an infix operator by placing it between backticks, e.g. a silly way to do addition is $x \; \texttt{`}\mt{plus}\texttt{`} \; y$ instead of $x + y$.
+
+Hexadecimal integer literals are supported like \texttt{0xDEADBEEF}.  Only capital letters are allowed.
 
 
 \section{Static Semantics}
@@ -2263,7 +2267,7 @@ $$\begin{array}{rrcll}
   \textrm{Pre-queries} & q &::=& \mt{SELECT} \; [\mt{DISTINCT}] \; P \; \mt{FROM} \; F,^+ \; [\mt{WHERE} \; E] \; [\mt{GROUP} \; \mt{BY} \; p,^+] \; [\mt{HAVING} \; E] \\
   &&& \mid q \; R \; q \mid \{\{\{e\}\}\} \\
   \textrm{Relational operators} & R &::=& \mt{UNION} \mid \mt{INTERSECT} \mid \mt{EXCEPT} \\
-  \textrm{$\mt{ORDER \; BY}$ items} & O &::=& \mt{RANDOM} [()] \mid \hat{E} \; [o] \mid \hat{E} \; [o], O
+  \textrm{$\mt{ORDER \; BY}$ items} & O &::=& \mt{RANDOM} [()] \mid \hat{E} \; [o] \mid \hat{E} \; [o], O \mid \{\{\{e\}\}\}
 \end{array}$$
 
 $$\begin{array}{rrcll}

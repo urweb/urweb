@@ -54,6 +54,8 @@ val filterM : m ::: (Type -> Type) -> monad m -> a ::: Type
 val foldlMap : a ::: Type -> b ::: Type -> c ::: Type
                -> (a -> b -> c * b) -> b -> t a -> t c * b
 
+val mem : a ::: Type -> eq a -> a -> t a -> bool
+
 val find : a ::: Type -> (a -> bool) -> t a -> option a
 
 val search : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> option b

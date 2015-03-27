@@ -202,7 +202,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                       newline,
                       newline,
 
-                      p_list_sepi newline (fn i => fn (s, n) =>
+                      p_list_sepi newline (fn i => fn (s, _) =>
                                                       let
                                                           fun uhoh this s args =
                                                               box [p_list_sepi (box [])

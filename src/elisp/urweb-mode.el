@@ -171,42 +171,47 @@ See doc for the variable `urweb-mode-info'."
           (depth 0)
           (finished nil)
           (answer nil)
+          (bound (max 0 (- (point) 1024)))
           )
-      (while (and (not finished) (re-search-backward "[-<{}]" nil t))
-        (cond
-         ((looking-at "{")
-          (if (> depth 0)
-              (decf depth)
-            (setq finished t)))
-         ((looking-at "}")
-          (incf depth))
-         ((looking-at "<xml>")
-          (if (> depth 0)
-              (decf depth)
-            (progn
-              (setq answer t)
-              (setq finished t))))
-         ((looking-at "</xml>")
-          (incf depth))
+      (while (and (not finished)
+                  (re-search-backward "\\(\\([-{}]\\)\\|<\\(/?xml\\)?\\)"
+                                      bound t))
+        (let ((xml-tag (length (or (match-string 3) "")))
+              (ch (match-string 2)))
+         (cond
+          ((equal ch ?\{)
+           (if (> depth 0)
+               (decf depth)
+             (setq finished t)))
+          ((equal ch ?\})
+           (incf depth))
+          ((= xml-tag 3)
+           (if (> depth 0)
+               (decf depth)
+             (progn
+               (setq answer t)
+               (setq finished t))))
+          ((= xml-tag 4)
+           (incf depth))
 
-         ((looking-at "-")
-          (if (looking-at "->")
-            (setq finished (= depth 0))))
+          ((equal ch ?-)
+           (if (looking-at "->")
+               (setq finished (= depth 0))))
 
-         ((and (= depth 0)
-               (not (looking-at "<xml")) ;; ignore <xml/>
-               (eq font-lock-tag-face
-                   (get-text-property (point) 'face)))
-          ;; previous code was highlighted as tag, seems we are in xml
-          (progn
-            (setq answer t)
-            (setq finished t)))
+          ((and (= depth 0)
+                (not (looking-at "<xml")) ;; ignore <xml/>
+                (eq font-lock-tag-face
+                    (get-text-property (point) 'face)))
+           ;; previous code was highlighted as tag, seems we are in xml
+           (progn
+             (setq answer t)
+             (setq finished t)))
 
-         ((= depth 0)
-          ;; previous thing was a tag like, but not tag
-          ;; seems we are in usual code or comment
-          (setq finished t))
-         ))
+          ((= depth 0)
+           ;; previous thing was a tag like, but not tag
+           ;; seems we are in usual code or comment
+           (setq finished t))
+          )))
       answer)))
 
 (defun amAttribute (face)
