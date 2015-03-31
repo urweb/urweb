@@ -12,6 +12,8 @@ structure SIMM = MultimapFn(structure KeyMap = SM structure ValSet = IS)
 (* Filled in by [cacheWrap] during [Sqlcache]. *)
 val ffiInfo : {index : int, params : int} list ref = ref []
 
+fun resetFfiInfo () = ffiInfo := []
+
 fun getFfiInfo () = !ffiInfo
 
 (* Some FFIs have writing as their only effect, which the caching records. *)
@@ -376,6 +378,7 @@ val sequence =
     end
   | _ => raise Match
 
+(* TODO: factor out. *)
 fun ffiAppCache' (func, index, args) : Mono.exp' =
     EFfiApp ("Sqlcache", func ^ Int.toString index, args)
 
@@ -406,7 +409,7 @@ fun cacheWrap (query, i, urlifiedRel0, resultTyp, args) =
         val () = ffiInfo := {index = i, params = length args} :: !ffiInfo
         val loc = ErrorMsg.dummySpan
         (* We ensure before this step that all arguments aren't effectful.
-               by turning them into local variables as needed. *)
+           by turning them into local variables as needed. *)
         val argTyps = map (fn e => (e, stringTyp)) args
         val argTypsInc = map (fn (e, typ) => (incRels 1 e, typ)) argTyps
         val check = ffiAppCache ("check", i, argTyps)
@@ -457,7 +460,7 @@ fun factorOutNontrivial text =
                 chunks
         fun wrapLets e' =
             (* Important that this is foldl (to oppose foldr above). *)
-            List.foldl (fn (v, e') => ELet ("sqlArgz", stringTyp, v, (e', loc)))
+            List.foldl (fn (v, e') => ELet ("sqlArg", stringTyp, v, (e', loc)))
                        e'
                        newVariables
         val numArgs = length newVariables
@@ -511,11 +514,6 @@ fun addChecking file =
         fileMapfold (fn exp => fn state => doExp state exp) file (SIMM.empty, IM.empty, 0)
     end
 
-val gunk : (Sql.query * Sql.dml * Mono.exp list list) list ref = ref []
-
-val gunk' : (((Sql.cmp * Sql.sqexp * Sql.sqexp) formula)
-             * ((Sql.cmp * Sql.sqexp * Sql.sqexp) formula)) list ref = ref []
-
 fun invalidations ((query, numArgs), dml) =
     let
         val loc = ErrorMsg.dummySpan
@@ -553,28 +551,28 @@ fun invalidations ((query, numArgs), dml) =
         fun removeRedundant xss = removeRedundant' (xss, [])
         val eqss = conflictMaps (queryToFormula query, dmlToFormula dml)
     in
-        gunk' := (queryToFormula query, dmlToFormula dml) :: !gunk';
         (map (map optionAtomExpToExp) o removeRedundant o map eqsToInvalidation) eqss
     end
 
-
-(* gunk := (queryParsed, dmlParsed, invalidations (numArgs, queryParsed, dmlParsed)) :: !gunk); *)
-
 fun addFlushing (file, (tableToIndices, indexToQueryNumArgs, _)) =
     let
-        (* TODO: write this. *)
-        val allInvs = () (* SM.foldr (fn (x, acc) => IS.listItems x @ acc) [] tableToIndices *)
+        (* ASK: does this type actually matter? It was wrong before, but things
+           still seemed to work. *)
+        val optionStringTyp = (TOption stringTyp, ErrorMsg.dummySpan)
         val flushes = List.concat o
                       map (fn (i, argss) =>
                               map (fn args =>
                                       ffiAppCache' ("flush", i,
-                                                    map (fn arg => (arg, stringTyp)) args)) argss)
+                                                    map (fn arg => (arg, optionStringTyp))
+                                                        args))
+                                  argss)
         val doExp =
          fn EDml (origDmlText, failureMode) =>
             let
                 val (newDmlText, wrapLets, numArgs) = factorOutNontrivial origDmlText
                 val dmlText = incRels numArgs newDmlText
                 val dmlExp = EDml (dmlText, failureMode)
+                (* DEBUG: we can remove the following line at some point. *)
                 val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty dmlText))
                 val invs =
                     case Sql.parse Sql.dml dmlText of
@@ -613,7 +611,8 @@ val inlineSql =
 
 fun go file =
     let
-        val () = Sql.sqlcacheMode := true
+        (* TODO: do something nicer than having Sql be in one of two modes. *)
+        val () = (resetFfiInfo (); Sql.sqlcacheMode := true)
         val file' = addFlushing (addChecking (inlineSql file))
         val () = Sql.sqlcacheMode := false
     in
