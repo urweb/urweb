@@ -833,7 +833,7 @@ type mouseEvent = { ScreenX : int, ScreenY : int, ClientX : int, ClientY : int,
                     Button : mouseButton }
 
 con mouseEvents = map (fn _ :: Unit => mouseEvent -> transaction unit)
-                          [Onclick, Ondblclick, Onmousedown, Onmousemove, Onmouseout, Onmouseover, Onmouseup]
+                          [Onclick, Oncontextmenu, Ondblclick, Onmousedown, Onmouseenter, Onmouseleave, Onmousemove, Onmouseout, Onmouseover, Onmouseup]
 
 type keyEvent = { KeyCode : int,
                   CtrlKey : bool, ShiftKey : bool, AltKey : bool, MetaKey : bool }
@@ -1120,10 +1120,13 @@ val onServerError : (string -> transaction unit) -> transaction unit
 (* More standard document-level JavaScript handlers *)
 val onClick : (mouseEvent -> transaction unit) -> transaction unit
 val onDblclick : (mouseEvent -> transaction unit) -> transaction unit
+val onContextmenu : (mouseEvent -> transaction unit) -> transaction unit
 val onKeydown : (keyEvent -> transaction unit) -> transaction unit
 val onKeypress : (keyEvent -> transaction unit) -> transaction unit
 val onKeyup : (keyEvent -> transaction unit) -> transaction unit
 val onMousedown : (mouseEvent -> transaction unit) -> transaction unit
+val onMouseenter : (mouseEvent -> transaction unit) -> transaction unit
+val onMouseleave : (mouseEvent -> transaction unit) -> transaction unit
 val onMousemove : (mouseEvent -> transaction unit) -> transaction unit
 val onMouseout : (mouseEvent -> transaction unit) -> transaction unit
 val onMouseover : (mouseEvent -> transaction unit) -> transaction unit

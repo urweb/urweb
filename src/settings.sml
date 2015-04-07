@@ -176,10 +176,13 @@ val benignBase = basis ["get_cookie",
                         "spawn",
                         "onClick",
                         "onDblclick",
+                        "onContextmenu",
                         "onKeydown",
                         "onKeypress",
                         "onKeyup",
                         "onMousedown",
+                        "onMouseenter",
+                        "onMouseleave",
                         "onMousemove",
                         "onMouseout",
                         "onMouseover",
@@ -212,11 +215,14 @@ val clientBase = basis ["get_client_source",
                         "mouseEvent",
                         "keyEvent",
                         "onClick",
+                        "onContextmenu",
                         "onDblclick",
                         "onKeydown",
                         "onKeypress",
                         "onKeyup",
                         "onMousedown",
+                        "onMouseenter",
+                        "onMouseleave",
                         "onMousemove",
                         "onMouseout",
                         "onMouseover",
@@ -349,11 +355,14 @@ val jsFuncsBase = basisM [("alert", "alert"),
 
 
                           ("onClick", "uw_onClick"),
+                          ("onContextmenu", "uw_onContextmenu"),
                           ("onDblclick", "uw_onDblclick"),
                           ("onKeydown", "uw_onKeydown"),
                           ("onKeypress", "uw_onKeypress"),
                           ("onKeyup", "uw_onKeyup"),
                           ("onMousedown", "uw_onMousedown"),
+                          ("onMouseenter", "uw_onMouseenter"),
+                          ("onMouseleave", "uw_onMouseleave"),
                           ("onMousemove", "uw_onMousemove"),
                           ("onMouseout", "uw_onMouseout"),
                           ("onMouseover", "uw_onMouseover"),
@@ -764,7 +773,7 @@ fun mangleSqlTable s =
 fun mangleSql s =
     if #name (currentDbms ()) = "mysql" then
         if !mangle then
-            "uw_" ^ allLower s 
+            "uw_" ^ allLower s
         else
             allLower s
     else
