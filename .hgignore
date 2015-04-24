@@ -34,6 +34,7 @@ demo/more/out/*.html
 demo/more/demo.*
 
 doc/*.html
+doc/*.out
 
 *.sql
 *mlmon.out
