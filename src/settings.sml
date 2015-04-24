@@ -876,7 +876,7 @@ fun setFilePath path = filePath := path
 
 fun addFile {Uri, LoadFromFilename} =
     let
-        val path = OS.Path.mkAbsolute {relativeTo = !filePath, path = LoadFromFilename}
+        val path = OS.Path.concat (!filePath, LoadFromFilename)
     in
         case SM.find (!files, Uri) of
             SOME (path', _) =>
