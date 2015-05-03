@@ -16,6 +16,10 @@ static void log_(void *data, const char *fmt, ...) {
 
 static uw_loggers loggers = {NULL, log_, log_};
 
+static char *get_header(void *data, const char *h) {
+  return NULL;
+}
+
 int main(int argc, char *argv[]) {
   uw_context ctx;
   failure_kind fk;
@@ -27,6 +31,7 @@ int main(int argc, char *argv[]) {
  
   ctx = uw_init(0, &loggers);
   uw_set_app(ctx, &uw_application);
+  uw_set_headers(ctx, get_header, NULL);
   uw_initialize(ctx);
 
   while (1) {
