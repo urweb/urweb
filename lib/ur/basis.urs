@@ -1028,6 +1028,9 @@ val image : ctx ::: {Unit} -> use ::: {Type}
 
 val label : bodyTag ([For = id, Accesskey = string] ++ tableAttrs)
 
+val fieldset : bodyTag boxAttrs
+val legend : bodyTag boxAttrs
+
 
 (*** AJAX-oriented widgets *)
 
