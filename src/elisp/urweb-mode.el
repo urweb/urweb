@@ -401,6 +401,7 @@ This mode runs `urweb-mode-hook' just before exiting.
   (unless (boundp 'skeleton-positions) (set (make-local-variable '@) nil))
 
   (local-set-key (kbd "C-c C-c") 'compile)
+  (local-set-key (kbd "C-c /") 'urweb-close-matching-tag)
 
   (urweb-mode-variables))
 
@@ -541,6 +542,16 @@ If anyone has a good algorithm for this..."
     (urweb-tag-matcher)
     (beginning-of-line)
     (current-indentation)))
+
+(defun urweb-close-matching-tag ()
+  "Insert a closing XML tag for whatever tag is open at the point."
+  (interactive)
+  (assert (urweb-in-xml))
+  (save-excursion
+   (urweb-tag-matcher)
+   (re-search-forward "<\\([^ ={/>]+\\)" nil t))
+  (let ((tag (match-string-no-properties 1)))
+    (insert "</" tag ">")))
 
 (defconst urweb-sql-main-starters
   '("SQL" "SELECT" "INSERT" "UPDATE" "DELETE" "FROM" "SELECT1" "WHERE"))
