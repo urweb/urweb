@@ -43,7 +43,7 @@ val ffiEffectful =
 (* Effect analysis. *)
 
 (* Makes an exception for [EWrite] (which is recorded when caching). *)
-fun effectful doPrint (effs : IS.set) (inFunction : bool) (bound : int) : Mono.exp -> bool =
+fun effectful doPrint (effs : IS.set) (inFunction : bool) (bound : int) : exp -> bool =
     (* If result is true, expression is definitely effectful. If result is
        false, then expression is definitely not effectful if effs is fully
        populated. The intended pattern is to use this a number of times equal
@@ -182,6 +182,7 @@ fun mapFormula mf =
  fn Atom x => Atom (mf x)
   | Negate f => Negate (mapFormula mf f)
   | Combo (n, fs) => Combo (n, map (mapFormula mf) fs)
+
 
 (* SQL analysis. *)
 
@@ -365,32 +366,20 @@ val tableDml =
 
 (* Program instrumentation. *)
 
-fun stringExp s = (EPrim (Prim.String (Prim.Normal, s)), ErrorMsg.dummySpan)
+val dummyLoc = ErrorMsg.dummySpan
 
-val stringTyp = (TFfi ("Basis", "string"), ErrorMsg.dummySpan)
+fun stringExp s = (EPrim (Prim.String (Prim.Normal, s)), dummyLoc)
+
+val stringTyp = (TFfi ("Basis", "string"), dummyLoc)
 
 val sequence =
  fn (exp :: exps) =>
     let
-        val loc = ErrorMsg.dummySpan
+        val loc = dummyLoc
     in
         List.foldl (fn (e', seq) => ESeq ((seq, loc), (e', loc))) exp exps
     end
   | _ => raise Match
-
-(* TODO: factor out. *)
-fun ffiAppCache' (func, index, args) : Mono.exp' =
-    EFfiApp ("Sqlcache", func ^ Int.toString index, args)
-
-fun ffiAppCache (func, index, args) : Mono.exp =
-    (ffiAppCache' (func, index, args), ErrorMsg.dummySpan)
-
-val varPrefix = "queryResult"
-
-fun indexOfName varName =
-    if String.isPrefix varPrefix varName
-    then Int.fromString (String.extract (varName, String.size varPrefix, NONE))
-    else NONE
 
 (* Always increments negative indices because that's what we need later. *)
 fun incRelsBound bound inc =
@@ -407,13 +396,12 @@ val incRels = incRelsBound 0
 fun cacheWrap (query, i, urlifiedRel0, resultTyp, args) =
     let
         val () = ffiInfo := {index = i, params = length args} :: !ffiInfo
-        val loc = ErrorMsg.dummySpan
+        val loc = dummyLoc
         (* We ensure before this step that all arguments aren't effectful.
            by turning them into local variables as needed. *)
-        val argTyps = map (fn e => (e, stringTyp)) args
-        val argTypsInc = map (fn (e, typ) => (incRels 1 e, typ)) argTyps
-        val check = ffiAppCache ("check", i, argTyps)
-        val store = ffiAppCache ("store", i, (urlifiedRel0, stringTyp) :: argTypsInc)
+        val argsInc = map (incRels 1) args
+        val check = (ToyCache.check (i, args), dummyLoc)
+        val store = (ToyCache.store (i, argsInc, urlifiedRel0), dummyLoc)
         val rel0 = (ERel 0, loc)
     in
         ECase (check,
@@ -436,7 +424,7 @@ fun fileMap doExp file = #1 (fileMapfold (fn x => fn _ => (doExp x, ())) file ()
 
 fun factorOutNontrivial text =
     let
-        val loc = ErrorMsg.dummySpan
+        val loc = dummyLoc
         fun strcat (e1, e2) = (EStrcat (e1, e2), loc)
         val chunks = Sql.chunkify text
         val (newText, newVariables) =
@@ -486,10 +474,10 @@ fun addChecking file =
                                                 body = body,
                                                 tables = tables,
                                                 exps = exps},
-                                        ErrorMsg.dummySpan)
+                                        dummyLoc)
                 val (EQuery {query = queryText, ...}, _) = queryExp
                 val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty queryText))
-                val args = List.tabulate (numArgs, fn n => (ERel n, ErrorMsg.dummySpan))
+                val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
                 fun bind x f = Option.mapPartial f x
                 fun guard b x = if b then x else NONE
                 (* DEBUG: set first boolean argument to true to turn on printing. *)
@@ -516,7 +504,7 @@ fun addChecking file =
 
 fun invalidations ((query, numArgs), dml) =
     let
-        val loc = ErrorMsg.dummySpan
+        val loc = dummyLoc
         val optionAtomExpToExp =
          fn NONE => (ENone stringTyp, loc)
           | SOME e => (ESome (stringTyp,
@@ -556,16 +544,8 @@ fun invalidations ((query, numArgs), dml) =
 
 fun addFlushing (file, (tableToIndices, indexToQueryNumArgs, _)) =
     let
-        (* ASK: does this type actually matter? It was wrong before, but things
-           still seemed to work. *)
-        val optionStringTyp = (TOption stringTyp, ErrorMsg.dummySpan)
         val flushes = List.concat o
-                      map (fn (i, argss) =>
-                              map (fn args =>
-                                      ffiAppCache' ("flush", i,
-                                                    map (fn arg => (arg, optionStringTyp))
-                                                        args))
-                                  argss)
+                      map (fn (i, argss) => map (fn args => ToyCache.flush (i, args)) argss)
         val doExp =
          fn EDml (origDmlText, failureMode) =>
             let
