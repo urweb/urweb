@@ -1,4 +1,14 @@
 ========
+20150412
+========
+
+- Several new infix operators for function composition, etc.
+- Hexadecimal integer literals
+- New HTML events: 'oncontextmenu', 'onmouseenter', and 'onmouseleave'
+- New HTML attributes: 'download'
+- Bug fixes and optimization improvements
+
+========
 20150214
 ========
 

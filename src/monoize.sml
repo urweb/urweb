@@ -4693,8 +4693,8 @@ fun monoize env file =
                                      (L'.EDml (str
                                                    (foldl (fn ((x, _), s) =>
                                                               s ^ ", " ^ Settings.mangleSql x ^ " = NULL")
-                                                          ("UPDATE uw_"
-                                                           ^ tab
+                                                          ("UPDATE "
+                                                           ^ Settings.mangleSql tab
                                                            ^ " SET "
                                                            ^ Settings.mangleSql x
                                                                       ^ " = NULL")
