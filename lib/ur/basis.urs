@@ -1011,7 +1011,7 @@ val remainingFields : postField -> string
 
 con radio = [Body, Radio]
 val radio : formTag (option string) radio [Data = data_attr, Id = id]
-val radioOption : unit -> tag ([Value = string, Checked = bool] ++ boxAttrs) radio [] [] []
+val radioOption : unit -> tag ([Value = string, Checked = bool, Onchange = transaction unit] ++ boxAttrs) radio [] [] []
 
 con select = [Select]
 val select : formTag string select ([Onchange = transaction unit] ++ boxAttrs)
