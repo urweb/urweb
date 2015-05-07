@@ -3402,7 +3402,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                        strH s',
                                                                        (L'.EStrcat (
                                                                         (L'.EJavaScript (L'.Attribute, e), loc),
-                                                                        strH ");return false'"), loc)),
+                                                                        strH ")'"), loc)),
                                                                        loc)), loc),
                                                          fm)
                                                     end
