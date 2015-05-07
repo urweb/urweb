@@ -1,4 +1,4 @@
-structure Sqlcache (* :> SQLCACHE *) = struct
+structure Sqlcache :> SQLCACHE = struct
 
 open Mono
 
@@ -38,6 +38,10 @@ val ffiEffectful =
         fn (m, f) => Settings.isEffectful (m, f)
                      andalso not (m = "Basis" andalso SS.member (fs, f))
     end
+
+val cache = ref ToyCache.cache
+fun setCache c = cache := c
+fun getCache () = !cache
 
 
 (* Effect analysis. *)
@@ -366,6 +370,8 @@ val tableDml =
 
 (* Program instrumentation. *)
 
+val {check, store, flush, ...} = getCache ()
+
 val dummyLoc = ErrorMsg.dummySpan
 
 fun stringExp s = (EPrim (Prim.String (Prim.Normal, s)), dummyLoc)
@@ -400,8 +406,8 @@ fun cacheWrap (query, i, urlifiedRel0, resultTyp, args) =
         (* We ensure before this step that all arguments aren't effectful.
            by turning them into local variables as needed. *)
         val argsInc = map (incRels 1) args
-        val check = (ToyCache.check (i, args), dummyLoc)
-        val store = (ToyCache.store (i, argsInc, urlifiedRel0), dummyLoc)
+        val check = (check (i, args), dummyLoc)
+        val store = (store (i, argsInc, urlifiedRel0), dummyLoc)
         val rel0 = (ERel 0, loc)
     in
         ECase (check,
@@ -545,7 +551,7 @@ fun invalidations ((query, numArgs), dml) =
 fun addFlushing (file, (tableToIndices, indexToQueryNumArgs, _)) =
     let
         val flushes = List.concat o
-                      map (fn (i, argss) => map (fn args => ToyCache.flush (i, args)) argss)
+                      map (fn (i, argss) => map (fn args => flush (i, args)) argss)
         val doExp =
          fn EDml (origDmlText, failureMode) =>
             let

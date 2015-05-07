@@ -1,4 +1,7 @@
-structure ToyCache = struct
+structure ToyCache : sig
+    val cache : Cache.cache
+end = struct
+
 
 (* Mono *)
 
@@ -181,5 +184,11 @@ fun setupQuery {index, params} =
     end
 
 val setupGlobal = string "/* No global setup for toy cache. */"
+
+
+(* Bundled up. *)
+
+val cache = {check = check, store = store, flush = flush,
+             setupQuery = setupQuery, setupGlobal = setupGlobal}
 
 end

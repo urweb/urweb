@@ -175,6 +175,7 @@ $(SRC)/union_find_fn.sml
 
 $(SRC)/multimap_fn.sml
 
+$(SRC)/cache.sml
 $(SRC)/toy_cache.sml
 
 $(SRC)/sqlcache.sig

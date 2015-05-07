@@ -3404,7 +3404,11 @@ fun p_file env (ds, ps) =
              newline,
 
              (* For sqlcache. *)
-             box (List.map ToyCache.setupQuery (Sqlcache.getFfiInfo ())),
+             let
+                 val {setupGlobal, setupQuery, ...} = Sqlcache.getCache ()
+             in
+                 box (setupGlobal :: newline :: List.map setupQuery (Sqlcache.getFfiInfo ()))
+             end,
              newline,
 
              p_list_sep newline (fn x => x) pds,
