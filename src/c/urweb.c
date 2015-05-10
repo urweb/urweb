@@ -4220,7 +4220,10 @@ void uw_check_deadline(uw_context ctx) {
 size_t uw_database_max = SIZE_MAX;
 
 uw_Basis_int uw_Basis_naughtyDebug(uw_context ctx, uw_Basis_string s) {
-  fprintf(stderr, "%s\n", s);
+  if (ctx->loggers->log_debug)
+    ctx->loggers->log_debug(ctx->loggers->logger_data, "%s\n", s);
+  else
+    fprintf(stderr, "%s\n", s);
   return 0;
 }
 
