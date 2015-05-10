@@ -3665,8 +3665,7 @@ fun p_sql env (ds, _) =
                                                             let
                                                                 val t = sql_type_in env t
                                                             in
-                                                                box [string "uw_",
-                                                                     string (CharVector.map Char.toLower x),
+                                                                box [string (Settings.mangleSql (CharVector.map Char.toLower x)),
                                                                      space,
                                                                      string (#p_sql_type (Settings.currentDbms ()) t),
                                                                      case t of
