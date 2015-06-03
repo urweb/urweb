@@ -537,6 +537,12 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 
 <INITIAL> "CURRENT_TIMESTAMP" => (Tokens.CURRENT_TIMESTAMP (pos yypos, pos yypos + size yytext));
 
+<INITIAL> "_LOC_" => (let val strLoc = ErrorMsg.spanToString (ErrorMsg.spanOf
+                                            (pos yypos, pos yypos + size yytext))
+                      in
+                          Tokens.STRING (strLoc, pos yypos, pos yypos + size yytext)
+                      end);
+
 <INITIAL> {id}        => (Tokens.SYMBOL (yytext, pos yypos, pos yypos + size yytext));
 <INITIAL> {cid}       => (Tokens.CSYMBOL (yytext, pos yypos, pos yypos + size yytext));
 
