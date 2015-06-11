@@ -509,8 +509,8 @@ $$\begin{array}{rrcll}
   &&& \ell & \textrm{constant} \\
   &&& \hat{X} & \textrm{nullary constructor} \\
   &&& \hat{X} \; p & \textrm{unary constructor} \\
-  &&& \{(x = p,)^*\} & \textrm{rigid record pattern} \\
-  &&& \{(x = p,)^+, \ldots\} & \textrm{flexible record pattern} \\
+  &&& \{(X = p,)^*\} & \textrm{rigid record pattern} \\
+  &&& \{(X = p,)^+, \ldots\} & \textrm{flexible record pattern} \\
   &&& p : \tau & \textrm{type annotation} \\
   &&& (p) & \textrm{explicit precedence} \\
   \\
@@ -968,11 +968,11 @@ $$\infer{\Gamma \vdash M.X \; p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i
   & \Gamma \vdash p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i]}\tau''
 }$$
 
-$$\infer{\Gamma \vdash \{\overline{x = p}\} \leadsto \Gamma_n; \{\overline{x = \tau}\}}{
+$$\infer{\Gamma \vdash \{\overline{X = p}\} \leadsto \Gamma_n; \{\overline{X = \tau}\}}{
   \Gamma_0 = \Gamma
   & \forall i: \Gamma_i \vdash p_i \leadsto \Gamma_{i+1}; \tau_i
 }
-\quad \infer{\Gamma \vdash \{\overline{x = p}, \ldots\} \leadsto \Gamma_n; \$([\overline{x = \tau}] \rc c)}{
+\quad \infer{\Gamma \vdash \{\overline{X = p}, \ldots\} \leadsto \Gamma_n; \$([\overline{X = \tau}] \rc c)}{
   \Gamma_0 = \Gamma
   & \forall i: \Gamma_i \vdash p_i \leadsto \Gamma_{i+1}; \tau_i
 }$$
@@ -1424,7 +1424,7 @@ $$\begin{array}{l}
   \hspace{.1in} \to (\mt{nm} :: \mt{Name} \to \mt{v} :: \mt{K} \to \mt{r} :: \{\mt{K}\} \to [[\mt{nm}] \sim \mt{r}] \Rightarrow \\
   \hspace{.2in} \mt{tf} \; \mt{r} \to \mt{tf} \; ([\mt{nm} = \mt{v}] \rc \mt{r})) \\
   \hspace{.1in} \to \mt{tf} \; [] \\
-  \hspace{.1in} \to \mt{r} :: \{\mt{K}\} \to \mt{folder} \; \mt{r} \to \mt{tf} \; \mt{r}
+  \hspace{.1in} \to \mt{r} ::: \{\mt{K}\} \to \mt{folder} \; \mt{r} \to \mt{tf} \; \mt{r}
 \end{array}$$
 
 For a type-level record $\mt{r}$, a $\mt{folder} \; \mt{r}$ encodes a permutation of $\mt{r}$'s elements.  The $\mt{fold}$ function can be called on a $\mt{folder}$ to iterate over the elements of $\mt{r}$ in that order.  $\mt{fold}$ is parameterized on a type-level function to be used to calculate the type of each intermediate result of folding.  After processing a subset $\mt{r'}$ of $\mt{r}$'s entries, the type of the accumulator should be $\mt{tf} \; \mt{r'}$.  The next two expression arguments to $\mt{fold}$ are the usual step function and initial accumulator, familiar from fold functions over lists.  The final two arguments are the record to fold over and a $\mt{folder}$ for it.
@@ -1861,7 +1861,7 @@ Any SQL query that returns single columns may be turned into a subquery expressi
 
 $$\begin{array}{l}
 \mt{val} \; \mt{sql\_subquery} : \mt{tables} ::: \{\{\mt{Type}\}\} \to \mt{agg} ::: \{\{\mt{Type}\}\} \to \mt{exps} ::: \{\mt{Type}\} \to \mt{nm} ::: \mt{Name} \to \mt{t} ::: \mt{Type} \to \mt{nt} ::: \mt{Type} \\
-\hspace{.1in} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_query} \; \mt{tables} \; \mt{agg} \; [\mt{nm} = \mt{t}] \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{nt}
+\hspace{.1in} \to \mt{nullify} \; \mt{t} \; \mt{nt} \to \mt{sql\_query} \; \mt{tables} \; \mt{agg} \; [] \; [\mt{nm} = \mt{t}] \to \mt{sql\_exp} \; \mt{tables} \; \mt{agg} \; \mt{exps} \; \mt{nt}
 \end{array}$$
 
 There is also an \cd{IF..THEN..ELSE..} construct that is compiled into standard SQL \cd{CASE} expressions.
@@ -1990,7 +1990,7 @@ $$\begin{array}{l}
   \hspace{.1in} \to \$(\mt{map} \; (\mt{sql\_exp} \; [] \; [] \; []) \; \mt{fields}) \to \mt{dml}
 \end{array}$$
 
-An $\mt{UPDATE}$ command is formed from a choice of which table fields to leave alone and which to change, along with an expression to use to compute the new value of each changed field and a $\mt{WHERE}$ clause.  Note that, in the table environment applied to expressions, the table being updated is hardcoded at the name $\mt{T}$.  The parsing extension for $\mt{UPDATE}$ will elaborate all table-free field references to use table variable $\mt{T}$.
+An $\mt{UPDATE}$ command is formed from a choice of which table fields to leave alone and which to change, along with an expression to use to compute the new value of each changed field and a $\mt{WHERE}$ clause.  Note that, in the table environment applied to expressions, the table being updated is hardcoded at the name $\mt{T}$.  The parsing extension for $\mt{UPDATE}$ will elaborate all table-free field references to use constant table name $\mt{T}$.
 $$\begin{array}{l}
   \mt{val} \; \mt{update} : \mt{unchanged} ::: \{\mt{Type}\} \to \mt{changed} :: \{\mt{Type}\} \to [\mt{changed} \sim \mt{unchanged}] \\
   \hspace{.1in} \Rightarrow \$(\mt{map} \; (\mt{sql\_exp} \; [\mt{T} = \mt{changed} \rc \mt{unchanged}] \; [] \; []) \; \mt{changed}) \\
@@ -2287,11 +2287,12 @@ $$\begin{array}{rrcll}
   \textrm{Tables} & T &::=& x & \textrm{table variable, named locally by its own capitalization} \\
   &&& x \; \mt{AS} \; X & \textrm{table variable, with local name} \\
   &&& x \; \mt{AS} \; \{c\} & \textrm{table variable, with computed local name} \\
-  &&& \{\{e\}\} \; \mt{AS} \; t & \textrm{computed table expression, with local name} \\
+  &&& \{\{e\}\} \; \mt{AS} \; X & \textrm{computed table expression, with local name} \\
   &&& \{\{e\}\} \; \mt{AS} \; \{c\} & \textrm{computed table expression, with computed local name} \\
   \textrm{$\mt{FROM}$ items} & F &::=& T \mid \{\{e\}\} \mid F \; J \; \mt{JOIN} \; F \; \mt{ON} \; E \\
   &&& \mid F \; \mt{CROSS} \; \mt{JOIN} \ F \\
-  &&& \mid (Q) \; \mt{AS} \; t \mid (\{\{e\}\}) \; \mt{AS} \; t \\
+  &&& \mid (Q) \; \mt{AS} \; X \mid (Q) \; \mt{AS} \; \{c\} \\
+  &&& \mid (\{\{e\}\}) \; \mt{AS} \; t \\
   \textrm{Joins} & J &::=& [\mt{INNER}] \\
   &&& \mid [\mt{LEFT} \mid \mt{RIGHT} \mid \mt{FULL}] \; [\mt{OUTER}] \\
   \textrm{SQL expressions} & E &::=& t.f & \textrm{column references} \\
