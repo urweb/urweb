@@ -178,7 +178,7 @@ fun unescape loc s =
 
 id = [a-z_][A-Za-z0-9_']*;
 xmlid = [A-Za-z][A-Za-z0-9_-]*;
-cid = [A-Z][A-Za-z0-9_]*;
+cid = [A-Z][A-Za-z0-9_']*;
 ws = [\ \t\012\r];
 intconst = [0-9]+;
 realconst = [0-9]+\.[0-9]*;
