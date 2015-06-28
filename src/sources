@@ -177,6 +177,7 @@ $(SRC)/multimap_fn.sml
 
 $(SRC)/cache.sml
 $(SRC)/toy_cache.sml
+$(SRC)/lru_cache.sml
 
 $(SRC)/sqlcache.sig
 $(SRC)/sqlcache.sml

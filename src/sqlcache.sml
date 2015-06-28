@@ -39,7 +39,7 @@ val ffiEffectful =
                      andalso not (m = "Basis" andalso SS.member (fs, f))
     end
 
-val cache = ref ToyCache.cache
+val cache = ref LruCache.cache
 fun setCache c = cache := c
 fun getCache () = !cache
 
@@ -52,8 +52,8 @@ fun effectful doPrint (effs : IS.set) (inFunction : bool) (bound : int) : exp ->
        false, then expression is definitely not effectful if effs is fully
        populated. The intended pattern is to use this a number of times equal
        to the number of declarations in a file, Bellman-Ford style. *)
-    (* TODO: make incrementing of bound less janky, probably by using [MonoUtil]
-       instead of all this. *)
+    (* TODO: make incrementing of the number of bound variables cleaner,
+       probably by using [MonoUtil] instead of all this. *)
     let
         (* DEBUG: remove printing when done. *)
         fun tru msg = if doPrint then (print (msg ^ "\n"); true) else true
@@ -138,14 +138,14 @@ val effectfulMap =
 
 (* Boolean formula normalization. *)
 
-datatype normalForm = Cnf | Dnf
+datatype junctionType = Conj | Disj
 
 datatype 'atom formula =
          Atom of 'atom
        | Negate of 'atom formula
-       | Combo of normalForm * 'atom formula list
+       | Combo of junctionType * 'atom formula list
 
-val flipNf = fn Cnf => Dnf | Dnf => Cnf
+val flipJt = fn Conj => Disj | Disj => Conj
 
 fun bind xs f = List.concat (map f xs)
 
@@ -158,7 +158,7 @@ val rec cartesianProduct : 'a list list -> 'a list list =
 fun pushNegate (negate : 'atom -> 'atom) (negating : bool) =
  fn Atom x => Atom (if negating then negate x else x)
   | Negate f => pushNegate negate (not negating) f
-  | Combo (n, fs) => Combo (if negating then flipNf n else n, map (pushNegate negate negating) fs)
+  | Combo (n, fs) => Combo (if negating then flipJt n else n, map (pushNegate negate negating) fs)
 
 val rec flatten =
  fn Combo (n, fs) =>
@@ -170,17 +170,17 @@ val rec flatten =
                          (map flatten fs))
   | f => f
 
-fun normalize' (negate : 'atom -> 'atom) (norm : normalForm) =
+fun normalize' (negate : 'atom -> 'atom) (junc : junctionType) =
  fn Atom x => [[x]]
-  | Negate f => map (map negate) (normalize' negate (flipNf norm) f)
-  | Combo (n, fs) =>
+  | Negate f => map (map negate) (normalize' negate (flipJt junc) f)
+  | Combo (j, fs) =>
     let
-        val fss = bind fs (normalize' negate n)
+        val fss = bind fs (normalize' negate j)
     in
-        if n = norm then fss else cartesianProduct fss
+        if j = junc then fss else cartesianProduct fss
     end
 
-fun normalize negate norm = normalize' negate norm o flatten o pushNegate negate false
+fun normalize negate junc = normalize' negate junc o flatten o pushNegate negate false
 
 fun mapFormula mf =
  fn Atom x => Atom (mf x)
@@ -200,36 +200,29 @@ datatype atomExp =
        | Prim of Prim.t
        | Field of string * string
 
-val equalAtomExp =
-    let
-        val isEqual = fn EQUAL => true | _ => false
-    in
-     fn (QueryArg n1, QueryArg n2) => n1 = n2
-      | (DmlRel n1, DmlRel n2) => n1 = n2
-      | (Prim p1, Prim p2) => isEqual (Prim.compare (p1, p2))
-      | (Field (t1, f1), Field (t2, f2)) => isEqual (String.compare (t1 ^ "." ^ f1, t2 ^ "." ^ f2))
-      | _ => false
-    end
-
 structure AtomExpKey : ORD_KEY = struct
 
-type ord_key = atomExp
+    type ord_key = atomExp
 
-val compare =
- fn (QueryArg n1, QueryArg n2) => Int.compare (n1, n2)
-  | (QueryArg _, _) => LESS
-  | (_, QueryArg _) => GREATER
-  | (DmlRel n1, DmlRel n2) => Int.compare (n1, n2)
-  | (DmlRel _, _) => LESS
-  | (_, DmlRel _) => GREATER
-  | (Prim p1, Prim p2) => Prim.compare (p1, p2)
-  | (Prim _, _) => LESS
-  | (_, Prim _) => GREATER
-  | (Field (t1, f1), Field (t2, f2)) => String.compare (t1 ^ "." ^ f1, t2 ^ "." ^ f2)
+    val compare =
+     fn (QueryArg n1, QueryArg n2) => Int.compare (n1, n2)
+      | (QueryArg _, _) => LESS
+      | (_, QueryArg _) => GREATER
+      | (DmlRel n1, DmlRel n2) => Int.compare (n1, n2)
+      | (DmlRel _, _) => LESS
+      | (_, DmlRel _) => GREATER
+      | (Prim p1, Prim p2) => Prim.compare (p1, p2)
+      | (Prim _, _) => LESS
+      | (_, Prim _) => GREATER
+      | (Field (t1, f1), Field (t2, f2)) =>
+        case String.compare (t1, t2) of
+            EQUAL => String.compare (f1, f2)
+          | ord => ord
 
 end
 
 structure UF = UnionFindFn(AtomExpKey)
+
 val conflictMaps : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula
                    * (Sql.cmp * Sql.sqexp * Sql.sqexp) formula
                    -> atomExp IM.map list =
@@ -246,7 +239,9 @@ val conflictMaps : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula
             o List.mapPartial toKnownEquality
         fun addToEqs (eqs, n, e) =
             case IM.find (eqs, n) of
-                (* Comparing to a constant seems better? *)
+                (* Comparing to a constant is probably better than comparing to
+                   a variable? Checking that an existing constant matches a new
+                   one is handled by [accumulateEqs]. *)
                 SOME (Prim _) => eqs
               | _ => IM.insert (eqs, n, e)
         val accumulateEqs =
@@ -263,6 +258,9 @@ val conflictMaps : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula
           (* TODO: deal with equalities involving just [DmlRel]s and [Prim]s.
              This would involve guarding the invalidation with a check for the
              relevant comparisons. *)
+          (* DEBUG: remove these print statements. *)
+          (* | ((DmlRel r, Prim p), eqso) => (print ("sadness " ^ Int.toString r ^ " = " ^ Prim.toString p ^ "\n"); eqso) *)
+          (* | ((Prim p, DmlRel r), eqso) => (print ("sadness " ^ Int.toString r ^ " = " ^ Prim.toString p ^ "\n"); eqso) *)
           | (_, eqso) => eqso
         val eqsOfClass : atomExp list -> atomExp IM.map option =
             List.foldl accumulateEqs (SOME IM.empty)
@@ -275,7 +273,8 @@ val conflictMaps : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula
                   | Sql.Field tf => SOME (Field tf)
                   | Sql.Inj (EPrim p, _) => SOME (Prim p)
                   | Sql.Inj (ERel n, _) => SOME (rel n)
-                  (* We can't deal with anything else. *)
+                  (* We can't deal with anything else, e.g., CURRENT_TIMESTAMP
+                     becomes Sql.Unmodeled, which becomes NONE here. *)
                   | _ => NONE
             in
                 (cmp, qa e1, qa e2)
@@ -302,17 +301,17 @@ val conflictMaps : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula
             List.foldr (fn (SOME eqs, SOME acc) => SOME (IM.unionWith #1 (eqs, acc)) | _ => NONE)
                        (SOME IM.empty)
         fun dnf (fQuery, fDml) =
-            normalize negateCmp Dnf (Combo (Cnf, [markQuery fQuery, markDml fDml]))
+            normalize negateCmp Disj (Combo (Conj, [markQuery fQuery, markDml fDml]))
     in
         List.mapPartial (mergeEqs o map eqsOfClass o equivClasses) o dnf
     end
 
 val rec sqexpToFormula =
- fn Sql.SqTrue => Combo (Cnf, [])
-  | Sql.SqFalse => Combo (Dnf, [])
+ fn Sql.SqTrue => Combo (Conj, [])
+  | Sql.SqFalse => Combo (Disj, [])
   | Sql.SqNot e => Negate (sqexpToFormula e)
   | Sql.Binop (Sql.RCmp c, e1, e2) => Atom (c, e1, e2)
-  | Sql.Binop (Sql.RLop l, p1, p2) => Combo (case l of Sql.And => Cnf | Sql.Or => Dnf,
+  | Sql.Binop (Sql.RLop l, p1, p2) => Combo (case l of Sql.And => Conj | Sql.Or => Disj,
                                              [sqexpToFormula p1, sqexpToFormula p2])
   (* ASK: any other sqexps that can be props? *)
   | _ => raise Match
@@ -332,13 +331,13 @@ fun renameTables tablePairs =
     end
 
 val rec queryToFormula =
- fn Sql.Query1 {Where = NONE, ...} => Combo (Cnf, [])
+ fn Sql.Query1 {Where = NONE, ...} => Combo (Conj, [])
   | Sql.Query1 {From = tablePairs, Where = SOME e, ...} =>
     renameTables tablePairs (sqexpToFormula e)
-  | Sql.Union (q1, q2) => Combo (Dnf, [queryToFormula q1, queryToFormula q2])
+  | Sql.Union (q1, q2) => Combo (Disj, [queryToFormula q1, queryToFormula q2])
 
 fun valsToFormula (table, vals) =
-    Combo (Cnf, map (fn (field, v) => Atom (Sql.Eq, Sql.Field (table, field), v)) vals)
+    Combo (Conj, map (fn (field, v) => Atom (Sql.Eq, Sql.Field (table, field), v)) vals)
 
 val rec dmlToFormula =
  fn Sql.Insert (table, vals) => valsToFormula (table, vals)
@@ -354,8 +353,8 @@ val rec dmlToFormula =
         val mark = mapFormula (fn (cmp, e1, e2) => (cmp, markField e1, markField e2))
     in
         renameTables [(table, "T")]
-                     (Combo (Dnf, [Combo (Cnf, [fVals, mark fWhere]),
-                                   Combo (Cnf, [mark fVals, fWhere])]))
+                     (Combo (Disj, [Combo (Conj, [fVals, mark fWhere]),
+                                   Combo (Conj, [mark fVals, fWhere])]))
     end
 
 val rec tablesQuery =
@@ -369,6 +368,13 @@ val tableDml =
 
 
 (* Program instrumentation. *)
+
+val varName =
+    let
+        val varNumber = ref 0
+    in
+        fn s => (varNumber := !varNumber + 1; s ^ Int.toString (!varNumber))
+    end
 
 val {check, store, flush, ...} = getCache ()
 
@@ -412,8 +418,8 @@ fun cacheWrap (query, i, urlifiedRel0, resultTyp, args) =
     in
         ECase (check,
                [((PNone stringTyp, loc),
-                 (ELet ("q", resultTyp, query, (ESeq (store, rel0), loc)), loc)),
-                ((PSome (stringTyp, (PVar ("hit", stringTyp), loc)), loc),
+                 (ELet (varName "q", resultTyp, query, (ESeq (store, rel0), loc)), loc)),
+                ((PSome (stringTyp, (PVar (varName "hit", stringTyp), loc)), loc),
                  (* Boolean is false because we're not unurlifying from a cookie. *)
                  (EUnurlify (rel0, resultTyp, false), loc))],
                {disc = stringTyp, result = resultTyp})
@@ -454,7 +460,7 @@ fun factorOutNontrivial text =
                 chunks
         fun wrapLets e' =
             (* Important that this is foldl (to oppose foldr above). *)
-            List.foldl (fn (v, e') => ELet ("sqlArg", stringTyp, v, (e', loc)))
+            List.foldl (fn (v, e') => ELet (varName "sqlArg", stringTyp, v, (e', loc)))
                        e'
                        newVariables
         val numArgs = length newVariables
@@ -482,6 +488,7 @@ fun addChecking file =
                                                 exps = exps},
                                         dummyLoc)
                 val (EQuery {query = queryText, ...}, _) = queryExp
+                (* DEBUG: we can remove the following line at some point. *)
                 val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty queryText))
                 val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
                 fun bind x f = Option.mapPartial f x
@@ -530,9 +537,11 @@ fun invalidations ((query, numArgs), dml) =
         (* Tests if [ys] makes [xs] a redundant cache invalidation. [NONE] here
            represents unknown, which means a wider invalidation. *)
         val rec madeRedundantBy : atomExp option list * atomExp option list -> bool =
-         fn ([], []) => true
+         fn ([], []) => (print "hey!\n"; true)
           | (NONE :: xs, _ :: ys) => madeRedundantBy (xs, ys)
-          | (SOME x :: xs, SOME y :: ys) => equalAtomExp (x, y) andalso madeRedundantBy (xs, ys)
+          | (SOME x :: xs, SOME y :: ys) => (case AtomExpKey.compare (x, y) of
+                                                 EQUAL => madeRedundantBy (xs, ys)
+                                               | _ => false)
           | _ => false
         fun removeRedundant' (xss, yss) =
             case xss of

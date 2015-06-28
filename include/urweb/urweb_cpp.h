@@ -402,4 +402,12 @@ void uw_set_remoteSock(struct uw_context *, int sock);
 
 void uw_Basis_writec(struct uw_context *, char);
 
+// Sqlcache.
+
+#include "uthash.h"
+
+CacheValue *check(Cache *, char **);
+CacheValue *store(Cache *, char **, CacheValue *);
+CacheValue *flush(Cache *, char **);
+
 #endif

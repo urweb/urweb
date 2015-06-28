@@ -22,6 +22,8 @@
 
 #include "types.h"
 
+#include "uthash.h"
+
 uw_unit uw_unit_v = 0;
 
 
@@ -4493,4 +4495,149 @@ int uw_remoteSock(uw_context ctx) {
 
 void uw_set_remoteSock(uw_context ctx, int sock) {
   ctx->remoteSock = sock;
+}
+
+
+// Sqlcache
+
+void listDelete(CacheList *list, CacheEntry *entry) {
+  if (list->first == entry) {
+    list->first = entry->next;
+  }
+  if (list->last == entry) {
+    list->last = entry->prev;
+  }
+  if (entry->prev) {
+    entry->prev->next = entry->next;
+  }
+  if (entry->next) {
+    entry->next->prev = entry->prev;
+  }
+  entry->prev = NULL;
+  entry->next = NULL;
+  --(list->size);
+}
+
+void listAdd(CacheList *list, CacheEntry *entry) {
+  if (list->last) {
+    list->last->next = entry;
+    entry->prev = list->last;
+    list->last = entry;
+  } else {
+    list->first = entry;
+    list->last = entry;
+  }
+  ++(list->size);
+}
+
+void listBump(CacheList *list, CacheEntry *entry) {
+  listDelete(list, entry);
+  listAdd(list, entry);
+}
+
+// TODO: deal with time properly.
+
+time_t getTimeNow() {
+  return time(NULL);
+}
+
+time_t timeMax(time_t x, time_t y) {
+  return difftime(x, y) > 0 ? x : y;
+}
+
+void freeCacheValue(CacheValue *value) {
+  if (value) {
+    free(value->result);
+    free(value->output);
+    free(value);
+  }
+}
+
+void delete(Cache *cache, CacheEntry* entry) {
+  //listDelete(cache->lru, entry);
+  HASH_DELETE(hh, cache->table, entry);
+  freeCacheValue(entry->value);
+  free(entry->key);
+  free(entry);
+}
+
+CacheValue *checkHelper(Cache *cache, char **keys, int timeInvalid) {
+  char *key = keys[cache->height];
+  CacheEntry *entry;
+  HASH_FIND(hh, cache->table, key, strlen(key), entry);
+  timeInvalid = timeMax(timeInvalid, cache->timeInvalid);
+  if (entry && difftime(entry->timeValid, timeInvalid) > 0) {
+    if (cache->height == 0) {
+      // At height 0, entry->value is the desired value.
+      //listBump(cache->lru, entry);
+      return entry->value;
+    } else {
+      // At height n+1, entry->value is a pointer to a cache at heignt n.
+      return checkHelper(entry->value, keys, timeInvalid);
+    }
+  } else {
+    return NULL;
+  }
+}
+
+CacheValue *check(Cache *cache, char **keys) {
+  return checkHelper(cache, keys, 0);
+}
+
+void storeHelper(Cache *cache, char **keys, CacheValue *value, int timeNow) {
+  CacheEntry *entry;
+  char *key = keys[cache->height];
+  HASH_FIND(hh, cache->table, key, strlen(key), entry);
+  if (!entry) {
+    entry = malloc(sizeof(CacheEntry));
+    entry->key = strdup(key);
+    entry->value = NULL;
+    HASH_ADD_KEYPTR(hh, cache->table, entry->key, strlen(entry->key), entry);
+  }
+  entry->timeValid = timeNow;
+  if (cache->height == 0) {
+    //listAdd(cache->lru, entry);
+    freeCacheValue(entry->value);
+    entry->value = value;
+    //if (cache->lru->size > MAX_SIZE) {
+      //delete(cache, cache->lru->first);
+      // TODO: return flushed value.
+    //}
+  } else {
+    if (!entry->value) {
+      Cache *newCache = malloc(sizeof(Cache));
+      newCache->table = NULL;
+      newCache->timeInvalid = timeNow;
+      newCache->lru = cache->lru;
+      newCache->height = cache->height - 1;
+      entry->value = newCache;
+    }
+    storeHelper(entry->value, keys, value, timeNow);
+  }
+}
+
+void store(Cache *cache, char **keys, CacheValue *value) {
+  storeHelper(cache, keys, value, getTimeNow());
+}
+
+void flushHelper(Cache *cache, char **keys, int timeNow) {
+  CacheEntry *entry;
+  char *key = keys[cache->height];
+  if (key) {
+    HASH_FIND(hh, cache->table, key, strlen(key), entry);
+    if (entry) {
+      if (cache->height == 0) {
+        delete(cache, entry);
+      } else {
+        flushHelper(entry->value, keys, timeNow);
+      }
+    }
+  } else {
+    // Null key means invalidate the entire subtree.
+    cache->timeInvalid = timeNow;
+  }
+}
+
+void flush(Cache *cache, char **keys) {
+  flushHelper(cache, keys, getTimeNow());
 }

@@ -119,4 +119,35 @@ typedef struct {
   char *start, *front, *back;
 } uw_buffer;
 
+// Caching
+
+#include "uthash.h"
+
+typedef struct CacheValue {
+  char *result;
+  char *output;
+} CacheValue;
+
+typedef struct CacheEntry {
+  char *key;
+  void *value;
+  time_t timeValid;
+  struct CacheEntry *prev;
+  struct CacheEntry *next;
+  UT_hash_handle hh;
+} CacheEntry;
+
+typedef struct CacheList {
+  CacheEntry *first;
+  CacheEntry *last;
+  int size;
+} CacheList;
+
+typedef struct Cache {
+  CacheEntry *table;
+  time_t timeInvalid;
+  CacheList *lru;
+  int height;
+} Cache;
+
 #endif
