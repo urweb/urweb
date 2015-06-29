@@ -214,8 +214,8 @@ val sqbrel = altL [cmp "=" Eq,
                    cmp "<" Lt,
                    cmp ">=" Ge,
                    cmp ">" Gt,
-                   wrap (const "AND") (fn () => RLop Or),
-                   wrap (const "OR") (fn () => RLop And)]
+                   wrap (const "AND") (fn () => RLop And),
+                   wrap (const "OR") (fn () => RLop Or)]
 
 datatype ('a, 'b) sum = inl of 'a | inr of 'b
 

@@ -11,29 +11,27 @@ fun cache id =
          | Some row => <xml>{[row.Tab.Val]}</xml>}
     </body></xml>
 
+
 fun flush id =
-    res <- oneOrNoRows (SELECT tab.Val
-                        FROM tab
-                        WHERE tab.Id = {[id]});
-    (case res of
-         None => return () (* dml (INSERT INTO tab (Id, Val) *)
-                 (*      VALUES ({[id]}, 0)) *)
-       | Some row => dml (UPDATE tab
-                          SET Val = {[row.Tab.Val + 1]}
-                          WHERE Id = {[id + 1]} OR Id = {[id]} (* OR Id = {[id - 1]} *)));
+     dml (UPDATE tab
+          SET Val = 42
+          WHERE Id = {[id]} OR Id = {[id + 1]});
     return <xml><body>
-      {case res of
-           None => <xml>Initialized {[id]}!</xml>
-         | Some row => <xml>Incremented {[id]}!</xml>}
+      Changed {[id]}!
     </body></xml>
 
-(* task periodic 5 = *)
-(*  fn () => *)
-(*     t <- now; *)
-(*     let *)
-(*         val n = toSeconds t % 2 *)
-(*     in *)
-(*         dml (UPDATE tab *)
-(*              SET Val = 9001 *)
-(*              WHERE Id = {[n]} OR Id = {[n+1]}) *)
-(*     end *)
+(* fun flush id = *)
+(*     res <- oneOrNoRows (SELECT tab.Val *)
+(*                         FROM tab *)
+(*                         WHERE tab.Id = {[id]}); *)
+(*     (case res of *)
+(*          None => dml (INSERT INTO tab (Id, Val) *)
+(*                       VALUES ({[id]}, 0)) *)
+(*        | Some row => dml (UPDATE tab *)
+(*                           SET Val = {[row.Tab.Val + 1]} *)
+(*                           WHERE Id = {[id]} OR Id = {[id + 1]})); *)
+(*     return <xml><body> *)
+(*       {case res of *)
+(*            None => <xml>Initialized {[id]}!</xml> *)
+(*          | Some row => <xml>Incremented {[id]}!</xml>} *)
+(*     </body></xml> *)
