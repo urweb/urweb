@@ -147,12 +147,12 @@ datatype 'atom formula =
 
 val flipJt = fn Conj => Disj | Disj => Conj
 
-fun listBind xs f = List.concat (map f xs)
+fun concatMap f xs = List.concat (map f xs)
 
 val rec cartesianProduct : 'a list list -> 'a list list =
  fn [] => [[]]
-  | (xs :: xss) => listBind (cartesianProduct xss)
-                            (fn ys => listBind xs (fn x => [x :: ys]))
+  | (xs :: xss) => concatMap (fn ys => concatMap (fn x => [x :: ys]) xs)
+                             (cartesianProduct xss)
 
 (* Pushes all negation to the atoms.*)
 fun pushNegate (negate : 'atom -> 'atom) (negating : bool) =
@@ -174,32 +174,44 @@ val rec flatten =
                          (map flatten fs))
   | f => f
 
-fun normalize' ((simplifyLists, simplifyAtomsConj, simplifyAtomsDisj, negate)
+fun normPlz (junc : junctionType) =
+ fn Atom x => [[x]]
+  | Combo (j, fs) =>
+    let
+        val fss = map (normPlz junc) fs
+    in
+        if j = junc
+        then List.concat fss
+        else map List.concat (cartesianProduct fss)
+    end
+  (* Excluded by pushNegate. *)
+  | Negate _ => raise Match
+
+fun normalize' ((simplifyLists, simplifyAtoms, negate)
                 : ('a list list -> 'a list list)
-                  * ('a list -> 'a list)
                   * ('a list -> 'a list)
                   * ('a -> 'a))
                (junc : junctionType) =
     let
-        fun simplify junc = simplifyLists o map (case junc of
-                                                     Conj => simplifyAtomsConj
-                                                   | Disj => simplifyAtomsDisj)
+        fun simplify junc = simplifyLists o map simplifyAtoms
         fun norm junc =
             simplify junc
             o (fn Atom x => [[x]]
                 | Negate f => map (map negate) (norm (flipJt junc) f)
                 | Combo (j, fs) =>
                   let
-                      val fss = listBind fs (norm j)
+                      val fss = map (norm junc) fs
                   in
-                      if j = junc then fss else cartesianProduct fss
+                      if j = junc
+                      then List.concat fss
+                      else map List.concat (cartesianProduct fss)
                   end)
     in
         norm junc
     end
 
-fun normalize (simplifyLists, simplifyAtomsConj, simplifyAtomsDisj, negate, junc) =
-    (normalize' (simplifyLists, simplifyAtomsConj, simplifyAtomsDisj, negate) junc)
+fun normalize (simplifyLists, simplifyAtoms, negate, junc) =
+    (normalize' (simplifyLists, simplifyAtoms, negate) junc)
     o flatten
     o pushNegate negate false
 
@@ -414,10 +426,9 @@ structure ConflictMaps = struct
               | _ => false
             fun canIgnore (_, a1, a2) = isStar a1 orelse isStar a2
             fun simplifyLists xs = TLS.listItems (TLS.addList (TLS.empty, xs))
-            fun simplifyAtomsConj xs = TS.listItems (TS.addList (TS.empty, xs))
-            val simplifyAtomsDisj = simplifyAtomsConj o List.filter canIgnore
+            fun simplifyAtoms xs = TS.listItems (TS.addList (TS.empty, xs))
         in
-            normalize (simplifyLists, simplifyAtomsConj, simplifyAtomsDisj, negateCmp, Disj)
+            normalize (simplifyLists, simplifyAtoms, negateCmp, Disj)
                       (Combo (Conj, [markQuery fQuery, markDml fDml]))
         end
 
