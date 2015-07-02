@@ -811,21 +811,6 @@ val head : unit -> tag [Data = data_attr] html head [] []
 val title : unit -> tag [Data = data_attr] head [] [] []
 val link : unit -> tag [Data = data_attr, Id = id, Rel = string, Typ = string, Href = url, Media = string] head [] [] []
 
-val body : unit -> tag [Data = data_attr, Onload = transaction unit, Onresize = transaction unit, Onunload = transaction unit, Onhashchange = transaction unit]
-                       html body [] []
-con bodyTag = fn (attrs :: {Type}) =>
-                 ctx ::: {Unit} ->
-                 [[Body] ~ ctx] =>
-                    unit -> tag attrs ([Body] ++ ctx) ([Body] ++ ctx) [] []
-con bodyTagStandalone = fn (attrs :: {Type}) =>
-                           ctx ::: {Unit}
-                           -> [[Body] ~ ctx] =>
-                                 unit -> tag attrs ([Body] ++ ctx) [] [] []
-
-val br : bodyTagStandalone [Data = data_attr, Id = id]
-
-con focusEvents = [Onblur = transaction unit, Onfocus = transaction unit]
-
 datatype mouseButton = Left | Right | Middle
 
 type mouseEvent = { ScreenX : int, ScreenY : int, ClientX : int, ClientY : int,
@@ -840,6 +825,24 @@ type keyEvent = { KeyCode : int,
 
 con keyEvents = map (fn _ :: Unit => keyEvent -> transaction unit)
                         [Onkeydown, Onkeypress, Onkeyup]
+
+val body : unit -> tag ([Data = data_attr, Onload = transaction unit, Onresize = transaction unit, Onunload = transaction unit, Onhashchange = transaction unit]
+                            ++ mouseEvents ++ keyEvents)
+                       html body [] []
+
+con bodyTag = fn (attrs :: {Type}) =>
+                 ctx ::: {Unit} ->
+                 [[Body] ~ ctx] =>
+                    unit -> tag attrs ([Body] ++ ctx) ([Body] ++ ctx) [] []
+con bodyTagStandalone = fn (attrs :: {Type}) =>
+                           ctx ::: {Unit}
+                           -> [[Body] ~ ctx] =>
+                                 unit -> tag attrs ([Body] ++ ctx) [] [] []
+
+val br : bodyTagStandalone [Data = data_attr, Id = id]
+
+con focusEvents = [Onblur = transaction unit, Onfocus = transaction unit]
+
 
 (* Key arguments are character codes. *)
 con resizeEvents = [Onresize = transaction unit]
