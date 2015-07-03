@@ -203,7 +203,7 @@ fun compare ((c1, _), (c2, _)) =
       | (_, CConcat _) => GREATER
 
       | (CMap (d1, r1), CMap (d2, r2)) =>
-        join (Kind.compare (d1, r2),
+        join (Kind.compare (d1, d2),
               fn () => Kind.compare (r1, r2))
       | (CMap _, _) => LESS
       | (_, CMap _) => GREATER
