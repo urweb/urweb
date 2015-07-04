@@ -2214,6 +2214,19 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             let
                 val t = monoType env t
                 val s = (L'.TFfi ("Basis", "string"), loc)
+
+                fun toSqlType (t : L'.typ) =
+                    case #1 t of
+                        L'.TFfi ("Basis", "int") => Settings.Int
+                      | L'.TFfi ("Basis", "float") => Settings.Float
+                      | L'.TFfi ("Basis", "string") => Settings.String
+                      | L'.TFfi ("Basis", "char") => Settings.Char
+                      | L'.TFfi ("Basis", "bool") => Settings.Bool
+                      | L'.TFfi ("Basis", "time") => Settings.Time
+                      | L'.TFfi ("Basis", "blob") => Settings.Blob
+                      | L'.TFfi ("Basis", "channel") => Settings.Channel
+                      | L'.TFfi ("Basis", "client") => Settings.Client
+                      | _ => raise Fail "Monoize/sql_option_prim: invalid SQL type"
             in
                 ((L'.EAbs ("f",
                            (L'.TFun (t, s), loc),
@@ -2223,7 +2236,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                      s,
                                      (L'.ECase ((L'.ERel 0, loc),
                                                 [((L'.PNone t, loc),
-                                                  str "NULL"),
+                                                  str (#p_cast (Settings.currentDbms ()) ("NULL", toSqlType t))),
                                                  ((L'.PSome (t, (L'.PVar ("y", t), loc)), loc),
                                                   (L'.EApp ((L'.ERel 2, loc), (L'.ERel 0, loc)), loc))],
                                                 {disc = (L'.TOption t, loc),
