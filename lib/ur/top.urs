@@ -35,7 +35,7 @@ con snd3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.2
 con thd3 = K1 ==> K2 ==> K3 ==> fn t :: (K1 * K2 * K3) => t.3
 
 (* Convert a record of n Units into a type-level record where
-o   each field has the same value (which describes a uniformly
+   each field has the same value (which describes a uniformly
    typed record) *)
 con mapU = K ==> fn f :: K => map (fn _ :: Unit => f)
 
