@@ -607,15 +607,19 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
               | ERel _ => S.return2 eAll
               | ENamed _ => S.return2 eAll
               | ECon (dk, pc, cs, NONE) =>
-                S.map2 (ListUtil.mapfold (mfc ctx) cs,
-                        fn cs' =>
-                           (ECon (dk, pc, cs', NONE), loc))
-              | ECon (dk, n, cs, SOME e) =>
-                S.bind2 (mfe ctx e,
-                      fn e' =>
+                S.bind2 (mfpc ctx pc,
+                      fn pc' =>
                          S.map2 (ListUtil.mapfold (mfc ctx) cs,
-                                 fn cs' =>
-                                    (ECon (dk, n, cs', SOME e'), loc)))
+                              fn cs' =>
+                                 (ECon (dk, pc', cs', NONE), loc)))
+              | ECon (dk, pc, cs, SOME e) =>
+                S.bind2 (mfpc ctx pc,
+                      fn pc' =>
+                         S.bind2 (mfe ctx e,
+                               fn e' =>
+                                  S.map2 (ListUtil.mapfold (mfc ctx) cs,
+                                       fn cs' =>
+                                          (ECon (dk, pc', cs', SOME e'), loc))))
               | EFfi _ => S.return2 eAll
               | EFfiApp (m, x, es) =>
                 S.map2 (ListUtil.mapfold (mfet ctx) es,
