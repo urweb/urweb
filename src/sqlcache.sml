@@ -174,28 +174,12 @@ val rec flatten =
                          (map flatten fs))
   | f => f
 
-fun normPlz (junc : junctionType) =
- fn Atom x => [[x]]
-  | Combo (j, fs) =>
-    let
-        val fss = map (normPlz junc) fs
-    in
-        if j = junc
-        then List.concat fss
-        else map List.concat (cartesianProduct fss)
-    end
-  (* Excluded by pushNegate. *)
-  | Negate _ => raise Match
-
-fun normalize' ((simplifyLists, simplifyAtoms, negate)
-                : ('a list list -> 'a list list)
-                  * ('a list -> 'a list)
-                  * ('a -> 'a))
+fun normalize' (simplify : 'a list list -> 'a list list)
+               (negate : 'a -> 'a)
                (junc : junctionType) =
     let
-        fun simplify junc = simplifyLists o map simplifyAtoms
         fun norm junc =
-            simplify junc
+            simplify
             o (fn Atom x => [[x]]
                 | Negate f => map (map negate) (norm (flipJt junc) f)
                 | Combo (j, fs) =>
@@ -210,8 +194,8 @@ fun normalize' ((simplifyLists, simplifyAtoms, negate)
         norm junc
     end
 
-fun normalize (simplifyLists, simplifyAtoms, negate, junc) =
-    (normalize' (simplifyLists, simplifyAtoms, negate) junc)
+fun normalize simplify negate junc =
+    normalize' simplify negate junc
     o flatten
     o pushNegate negate false
 
@@ -247,7 +231,7 @@ structure CmpKey : ORD_KEY = struct
 
 end
 
-
+(*
 functor ListKeyFn (K : ORD_KEY) : ORD_KEY = struct
 
     type ord_key = K.ord_key list
@@ -261,6 +245,7 @@ functor ListKeyFn (K : ORD_KEY) : ORD_KEY = struct
                                  | ord => ord)
 
 end
+*)
 
 functor OptionKeyFn (K : ORD_KEY) : ORD_KEY = struct
 
@@ -293,6 +278,20 @@ end
 val rec chooseTwos : 'a list -> ('a * 'a) list =
  fn [] => []
   | x :: ys => map (fn y => (x, y)) ys @ chooseTwos ys
+
+fun removeRedundant madeRedundantBy zs =
+    let
+        fun removeRedundant' (xs, ys) =
+            case xs of
+                [] => ys
+              | x :: xs' =>
+                removeRedundant' (xs',
+                                  if List.exists (fn y => madeRedundantBy (x, y)) (xs' @ ys)
+                                  then ys
+                                  else x :: ys)
+    in
+        removeRedundant' (zs, [])
+    end
 
 datatype atomExp =
          QueryArg of int
@@ -329,7 +328,7 @@ structure ConflictMaps = struct
                                structure J = OptionKeyFn(AtomExpKey)
                                structure K = OptionKeyFn(AtomExpKey))
     structure TS = BinarySetFn(TK)
-    structure TLS = BinarySetFn(ListKeyFn(TK))
+    (* structure TLS = BinarySetFn(ListKeyFn(TK)) *)
 
     val toKnownEquality =
      (* [NONE] here means unkown. Anything that isn't a comparison between two
@@ -365,9 +364,6 @@ structure ConflictMaps = struct
       (* TODO: deal with equalities between [DmlRel]s and [Prim]s.
          This would involve guarding the invalidation with a check for the
          relevant comparisons. *)
-      (* DEBUG: remove these print statements. *)
-      (* | ((DmlRel r, Prim p), eqso) => (print ("sadness " ^ Int.toString r ^ " = " ^ Prim.toString p ^ "\n"); eqso) *)
-      (* | ((Prim p, DmlRel r), eqso) => (print ("sadness " ^ Int.toString r ^ " = " ^ Prim.toString p ^ "\n"); eqso) *)
       | (_, eqso) => eqso
 
     val eqsOfClass : atomExp list -> atomExp IM.map option =
@@ -416,20 +412,12 @@ structure ConflictMaps = struct
 
     fun dnf (fQuery, fDml) =
         let
-            val isStar =
-             (* TODO: decide if this is okay and, if so, factor out magic
-                string "*" to a common location. *)
-             (* First guess: definitely okay for conservative approximation,
-                though information lost might be useful even in current
-                implementation for finding an extra equality. *)
-             fn SOME (Field (_, field)) => String.isSuffix "*" field
-              | _ => false
-            fun canIgnore (_, a1, a2) = isStar a1 orelse isStar a2
-            fun simplifyLists xs = TLS.listItems (TLS.addList (TLS.empty, xs))
-            fun simplifyAtoms xs = TS.listItems (TS.addList (TS.empty, xs))
+            val simplify =
+                map TS.listItems
+                o removeRedundant (fn (x, y) => TS.isSubset (y, x))
+                o map (fn xs => TS.addList (TS.empty, xs))
         in
-            normalize (simplifyLists, simplifyAtoms, negateCmp, Disj)
-                      (Combo (Conj, [markQuery fQuery, markDml fDml]))
+            normalize simplify negateCmp Disj (Combo (Conj, [markQuery fQuery, markDml fDml]))
         end
 
     val conflictMaps = List.mapPartial (mergeEqs o map eqsOfClass o equivClasses) o dnf
@@ -478,9 +466,12 @@ val rec dmlToFormula =
     let
         val fWhere = sqexpToFormula wher
         val fVals = valsToFormula (table, vals)
+        val modifiedFields = SS.addList (SS.empty, map #1 vals)
         (* TODO: don't use field name hack. *)
         val markField =
-         fn Sql.Field (t, v) => Sql.Field (t, v ^ "*")
+         fn e as Sql.Field (t, v) => if SS.member (modifiedFields, v)
+                                     then Sql.Field (t, v ^ "'")
+                                     else e
           | e => e
         val mark = mapFormula (fn (cmp, e1, e2) => (cmp, markField e1, markField e2))
     in
@@ -673,28 +664,17 @@ structure Invalidations = struct
        represents unknown, which means a wider invalidation. *)
     val rec madeRedundantBy : atomExp option list * atomExp option list -> bool =
      fn ([], []) => true
-      | (NONE :: xs, _ :: ys) => madeRedundantBy (xs, ys)
+      | (_ :: xs, NONE :: ys) => madeRedundantBy (xs, ys)
       | (SOME x :: xs, SOME y :: ys) => (case AtomExpKey.compare (x, y) of
                                              EQUAL => madeRedundantBy (xs, ys)
                                            | _ => false)
       | _ => false
 
-    fun removeRedundant' (xss, yss) =
-        case xss of
-            [] => yss
-          | xs :: xss' =>
-            removeRedundant' (xss',
-                              if List.exists (fn ys => madeRedundantBy (xs, ys)) (xss' @ yss)
-                              then yss
-                              else xs :: yss)
-
-    fun removeRedundant xss = removeRedundant' (xss, [])
-
     fun eqss (query, dml) = conflictMaps (queryToFormula query, dmlToFormula dml)
 
     fun invalidations ((query, numArgs), dml) =
         (map (map optionAtomExpToExp)
-         o removeRedundant
+         o removeRedundant madeRedundantBy
          o map (eqsToInvalidation numArgs)
          o eqss)
             (query, dml)
