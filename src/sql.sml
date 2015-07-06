@@ -152,6 +152,18 @@ fun keep cp chs =
         end
       | _ => NONE
 
+(* Used by primSqlcache. *)
+fun optConst s chs =
+    case chs of
+        String s' :: chs => if String.isPrefix s s' then
+                                SOME (s, if size s = size s' then
+                                              chs
+                                          else
+                                              String (String.extract (s', size s, NONE)) :: chs)
+                            else
+                                SOME ("", String s' :: chs)
+      | _ => NONE
+
 fun ws p = wrap (follow (skip (fn ch => ch = #" "))
                         (follow p (skip (fn ch => ch = #" ")))) (#1 o #2)
 
@@ -256,6 +268,23 @@ val prim =
           wrap (follow (opt (const "E")) (follow string (opt (const "::text"))))
                ((fn s => Prim.String (Prim.Normal, s)) o #1 o #2)]
 
+val primSqlcache =
+    (* Like [prim], but always uses [Prim.String]s. *)
+    let
+        fun wrapS p f = wrap p ((fn s => Prim.String (Prim.Normal, s)) o f)
+    in
+        altL [wrapS (follow (wrap (follow (keep Char.isDigit)
+                                          (follow (const ".") (keep Char.isDigit)))
+                                  (fn (x, ((), y)) => x ^ "." ^ y))
+                            (optConst "::float8"))
+                    op^,
+              wrapS (follow (keep Char.isDigit)
+                            (optConst "::int8"))
+                    op^,
+              wrapS (follow (optConst "E") (follow string (optConst "::text")))
+                    (fn (c1, (s, c2)) => c1 ^ s ^ c2)]
+end
+
 fun known' chs =
     case chs of
         Exp (EFfi ("Basis", "sql_known"), _) :: chs => SOME ((), chs)
@@ -278,7 +307,7 @@ fun sqlify chs =
 
 fun sqlifySqlcache chs =
     case chs of
-      (* Could have variables as well as FFIs. *)
+      (* Could have variables or constants as well as FFIs. *)
         Exp (e as (ERel _, _)) :: chs => SOME (e, chs)
       (* If it is an FFI, match the entire expression. *)
       | Exp (e as (EFfiApp ("Basis", f, [(_, _)]), _)) :: chs =>
@@ -286,13 +315,7 @@ fun sqlifySqlcache chs =
             SOME (e, chs)
         else
             NONE
-      | Exp (ECase (e, [((PCon (_, PConFfi {mod = "Basis", con = "True", ...}, NONE), _),
-                         (EPrim (Prim.String (Prim.Normal, "TRUE")), _)),
-                        ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, NONE), _),
-                         (EPrim (Prim.String (Prim.Normal, "FALSE")), _))], _), _) :: chs =>
-        SOME (e, chs)
-
-      | _ => NONE
+      | _ => sqlify chs
 
 fun constK s = wrap (const s) (fn () => s)
 
@@ -309,7 +332,7 @@ val sqlcacheMode = ref false;
 
 fun sqexp chs =
     log "sqexp"
-    (altL [wrap prim SqConst,
+    (altL [wrap (if !sqlcacheMode then primSqlcache else prim) SqConst,
            wrap (const "TRUE") (fn () => SqTrue),
            wrap (const "FALSE") (fn () => SqFalse),
            wrap (const "NULL") (fn () => Null),

@@ -14,7 +14,7 @@ fun cache id =
 
 fun flush id =
      dml (UPDATE tab
-          SET Val = 42
+          SET Id = 29, Val = 42
           WHERE Id = {[id]} OR Id = {[id - 1]} OR Id = {[id + 1]});
     return <xml><body>
       Changed {[id]}!
