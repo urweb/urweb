@@ -410,15 +410,13 @@ structure ConflictMaps = struct
         List.foldr (fn (SOME eqs, SOME acc) => SOME (IM.unionWith #1 (eqs, acc)) | _ => NONE)
                    (SOME IM.empty)
 
+    val simplify =
+        map TS.listItems
+        o removeRedundant (fn (x, y) => TS.isSubset (y, x))
+        o map (fn xs => TS.addList (TS.empty, xs))
+
     fun dnf (fQuery, fDml) =
-        let
-            val simplify =
-                map TS.listItems
-                o removeRedundant (fn (x, y) => TS.isSubset (y, x))
-                o map (fn xs => TS.addList (TS.empty, xs))
-        in
-            normalize simplify negateCmp Disj (Combo (Conj, [markQuery fQuery, markDml fDml]))
-        end
+        normalize simplify negateCmp Disj (Combo (Conj, [markQuery fQuery, markDml fDml]))
 
     val conflictMaps = List.mapPartial (mergeEqs o map eqsOfClass o equivClasses) o dnf
 

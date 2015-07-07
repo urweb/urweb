@@ -325,6 +325,11 @@ val funcName = altL [constK "COUNT",
                      constK "SUM",
                      constK "AVG"]
 
+fun arithmetic pExp = follow (const "(")
+                             (follow pExp
+                                     (follow (altL (map const [" + ", " - ", " * ", " / "]))
+                                             (follow pExp (const ")"))))
+
 val unmodeled = altL [const "COUNT(*)",
                       const "CURRENT_TIMESTAMP"]
 
@@ -340,6 +345,7 @@ fun sqexp chs =
            wrap uw_ident Computed,
            wrap known SqKnown,
            wrap func SqFunc,
+           wrap (arithmetic sqexp) (fn _ => Unmodeled),
            wrap unmodeled (fn () => Unmodeled),
            wrap (if !sqlcacheMode then sqlifySqlcache else sqlify) Inj,
            wrap (follow (const "COALESCE(") (follow sqexp (follow (const ",")

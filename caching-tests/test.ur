@@ -11,11 +11,10 @@ fun cache id =
          | Some row => <xml>{[row.Tab.Val]}</xml>}
     </body></xml>
 
-
 fun flush id =
-     dml (UPDATE tab
-          SET Id = 29, Val = 42
-          WHERE Id = {[id]} OR Id = {[id - 1]} OR Id = {[id + 1]});
+    dml (UPDATE tab
+         SET Val = Val * (Id + 2) / Val - 3
+         WHERE Id = {[id]} OR Id = {[id - 1]} OR Id = {[id + 1]});
     return <xml><body>
       Changed {[id]}!
     </body></xml>
