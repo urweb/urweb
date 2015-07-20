@@ -19,6 +19,14 @@ fun flush id =
       Changed {[id]}!
     </body></xml>
 
+val flush17 =
+    dml (UPDATE tab
+         SET Val = Val * (Id + 2) / Val - 3
+         WHERE Id = 17);
+    return <xml><body>
+      Changed specifically 17!
+    </body></xml>
+
 (* fun flush id = *)
 (*     res <- oneOrNoRows (SELECT tab.Val *)
 (*                         FROM tab *)

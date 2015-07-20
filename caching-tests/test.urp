@@ -1,5 +1,6 @@
 database test.db
 sql test.sql
 safeGet Test/flush
+safeGet Test/flush17
 
 test
