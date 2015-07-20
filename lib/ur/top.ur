@@ -410,3 +410,6 @@ fun max [t] ( _ : ord t) (x : t) (y : t) : t =
     if x > y then x else y
 fun min [t] ( _ : ord t) (x : t) (y : t) : t =
     if x < y then x else y
+
+fun assert [a] (cond: bool) (msg: string) (loc: string) (x:a): a =
+  if cond then x else error <xml>{txt msg} at {txt loc}</xml>

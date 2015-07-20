@@ -290,3 +290,10 @@ val postFields : postBody -> list (string * string)
 
 val max : t ::: Type -> ord t -> t -> t -> t
 val min : t ::: Type -> ord t -> t -> t -> t
+
+val assert : t ::: Type
+             -> bool   (* Did we avoid something bad? *)
+             -> string (* Explanation of the bad thing *)
+             -> string (* Source location of the bad thing *)
+             -> t      (* Return this value if all went well. *)
+             -> t

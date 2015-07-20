@@ -811,21 +811,6 @@ val head : unit -> tag [Data = data_attr] html head [] []
 val title : unit -> tag [Data = data_attr] head [] [] []
 val link : unit -> tag [Data = data_attr, Id = id, Rel = string, Typ = string, Href = url, Media = string] head [] [] []
 
-val body : unit -> tag [Data = data_attr, Onload = transaction unit, Onresize = transaction unit, Onunload = transaction unit, Onhashchange = transaction unit]
-                       html body [] []
-con bodyTag = fn (attrs :: {Type}) =>
-                 ctx ::: {Unit} ->
-                 [[Body] ~ ctx] =>
-                    unit -> tag attrs ([Body] ++ ctx) ([Body] ++ ctx) [] []
-con bodyTagStandalone = fn (attrs :: {Type}) =>
-                           ctx ::: {Unit}
-                           -> [[Body] ~ ctx] =>
-                                 unit -> tag attrs ([Body] ++ ctx) [] [] []
-
-val br : bodyTagStandalone [Data = data_attr, Id = id]
-
-con focusEvents = [Onblur = transaction unit, Onfocus = transaction unit]
-
 datatype mouseButton = Left | Right | Middle
 
 type mouseEvent = { ScreenX : int, ScreenY : int, ClientX : int, ClientY : int,
@@ -841,6 +826,24 @@ type keyEvent = { KeyCode : int,
 con keyEvents = map (fn _ :: Unit => keyEvent -> transaction unit)
                         [Onkeydown, Onkeypress, Onkeyup]
 
+val body : unit -> tag ([Data = data_attr, Onload = transaction unit, Onresize = transaction unit, Onunload = transaction unit, Onhashchange = transaction unit]
+                            ++ mouseEvents ++ keyEvents)
+                       html body [] []
+
+con bodyTag = fn (attrs :: {Type}) =>
+                 ctx ::: {Unit} ->
+                 [[Body] ~ ctx] =>
+                    unit -> tag attrs ([Body] ++ ctx) ([Body] ++ ctx) [] []
+con bodyTagStandalone = fn (attrs :: {Type}) =>
+                           ctx ::: {Unit}
+                           -> [[Body] ~ ctx] =>
+                                 unit -> tag attrs ([Body] ++ ctx) [] [] []
+
+val br : bodyTagStandalone [Data = data_attr, Id = id]
+
+con focusEvents = [Onblur = transaction unit, Onfocus = transaction unit]
+
+
 (* Key arguments are character codes. *)
 con resizeEvents = [Onresize = transaction unit]
 con scrollEvents = [Onscroll = transaction unit]
@@ -848,8 +851,8 @@ con scrollEvents = [Onscroll = transaction unit]
 con boxEvents = focusEvents ++ mouseEvents ++ keyEvents ++ resizeEvents ++ scrollEvents
 con tableEvents = focusEvents ++ mouseEvents ++ keyEvents
 
-con boxAttrs = [Data = data_attr, Id = id, Title = string, Role = string] ++ boxEvents
-con tableAttrs = [Data = data_attr, Id = id, Title = string] ++ tableEvents
+con boxAttrs = [Data = data_attr, Id = id, Title = string, Role = string, Align = string] ++ boxEvents
+con tableAttrs = [Data = data_attr, Id = id, Title = string, Align = string] ++ tableEvents
 
 val span : bodyTag boxAttrs
 val div : bodyTag boxAttrs
@@ -1008,7 +1011,7 @@ val remainingFields : postField -> string
 
 con radio = [Body, Radio]
 val radio : formTag (option string) radio [Data = data_attr, Id = id]
-val radioOption : unit -> tag ([Value = string, Checked = bool] ++ boxAttrs) radio [] [] []
+val radioOption : unit -> tag ([Value = string, Checked = bool, Onchange = transaction unit] ++ boxAttrs) radio [] [] []
 
 con select = [Select]
 val select : formTag string select ([Onchange = transaction unit] ++ boxAttrs)
@@ -1027,6 +1030,9 @@ val image : ctx ::: {Unit} -> use ::: {Type}
                           ([Form] ++ ctx) ([Form] ++ ctx) use []
 
 val label : bodyTag ([For = id, Accesskey = string] ++ tableAttrs)
+
+val fieldset : bodyTag boxAttrs
+val legend : bodyTag boxAttrs
 
 
 (*** AJAX-oriented widgets *)

@@ -875,7 +875,8 @@ fun parseUrp' accLibs fname =
                                      (case String.fields Char.isSpace arg of
                                           [uri, fname] => (Settings.setFilePath thisPath;
                                                            Settings.addFile {Uri = uri,
-                                                                             LoadFromFilename = fname})
+                                                                             LoadFromFilename = fname};
+                                                           url := {action = Settings.Allow, kind = Settings.Exact, pattern = uri} :: !url)
                                         | _ => ErrorMsg.error "Bad 'file' arguments")
 
                                    | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");

@@ -179,11 +179,11 @@ See doc for the variable `urweb-mode-info'."
         (let ((xml-tag (length (or (match-string 3) "")))
               (ch (match-string 2)))
          (cond
-          ((equal ch ?\{)
+          ((equal ch "{")
            (if (> depth 0)
                (decf depth)
              (setq finished t)))
-          ((equal ch ?\})
+          ((equal ch "}")
            (incf depth))
           ((= xml-tag 3)
            (if (> depth 0)
@@ -194,14 +194,14 @@ See doc for the variable `urweb-mode-info'."
           ((= xml-tag 4)
            (incf depth))
 
-          ((equal ch ?-)
+          ((equal ch "-")
            (if (looking-at "->")
                (setq finished (= depth 0))))
 
           ((and (= depth 0)
                 (not (looking-at "<xml")) ;; ignore <xml/>
-                (eq font-lock-tag-face
-                    (get-text-property (point) 'face)))
+                (let ((face (get-text-property (point) 'face)))
+                  (funcall (if (listp face) #'member #'equal) 'font-lock-tag-face face)))
            ;; previous code was highlighted as tag, seems we are in xml
            (progn
              (setq answer t)
@@ -401,6 +401,7 @@ This mode runs `urweb-mode-hook' just before exiting.
   (unless (boundp 'skeleton-positions) (set (make-local-variable '@) nil))
 
   (local-set-key (kbd "C-c C-c") 'compile)
+  (local-set-key (kbd "C-c /") 'urweb-close-matching-tag)
 
   (urweb-mode-variables))
 
@@ -541,6 +542,16 @@ If anyone has a good algorithm for this..."
     (urweb-tag-matcher)
     (beginning-of-line)
     (current-indentation)))
+
+(defun urweb-close-matching-tag ()
+  "Insert a closing XML tag for whatever tag is open at the point."
+  (interactive)
+  (assert (urweb-in-xml))
+  (save-excursion
+   (urweb-tag-matcher)
+   (re-search-forward "<\\([^ ={/>]+\\)" nil t))
+  (let ((tag (match-string-no-properties 1)))
+    (insert "</" tag ">")))
 
 (defconst urweb-sql-main-starters
   '("SQL" "SELECT" "INSERT" "UPDATE" "DELETE" "FROM" "SELECT1" "WHERE"))

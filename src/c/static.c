@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   while (1) {
     fk = uw_begin(ctx, argv[1]);
 
-    if (fk == SUCCESS) {
+    if (fk == SUCCESS || fk == RETURN_INDIRECTLY) {
       uw_print(ctx, 1);
       puts("");
       return 0;

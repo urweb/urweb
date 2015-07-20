@@ -1,4 +1,18 @@
 ========
+20150520
+========
+
+- Change default behavior of client-side GUI event handlers:
+  By default, events are now passed to handlers on parent DOM nodes as well,
+  just like in normal JavaScript.
+  Call [preventDefault] or [stopPropagation] to tweak that behavior.
+  WARNING: This change may break backward compatibility!
+- URIs specified with 'file' .urp directive are implicitly allowed to be referenced.
+- New HTML tags: <fieldset>, <legend>
+- New urweb-mode Emacs command: 'urweb-close-matching-tag'
+- Bug fixes
+
+========
 20150412
 ========
 
