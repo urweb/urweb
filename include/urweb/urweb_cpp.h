@@ -406,8 +406,8 @@ void uw_Basis_writec(struct uw_context *, char);
 
 #include "uthash.h"
 
-CacheValue *check(Cache *, char **);
-CacheValue *store(Cache *, char **, CacheValue *);
-CacheValue *flush(Cache *, char **);
+uw_sqlcache_CacheValue *uw_sqlcache_check(uw_sqlcache_Cache *, char **);
+uw_sqlcache_CacheValue *uw_sqlcache_store(uw_sqlcache_Cache *, char **, uw_sqlcache_CacheValue *);
+uw_sqlcache_CacheValue *uw_sqlcache_flush(uw_sqlcache_Cache *, char **);
 
 #endif

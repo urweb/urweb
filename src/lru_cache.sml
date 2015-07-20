@@ -64,7 +64,7 @@ fun setupQuery {index, params} =
 
     in
         Print.box
-            [string ("static Cache cacheStruct" ^ i ^ " = {"),
+            [string ("static uw_sqlcache_Cache cacheStruct" ^ i ^ " = {"),
              newline,
              string "  .table = NULL,",
              newline,
@@ -74,7 +74,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  .height = " ^ Int.toString (params - 1) ^ "};"),
              newline,
-             string ("static Cache *cache" ^ i ^ " = &cacheStruct" ^ i ^ ";"),
+             string ("static uw_sqlcache_Cache *cache" ^ i ^ " = &cacheStruct" ^ i ^ ";"),
              newline,
              newline,
 
@@ -83,7 +83,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  char *ks[] = {" ^ revArgs ^ "};"),
              newline,
-             string ("  CacheValue *v = check(cache" ^ i ^ ", ks);"),
+             string ("  uw_sqlcache_CacheValue *v = uw_sqlcache_check(cache" ^ i ^ ", ks);"),
              newline,
              string "  if (v) {",
              newline,
@@ -112,7 +112,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  char *ks[] = {" ^ revArgs ^ "};"),
              newline,
-             string ("  CacheValue *v = malloc(sizeof(CacheValue));"),
+             string ("  uw_sqlcache_CacheValue *v = malloc(sizeof(uw_sqlcache_CacheValue));"),
              newline,
              string "  v->result = strdup(s);",
              newline,
@@ -120,7 +120,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  puts(\"SQLCACHE: stored " ^ i ^ ".\");"),
              newline,
-             string ("  store(cache" ^ i ^ ", ks, v);"),
+             string ("  uw_sqlcache_store(cache" ^ i ^ ", ks, v);"),
              newline,
              string "  return uw_unit_v;",
              newline,
@@ -133,7 +133,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  char *ks[] = {" ^ revArgs ^ "};"),
              newline,
-             string ("  flush(cache" ^ i ^ ", ks);"),
+             string ("  uw_sqlcache_flush(cache" ^ i ^ ", ks);"),
              newline,
              string "  return uw_unit_v;",
              newline,

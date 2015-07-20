@@ -123,31 +123,31 @@ typedef struct {
 
 #include "uthash.h"
 
-typedef struct CacheValue {
+typedef struct uw_sqlcache_CacheValue {
   char *result;
   char *output;
-} CacheValue;
+} uw_sqlcache_CacheValue;
 
-typedef struct CacheEntry {
+typedef struct uw_sqlcache_CacheEntry {
   char *key;
   void *value;
   time_t timeValid;
-  struct CacheEntry *prev;
-  struct CacheEntry *next;
+  struct uw_sqlcache_CacheEntry *prev;
+  struct uw_sqlcache_CacheEntry *next;
   UT_hash_handle hh;
-} CacheEntry;
+} uw_sqlcache_CacheEntry;
 
-typedef struct CacheList {
-  CacheEntry *first;
-  CacheEntry *last;
+typedef struct uw_sqlcache_CacheList {
+  uw_sqlcache_CacheEntry *first;
+  uw_sqlcache_CacheEntry *last;
   int size;
-} CacheList;
+} uw_sqlcache_CacheList;
 
-typedef struct Cache {
-  CacheEntry *table;
+typedef struct uw_sqlcache_Cache {
+  uw_sqlcache_CacheEntry *table;
   time_t timeInvalid;
-  CacheList *lru;
+  uw_sqlcache_CacheList *lru;
   int height;
-} Cache;
+} uw_sqlcache_Cache;
 
 #endif
