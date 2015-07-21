@@ -160,10 +160,11 @@ val rec cartesianProduct : 'a list list -> 'a list list =
                              (cartesianProduct xss)
 
 (* Pushes all negation to the atoms.*)
-fun pushNegate (negate : 'atom -> 'atom) (negating : bool) =
- fn Atom x => Atom' (if negating then negate x else x)
-  | Negate f => pushNegate negate (not negating) f
-  | Combo (j, fs) => Combo' (if negating then flipJt j else j, map (pushNegate negate negating) fs)
+fun pushNegate (normalizeAtom : bool * 'atom -> 'atom) (negating : bool) =
+ fn Atom x => Atom' (normalizeAtom (negating, x))
+  | Negate f => pushNegate normalizeAtom (not negating) f
+  | Combo (j, fs) => Combo' (if negating then flipJt j else j,
+                             map (pushNegate normalizeAtom negating) fs)
 
 val rec flatten =
  fn Combo' (_, [f]) => flatten f
@@ -199,10 +200,10 @@ fun normalize' (simplify : 'a list list -> 'a list list)
         norm junc
     end
 
-fun normalize simplify negate junc =
+fun normalize simplify normalizeAtom junc =
     normalize' simplify junc
     o flatten
-    o pushNegate negate false
+    o pushNegate normalizeAtom false
 
 fun mapFormula mf =
  fn Atom x => Atom (mf x)
@@ -281,14 +282,16 @@ structure AtomExpKey : ORD_KEY = struct
 
 end
 
+structure AtomOptionKey = OptionKeyFn(AtomExpKey)
+
 structure UF = UnionFindFn(AtomExpKey)
 
 structure ConflictMaps = struct
 
     structure TK = TripleKeyFn(structure I = CmpKey
-                               structure J = OptionKeyFn(AtomExpKey)
-                               structure K = OptionKeyFn(AtomExpKey))
-    structure TS = BinarySetFn(TK)
+                               structure J = AtomOptionKey
+                               structure K = AtomOptionKey)
+    structure TS : ORD_SET = BinarySetFn(TK)
 
     val toKnownEquality =
      (* [NONE] here means unkown. Anything that isn't a comparison between two
@@ -345,15 +348,28 @@ structure ConflictMaps = struct
             (cmp, qa e1, qa e2)
         end
 
-    fun negateCmp (cmp, e1, e2) =
-        (case cmp of
-             Sql.Eq => Sql.Ne
-           | Sql.Ne => Sql.Eq
-           | Sql.Lt => Sql.Ge
-           | Sql.Le => Sql.Gt
-           | Sql.Gt => Sql.Le
-           | Sql.Ge => Sql.Lt,
-         e1, e2)
+    val negateCmp =
+     fn Sql.Eq => Sql.Ne
+      | Sql.Ne => Sql.Eq
+      | Sql.Lt => Sql.Ge
+      | Sql.Le => Sql.Gt
+      | Sql.Gt => Sql.Le
+      | Sql.Ge => Sql.Lt
+
+    fun normalizeAtom (negating, (cmp, e1, e2)) =
+        (* Restricting to Le/Lt and sorting the expressions in Eq/Ne helps with
+           simplification, where we put the triples in sets. *)
+        case (if negating then negateCmp cmp else cmp) of
+            Sql.Eq => (case AtomOptionKey.compare (e1, e2) of
+                           LESS => (Sql.Eq, e2, e1)
+                         | _ => (Sql.Eq, e1, e2))
+          | Sql.Ne => (case AtomOptionKey.compare (e1, e2) of
+                           LESS => (Sql.Ne, e2, e1)
+                         | _ => (Sql.Ne, e1, e2))
+          | Sql.Lt => (Sql.Lt, e1, e2)
+          | Sql.Le => (Sql.Le, e1, e2)
+          | Sql.Gt => (Sql.Lt, e2, e1)
+          | Sql.Ge => (Sql.Le, e2, e1)
 
     val markQuery : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula ->
                     (Sql.cmp * atomExp option * atomExp option) formula =
@@ -376,7 +392,7 @@ structure ConflictMaps = struct
         o map (fn xs => TS.addList (TS.empty, xs))
 
     fun dnf (fQuery, fDml) =
-        normalize simplify negateCmp Disj (Combo (Conj, [markQuery fQuery, markDml fDml]))
+        normalize simplify normalizeAtom Disj (Combo (Conj, [markQuery fQuery, markDml fDml]))
 
     val conflictMaps = List.mapPartial (mergeEqs o map eqsOfClass o equivClasses) o dnf
 
@@ -435,7 +451,7 @@ val rec dmlToFormula =
     in
         renameTables [(table, "T")]
                      (Combo (Disj, [Combo (Conj, [fVals, mark fWhere]),
-                                   Combo (Conj, [mark fVals, fWhere])]))
+                                    Combo (Conj, [mark fVals, fWhere])]))
     end
 
 val rec tablesQuery =

@@ -1,4 +1,5 @@
-functor OptionKeyFn(K : ORD_KEY) : ORD_KEY = struct
+functor OptionKeyFn(K : ORD_KEY)
+        : ORD_KEY where type ord_key = K.ord_key option = struct
 
 type ord_key = K.ord_key option
 
