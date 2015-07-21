@@ -145,6 +145,11 @@ datatype 'atom formula =
        | Negate of 'atom formula
        | Combo of junctionType * 'atom formula list
 
+(* Guaranteed to have all negation pushed to the atoms. *)
+datatype 'atom formula' =
+         Atom' of 'atom
+       | Combo' of junctionType * 'atom formula' list
+
 val flipJt = fn Conj => Disj | Disj => Conj
 
 fun concatMap f xs = List.concat (map f xs)
@@ -156,33 +161,33 @@ val rec cartesianProduct : 'a list list -> 'a list list =
 
 (* Pushes all negation to the atoms.*)
 fun pushNegate (negate : 'atom -> 'atom) (negating : bool) =
- fn Atom x => Atom (if negating then negate x else x)
+ fn Atom x => Atom' (if negating then negate x else x)
   | Negate f => pushNegate negate (not negating) f
-  | Combo (n, fs) => Combo (if negating then flipJt n else n, map (pushNegate negate negating) fs)
+  | Combo (j, fs) => Combo' (if negating then flipJt j else j, map (pushNegate negate negating) fs)
 
 val rec flatten =
- fn Combo (_, [f]) => flatten f
-  | Combo (j, fs) =>
-    Combo (j, List.foldr (fn (f, acc) =>
-                             case f of
-                                 Combo (j', fs') =>
-                                 if j = j' orelse length fs' = 1
-                                 then fs' @ acc
-                                 else f :: acc
-                               | _ => f :: acc)
-                         []
-                         (map flatten fs))
+ fn Combo' (_, [f]) => flatten f
+  | Combo' (j, fs) =>
+    Combo' (j, List.foldr (fn (f, acc) =>
+                              case f of
+                                  Combo' (j', fs') =>
+                                  if j = j' orelse length fs' = 1
+                                  then fs' @ acc
+                                  else f :: acc
+                                | _ => f :: acc)
+                          []
+                          (map flatten fs))
   | f => f
 
+(* [simplify] operates on the desired normal form. E.g., if [junc] is [Disj],
+   consider the list of lists to be a disjunction of conjunctions. *)
 fun normalize' (simplify : 'a list list -> 'a list list)
-               (negate : 'a -> 'a)
                (junc : junctionType) =
     let
         fun norm junc =
             simplify
-            o (fn Atom x => [[x]]
-                | Negate f => map (map negate) (norm (flipJt junc) f)
-                | Combo (j, fs) =>
+            o (fn Atom' x => [[x]]
+                | Combo' (j, fs) =>
                   let
                       val fss = map (norm junc) fs
                   in
@@ -195,7 +200,7 @@ fun normalize' (simplify : 'a list list -> 'a list list)
     end
 
 fun normalize simplify negate junc =
-    normalize' simplify negate junc
+    normalize' simplify junc
     o flatten
     o pushNegate negate false
 
@@ -230,22 +235,6 @@ structure CmpKey = struct
       | (Sql.Ge, Sql.Ge) => EQUAL
 
 end
-
-(*
-functor ListKeyFn (K : ORD_KEY) : ORD_KEY = struct
-
-    type ord_key = K.ord_key list
-
-    val rec compare =
-     fn ([], []) => EQUAL
-      | ([], _) => LESS
-      | (_, []) => GREATER
-      | (x :: xs, y :: ys) => (case K.compare (x, y) of
-                                   EQUAL => compare (xs, ys)
-                                 | ord => ord)
-
-end
-*)
 
 val rec chooseTwos : 'a list -> ('a * 'a) list =
  fn [] => []
@@ -300,7 +289,6 @@ structure ConflictMaps = struct
                                structure J = OptionKeyFn(AtomExpKey)
                                structure K = OptionKeyFn(AtomExpKey))
     structure TS = BinarySetFn(TK)
-    (* structure TLS = BinarySetFn(ListKeyFn(TK)) *)
 
     val toKnownEquality =
      (* [NONE] here means unkown. Anything that isn't a comparison between two
