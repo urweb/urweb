@@ -309,7 +309,7 @@ fun sqlify chs =
    expressions, so accept any expression without modifying it. *)
 val sqlifySqlcache =
  fn Exp e :: chs => SOME (e, chs)
-  | _ => None
+  | _ => NONE
 
 fun constK s = wrap (const s) (fn () => s)
 
