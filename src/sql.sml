@@ -305,17 +305,11 @@ fun sqlify chs =
 
       | _ => NONE
 
-fun sqlifySqlcache chs =
-    case chs of
-      (* Could have variables or constants as well as FFIs. *)
-        Exp (e as (ERel _, _)) :: chs => SOME (e, chs)
-      (* If it is an FFI, match the entire expression. *)
-      | Exp (e as (EFfiApp ("Basis", f, [(_, _)]), _)) :: chs =>
-        if String.isPrefix "sqlify" f then
-            SOME (e, chs)
-        else
-            NONE
-      | _ => sqlify chs
+(* For sqlcache, we only care that we can do string equality on injected Mono
+   expressions, so accept any expression without modifying it. *)
+val sqlifySqlcache =
+ fn Exp e :: chs => SOME (e, chs)
+  | _ => None
 
 fun constK s = wrap (const s) (fn () => s)
 
