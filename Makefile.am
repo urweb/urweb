@@ -15,7 +15,7 @@ all-local: smlnj mlton
 
 SUBDIRS = src/c
 
-.PHONY: smlnj mlton package reauto
+.PHONY: smlnj mlton package reauto test
 
 smlnj: src/urweb.cm xml/entities.sml
 mlton: bin/urweb
@@ -114,3 +114,17 @@ reauto:
 EXTRA_DIST = demo doc lib/js lib/ur xml \
 	src/coq src/*.sig src/*.sml src/*.mlb src/config.sml.in src/elisp src/*.cm src/sources src/*.grm src/*.lex \
 	CHANGELOG LICENSE urweb.ebuild include/urweb/*.h bin
+
+TESTDB = /tmp/urweb.db
+TESTPID = /tmp/urweb.pid
+
+test:
+	urweb -dbms sqlite -db $(TESTDB) -demo /Demo demo
+	rm -f $(TESTDB)
+	sqlite3 $(TESTDB) < demo/demo.sql
+	demo/demo.exe & echo $$! > $(TESTPID)
+	sleep 1
+	(curl -s 'http://localhost:8080/Demo/Hello/main' | diff tests/hello.html -) || (kill `cat $(TESTPID)`; echo "Test 'Hello' failed"; /bin/false)
+	(curl -s 'http://localhost:8080/Demo/Crud1/create?A=1&B=2&C=3&D=4' | diff tests/crud1.html -) || (kill `cat $(TESTPID)`; echo "Test 'Crud1' failed"; /bin/false)
+	kill `cat $(TESTPID)`
+	echo Tests succeeded.
