@@ -119,7 +119,7 @@ TESTDB = /tmp/urweb.db
 TESTPID = /tmp/urweb.pid
 
 test:
-	bin/urweb -boot -dbms sqlite -db $(TESTDB) -demo /Demo demo
+	bin/urweb -boot -noEmacs -dbms sqlite -db $(TESTDB) -demo /Demo demo
 	rm -f $(TESTDB)
 	sqlite3 $(TESTDB) < demo/demo.sql
 	demo/demo.exe & echo $$! > $(TESTPID)
