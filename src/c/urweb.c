@@ -167,13 +167,8 @@ void *uw_init_client_data();
 void uw_free_client_data(void *);
 void uw_copy_client_data(void *dst, void *src);
 
-static pthread_mutex_t rand_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static uw_Basis_int my_rand() {
-  pthread_mutex_lock(&rand_mutex);
   int ret, r = RAND_bytes((unsigned char *)&ret, sizeof ret);
-  pthread_mutex_unlock(&rand_mutex);
-
   if (r)
     return abs(ret);
   else
