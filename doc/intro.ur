@@ -58,11 +58,14 @@ fun fact n = if n = 0 then 1 else n * fact (n - 1)
 fact 5
 (* end *)
 
-fun isEven n = n = 0 || isOdd (n - 1)
-and isOdd n = n = 1 || isEven (n - 1)
+fun isEven n = n = 0 || (n > 1 && isOdd (n - 1))
+and isOdd n = n = 1 || (n > 1 && isEven (n - 1))
 
 (* begin eval *)
 isEven 32
+(* end *)
+(* begin eval *)
+isEven 31
 (* end *)
 
 
