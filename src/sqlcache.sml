@@ -43,100 +43,82 @@ val cache = ref LruCache.cache
 fun setCache c = cache := c
 fun getCache () = !cache
 
+(* Used to have type context for local variables in MonoUtil functions. *)
+val doBind =
+ fn (ctx, MonoUtil.Exp.RelE (_, t)) => t :: ctx
+  | (ctx, _) => ctx
 
-(* Effect analysis. *)
+
+(*******************)
+(* Effect Analysis *)
+(*******************)
 
 (* Makes an exception for [EWrite] (which is recorded when caching). *)
-fun effectful doPrint (effs : IS.set) (inFunction : bool) (bound : int) : exp -> bool =
-    (* If result is true, expression is definitely effectful. If result is
-       false, then expression is definitely not effectful if effs is fully
-       populated. The intended pattern is to use this a number of times equal
-       to the number of declarations in a file, Bellman-Ford style. *)
-    (* TODO: make incrementing of the number of bound variables cleaner,
-       probably by using [MonoUtil] instead of all this. *)
+fun effectful (effs : IS.set) =
     let
-        (* DEBUG: remove printing when done. *)
-        fun tru msg = if doPrint then (print (msg ^ "\n"); true) else true
-        val rec eff' =
-         (* ASK: is there a better way? *)
-         fn EPrim _ => false
-          (* We don't know if local functions have effects when applied. *)
-          | ERel idx => if inFunction andalso idx >= bound
-                        then tru ("rel" ^ Int.toString idx) else false
-          | ENamed name => if IS.member (effs, name) then tru "named" else false
-          | ECon (_, _, NONE) => false
-          | ECon (_, _, SOME e) => eff e
-          | ENone _ => false
-          | ESome (_, e) => eff e
-          | EFfi (m, f) => if ffiEffectful (m, f) then tru "ffi" else false
-          | EFfiApp (m, f, _) => if ffiEffectful (m, f) then tru "ffiapp" else false
-          (* ASK: we're calling functions effectful if they have effects when
-             applied or if the function expressions themselves have effects.
-             Is that okay? *)
-          (* This is okay because the values we ultimately care about aren't
-             functions, and this is a conservative approximation, anyway. *)
-          | EApp (eFun, eArg) => effectful doPrint effs true bound eFun orelse eff eArg
-          | EAbs (_, _, _, e) => effectful doPrint effs inFunction (bound+1) e
-          | EUnop (_, e) => eff e
-          | EBinop (_, _, e1, e2) => eff e1 orelse eff e2
-          | ERecord xs => List.exists (fn (_, e, _) => eff e) xs
-          | EField (e, _) => eff e
-          (* If any case could be effectful, consider it effectful. *)
-          | ECase (e, xs, _) => eff e orelse List.exists (fn (_, e) => eff e) xs
-          | EStrcat (e1, e2) => eff e1 orelse eff e2
-          (* ASK: how should we treat these three? *)
-          | EError _ => tru "error"
-          | EReturnBlob _ => tru "blob"
-          | ERedirect _ => tru "redirect"
-          (* EWrite is a special exception because we record writes when caching. *)
-          | EWrite _ => false
-          | ESeq (e1, e2) => eff e1 orelse eff e2
-          (* TODO: keep context of which local variables aren't effectful? Only
-             makes a difference for function expressions, though. *)
-          | ELet (_, _, eBind, eBody) => eff eBind orelse
-                                         effectful doPrint effs inFunction (bound+1) eBody
-          | EClosure (_, es) => List.exists eff es
-          (* TODO: deal with EQuery. *)
-          | EQuery _ => tru "query"
-          | EDml _ => tru "dml"
-          | ENextval _ => tru "nextval"
-          | ESetval _ => tru "setval"
-          | EUnurlify (e, _, _) => eff e
-          (* ASK: how should we treat this? *)
-          | EJavaScript _ => tru "javascript"
-          (* ASK: these are all effectful, right? *)
-          | ESignalReturn _ => tru "signalreturn"
-          | ESignalBind _ => tru "signalbind"
-          | ESignalSource _ => tru "signalsource"
-          | EServerCall _ => tru "servercall"
-          | ERecv _ => tru "recv"
-          | ESleep _ => tru "sleep"
-          | ESpawn _ => tru "spawn"
-        and eff = fn (e', _) => eff' e'
+        val isFunction =
+         fn (TFun _, _) => true
+          | _ => false
+        fun doExp (ctx, e) =
+            case e of
+                EPrim _ => false
+              (* For now: variables of function type might be effectful, but
+                 others are fully evaluated and are therefore not effectful. *)
+              | ERel n => isFunction (List.nth (ctx, n))
+              | ENamed n => IS.member (effs, n)
+              | EFfi (m, f) => ffiEffectful (m, f)
+              | EFfiApp (m, f, _) => ffiEffectful (m, f)
+              (* These aren't effectful unless a subexpression is. *)
+              | ECon _ => false
+              | ENone _ => false
+              | ESome _ => false
+              | EApp _ => false
+              | EAbs _ => false
+              | EUnop _ => false
+              | EBinop _ => false
+              | ERecord _ => false
+              | EField _ => false
+              | ECase _ => false
+              | EStrcat _ => false
+              (* EWrite is a special exception because we record writes when caching. *)
+              | EWrite _ => false
+              | ESeq _ => false
+              | ELet _ => false
+              (* ASK: what should we do about closures? *)
+              | EClosure _ => false
+              | EUnurlify _ => false
+              (* Everything else is some sort of effect. We could flip this and
+                 explicitly list bits of Mono that are effectful, but this is
+                 conservatively robust to future changes (however unlikely). *)
+              | _ => true
     in
-        eff
+        MonoUtil.Exp.existsB {typ = fn _ => false, exp = doExp, bind = doBind}
     end
 
 (* TODO: test this. *)
-val effectfulMap =
+fun effectfulDecls (decls, _) =
     let
-        fun doVal ((_, name, _, e, _), effMap) =
-            if effectful false effMap false 0 e
-            then IS.add (effMap, name)
-            else effMap
+        fun doVal ((_, name, _, e, _), effs) =
+            if effectful effs [] e
+            then IS.add (effs, name)
+            else effs
         val doDecl =
-         fn (DVal v, effMap) => doVal (v, effMap)
-          (* Repeat the list of declarations a number of times equal to its size. *)
-          | (DValRec vs, effMap) =>
-            List.foldl doVal effMap (List.concat (List.map (fn _ => vs) vs))
+         fn ((DVal v, _), effs) => doVal (v, effs)
+          (* Repeat the list of declarations a number of times equal to its size,
+             making sure effectfulness propagates everywhere it should. This is
+             analagous to the Bellman-Ford algorithm. *)
+          | ((DValRec vs, _), effs) =>
+            List.foldl doVal effs (List.concat (List.map (fn _ => vs) vs))
           (* ASK: any other cases? *)
-          | (_, effMap) => effMap
+          | (_, effs) => effs
     in
-        MonoUtil.File.fold {typ = #2, exp = #2, decl = doDecl} IS.empty
+        List.foldl doDecl IS.empty decls
     end
 
 
-(* Boolean formula normalization. *)
+(*********************************)
+(* Boolean Formula Normalization *)
+(*********************************)
 
 datatype junctionType = Conj | Disj
 
@@ -211,7 +193,9 @@ fun mapFormula mf =
   | Combo (j, fs) => Combo (j, map (mapFormula mf) fs)
 
 
-(* SQL analysis. *)
+(****************)
+(* SQL Analysis *)
+(****************)
 
 structure CmpKey = struct
 
@@ -464,7 +448,9 @@ val tableDml =
   | Sql.Update (tab, _, _) => tab
 
 
-(* Program instrumentation. *)
+(***************************)
+(* Program Instrumentation *)
+(***************************)
 
 val varName =
     let
@@ -476,6 +462,8 @@ val varName =
 val {check, store, flush, ...} = getCache ()
 
 val dummyLoc = ErrorMsg.dummySpan
+
+val dummyTyp = (TRecord [], dummyLoc)
 
 fun stringExp s = (EPrim (Prim.String (Prim.Normal, s)), dummyLoc)
 
@@ -490,17 +478,15 @@ val sequence =
     end
   | _ => raise Match
 
-(* Always increments negative indices because that's what we need later. *)
-fun incRelsBound bound inc =
+(* Always increments negative indices as a hack we use later. *)
+fun incRels inc =
     MonoUtil.Exp.mapB
-        {typ = fn x => x,
-         exp = fn level =>
-                  (fn ERel n => ERel (if n >= level orelse n < 0 then n + inc else n)
-                    | x => x),
-         bind = fn (level, MonoUtil.Exp.RelE _) => level + 1 | (level, _) => level}
-        bound
-
-val incRels = incRelsBound 0
+        {typ = fn t' => t',
+         exp = fn bound =>
+                  (fn ERel n => ERel (if n >= bound orelse n < 0 then n + inc else n)
+                    | e' => e'),
+         bind = fn (bound, MonoUtil.Exp.RelE _) => bound + 1 | (bound, _) => bound}
+        0
 
 fun cacheWrap (query, i, urlifiedRel0, resultTyp, args) =
     let
@@ -523,13 +509,16 @@ fun cacheWrap (query, i, urlifiedRel0, resultTyp, args) =
     end
 
 fun fileMapfold doExp file start =
-    case MonoUtil.File.mapfold {typ = Search.return2,
-                                exp = fn x => (fn s => Search.Continue (doExp x s)),
-                                decl = Search.return2} file start of
+    case MonoUtil.File.mapfoldB
+             {typ = Search.return2,
+              exp = fn ctx => fn e' => fn s => Search.Continue (doExp ctx e' s),
+              decl = fn _ => Search.return2,
+              bind = doBind}
+             [] file start of
         Search.Continue x => x
       | Search.Return _ => raise Match
 
-fun fileMap doExp file = #1 (fileMapfold (fn x => fn _ => (doExp x, ())) file ())
+fun fileMap doExp file = #1 (fileMapfold (fn _ => fn e => fn _ => (doExp e, ())) file ())
 
 fun factorOutNontrivial text =
     let
@@ -567,7 +556,7 @@ fun factorOutNontrivial text =
 
 fun addChecking file =
     let
-        fun doExp (queryInfo as (tableToIndices, indexToQueryNumArgs, index)) =
+        fun doExp ctx (queryInfo as (tableToIndices, indexToQueryNumArgs, index)) =
          fn e' as EQuery {query = origQueryText,
                           sqlcacheInfo = urlifiedRel0,
                           state = resultTyp,
@@ -590,8 +579,12 @@ fun addChecking file =
                 val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
                 fun bind x f = Option.mapPartial f x
                 fun guard b x = if b then x else NONE
-                (* DEBUG: set first boolean argument to true to turn on printing. *)
-                fun safe bound = not o effectful true (effectfulMap file) false bound
+                val effs = effectfulDecls file
+                (* We use dummyTyp here. I think this is okay because databases
+                   don't store (effectful) functions, but there could be some
+                   corner case I missed. *)
+                fun safe bound =
+                    not o effectful effs (List.tabulate (bound, fn _ => dummyTyp) @ ctx)
                 val attempt =
                     (* Ziv misses Haskell's do notation.... *)
                     guard (safe 0 queryText andalso safe 0 initial andalso safe 2 body) (
@@ -609,7 +602,9 @@ fun addChecking file =
             end
           | e' => (e', queryInfo)
     in
-        fileMapfold (fn exp => fn state => doExp state exp) file (SIMM.empty, IM.empty, 0)
+        fileMapfold (fn ctx => fn exp => fn state => doExp ctx state exp)
+                    file
+                    (SIMM.empty, IM.empty, 0)
     end
 
 structure Invalidations = struct
