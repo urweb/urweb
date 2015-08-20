@@ -883,7 +883,7 @@ fun addFile {Uri, LoadFromFilename} =
             if path' = path then
                 ()
             else
-                ErrorMsg.error ("Two different files requested for URI " ^ Uri)
+                ErrorMsg.error ("Two different files requested for URI " ^ Uri ^ " ( " ^ path' ^ " vs. " ^ path ^ ")")
           | NONE =>
             let
                 val inf = BinIO.openIn path
