@@ -4123,6 +4123,18 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
 
                          val dNew = (L'.DFfiStr (x, n, sgn'), loc)
                      in
+                         case #1 sgn' of
+                             L'.SgnConst sgis =>
+                             (case List.find (fn (L'.SgiConAbs _, _) => false
+                                             | (L'.SgiCon _, _) => false
+                                             | (L'.SgiDatatype _, _) => false
+                                             | (L'.SgiVal _, _) => false
+                                             | _ => true) sgis of
+                                  NONE => ()
+                                | SOME sgi => (ErrorMsg.errorAt loc "Disallowed signature item for FFI module";
+                                               epreface ("item", p_sgn_item env sgi)))
+                           | _ => raise Fail "FFI signature isn't SgnConst";
+
                          Option.map (fn tm => ModDb.insert (dNew, tm)) tmo;
                          ([dNew], (env', denv, enD gs' @ gs))
                      end)
