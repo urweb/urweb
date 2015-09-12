@@ -1,4 +1,15 @@
 ========
+20150819
+========
+
+- Allow mouse and key events for <body>
+- Add HTML 'align' attribute
+- Add onChange handler to radioOption
+- New literal [_LOC_] that is replaced with textual information on location in source file
+- Add a simple 'make test' target
+- Bug fixes and documentation improvements
+
+========
 20150520
 ========
 
