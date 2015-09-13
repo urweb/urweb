@@ -1,4 +1,4 @@
-structure Sqlcache (* DEBUG: add back :> SQLCACHE. *) = struct
+structure Sqlcache :> SQLCACHE = struct
 
 open Mono
 
@@ -8,6 +8,12 @@ structure SK = struct type ord_key = string val compare = String.compare end
 structure SS = BinarySetFn(SK)
 structure SM = BinaryMapFn(SK)
 structure SIMM = MultimapFn(structure KeyMap = SM structure ValSet = IS)
+
+fun iterate f n x = if n < 0
+                    then raise Fail "Can't iterate function negative number of times."
+                    else if n = 0
+                    then x
+                    else iterate f (n-1) (f x)
 
 (* Filled in by [cacheWrap] during [Sqlcache]. *)
 val ffiInfo : {index : int, params : int} list ref = ref []
@@ -36,7 +42,7 @@ val ffiEffectful =
                               "urlifyChannel_w"]
     in
         fn (m, f) => Settings.isEffectful (m, f)
-                     andalso not (m = "Basis" andalso SS.member (fs, f))
+                     orelse not (m = "Basis" andalso SS.member (fs, f))
     end
 
 val cache = ref LruCache.cache
@@ -45,8 +51,8 @@ fun getCache () = !cache
 
 (* Used to have type context for local variables in MonoUtil functions. *)
 val doBind =
- fn (ctx, MonoUtil.Exp.RelE (_, t)) => t :: ctx
-  | (ctx, _) => ctx
+ fn (env, MonoUtil.Exp.RelE (s, t)) => MonoEnv.pushERel env s t NONE
+  | (env, _) => env
 
 
 (*******************)
@@ -59,12 +65,12 @@ fun effectful (effs : IS.set) =
         val isFunction =
          fn (TFun _, _) => true
           | _ => false
-        fun doExp (ctx, e) =
+        fun doExp (env, e) =
             case e of
                 EPrim _ => false
               (* For now: variables of function type might be effectful, but
                  others are fully evaluated and are therefore not effectful. *)
-              | ERel n => isFunction (List.nth (ctx, n))
+              | ERel n => isFunction (#2 (MonoEnv.lookupERel env n))
               | ENamed n => IS.member (effs, n)
               | EFfi (m, f) => ffiEffectful (m, f)
               | EFfiApp (m, f, _) => ffiEffectful (m, f)
@@ -84,9 +90,8 @@ fun effectful (effs : IS.set) =
               | EWrite _ => false
               | ESeq _ => false
               | ELet _ => false
-              (* ASK: what should we do about closures? *)
-              | EClosure _ => false
               | EUnurlify _ => false
+              (* ASK: what should we do about closures? *)
               (* Everything else is some sort of effect. We could flip this and
                  explicitly list bits of Mono that are effectful, but this is
                  conservatively robust to future changes (however unlikely). *)
@@ -99,7 +104,7 @@ fun effectful (effs : IS.set) =
 fun effectfulDecls (decls, _) =
     let
         fun doVal ((_, name, _, e, _), effs) =
-            if effectful effs [] e
+            if effectful effs MonoEnv.empty e
             then IS.add (effs, name)
             else effs
         val doDecl =
@@ -362,9 +367,9 @@ structure ConflictMaps = struct
     val markDml : (Sql.cmp * Sql.sqexp * Sql.sqexp) formula ->
                   (Sql.cmp * atomExp option * atomExp option) formula =
         mapFormula (toAtomExps DmlRel)
+
     (* No eqs should have key conflicts because no variable is in two
        equivalence classes, so the [#1] could be [#2]. *)
-
     val mergeEqs : (atomExp IntBinaryMap.map option list
                     -> atomExp IntBinaryMap.map option) =
         List.foldr (fn (SOME eqs, SOME acc) => SOME (IM.unionWith #1 (eqs, acc)) | _ => NONE)
@@ -511,10 +516,10 @@ fun cacheWrap (query, i, urlifiedRel0, resultTyp, args) =
 fun fileMapfold doExp file start =
     case MonoUtil.File.mapfoldB
              {typ = Search.return2,
-              exp = fn ctx => fn e' => fn s => Search.Continue (doExp ctx e' s),
+              exp = fn env => fn e' => fn s => Search.Continue (doExp env e' s),
               decl = fn _ => Search.return2,
               bind = doBind}
-             [] file start of
+             MonoEnv.empty file start of
         Search.Continue x => x
       | Search.Return _ => raise Match
 
@@ -556,8 +561,9 @@ fun factorOutNontrivial text =
 
 fun addChecking file =
     let
-        fun doExp ctx (queryInfo as (tableToIndices, indexToQueryNumArgs, index)) =
+        fun doExp env (queryInfo as (tableToIndices, indexToQueryNumArgs, index)) =
          fn e' as EQuery {query = origQueryText,
+                          (* ASK: could this get messed up by inlining? *)
                           sqlcacheInfo = urlifiedRel0,
                           state = resultTyp,
                           initial, body, tables, exps} =>
@@ -581,10 +587,14 @@ fun addChecking file =
                 fun guard b x = if b then x else NONE
                 val effs = effectfulDecls file
                 (* We use dummyTyp here. I think this is okay because databases
-                   don't store (effectful) functions, but there could be some
-                   corner case I missed. *)
+                   don't store (effectful) functions, but perhaps there's some
+                   pathalogical corner case missing.... *)
                 fun safe bound =
-                    not o effectful effs (List.tabulate (bound, fn _ => dummyTyp) @ ctx)
+                    not
+                    o effectful effs
+                                (iterate (fn env => MonoEnv.pushERel env "_" dummyTyp NONE)
+                                         bound
+                                         env)
                 val attempt =
                     (* Ziv misses Haskell's do notation.... *)
                     guard (safe 0 queryText andalso safe 0 initial andalso safe 2 body) (
@@ -602,7 +612,7 @@ fun addChecking file =
             end
           | e' => (e', queryInfo)
     in
-        fileMapfold (fn ctx => fn exp => fn state => doExp ctx state exp)
+        fileMapfold (fn env => fn exp => fn state => doExp env state exp)
                     file
                     (SIMM.empty, IM.empty, 0)
     end
@@ -714,6 +724,136 @@ fun go file =
         val () = Sql.sqlcacheMode := false
     in
         file'
+    end
+
+
+(**********************)
+(* Mono Type Checking *)
+(**********************)
+
+val typOfPrim =
+ fn Prim.Int _ => TFfi ("Basis", "int")
+  | Prim.Float _ => TFfi ("Basis", "int")
+
+fun typOfExp' (env : MonoEnv.env) : exp' -> typ option =
+ fn EPrim p => SOME (TFfi ("Basis", case p of
+                                        Prim.Int _ => "int"
+                                      | Prim.Float _ => "double"
+                                      | Prim.String _ => "string"
+                                      | Prim.Char _ => "char"),
+                     dummyLoc)
+  | ERel n => SOME (#2 (MonoEnv.lookupERel env n))
+  | ENamed n => SOME (#2 (MonoEnv.lookupENamed env n))
+  (* ASK: okay to make a new [ref] each time? *)
+  | ECon (dk, PConVar nCon, _) =>
+    let
+        val (_, _, nData) = MonoEnv.lookupConstructor env nCon
+        val (_, cs) = MonoEnv.lookupDatatype env nData
+    in
+        SOME (TDatatype (nData, ref (dk, cs)), dummyLoc)
+    end
+  | ECon (_, PConFfi {mod = s, datatyp, ...}, _) => SOME (TFfi (s, datatyp), dummyLoc)
+  | ENone t => SOME (TOption t, dummyLoc)
+  | ESome (t, _) => SOME (TOption t, dummyLoc)
+  | EFfi _ => NONE
+  | EFfiApp _ => NONE
+  | EApp (e1, e2) => (case typOfExp env e1 of
+                          SOME (TFun (_, t), _) => SOME t
+                        | _ => NONE)
+  | EAbs (_, t1, t2, _) => SOME (TFun (t1, t2), dummyLoc)
+  (* ASK: is this right? *)
+  | EUnop (unop, e) => (case unop of
+                            "!" => SOME (TFfi ("Basis", "bool"), dummyLoc)
+                          | "-" => typOfExp env e
+                          | _ => NONE)
+  (* ASK: how should this (and other "=> NONE" cases) work? *)
+  | EBinop _ => NONE
+  | ERecord fields => SOME (TRecord (map (fn (s, _, t) => (s, t)) fields), dummyLoc)
+  | EField (e, s) => (case typOfExp env e of
+                          SOME (TRecord fields, _) =>
+                          (case List.find (fn (s', _) => s = s') fields of
+                               SOME (_, t) => SOME t
+                             | _ => NONE)
+                        | _ => NONE)
+  | ECase (_, _, {result, ...}) => SOME result
+  | EStrcat _ => SOME (TFfi ("Basis", "string"), dummyLoc)
+  | EWrite _ => SOME (TRecord [], dummyLoc)
+  | ESeq (_, e) => typOfExp env e
+  | ELet (s, t, e1, e2) => typOfExp (MonoEnv.pushERel env s t (SOME e1)) e2
+  | EClosure _ => NONE
+  | EUnurlify (_, t, _) => SOME t
+
+and typOfExp env (e', loc) = typOfExp' env e'
+
+
+(*******************************)
+(* Caching Pure Subexpressions *)
+(*******************************)
+
+datatype subexp = Pure of unit -> exp | Impure of exp
+
+val isImpure =
+ fn Pure _ => false
+  | Impure _ => true
+
+val expOfSubexp =
+ fn Pure f => f ()
+  | Impure e => e
+
+val makeCache : MonoEnv.env -> exp' -> exp' = fn _ => fn _ => raise Fail "TODO"
+
+fun pureCache (effs : IS.set) (env : MonoEnv.env) (exp as (exp', loc)) : subexp =
+    let
+        fun wrapBindN f (args : (MonoEnv.env * exp) list) =
+            let
+                val subexps = map (fn (env, exp) => pureCache effs env exp) args
+            in
+                if List.exists isImpure subexps
+                then Impure (f (map expOfSubexp subexps), loc)
+                else Pure (fn () => (makeCache env (f (map #2 args)), loc))
+            end
+        fun wrapBind1 f arg =
+            wrapBindN (fn [arg] => f arg | _ => raise Match) [arg]
+        fun wrapBind2 f (arg1, arg2) =
+            wrapBindN (fn [arg1, arg2] => f (arg1, arg2) | _ => raise Match) [arg1, arg2]
+        fun wrapN f es = wrapBindN f (map (fn e => (env, e)) es)
+        fun wrap1 f e = wrapBind1 f (env, e)
+        fun wrap2 f (e1, e2) = wrapBind2 f ((env, e1), (env, e2))
+    in
+        case exp' of
+            ECon (dk, pc, SOME e) => wrap1 (fn e => ECon (dk, pc, SOME e)) e
+          | ESome (t, e) => wrap1 (fn e => ESome (t, e)) e
+          | EFfiApp (s1, s2, args) =>
+            wrapN (fn es => EFfiApp (s1, s2, ListPair.map (fn (e, (_, t)) => (e, t)) (es, args)))
+                  (map #1 args)
+          | EApp (e1, e2) => wrap2 EApp (e1, e2)
+          | EAbs (s, t1, t2, e) =>
+            wrapBind1 (fn e => EAbs (s, t1, t2, e))
+                      (MonoEnv.pushERel env s t1 NONE, e)
+          | EUnop (s, e) => wrap1 (fn e => EUnop (s, e)) e
+          | EBinop (bi, s, e1, e2) => wrap2 (fn (e1, e2) => EBinop (bi, s, e1, e2)) (e1, e2)
+          | ERecord fields =>
+            wrapN (fn es => ERecord (ListPair.map (fn (e, (s, _, t)) => (s, e, t)) (es, fields)))
+                  (map #2 fields)
+          | EField (e, s) => wrap1 (fn e => EField (e, s)) e
+          | ECase (e, cases, {disc, result}) =>
+            wrapBindN (fn (e::es) =>
+                          ECase (e,
+                                 (ListPair.map (fn (e, (p, _)) => (p, e)) (es, cases)),
+                                 {disc = disc, result = result}))
+                      ((env, e) :: map (fn (p, e) => (MonoEnv.patBinds env p, e)) cases)
+          | EStrcat (e1, e2) => wrap2 EStrcat (e1, e2)
+          (* We record page writes, so they're cachable. *)
+          | EWrite e => wrap1 EWrite e
+          | ESeq (e1, e2) => wrap2 ESeq (e1, e2)
+          | ELet (s, t, e1, e2) =>
+            wrapBind2 (fn (e1, e2) => ELet (s, t, e1, e2))
+                      ((env, e1), (MonoEnv.pushERel env s t (SOME e1), e2))
+          (* ASK: | EClosure (n, es) => ? *)
+          | EUnurlify (e, t, b) => wrap1 (fn e => EUnurlify (e, t, b)) e
+          | _ => if effectful effs env exp
+                 then Impure exp
+                 else Pure (fn () => (makeCache env exp', loc))
     end
 
 end

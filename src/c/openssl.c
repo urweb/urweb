@@ -35,7 +35,7 @@ static void random_password() {
 
 // OpenSSL callbacks
 static void thread_id(CRYPTO_THREADID *const result) {
-  CRYPTO_THREADID_set_numeric(result, pthread_self());
+  CRYPTO_THREADID_set_numeric(result, (unsigned long)pthread_self());
 }
 static void lock_or_unlock(const int mode, const int type, const char *file,
                            const int line) {
@@ -73,7 +73,7 @@ void uw_init_crypto() {
 
     if (access(uw_sig_file, F_OK)) {
       random_password();
-      
+
       if ((fd = open(uw_sig_file, O_WRONLY | O_CREAT, 0700)) < 0) {
         fprintf(stderr, "Can't open signature file %s\n", uw_sig_file);
         perror("open");
