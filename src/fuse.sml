@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -139,14 +139,14 @@ fun fuse file =
             in
                 (U.Decl.map {typ = fn x => x,
                              exp = exp,
-                             decl = fn x => x} 
+                             decl = fn x => x}
                             d,
                  (funcs, maxName))
             end
 
-        val (ds, _) = ListUtil.foldlMap doDecl (IM.empty, U.File.maxName file + 1) (#1 file)
+        val (ds, _) = ListUtil.foldlMap doDecl (IM.empty, U.File.maxName file + 1) (#decls file)
     in
-        (ds, #2 file)
+        {decls = ds, sideInfo = #sideInfo file}
     end
 
 end

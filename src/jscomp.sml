@@ -79,7 +79,7 @@ fun process (file : file) =
                                      someTs) someTs dts,
                        nameds)
                     | (_, state) => state)
-                  (IM.empty, IM.empty) (#1 file)
+                  (IM.empty, IM.empty) (#decls file)
 
         fun str loc s = (EPrim (Prim.String (Prim.Normal, s)), loc)
 
@@ -1335,7 +1335,7 @@ fun process (file : file) =
                         listInjectors = TM.empty,
                         decoders = IM.empty,
                         maxName = U.File.maxName file + 1}
-                       (#1 file)
+                       (#decls file)
 
         val inf = TextIO.openIn (OS.Path.joinDirFile {dir = Settings.libJs (), file = "urweb.js"})
         fun lines acc =
@@ -1365,7 +1365,7 @@ fun process (file : file) =
                 ""
     in
         TextIO.closeIn inf;
-        ((DJavaScript script, ErrorMsg.dummySpan) :: ds, #2 file)
+        {decls = (DJavaScript script, ErrorMsg.dummySpan) :: ds, sideInfo = #sideInfo file}
     end
 
 end

@@ -1900,7 +1900,7 @@ fun check (file : file) =
         val exptd = foldl (fn ((d, _), exptd) =>
                               case d of
                                   DExport (_, _, n, _, _, _) => IS.add (exptd, n)
-                                | _ => exptd) IS.empty (#1 file)
+                                | _ => exptd) IS.empty (#decls file)
 
         fun decl (d, loc) =
             case d of
@@ -2164,7 +2164,7 @@ fun check (file : file) =
 
               | _ => ()
     in
-        app decl (#1 file)
+        app decl (#decls file)
     end
 
 val check = fn file =>

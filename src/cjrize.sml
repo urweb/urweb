@@ -701,7 +701,7 @@ fun cifyDecl ((d, loc), sm) =
       | L.DPolicy _ => (NONE, NONE, sm)
       | L.DOnError n => (SOME (L'.DOnError n, loc), NONE, sm)
 
-fun cjrize (ds, sideInfo) =
+fun cjrize {decls = ds, sideInfo} =
     let
         val (dsF, ds, ps, sm) = foldl (fn (d, (dsF, ds, ps, sm)) =>
                                           let
