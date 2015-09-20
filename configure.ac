@@ -112,6 +112,22 @@ if test [$CLANG = "yes"]; then
    PTHREAD_LIBS=""
 fi
 
+# Check if pthread_t is a scalar or pointer type so we can use the correct
+# OpenSSL functions on it.
+AC_MSG_CHECKING([if pthread_t is a pointer type])
+AC_COMPILE_IFELSE(
+  [AC_LANG_PROGRAM(
+     [[
+#include <pthread.h>
+     ]],
+     [[
+pthread_t a;
+*a;
+     ]])],
+  AC_DEFINE([PTHREAD_T_IS_POINTER], [1], [Define if pthread_t is a pointer.])
+    AC_MSG_RESULT(yes),
+  AC_MSG_RESULT(no))
+
 AC_SUBST(CC)
 AC_SUBST(BIN)
 AC_SUBST(LIB)
