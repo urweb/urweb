@@ -50,7 +50,7 @@ structure RM = BinaryMapFn(struct
                                                                         (L'.TRecord r2, E.dummySpan))
                            end)
 
-val nextPvar = ref 0
+val nextPvar = MonoFm.nextPvar
 val pvars = ref (RM.empty : (int * (string * int * L'.typ) list) RM.map)
 val pvarDefs = ref ([] : (string * int * (string * int * L'.typ option) list) list)
 val pvarOldDefs = ref ([] : (int * (string * int * L.con option) list) list)
@@ -374,131 +374,12 @@ fun monoType env =
 
 val dummyExp = (L'.EPrim (Prim.Int 0), E.dummySpan)
 
-structure IM = IntBinaryMap
-
-datatype foo_kind =
-         Attr
-       | Url
+structure Fm = MonoFm
 
 fun fk2s fk =
     case fk of
-        Attr => "attr"
-      | Url => "url"
-
-type vr = string * int * L'.typ * L'.exp * string
-
-structure Fm :> sig
-    type t
-
-    val empty : int -> t
-
-    val lookup : t -> foo_kind -> int -> (int -> t -> vr * t) -> t * int
-    val lookupList : t -> foo_kind -> L'.typ -> (int -> t -> vr * t) -> t * int
-    val enter : t -> t
-    val decls : t -> L'.decl list
-
-    val freshName : t -> int * t
-end = struct
-
-structure M = BinaryMapFn(struct
-                          type ord_key = foo_kind
-                          fun compare x =
-                              case x of
-                                  (Attr, Attr) => EQUAL
-                                | (Attr, _) => LESS
-                                | (_, Attr) => GREATER
-
-                                | (Url, Url) => EQUAL
-                          end)
-
-structure TM = BinaryMapFn(struct
-                           type ord_key = L'.typ
-                           val compare = MonoUtil.Typ.compare
-                           end)
-
-type t = {
-     count : int,
-     map : int IM.map M.map,
-     listMap : int TM.map M.map,
-     decls : vr list
-}
-
-fun empty count = {
-    count = count,
-    map = M.empty,
-    listMap = M.empty,
-    decls = []
-}
-
-fun chooseNext count =
-    let
-        val n = !nextPvar
-    in
-        if count < n then
-            (count, count+1)
-        else
-            (nextPvar := n + 1;
-             (n, n+1))
-    end
-
-fun enter ({count, map, listMap, ...} : t) = {count = count, map = map, listMap = listMap, decls = []}
-fun freshName {count, map, listMap, decls} =
-    let
-        val (next, count) = chooseNext count
-    in
-        (next, {count = count , map = map, listMap = listMap, decls = decls})
-    end
-fun decls ({decls, ...} : t) =
-    case decls of
-        [] => []
-      | _ => [(L'.DValRec decls, ErrorMsg.dummySpan)]
-
-fun lookup (t as {count, map, listMap, decls}) k n thunk =
-    let
-        val im = Option.getOpt (M.find (map, k), IM.empty)
-    in
-        case IM.find (im, n) of
-            NONE =>
-            let
-                val n' = count
-                val (d, {count, map, listMap, decls}) =
-                    thunk count {count = count + 1,
-                                 map = M.insert (map, k, IM.insert (im, n, n')),
-                                 listMap = listMap,
-                                 decls = decls}
-            in
-                ({count = count,
-                  map = map,
-                  listMap = listMap,
-                  decls = d :: decls}, n')
-            end
-          | SOME n' => (t, n')
-    end
-
-fun lookupList (t as {count, map, listMap, decls}) k tp thunk =
-    let
-        val tm = Option.getOpt (M.find (listMap, k), TM.empty)
-    in
-        case TM.find (tm, tp) of
-            NONE =>
-            let
-                val n' = count
-                val (d, {count, map, listMap, decls}) =
-                    thunk count {count = count + 1,
-                                 map = map,
-                                 listMap = M.insert (listMap, k, TM.insert (tm, tp, n')),
-                                 decls = decls}
-            in
-                ({count = count,
-                  map = map,
-                  listMap = listMap,
-                  decls = d :: decls}, n')
-            end
-          | SOME n' => (t, n')
-    end
-
-end
-
+        Fm.Attr => "attr"
+      | Fm.Url => "url"
 
 fun capitalize s =
     if s = "" then
@@ -677,8 +558,8 @@ fun fooifyExp fk env =
         fooify
     end
 
-val attrifyExp = fooifyExp Attr
-val urlifyExp = fooifyExp Url
+val attrifyExp = fooifyExp Fm.Attr
+val urlifyExp = fooifyExp Fm.Url
 
 val urlifiedUnit =
     let
@@ -4738,7 +4619,7 @@ fun monoize env file =
         val mname = CoreUtil.File.maxName file + 1
         val () = nextPvar := mname
 
-        val (_, _, ds) = List.foldl (fn (d, (env, fm, ds)) =>
+        val (_, fm, ds) = List.foldl (fn (d, (env, fm, ds)) =>
                                         case #1 d of
                                             L.DDatabase s =>
                                             let
@@ -4786,6 +4667,7 @@ fun monoize env file =
         pvars := RM.empty;
         pvarDefs := [];
         pvarOldDefs := [];
+        Fm.postMonoize := fm;
         (rev ds, [])
     end
 
