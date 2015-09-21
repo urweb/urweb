@@ -168,8 +168,8 @@ $(SRC)/mono_env.sml
 $(SRC)/mono_print.sig
 $(SRC)/mono_print.sml
 
-$(SRC)/mono_fm.sig
-$(SRC)/mono_fm.sml
+$(SRC)/mono_fooify.sig
+$(SRC)/mono_fooify.sml
 
 $(SRC)/sql.sig
 $(SRC)/sql.sml

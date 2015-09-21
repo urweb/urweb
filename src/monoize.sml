@@ -50,9 +50,9 @@ structure RM = BinaryMapFn(struct
                                                                         (L'.TRecord r2, E.dummySpan))
                            end)
 
-val nextPvar = MonoFm.nextPvar
+val nextPvar = MonoFooify.nextPvar
 val pvars = ref (RM.empty : (int * (string * int * L'.typ) list) RM.map)
-val pvarDefs = ref ([] : (string * int * (string * int * L'.typ option) list) list)
+val pvarDefs = MonoFooify.pvarDefs
 val pvarOldDefs = ref ([] : (int * (string * int * L.con option) list) list)
 
 fun choosePvar () =
@@ -374,192 +374,26 @@ fun monoType env =
 
 val dummyExp = (L'.EPrim (Prim.Int 0), E.dummySpan)
 
-structure Fm = MonoFm
-
-fun fk2s fk =
-    case fk of
-        Fm.Attr => "attr"
-      | Fm.Url => "url"
-
-fun capitalize s =
-    if s = "" then
-        s
-    else
-        str (Char.toUpper (String.sub (s, 0))) ^ String.extract (s, 1, NONE)
+structure Fm = MonoFooify.Fm
 
 fun fooifyExp fk env =
-    let
-        fun fooify fm (e, tAll as (t, loc)) =
-            case #1 e of
-                L'.EClosure (fnam, [(L'.ERecord [], _)]) =>
-                let
-                    val (_, _, _, s) = Env.lookupENamed env fnam
-                in
-                    ((L'.EPrim (Prim.String (Prim.Normal, Settings.getUrlPrefix () ^ s)), loc), fm)
-                end
-              | L'.EClosure (fnam, args) =>
-                let
-                    val (_, ft, _, s) = Env.lookupENamed env fnam
-                    val ft = monoType env ft
+    MonoFooify.fooifyExp
+        fk
+        (fn n =>
+            let
+                val (_, t, _, s) = Env.lookupENamed env n
+            in
+                (monoType env t, s)
+            end)
+        (fn n =>
+            let
+                val (x, _, xncs) = Env.lookupDatatype env n
+            in
+                (x, map (fn (x, n, c) => (x, n, Option.map (monoType env) c)) xncs)
+            end)
 
-                    fun attrify (args, ft, e, fm) =
-                        case (args, ft) of
-                            ([], _) => (e, fm)
-                          | (arg :: args, (L'.TFun (t, ft), _)) =>
-                            let
-                                val (arg', fm) = fooify fm (arg, t)
-                            in
-                                attrify (args, ft,
-                                         (L'.EStrcat (e,
-                                                      (L'.EStrcat ((L'.EPrim (Prim.String (Prim.Normal, "/")), loc),
-                                                                   arg'), loc)), loc),
-                                         fm)
-                            end
-                          | _ => (E.errorAt loc "Type mismatch encoding attribute";
-                                  (e, fm))
-                in
-                    attrify (args, ft, (L'.EPrim (Prim.String (Prim.Normal, Settings.getUrlPrefix () ^ s)), loc), fm)
-                end
-              | _ =>
-                case t of
-                    L'.TFfi ("Basis", "unit") => ((L'.EPrim (Prim.String (Prim.Normal, "")), loc), fm)
-                  | L'.TFfi (m, x) => ((L'.EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [(e, tAll)]), loc), fm)
-
-                  | L'.TRecord [] => ((L'.EPrim (Prim.String (Prim.Normal, "")), loc), fm)
-                  | L'.TRecord ((x, t) :: xts) =>
-                    let
-                        val (se, fm) = fooify fm ((L'.EField (e, x), loc), t)
-                    in
-                        foldl (fn ((x, t), (se, fm)) =>
-                                  let
-                                      val (se', fm) = fooify fm ((L'.EField (e, x), loc), t)
-                                  in
-                                      ((L'.EStrcat (se,
-                                                    (L'.EStrcat ((L'.EPrim (Prim.String (Prim.Normal, "/")), loc),
-                                                                 se'), loc)), loc),
-                                       fm)
-                                  end) (se, fm) xts
-                    end
-
-                  | L'.TDatatype (i, ref (dk, _)) =>
-                    let
-                        fun makeDecl n fm =
-                            let
-                                val (x, xncs) =
-                                    case ListUtil.search (fn (x, i', xncs) =>
-                                                             if i' = i then
-                                                                 SOME (x, xncs)
-                                                             else
-                                                                 NONE) (!pvarDefs) of
-                                        NONE =>
-                                        let
-                                            val (x, _, xncs) = Env.lookupDatatype env i
-                                        in
-                                            (x, map (fn (x, n, c) => (x, n, Option.map (monoType env) c)) xncs)
-                                        end
-                                      | SOME v => v
-
-                                val (branches, fm) =
-                                    ListUtil.foldlMap
-                                        (fn ((x, n, to), fm) =>
-                                            case to of
-                                                NONE =>
-                                                (((L'.PCon (dk, L'.PConVar n, NONE), loc),
-                                                  (L'.EPrim (Prim.String (Prim.Normal, x)), loc)),
-                                                 fm)
-                                              | SOME t =>
-                                                let
-                                                    val (arg, fm) = fooify fm ((L'.ERel 0, loc), t)
-                                                in
-                                                    (((L'.PCon (dk, L'.PConVar n, SOME (L'.PVar ("a", t), loc)), loc),
-                                                      (L'.EStrcat ((L'.EPrim (Prim.String (Prim.Normal, x ^ "/")), loc),
-                                                                   arg), loc)),
-                                                     fm)
-                                                end)
-                                        fm xncs
-
-                                val dom = tAll
-                                val ran = (L'.TFfi ("Basis", "string"), loc)
-                            in
-                                ((fk2s fk ^ "ify_" ^ x,
-                                  n,
-                                  (L'.TFun (dom, ran), loc),
-                                  (L'.EAbs ("x",
-                                            dom,
-                                            ran,
-                                            (L'.ECase ((L'.ERel 0, loc),
-                                                       branches,
-                                                       {disc = dom,
-                                                        result = ran}), loc)), loc),
-                                  ""),
-                                 fm)
-                            end
-
-                        val (fm, n) = Fm.lookup fm fk i makeDecl
-                    in
-                        ((L'.EApp ((L'.ENamed n, loc), e), loc), fm)
-                    end
-
-                  | L'.TOption t =>
-                    let
-                        val (body, fm) = fooify fm ((L'.ERel 0, loc), t)
-                    in
-                        ((L'.ECase (e,
-                                    [((L'.PNone t, loc),
-                                      (L'.EPrim (Prim.String (Prim.Normal, "None")), loc)),
-
-                                     ((L'.PSome (t, (L'.PVar ("x", t), loc)), loc),
-                                      (L'.EStrcat ((L'.EPrim (Prim.String (Prim.Normal, "Some/")), loc),
-                                                   body), loc))],
-                                    {disc = tAll,
-                                     result = (L'.TFfi ("Basis", "string"), loc)}), loc),
-                         fm)
-                    end
-
-                  | L'.TList t =>
-                    let
-                        fun makeDecl n fm =
-                            let
-                                val rt = (L'.TRecord [("1", t), ("2", (L'.TList t, loc))], loc)
-                                val (arg, fm) = fooify fm ((L'.ERel 0, loc), rt)
-
-                                val branches = [((L'.PNone rt, loc),
-                                                 (L'.EPrim (Prim.String (Prim.Normal, "Nil")), loc)),
-                                                ((L'.PSome (rt, (L'.PVar ("a", rt), loc)), loc),
-                                                 (L'.EStrcat ((L'.EPrim (Prim.String (Prim.Normal, "Cons/")), loc),
-                                                              arg), loc))]
-
-                                val dom = tAll
-                                val ran = (L'.TFfi ("Basis", "string"), loc)
-                            in
-                                ((fk2s fk ^ "ify_list",
-                                  n,
-                                  (L'.TFun (dom, ran), loc),
-                                  (L'.EAbs ("x",
-                                            dom,
-                                            ran,
-                                            (L'.ECase ((L'.ERel 0, loc),
-                                                       branches,
-                                                       {disc = dom,
-                                                        result = ran}), loc)), loc),
-                                  ""),
-                                 fm)
-                            end
-
-                        val (fm, n) = Fm.lookupList fm fk t makeDecl
-                    in
-                        ((L'.EApp ((L'.ENamed n, loc), e), loc), fm)
-                    end
-
-                  | _ => (E.errorAt loc "Don't know how to encode attribute/URL type";
-                          Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];
-                          (dummyExp, fm))
-    in
-        fooify
-    end
-
-val attrifyExp = fooifyExp Fm.Attr
-val urlifyExp = fooifyExp Fm.Url
+val attrifyExp = fooifyExp MonoFooify.Attr
+val urlifyExp = fooifyExp MonoFooify.Url
 
 val urlifiedUnit =
     let
@@ -4667,7 +4501,7 @@ fun monoize env file =
         pvars := RM.empty;
         pvarDefs := [];
         pvarOldDefs := [];
-        Fm.postMonoize := fm;
+        Fm.canonical := fm;
         (rev ds, [])
     end
 
