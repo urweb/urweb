@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -92,7 +92,7 @@ fun rewrite file =
                                        | DValRec vis => foldl (fn ((_, n, _, _, _), dontName) => IS.add (dontName, n)) dontName vis
                                        | _ => dontName
                                  else
-                                     dontName) IS.empty (#decls file)
+                                     dontName) IS.empty (#1 file)
 
         val (ds, _) = ListUtil.foldlMapConcat (fn (d, nextName) =>
                                                     let
@@ -126,9 +126,9 @@ fun rewrite file =
 
                                                                                                            val vs = freeVars e'
                                                                                                            val vs = IS.listItems vs
-
+                                                                                                                    
                                                                                                            val x = "script" ^ Int.toString nextName
-
+                                                                                                                   
                                                                                                            val un = (TRecord [], loc)
                                                                                                            val s = (TFfi ("Basis", "string"), loc)
                                                                                                            val base = (TFun (un, s), loc)
@@ -165,9 +165,9 @@ fun rewrite file =
                                                                       DValRec vis => [(DValRec (vis @ newDs), #2 d)]
                                                                     | _ => List.revAppend (map (fn vi => (DVal vi, #2 d)) newDs, [d]),
                                                          nextName)
-                                                    end) (U.File.maxName file + 1) (#decls file)
+                                                    end) (U.File.maxName file + 1) (#1 file)
     in
-        {decls = ds, sideInfo = #sideInfo file}
+        (ds, #2 file)
     end
 
 end

@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -91,7 +91,7 @@ fun dump (r : rpcmap) =
                                              dump r')) m;
                      print "</Module>\n")
 
-fun classify {decls = ds, sideInfo = ps} =
+fun classify (ds, ps) =
     let
         val proto = Settings.currentProtocol ()
 
@@ -100,7 +100,7 @@ fun classify {decls = ds, sideInfo = ps} =
         fun hasClient {basis, rpcs, funcs, push} =
             MonoUtil.Exp.exists {typ = fn _ => false,
                                  exp = fn ERecv _ => push
-                                        | EFfiApp ("Basis", x, _) => SS.member (basis, x)
+                                        | EFfiApp ("Basis", x, _) => SS.member (basis, x) 
                                         | EJavaScript _ => not push
                                         | ENamed n => IS.member (funcs, n)
                                         | EServerCall (e, _, _, _) =>
@@ -175,7 +175,8 @@ fun classify {decls = ds, sideInfo = ps} =
                              else
                                  ServerOnly, AnyDb)) (IS.listItems all_ids)
     in
-        {decls = ds, sideInfo = ps}
+        (ds, ps)
     end
 
 end
+

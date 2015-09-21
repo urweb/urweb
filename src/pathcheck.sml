@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -68,7 +68,7 @@ fun checkDecl ((d, loc), (funcs, rels, cookies, styles)) =
     in
         case d of
             DExport (_, s, _, _, _, _) => doFunc s
-
+            
           | DTable (s, _, pe, ce) =>
             let
                 fun constraints (e, rels) =
@@ -110,6 +110,6 @@ fun checkDecl ((d, loc), (funcs, rels, cookies, styles)) =
           | _ => (funcs, rels, cookies, styles)
     end
 
-fun check (file : file) = ignore (foldl checkDecl (SS.empty, SS.empty, SS.empty, SS.empty) (#decls file))
+fun check (ds, _) = ignore (foldl checkDecl (SS.empty, SS.empty, SS.empty, SS.empty) ds)
 
 end

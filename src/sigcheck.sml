@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -32,7 +32,7 @@ open Mono
 structure IS = IntBinarySet
 structure E = ErrorMsg
 
-fun check (file : file) =
+fun check (ds, sl) =
     let
         fun isSiggy siggers =
             MonoUtil.Decl.exists {typ = fn _ => false,
@@ -89,9 +89,9 @@ fun check (file : file) =
                     (sigify sigdecs d, (siggers, sigdecs))
               | _ => (sigify sigdecs d, (siggers, sigdecs))
 
-        val (ds, _) = ListUtil.foldlMap doDecl (IS.empty, IS.empty) (#decls file)
+        val (ds, _) = ListUtil.foldlMap doDecl (IS.empty, IS.empty) ds
     in
-        {decls = ds, sideInfo = #sideInfo file}
+        (ds, sl)
     end
 
 end

@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -60,7 +60,7 @@ fun shake (file : file) =
                                    | ((DTask _, _), acc) => acc
                                    | ((DPolicy _, _), acc) => acc
                                    | ((DOnError _, _), acc) => acc)
-                                 (IM.empty, IM.empty) (#decls file)
+                                 (IM.empty, IM.empty) (#1 file)
 
         fun typ (c, s) =
             case c of
@@ -130,7 +130,7 @@ fun shake (file : file) =
                         usedVars st e1
                     end
                   | ((DOnError n, _), (page_cs, page_es)) => (page_cs, IS.add (page_es, n))
-                  | (_, st) => st) (IS.empty, IS.empty) (#decls file)
+                  | (_, st) => st) (IS.empty, IS.empty) (#1 file)
 
         val s = {con = page_cs, exp = page_es}
 
@@ -145,8 +145,7 @@ fun shake (file : file) =
                                  NONE => raise Fail "MonoShake: Couldn't find 'val'"
                                | SOME (t, e) => shakeExp s e) s page_es
     in
-        {decls =
-         List.filter (fn (DDatatype dts, _) => List.exists (fn (_, n, _) => IS.member (#con s, n)) dts
+        (List.filter (fn (DDatatype dts, _) => List.exists (fn (_, n, _) => IS.member (#con s, n)) dts
                        | (DVal (_, n, _, _, _), _) => IS.member (#exp s, n)
                        | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
                        | (DExport _, _) => true
@@ -159,7 +158,7 @@ fun shake (file : file) =
                        | (DStyle _, _) => true
                        | (DTask _, _) => true
                        | (DPolicy _, _) => true
-                       | (DOnError _, _) => true) (#decls file), sideInfo = #sideInfo file}
+                       | (DOnError _, _) => true) (#1 file), #2 file)
     end
 
 end

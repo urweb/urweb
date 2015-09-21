@@ -4786,7 +4786,7 @@ fun monoize env file =
         pvars := RM.empty;
         pvarDefs := [];
         pvarOldDefs := [];
-        {decls = rev ds, sideInfo = []}
+        (rev ds, [])
     end
 
 end

@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -31,7 +31,7 @@ open Mono
 
 structure IM = IntBinaryMap
 
-fun classify {decls = ds, sideInfo = ps} =
+fun classify (ds, ps) =
     let
         fun mergeModes (m1, m2) =
             case (m1, m2) of
@@ -79,7 +79,8 @@ fun classify {decls = ds, sideInfo = ps} =
 
         val ps = IM.foldli (fn (n, mode, ps) => (n, ServerOnly, mode) :: ps) ps modes
     in
-        {decls = ds, sideInfo = ps}
+        (ds, ps)
     end
 
 end
+

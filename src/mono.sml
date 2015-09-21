@@ -168,6 +168,6 @@ datatype dbmode =
        | OneQuery
        | AnyDb
 
-type file = {decls : decl list, sideInfo : (int * sidedness * dbmode) list}
+type file = decl list * (int * sidedness * dbmode) list
 
 end

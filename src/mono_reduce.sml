@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -390,7 +390,7 @@ fun reduce' (file : file) =
                                      absCounts vis)
                             | _ => (timpures, impures, absCounts)
                       end)
-                  (IS.empty, IS.empty, IM.empty) (#decls file)
+                  (IS.empty, IS.empty, IM.empty) (#1 file)
 
         val uses = U.File.fold {typ = fn (_, m) => m,
                                 exp = fn (e, m) =>
@@ -406,7 +406,7 @@ fun reduce' (file : file) =
         val functionInside' = U.Typ.exists (fn c => case c of
                                                         TFun _ => true
                                                       | _ => false)
-
+                              
         fun functionInside t =
             case #1 t of
                 TFun (t1, t2) => functionInside' t1 orelse functionInside t2
@@ -520,7 +520,7 @@ fun reduce' (file : file) =
                       | ERedirect (e, _) => summarize d e @ [Abort]
 
                       | EWrite e => summarize d e @ [WritePage]
-
+                                    
                       | ESeq (e1, e2) => summarize d e1 @ summarize d e2
                       | ELet (_, _, e1, e2) => summarize d e1 @ summarize (if d = ~1 then ~1 else d + 1) e2
 

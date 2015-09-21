@@ -695,9 +695,9 @@ fun mapfoldB (all as {bind, ...}) =
     let
         val mfd = Decl.mapfoldB all
 
-        fun mff ctx (file : file) =
-            case #decls file of
-                nil => S.return2 {decls = nil, sideInfo = #sideInfo file}
+        fun mff ctx (ds, ps) =
+            case ds of
+                nil => S.return2 (nil, ps)
               | d :: ds' =>
                 S.bind2 (mfd ctx d,
                          fn d' =>
@@ -736,9 +736,9 @@ fun mapfoldB (all as {bind, ...}) =
                                       | DPolicy _ => ctx
                                       | DOnError _ => ctx
                             in
-                                S.map2 (mff ctx' {decls = ds', sideInfo = #sideInfo file},
-                                        fn {decls = ds', ...} =>
-                                           {decls = d' :: ds', sideInfo = #sideInfo file})
+                                S.map2 (mff ctx' (ds', ps),
+                                     fn (ds', _) =>
+                                        (d' :: ds', ps))
                             end)
     in
         mff
@@ -791,7 +791,7 @@ fun maxName (f : file) =
                 | DStyle _ => count
                 | DTask _ => count
                 | DPolicy _ => count
-                | DOnError _ => count) 0 (#decls f)
+                | DOnError _ => count) 0 (#1 f)
 
 fun appLoc f (fl : file) =
     let
@@ -822,7 +822,7 @@ fun appLoc f (fl : file) =
               | PolUpdate e1 => eal e1
               | PolSequence e1 => eal e1
     in
-        app appl (#decls fl)
+        app appl (#1 fl)
     end
 
 end

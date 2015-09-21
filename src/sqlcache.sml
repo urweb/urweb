@@ -101,7 +101,7 @@ fun effectful (effs : IS.set) =
     end
 
 (* TODO: test this. *)
-fun effectfulDecls ({decls, ...} : file) =
+fun effectfulDecls (decls, _) =
     let
         fun doVal ((_, name, _, e, _), effs) =
             if effectful effs MonoEnv.empty e
