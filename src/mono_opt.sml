@@ -405,20 +405,18 @@ fun exp e =
                         initial = (EPrim (Prim.String (k, "")), _),
                         body = (EStrcat ((EPrim (Prim.String (_, s)), _),
                                          (EStrcat ((ERel 0, _),
-                                                   e'), _)), _),
-                        sqlcacheInfo}, loc) =>
+                                                   e'), _)), _)}, loc) =>
         if (case k of Prim.Normal => s = "" | Prim.Html => CharVector.all Char.isSpace s) then
             EQuery {exps = exps, tables = tables, query = query,
                     state = (TRecord [], loc),
                     initial = (ERecord [], loc),
-                    body = (optExp (EWrite e', loc), loc),
-                    sqlcacheInfo = Monoize.urlifiedUnit}
+                    body = (optExp (EWrite e', loc), loc)}
         else
             e
 
       | EWrite (EQuery {exps, tables, state, query,
                         initial = (EPrim (Prim.String (_, "")), _),
-                        body, sqlcacheInfo}, loc) =>
+                        body}, loc) =>
         let
             fun passLets (depth, (e', _), lets) =
                 case e' of
@@ -433,8 +431,7 @@ fun exp e =
                             EQuery {exps = exps, tables = tables, query = query,
                                     state = (TRecord [], loc),
                                     initial = (ERecord [], loc),
-                                    body = body,
-                                    sqlcacheInfo = Monoize.urlifiedUnit}
+                                    body = body}
                         end
                     else
                         e

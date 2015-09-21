@@ -1178,7 +1178,7 @@ fun process (file : file) =
                      ((EClosure (n, es), loc), st)
                  end
 
-               | EQuery {exps, tables, state, query, body, initial, sqlcacheInfo} =>
+               | EQuery {exps, tables, state, query, body, initial} =>
                  let
                      val row = exps @ map (fn (x, xts) => (x, (TRecord xts, loc))) tables
                      val row = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER) row
@@ -1189,8 +1189,7 @@ fun process (file : file) =
                      val (initial, st) = exp outer (initial, st)
                  in
                      ((EQuery {exps = exps, tables = tables, state = state,
-                               query = query, body = body, initial = initial,
-                               sqlcacheInfo = sqlcacheInfo}, loc), st)
+                               query = query, body = body, initial = initial}, loc), st)
                  end
                | EDml (e, mode) =>
                  let

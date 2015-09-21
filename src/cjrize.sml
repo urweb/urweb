@@ -431,7 +431,7 @@ fun cifyExp (eAll as (e, loc), sm) =
           | L.EClosure _ => (ErrorMsg.errorAt loc "Nested closure remains in code generation";
                              (dummye, sm))
 
-          | L.EQuery {exps, tables, state, query, body, initial, sqlcacheInfo} =>
+          | L.EQuery {exps, tables, state, query, body, initial} =>
             let
                 val (exps', sm) = ListUtil.foldlMap (fn ((x, t), sm) =>
                                                         let

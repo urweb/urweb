@@ -107,8 +107,7 @@ datatype exp' =
                      state : typ,
                      query : exp, (* exp of string type containing sql query *)
                      body : exp,
-                     initial : exp,
-                     sqlcacheInfo : exp }
+                     initial : exp }
        | EDml of exp * failure_mode
        | ENextval of exp
        | ESetval of exp * exp

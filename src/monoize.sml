@@ -395,16 +395,6 @@ fun fooifyExp fk env =
 val attrifyExp = fooifyExp MonoFooify.Attr
 val urlifyExp = fooifyExp MonoFooify.Url
 
-val urlifiedUnit =
-    let
-        val loc = ErrorMsg.dummySpan
-        (* Urlifies [ERel 0] to match the [sqlcacheInfo] field of [EQuery]s. *)
-        val (urlified, _) = urlifyExp CoreEnv.empty (Fm.empty 0)
-                                      ((L'.ERel 0, loc), (L'.TRecord [], loc))
-    in
-        urlified
-    end
-
 datatype 'a failable_search =
          Found of 'a
        | NotFound
@@ -1687,14 +1677,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                      (L'.ERel 1, loc)), loc),
                                            (L'.ERel 0, loc)), loc),
                                           (L'.ERecord [], loc)), loc)
-                             val (urlifiedRel0, fm) = urlifyExp env fm ((L'.ERel 0, loc), state)
                              val body = (L'.EQuery {exps = exps,
                                                     tables = tables,
                                                     state = state,
                                                     query = (L'.ERel 3, loc),
                                                     body = body',
-                                                    initial = (L'.ERel 1, loc),
-                                                    sqlcacheInfo = urlifiedRel0},
+                                                    initial = (L'.ERel 1, loc)},
                                          loc)
                          in
                              ((L'.EAbs ("q", s, (L'.TFun (ft, (L'.TFun (state, (L'.TFun (un, state), loc)), loc)), loc),

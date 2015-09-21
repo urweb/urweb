@@ -310,7 +310,7 @@ fun p_exp' par env (e, _) =
                                                                       p_exp env e]) es,
                                  string ")"]
 
-      | EQuery {exps, tables, state, query, body, initial, sqlcacheInfo} =>
+      | EQuery {exps, tables, state, query, body, initial} =>
         box [string "query[",
              p_list (fn (x, t) => box [string x, space, string ":", space, p_typ env t]) exps,
              string "] [",

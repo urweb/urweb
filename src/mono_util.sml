@@ -314,7 +314,7 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                      fn es' =>
                         (EClosure (n, es'), loc))
 
-              | EQuery {exps, tables, state, query, body, initial, sqlcacheInfo} =>
+              | EQuery {exps, tables, state, query, body, initial} =>
                 S.bind2 (ListUtil.mapfold (fn (x, t) =>
                                               S.map2 (mft t,
                                                       fn t' => (x, t'))) exps,
@@ -335,19 +335,15 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                                                           body,
                                                                    fn body' =>
                                                                       (* ASK: is this the right thing to do? *)
-                                                                      S.bind2 (mfe ctx initial,
+                                                                      S.map2 (mfe ctx initial,
                                                                            fn initial' =>
-                                                                              S.map2 (mfe (bind (ctx, RelE ("queryResult", dummyt)))
-                                                                                          sqlcacheInfo,
-                                                                                    fn sqlcacheInfo' =>
-                                                                                       (EQuery {exps = exps',
-                                                                                                tables = tables',
-                                                                                                state = state',
-                                                                                                query = query',
-                                                                                                body = body',
-                                                                                                initial = initial',
-                                                                                                sqlcacheInfo = sqlcacheInfo},
-                                                                                        loc))))))))
+                                                                              (EQuery {exps = exps',
+                                                                                       tables = tables',
+                                                                                       state = state',
+                                                                                       query = query',
+                                                                                       body = body',
+                                                                                       initial = initial'},
+                                                                               loc)))))))
 
               | EDml (e, fm) =>
                 S.map2 (mfe ctx e,

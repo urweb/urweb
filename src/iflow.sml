@@ -1870,15 +1870,14 @@ val namer = MonoUtil.File.map {typ = fn t => t,
                                         case e of
                                             EDml (e, fm) =>
                                             nameSubexps (fn (_, e') => (EDml (e', fm), #2 e)) e
-                                          | EQuery {exps, tables, state, query, body, initial, sqlcacheInfo} =>
+                                          | EQuery {exps, tables, state, query, body, initial} =>
                                             nameSubexps (fn (liftBy, e') =>
                                                             (EQuery {exps = exps,
                                                                      tables = tables,
                                                                      state = state,
                                                                      query = e',
                                                                      body = mliftExpInExp liftBy 2 body,
-                                                                     initial = mliftExpInExp liftBy 0 initial,
-                                                                     sqlcacheInfo = sqlcacheInfo},
+                                                                     initial = mliftExpInExp liftBy 0 initial},
                                                              #2 query)) query
                                           | _ => e,
                                      decl = fn d => d}
@@ -2071,12 +2070,11 @@ fun check (file : file) =
                           | ESeq (e1, e2) => (ESeq (doExp env e1, doExp env e2), loc)
                           | ELet (x, t, e1, e2) => (ELet (x, t, doExp env e1, doExp (Unknown :: env) e2), loc)
                           | EClosure (n, es) => (EClosure (n, map (doExp env) es), loc)
-                          | EQuery {exps, tables, state, query, body, initial, sqlcacheInfo} =>
+                          | EQuery {exps, tables, state, query, body, initial} =>
                             (EQuery {exps = exps, tables = tables, state = state,
                                      query = doExp env query,
                                      body = doExp (Unknown :: Unknown :: env) body,
-                                     initial = doExp env initial,
-                                     sqlcacheInfo = sqlcacheInfo}, loc)
+                                     initial = doExp env initial}, loc)
                           | EDml (e1, mode) =>
                             (case parse dml e1 of
                                  NONE => ()

@@ -31,6 +31,4 @@ signature MONOIZE = sig
 
     val liftExpInExp : int -> Mono.exp -> Mono.exp
 
-    val urlifiedUnit : Mono.exp
-
 end

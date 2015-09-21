@@ -493,16 +493,16 @@ fun incRels inc =
          bind = fn (bound, MonoUtil.Exp.RelE _) => bound + 1 | (bound, _) => bound}
         0
 
-fun cacheWrap (query, i, urlifiedRel0, resultTyp, args) =
+fun cacheWrap (env, query, i, resultTyp, args) =
     let
         val () = ffiInfo := {index = i, params = length args} :: !ffiInfo
         val loc = dummyLoc
+        val rel0 = (ERel 0, loc)
         (* We ensure before this step that all arguments aren't effectful.
            by turning them into local variables as needed. *)
         val argsInc = map (incRels 1) args
         val check = (check (i, args), dummyLoc)
-        val store = (store (i, argsInc, urlifiedRel0), dummyLoc)
-        val rel0 = (ERel 0, loc)
+        val store = (store (i, argsInc, MonoFooify.urlify env (rel0, resultTyp)), dummyLoc)
     in
         ECase (check,
                [((PNone stringTyp, loc),
@@ -563,8 +563,6 @@ fun addChecking file =
     let
         fun doExp env (queryInfo as (tableToIndices, indexToQueryNumArgs, index)) =
          fn e' as EQuery {query = origQueryText,
-                          (* ASK: could this get messed up by inlining? *)
-                          sqlcacheInfo = urlifiedRel0,
                           state = resultTyp,
                           initial, body, tables, exps} =>
             let
@@ -572,7 +570,6 @@ fun addChecking file =
                 (* Increment once for each new variable just made. *)
                 val queryExp = incRels numArgs
                                        (EQuery {query = newQueryText,
-                                                sqlcacheInfo = urlifiedRel0,
                                                 state = resultTyp,
                                                 initial = initial,
                                                 body = body,
@@ -599,7 +596,7 @@ fun addChecking file =
                     (* Ziv misses Haskell's do notation.... *)
                     guard (safe 0 queryText andalso safe 0 initial andalso safe 2 body) (
                     bind (Sql.parse Sql.query queryText) (fn queryParsed =>
-                    SOME (wrapLets (cacheWrap (queryExp, index, urlifiedRel0, resultTyp, args)),
+                    SOME (wrapLets (cacheWrap (env, queryExp, index, resultTyp, args)),
                           (SS.foldr (fn (tab, qi) => SIMM.insert (qi, tab, index))
                                     tableToIndices
                                     (tablesQuery queryParsed),
