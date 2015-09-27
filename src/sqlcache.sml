@@ -493,27 +493,34 @@ fun incRels inc =
          bind = fn (bound, MonoUtil.Exp.RelE _) => bound + 1 | (bound, _) => bound}
         0
 
-fun cacheWrap (env, query, i, resultTyp, args) =
+fun cacheWrap (env, exp, resultTyp, args, i) =
     let
-        val () = ffiInfo := {index = i, params = length args} :: !ffiInfo
         val loc = dummyLoc
         val rel0 = (ERel 0, loc)
-        (* We ensure before this step that all arguments aren't effectful.
-           by turning them into local variables as needed. *)
-        val argsInc = map (incRels 1) args
-        val check = (check (i, args), dummyLoc)
-        val store = (store (i, argsInc, MonoFooify.urlify env (rel0, resultTyp)), dummyLoc)
     in
-        ECase (check,
-               [((PNone stringTyp, loc),
-                 (ELet (varName "q", resultTyp, query, (ESeq (store, rel0), loc)), loc)),
-                ((PSome (stringTyp, (PVar (varName "hit", stringTyp), loc)), loc),
-                 (* Boolean is false because we're not unurlifying from a cookie. *)
-                 (EUnurlify (rel0, resultTyp, false), loc))],
-               {disc = stringTyp, result = resultTyp})
+        case MonoFooify.urlify env (rel0, resultTyp) of
+            NONE => NONE
+          | SOME urlified =>
+            let
+                val () = ffiInfo := {index = i, params = length args} :: !ffiInfo
+                (* We ensure before this step that all arguments aren't effectful.
+               by turning them into local variables as needed. *)
+                val argsInc = map (incRels 1) args
+                val check = (check (i, args), loc)
+                val store = (store (i, argsInc, urlified), loc)
+            in
+                SOME (ECase
+                          (check,
+                           [((PNone stringTyp, loc),
+                             (ELet (varName "q", resultTyp, exp, (ESeq (store, rel0), loc)), loc)),
+                            ((PSome (stringTyp, (PVar (varName "hit", stringTyp), loc)), loc),
+                             (* Boolean is false because we're not unurlifying from a cookie. *)
+                             (EUnurlify (rel0, resultTyp, false), loc))],
+                           {disc = (TOption stringTyp, loc), result = resultTyp}))
+            end
     end
 
-fun fileMapfold doExp file start =
+fun fileMapfoldB doExp file start =
     case MonoUtil.File.mapfoldB
              {typ = Search.return2,
               exp = fn env => fn e' => fn s => Search.Continue (doExp env e' s),
@@ -523,7 +530,7 @@ fun fileMapfold doExp file start =
         Search.Continue x => x
       | Search.Return _ => raise Match
 
-fun fileMap doExp file = #1 (fileMapfold (fn _ => fn e => fn _ => (doExp e, ())) file ())
+fun fileMap doExp file = #1 (fileMapfoldB (fn _ => fn e => fn _ => (doExp e, ())) file ())
 
 fun factorOutNontrivial text =
     let
@@ -561,6 +568,7 @@ fun factorOutNontrivial text =
 
 fun addChecking file =
     let
+        val effs = effectfulDecls file
         fun doExp env (queryInfo as (tableToIndices, indexToQueryNumArgs, index)) =
          fn e' as EQuery {query = origQueryText,
                           state = resultTyp,
@@ -582,7 +590,6 @@ fun addChecking file =
                 val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
                 fun bind x f = Option.mapPartial f x
                 fun guard b x = if b then x else NONE
-                val effs = effectfulDecls file
                 (* We use dummyTyp here. I think this is okay because databases
                    don't store (effectful) functions, but perhaps there's some
                    pathalogical corner case missing.... *)
@@ -596,12 +603,13 @@ fun addChecking file =
                     (* Ziv misses Haskell's do notation.... *)
                     guard (safe 0 queryText andalso safe 0 initial andalso safe 2 body) (
                     bind (Sql.parse Sql.query queryText) (fn queryParsed =>
-                    SOME (wrapLets (cacheWrap (env, queryExp, index, resultTyp, args)),
+                    bind (cacheWrap (env, queryExp, resultTyp, args, index)) (fn cachedExp =>
+                    SOME (wrapLets cachedExp,
                           (SS.foldr (fn (tab, qi) => SIMM.insert (qi, tab, index))
                                     tableToIndices
                                     (tablesQuery queryParsed),
                            IM.insert (indexToQueryNumArgs, index, (queryParsed, numArgs)),
-                           index + 1))))
+                           index + 1)))))
             in
                 case attempt of
                     SOME pair => pair
@@ -609,9 +617,10 @@ fun addChecking file =
             end
           | e' => (e', queryInfo)
     in
-        fileMapfold (fn env => fn exp => fn state => doExp env state exp)
-                    file
-                    (SIMM.empty, IM.empty, 0)
+        (fileMapfoldB (fn env => fn exp => fn state => doExp env state exp)
+                      file
+                      (SIMM.empty, IM.empty, 0),
+         effs)
     end
 
 structure Invalidations = struct
@@ -662,7 +671,7 @@ val invalidations = Invalidations.invalidations
 (* DEBUG *)
 val gunk : ((Sql.query * int) * Sql.dml) list ref = ref []
 
-fun addFlushing (file, (tableToIndices, indexToQueryNumArgs, _)) =
+fun addFlushing ((file, (tableToIndices, indexToQueryNumArgs, index)), effs) =
     let
         val flushes = List.concat o
                       map (fn (i, argss) => map (fn args => flush (i, args)) argss)
@@ -694,7 +703,7 @@ fun addFlushing (file, (tableToIndices, indexToQueryNumArgs, _)) =
     in
         (* DEBUG *)
         gunk := [];
-        fileMap doExp file
+        (fileMap doExp file, index, effs)
     end
 
 val inlineSql =
@@ -713,24 +722,10 @@ val inlineSql =
         fileMap doExp
     end
 
-fun go file =
-    let
-        (* TODO: do something nicer than [Sql] being in one of two modes. *)
-        val () = (resetFfiInfo (); Sql.sqlcacheMode := true)
-        val file' = addFlushing (addChecking (inlineSql file))
-        val () = Sql.sqlcacheMode := false
-    in
-        file'
-    end
-
 
 (**********************)
 (* Mono Type Checking *)
 (**********************)
-
-val typOfPrim =
- fn Prim.Int _ => TFfi ("Basis", "int")
-  | Prim.Float _ => TFfi ("Basis", "int")
 
 fun typOfExp' (env : MonoEnv.env) : exp' -> typ option =
  fn EPrim p => SOME (TFfi ("Basis", case p of
@@ -779,6 +774,7 @@ fun typOfExp' (env : MonoEnv.env) : exp' -> typ option =
   | ELet (s, t, e1, e2) => typOfExp (MonoEnv.pushERel env s t (SOME e1)) e2
   | EClosure _ => NONE
   | EUnurlify (_, t, _) => SOME t
+  | _ => NONE
 
 and typOfExp env (e', loc) = typOfExp' env e'
 
@@ -797,17 +793,35 @@ val expOfSubexp =
  fn Pure f => f ()
   | Impure e => e
 
-val makeCache : MonoEnv.env -> exp' -> exp' = fn _ => fn _ => raise Fail "TODO"
+fun makeCache (env, exp', index) =
+    case typOfExp' env exp' of
+        NONE => NONE
+      | SOME (TFun _, _) => NONE
+      | SOME typ =>
+        case ListUtil.foldri (fn (_, _, NONE) => NONE
+                               | (n, typ, SOME args) =>
+                                 case MonoFooify.urlify env ((ERel n, dummyLoc), typ) of
+                                     NONE => NONE
+                                   | SOME arg => SOME (arg :: args))
+                             (SOME [])
+                             (MonoEnv.typeContext env) of
+            NONE => NONE
+          | SOME args => cacheWrap (env, (exp', dummyLoc), typ, args, index)
 
-fun pureCache (effs : IS.set) (env : MonoEnv.env) (exp as (exp', loc)) : subexp =
+fun pureCache (effs : IS.set) ((env, exp as (exp', loc)), index) : subexp * int =
     let
         fun wrapBindN f (args : (MonoEnv.env * exp) list) =
             let
-                val subexps = map (fn (env, exp) => pureCache effs env exp) args
+                val (subexps, index) = ListUtil.foldlMap (pureCache effs) index args
+                fun mkExp () = (f (map expOfSubexp subexps), loc)
             in
                 if List.exists isImpure subexps
-                then Impure (f (map expOfSubexp subexps), loc)
-                else Pure (fn () => (makeCache env (f (map #2 args)), loc))
+                then (Impure (mkExp ()), index)
+                else (Pure (fn () => case makeCache (env, f (map #2 args), index) of
+                                         NONE => mkExp ()
+                                       | SOME e' => (e', loc)),
+                      (* Conservatively increment index. *)
+                      index + 1)
             end
         fun wrapBind1 f arg =
             wrapBindN (fn [arg] => f arg | _ => raise Match) [arg]
@@ -837,7 +851,8 @@ fun pureCache (effs : IS.set) (env : MonoEnv.env) (exp as (exp', loc)) : subexp 
             wrapBindN (fn (e::es) =>
                           ECase (e,
                                  (ListPair.map (fn (e, (p, _)) => (p, e)) (es, cases)),
-                                 {disc = disc, result = result}))
+                                 {disc = disc, result = result})
+                        | _ => raise Match)
                       ((env, e) :: map (fn (p, e) => (MonoEnv.patBinds env p, e)) cases)
           | EStrcat (e1, e2) => wrap2 EStrcat (e1, e2)
           (* We record page writes, so they're cachable. *)
@@ -849,8 +864,61 @@ fun pureCache (effs : IS.set) (env : MonoEnv.env) (exp as (exp', loc)) : subexp 
           (* ASK: | EClosure (n, es) => ? *)
           | EUnurlify (e, t, b) => wrap1 (fn e => EUnurlify (e, t, b)) e
           | _ => if effectful effs env exp
-                 then Impure exp
-                 else Pure (fn () => (makeCache env exp', loc))
+                 then (Impure exp, index)
+                 else (Pure (fn () => (case makeCache (env, exp', index) of
+                                           NONE => exp'
+                                         | SOME e' => e',
+                                       loc)),
+                       index + 1)
+    end
+
+fun addPure ((decls, sideInfo), index, effs) =
+    let
+        fun doVal ((x, n, t, exp, s), index) =
+            let
+                val (subexp, index) = pureCache effs ((MonoEnv.empty, exp), index)
+            in
+                ((x, n, t, expOfSubexp subexp, s), index)
+            end
+        fun doDecl' (decl', index) =
+            case decl' of
+                DVal v =>
+                let
+                    val (v, index) = (doVal (v, index))
+                in
+                    (DVal v, index)
+                end
+              | DValRec vs =>
+                let
+                    val (vs, index) = ListUtil.foldlMap doVal index vs
+                in
+                    (DValRec vs, index)
+                end
+              | _ => (decl', index)
+        fun doDecl ((decl', loc), index) =
+            let
+                val (decl', index) = doDecl' (decl', index)
+            in
+                ((decl', loc), index)
+            end
+        val decls = #1 (ListUtil.foldlMap doDecl index decls)
+        (* Important that this happens after the MonoFooify.urlify calls! *)
+        val fmDecls = MonoFooify.getNewFmDecls ()
+    in
+        print (Int.toString (length fmDecls));
+        (decls @ fmDecls, sideInfo)
+    end
+
+val go' = addPure o addFlushing o addChecking o inlineSql
+
+fun go file =
+    let
+        (* TODO: do something nicer than [Sql] being in one of two modes. *)
+        val () = (resetFfiInfo (); Sql.sqlcacheMode := true)
+        val file' = go' file
+        val () = Sql.sqlcacheMode := false
+    in
+        file'
     end
 
 end

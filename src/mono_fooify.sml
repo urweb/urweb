@@ -1,4 +1,4 @@
-structure MonoFooify :> MONO_FOOIFY = struct
+structure MonoFooify (* :> MONO_FOOIFY *) = struct
 
 open Mono
 
@@ -112,9 +112,6 @@ fun lookupList (t as {count, map, listMap, decls}) k tp thunk =
           | SOME n' => (t, n')
     end
 
-(* Has to be set at the end of [Monoize]. *)
-val canonical = ref (empty 0 : t)
-
 end
 
 fun fk2s fk =
@@ -166,7 +163,12 @@ fun fooifyExp fk lookupENamed lookupDatatype =
               | _ =>
                 case t of
                     TFfi ("Basis", "unit") => ((EPrim (Prim.String (Prim.Normal, "")), loc), fm)
-                  | TFfi (m, x) => ((EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [(e, tAll)]), loc), fm)
+                  | TFfi (m, x) => (if Settings.mayClientToServer (m, x)
+                                    (* TODO: better error message. (Then again, user should never see this.) *)
+                                    then ()
+                                    else (E.errorAt loc "MonoFooify: can't pass type from client to server";
+                                          Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)]);
+                                    ((EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [(e, tAll)]), loc), fm))
 
                   | TRecord [] => ((EPrim (Prim.String (Prim.Normal, "")), loc), fm)
                   | TRecord ((x, t) :: xts) =>
@@ -296,22 +298,38 @@ fun fooifyExp fk lookupENamed lookupDatatype =
         fooify
     end
 
+(* Has to be set at the end of [Monoize]. *)
+val canonicalFm = ref (Fm.empty 0 : Fm.t)
+
 fun urlify env expTyp =
+    if ErrorMsg.anyErrors ()
+    then ((* DEBUG *) print "already error"; NONE)
+    else
+        let
+            val (exp, fm) =
+                fooifyExp
+                    Url
+                    (fn n =>
+                        let
+                            val (_, t, _, s) = MonoEnv.lookupENamed env n
+                        in
+                            (t, s)
+                        end)
+                    (fn n => MonoEnv.lookupDatatype env n)
+                    (!canonicalFm)
+                    expTyp
+        in
+            if ErrorMsg.anyErrors ()
+            then ((* DEBUG *) print "why"; (ErrorMsg.resetErrors (); NONE))
+            else (canonicalFm := fm; SOME exp)
+        end
+
+fun getNewFmDecls () =
     let
-        val (exp, fm) =
-            fooifyExp
-                Url
-                (fn n =>
-                    let
-                        val (_, t, _, s) = MonoEnv.lookupENamed env n
-                    in
-                        (t, s)
-                    end)
-                (fn n => MonoEnv.lookupDatatype env n)
-                (!Fm.canonical)
-                expTyp
+        val fm = !canonicalFm
     in
-        Fm.canonical := fm;
-        exp
+        (* canonicalFm := Fm.enter fm; *)
+        Fm.decls fm
     end
+
 end

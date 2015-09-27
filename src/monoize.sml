@@ -4484,13 +4484,14 @@ fun monoize env file =
                                                       (L'.DDatatype (dts @ !pvarDefs), loc) :: Fm.decls fm @ ds
                                                     | _ =>
                                                       ds' @ Fm.decls fm @ (L'.DDatatype (!pvarDefs), loc) :: ds)))
-                                    (env, Fm.empty mname, []) file
+                                     (env, Fm.empty mname, []) file
+        val monoFile = (rev ds, [])
     in
         pvars := RM.empty;
         pvarDefs := [];
         pvarOldDefs := [];
-        Fm.canonical := fm;
-        (rev ds, [])
+        MonoFooify.canonicalFm := Fm.empty (MonoUtil.File.maxName monoFile);
+        monoFile
     end
 
 end

@@ -19,9 +19,6 @@ structure Fm : sig
     val decls : t -> Mono.decl list
 
     val freshName : t -> int * t
-
-    (* Set at the end of [Monoize]. *)
-    val canonical : t ref
 end
 
 (* General form used in [Monoize]. *)
@@ -32,7 +29,9 @@ val fooifyExp : foo_kind
                 -> Mono.exp * Mono.typ
                 -> Mono.exp * Fm.t
 
-(* Easy-to-use special case used in [Sqlcache]. *)
-val urlify : MonoEnv.env -> Mono.exp * Mono.typ -> Mono.exp
+(* Easy-to-use interface in [Sqlcache]. Uses [Fm.canonical]. *)
+val canonicalFm : Fm.t ref (* Set at the end of [Monoize]. *)
+val urlify : MonoEnv.env -> Mono.exp * Mono.typ -> Mono.exp option
+val getNewFmDecls : unit -> Mono.decl list
 
 end
