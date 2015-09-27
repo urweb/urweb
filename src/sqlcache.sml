@@ -26,23 +26,23 @@ fun getFfiInfo () = !ffiInfo
 val ffiEffectful =
     (* ASK: how can this be less hard-coded? *)
     let
-        val fs = SS.fromList ["htmlifyInt_w",
-                              "htmlifyFloat_w",
-                              "htmlifyString_w",
-                              "htmlifyBool_w",
-                              "htmlifyTime_w",
-                              "attrifyInt_w",
-                              "attrifyFloat_w",
-                              "attrifyString_w",
-                              "attrifyChar_w",
-                              "urlifyInt_w",
-                              "urlifyFloat_w",
-                              "urlifyString_w",
-                              "urlifyBool_w",
-                              "urlifyChannel_w"]
+        val okayWrites = SS.fromList ["htmlifyInt_w",
+                                      "htmlifyFloat_w",
+                                      "htmlifyString_w",
+                                      "htmlifyBool_w",
+                                      "htmlifyTime_w",
+                                      "attrifyInt_w",
+                                      "attrifyFloat_w",
+                                      "attrifyString_w",
+                                      "attrifyChar_w",
+                                      "urlifyInt_w",
+                                      "urlifyFloat_w",
+                                      "urlifyString_w",
+                                      "urlifyBool_w",
+                                      "urlifyChannel_w"]
     in
         fn (m, f) => Settings.isEffectful (m, f)
-                     orelse not (m = "Basis" andalso SS.member (fs, f))
+                     andalso not (m = "Basis" andalso SS.member (okayWrites, f))
     end
 
 val cache = ref LruCache.cache
@@ -548,7 +548,7 @@ fun factorOutNontrivial text =
                         let
                             val n = length newVars
                         in
-                            (* This is the (n + 1)th new variable, so there are
+                            (* This is the (n+1)th new variable, so there are
                                already n new variables bound, so we increment
                                indices by n. *)
                             (strcat ((ERel (~(n+1)), loc), qText), incRels n e :: newVars)
@@ -586,7 +586,7 @@ fun addChecking file =
                                         dummyLoc)
                 val (EQuery {query = queryText, ...}, _) = queryExp
                 (* DEBUG *)
-                val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty queryText))
+                (* val () = Print.preface ("sqlcache> ", MonoPrint.p_exp MonoEnv.empty queryText) *)
                 val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
                 fun bind x f = Option.mapPartial f x
                 fun guard b x = if b then x else NONE
@@ -682,7 +682,7 @@ fun addFlushing ((file, (tableToIndices, indexToQueryNumArgs, index)), effs) =
                 val dmlText = incRels numArgs newDmlText
                 val dmlExp = EDml (dmlText, failureMode)
                 (* DEBUG *)
-                val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty dmlText))
+                (* val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty dmlText)) *)
                 val invs =
                     case Sql.parse Sql.dml dmlText of
                         SOME dmlParsed =>
@@ -795,6 +795,8 @@ val freeVars =
           0
           IS.empty
 
+val expSize = MonoUtil.Exp.fold {typ = #2, exp = fn (_, n) => n+1} 0
+
 datatype subexp = Pure of unit -> exp | Impure of exp
 
 val isImpure =
@@ -810,16 +812,18 @@ fun makeCache (env, exp', index) =
         NONE => NONE
       | SOME (TFun _, _) => NONE
       | SOME typ =>
-        case List.foldr (fn ((_, _), NONE) => NONE
-                          | ((n, typ), SOME args) =>
-                            case MonoFooify.urlify env ((ERel n, dummyLoc), typ) of
-                                NONE => NONE
-                              | SOME arg => SOME (arg :: args))
-                        (SOME [])
-                        (map (fn n => (n, #2 (MonoEnv.lookupERel env n)))
-                             (freeVars (exp', dummyLoc))) of
-            NONE => NONE
-          | SOME args => cacheWrap (env, (exp', dummyLoc), typ, args, index)
+        if expSize (exp', dummyLoc) < 5 (* TODO: pick a number. *)
+        then NONE
+        else case List.foldr (fn ((_, _), NONE) => NONE
+                               | ((n, typ), SOME args) =>
+                                 case MonoFooify.urlify env ((ERel n, dummyLoc), typ) of
+                                     NONE => NONE
+                                   | SOME arg => SOME (arg :: args))
+                             (SOME [])
+                             (map (fn n => (n, #2 (MonoEnv.lookupERel env n)))
+                                  (freeVars (exp', dummyLoc))) of
+                 NONE => NONE
+               | SOME args => cacheWrap (env, (exp', dummyLoc), typ, args, index)
 
 fun pureCache (effs : IS.set) ((env, exp as (exp', loc)), index) : subexp * int =
     let
@@ -848,8 +852,11 @@ fun pureCache (effs : IS.set) ((env, exp as (exp', loc)), index) : subexp * int 
             ECon (dk, pc, SOME e) => wrap1 (fn e => ECon (dk, pc, SOME e)) e
           | ESome (t, e) => wrap1 (fn e => ESome (t, e)) e
           | EFfiApp (s1, s2, args) =>
-            wrapN (fn es => EFfiApp (s1, s2, ListPair.map (fn (e, (_, t)) => (e, t)) (es, args)))
-                  (map #1 args)
+            if ffiEffectful (s1, s2)
+            then (Impure exp, index)
+            else wrapN (fn es =>
+                           EFfiApp (s1, s2, ListPair.map (fn (e, (_, t)) => (e, t)) (es, args)))
+                       (map #1 args)
           | EApp (e1, e2) => wrap2 EApp (e1, e2)
           | EAbs (s, t1, t2, e) =>
             wrapBind1 (fn e => EAbs (s, t1, t2, e))
@@ -918,7 +925,6 @@ fun addPure ((decls, sideInfo), index, effs) =
         (* Important that this happens after the MonoFooify.urlify calls! *)
         val fmDecls = MonoFooify.getNewFmDecls ()
     in
-        print (Int.toString (length fmDecls));
         (* ASK: fmDecls before or after? *)
         (fmDecls @ decls, sideInfo)
     end
