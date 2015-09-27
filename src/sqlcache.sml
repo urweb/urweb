@@ -41,6 +41,8 @@ val ffiEffectful =
                                       "urlifyBool_w",
                                       "urlifyChannel_w"]
     in
+        (* ASK: nicer way than using [Settings.addEffectful] for each Sqlcache
+           function? Right now they're all always effectful. *)
         fn (m, f) => Settings.isEffectful (m, f)
                      andalso not (m = "Basis" andalso SS.member (okayWrites, f))
     end
@@ -807,12 +809,15 @@ val expOfSubexp =
  fn Pure f => f ()
   | Impure e => e
 
+(* TODO: pick a number. *)
+val sizeWorthCaching = 5
+
 fun makeCache (env, exp', index) =
     case typOfExp' env exp' of
         NONE => NONE
       | SOME (TFun _, _) => NONE
       | SOME typ =>
-        if expSize (exp', dummyLoc) < 5 (* TODO: pick a number. *)
+        if expSize (exp', dummyLoc) < sizeWorthCaching
         then NONE
         else case List.foldr (fn ((_, _), NONE) => NONE
                                | ((n, typ), SOME args) =>

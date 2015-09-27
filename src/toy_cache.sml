@@ -13,7 +13,13 @@ val optionStringTyp = (TOption stringTyp, dummyLoc)
 fun withTyp typ = map (fn exp => (exp, typ))
 
 fun ffiAppCache' (func, index, argTyps) =
-    EFfiApp ("Sqlcache", func ^ Int.toString index, argTyps)
+    let
+        val m = "Sqlcache"
+        val f = func ^ Int.toString index
+    in
+        Settings.addEffectful (m, f);
+        EFfiApp (m, f, argTyps)
+    end
 
 fun check (index, keys) =
     ffiAppCache' ("check", index, withTyp stringTyp keys)
