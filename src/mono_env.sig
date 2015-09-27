@@ -42,8 +42,6 @@ signature MONO_ENV = sig
     val pushERel : env -> string -> Mono.typ -> Mono.exp option -> env
     val lookupERel : env -> int -> string * Mono.typ * Mono.exp option
 
-    val typeContext : env -> Mono.typ list
-
     val pushENamed : env -> string -> int -> Mono.typ -> Mono.exp option -> string -> env
     val lookupENamed : env -> int -> string * Mono.typ * Mono.exp option * string
 

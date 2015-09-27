@@ -108,8 +108,6 @@ fun lookupERel (env : env) n =
     (List.nth (#relE env, n))
     handle Subscript => raise UnboundRel n
 
-fun typeContext (env : env) = map #2 (#relE env)
-
 fun pushENamed (env : env) x n t eo s =
     {datatypes = #datatypes env,
      constructors = #constructors env,

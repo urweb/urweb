@@ -673,8 +673,8 @@ val gunk : ((Sql.query * int) * Sql.dml) list ref = ref []
 
 fun addFlushing ((file, (tableToIndices, indexToQueryNumArgs, index)), effs) =
     let
-        val flushes = List.concat o
-                      map (fn (i, argss) => map (fn args => flush (i, args)) argss)
+        val flushes = List.concat
+                      o map (fn (i, argss) => map (fn args => flush (i, args)) argss)
         val doExp =
          fn EDml (origDmlText, failureMode) =>
             let
@@ -783,6 +783,18 @@ and typOfExp env (e', loc) = typOfExp' env e'
 (* Caching Pure Subexpressions *)
 (*******************************)
 
+val freeVars =
+    IS.listItems
+    o MonoUtil.Exp.foldB
+          {typ = #2,
+           exp = fn (bound, ERel n, vars) => if n < bound
+                                             then vars
+                                             else IS.add (vars, n - bound)
+                  | (_, _, vars) => vars,
+           bind = fn (bound, MonoUtil.Exp.RelE _) => bound + 1 | (bound, _) => bound}
+          0
+          IS.empty
+
 datatype subexp = Pure of unit -> exp | Impure of exp
 
 val isImpure =
@@ -798,13 +810,14 @@ fun makeCache (env, exp', index) =
         NONE => NONE
       | SOME (TFun _, _) => NONE
       | SOME typ =>
-        case ListUtil.foldri (fn (_, _, NONE) => NONE
-                               | (n, typ, SOME args) =>
-                                 case MonoFooify.urlify env ((ERel n, dummyLoc), typ) of
-                                     NONE => NONE
-                                   | SOME arg => SOME (arg :: args))
-                             (SOME [])
-                             (MonoEnv.typeContext env) of
+        case List.foldr (fn ((_, _), NONE) => NONE
+                          | ((n, typ), SOME args) =>
+                            case MonoFooify.urlify env ((ERel n, dummyLoc), typ) of
+                                NONE => NONE
+                              | SOME arg => SOME (arg :: args))
+                        (SOME [])
+                        (map (fn n => (n, #2 (MonoEnv.lookupERel env n)))
+                             (freeVars (exp', dummyLoc))) of
             NONE => NONE
           | SOME args => cacheWrap (env, (exp', dummyLoc), typ, args, index)
 
@@ -906,7 +919,8 @@ fun addPure ((decls, sideInfo), index, effs) =
         val fmDecls = MonoFooify.getNewFmDecls ()
     in
         print (Int.toString (length fmDecls));
-        (decls @ fmDecls, sideInfo)
+        (* ASK: fmDecls before or after? *)
+        (fmDecls @ decls, sideInfo)
     end
 
 val go' = addPure o addFlushing o addChecking o inlineSql
