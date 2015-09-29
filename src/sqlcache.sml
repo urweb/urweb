@@ -799,6 +799,45 @@ val freeVars =
 
 val expSize = MonoUtil.Exp.fold {typ = #2, exp = fn (_, n) => n+1} 0
 
+structure InvalidationInfo :> sig
+  type t
+  val fromList : int list -> t
+  val toList : t -> int list
+  val union : t * t -> t
+  val unbind : t * int -> t option
+end = struct
+
+(* Keep track of the minimum explicitly. NONE is the empty set. *)
+type t = (int * IS.set) option
+
+val fromList =
+    List.foldl
+        (fn (n, NONE) => SOME (n, IS.singleton n)
+          | (n', SOME (n, ns)) => SOME (Int.min (n, n'), IS.add (ns, n')))
+        NONE
+
+val toList =
+ fn NONE => []
+  | SOME (_, ns) => IS.listItems ns
+
+val union =
+ fn (SOME (n1, ns1), SOME (n2, ns2)) => SOME (Int.min (n1, n2), IS.union (ns1, ns2))
+  | (NONE, x) => x
+  | (x, NONE) => x
+
+val unbind =
+ fn (SOME (n, ns), unbound) =>
+    let
+        val n = n - unbound
+    in
+        if n < 0
+        then NONE
+        else SOME (SOME (n, IS.map (fn n => n - unbound) ns))
+    end
+  | _ => SOME NONE
+
+end
+
 datatype subexp = Pure of unit -> exp | Impure of exp
 
 val isImpure =

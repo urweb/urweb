@@ -1,4 +1,4 @@
-structure MonoFooify (* :> MONO_FOOIFY *) = struct
+structure MonoFooify :> MONO_FOOIFY = struct
 
 open Mono
 
