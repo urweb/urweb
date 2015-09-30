@@ -16,6 +16,7 @@ structure Fm : sig
     val lookup : t -> foo_kind -> int -> (int -> t -> vr * t) -> t * int
     val lookupList : t -> foo_kind -> Mono.typ -> (int -> t -> vr * t) -> t * int
     val enter : t -> t
+    (* This list should be reversed before adding to list of file declarations. *)
     val decls : t -> Mono.decl list
 
     val freshName : t -> int * t
@@ -32,6 +33,7 @@ val fooifyExp : foo_kind
 (* Easy-to-use interface in [Sqlcache]. Uses [Fm.canonical]. *)
 val canonicalFm : Fm.t ref (* Set at the end of [Monoize]. *)
 val urlify : MonoEnv.env -> Mono.exp * Mono.typ -> Mono.exp option
+(* This list should be reversed before adding to list of file declarations. *)
 val getNewFmDecls : unit -> Mono.decl list
 
 end

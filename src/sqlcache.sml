@@ -499,6 +499,8 @@ fun cacheWrap (env, exp, resultTyp, args, i) =
     let
         val loc = dummyLoc
         val rel0 = (ERel 0, loc)
+        (* DEBUG *)
+        val () = print (Int.toString i ^ "\n")
     in
         case MonoFooify.urlify env (rel0, resultTyp) of
             NONE => NONE
@@ -506,7 +508,7 @@ fun cacheWrap (env, exp, resultTyp, args, i) =
             let
                 val () = ffiInfo := {index = i, params = length args} :: !ffiInfo
                 (* We ensure before this step that all arguments aren't effectful.
-               by turning them into local variables as needed. *)
+                   by turning them into local variables as needed. *)
                 val argsInc = map (incRels 1) args
                 val check = (check (i, args), loc)
                 val store = (store (i, argsInc, urlified), loc)
@@ -615,7 +617,9 @@ fun addChecking file =
             in
                 case attempt of
                     SOME pair => pair
-                  | NONE => (e', queryInfo)
+                  (* We have to increment index conservatively. *)
+                  (* TODO: just use a reference for current index.... *)
+                  | NONE => (e', (tableToIndices, indexToQueryNumArgs, index + 1))
             end
           | e' => (e', queryInfo)
     in
@@ -672,6 +676,7 @@ val invalidations = Invalidations.invalidations
 
 (* DEBUG *)
 val gunk : ((Sql.query * int) * Sql.dml) list ref = ref []
+val gunk' : exp list ref = ref []
 
 fun addFlushing ((file, (tableToIndices, indexToQueryNumArgs, index)), effs) =
     let
@@ -680,26 +685,30 @@ fun addFlushing ((file, (tableToIndices, indexToQueryNumArgs, index)), effs) =
         val doExp =
          fn EDml (origDmlText, failureMode) =>
             let
+                (* DEBUG *)
+                val () = gunk' := origDmlText :: !gunk'
                 val (newDmlText, wrapLets, numArgs) = factorOutNontrivial origDmlText
                 val dmlText = incRels numArgs newDmlText
                 val dmlExp = EDml (dmlText, failureMode)
                 (* DEBUG *)
-                (* val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty dmlText)) *)
-                val invs =
+                val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty origDmlText))
+                val inval =
                     case Sql.parse Sql.dml dmlText of
                         SOME dmlParsed =>
-                        map (fn i => (case IM.find (indexToQueryNumArgs, i) of
-                                          SOME queryNumArgs =>
-                                          (* DEBUG *)
-                                          (gunk := (queryNumArgs, dmlParsed) :: !gunk;
-                                           (i, invalidations (queryNumArgs, dmlParsed)))
-                                        (* TODO: fail more gracefully. *)
-                                        | NONE => raise Match))
-                            (SIMM.findList (tableToIndices, tableDml dmlParsed))
-                      (* TODO: fail more gracefully. *)
-                      | NONE => raise Match
+                        SOME (map (fn i => (case IM.find (indexToQueryNumArgs, i) of
+                                                SOME queryNumArgs =>
+                                                (* DEBUG *)
+                                                (gunk := (queryNumArgs, dmlParsed) :: !gunk;
+                                                 (i, invalidations (queryNumArgs, dmlParsed)))
+                                              (* TODO: fail more gracefully. *)
+                                              | NONE => raise Match))
+                                  (SIMM.findList (tableToIndices, tableDml dmlParsed)))
+                      | NONE => NONE
             in
-                wrapLets (sequence (flushes invs @ [dmlExp]))
+                case inval of
+                    (* TODO: fail more gracefully. *)
+                    NONE => raise Match
+                  | SOME invs => wrapLets (sequence (flushes invs @ [dmlExp]))
             end
           | e' => e'
     in
@@ -801,6 +810,7 @@ val expSize = MonoUtil.Exp.fold {typ = #2, exp = fn (_, n) => n+1} 0
 
 structure InvalidationInfo :> sig
   type t
+  val empty : t
   val fromList : int list -> t
   val toList : t -> int list
   val union : t * t -> t
@@ -816,14 +826,16 @@ val fromList =
           | (n', SOME (n, ns)) => SOME (Int.min (n, n'), IS.add (ns, n')))
         NONE
 
+val empty = fromList []
+
 val toList =
  fn NONE => []
   | SOME (_, ns) => IS.listItems ns
 
 val union =
  fn (SOME (n1, ns1), SOME (n2, ns2)) => SOME (Int.min (n1, n2), IS.union (ns1, ns2))
-  | (NONE, x) => x
-  | (x, NONE) => x
+  | (NONE, info) => info
+  | (info, NONE) => info
 
 val unbind =
  fn (SOME (n, ns), unbound) =>
@@ -837,6 +849,15 @@ val unbind =
   | _ => SOME NONE
 
 end
+
+val unionUnbind =
+    List.foldl
+        (fn (_, NONE) => NONE
+          | ((info, unbound), SOME infoAcc) =>
+            case InvalidationInfo.unbind (info, unbound) of
+                NONE => NONE
+              | SOME info => SOME (InvalidationInfo.union (info, infoAcc)))
+        (SOME InvalidationInfo.empty)
 
 datatype subexp = Pure of unit -> exp | Impure of exp
 
@@ -936,44 +957,43 @@ fun pureCache (effs : IS.set) ((env, exp as (exp', loc)), index) : subexp * int 
                        index + 1)
     end
 
-fun addPure ((decls, sideInfo), index, effs) =
+fun addPure ((decls, sideInfo), indexStart, effs) =
     let
-        fun doVal ((x, n, t, exp, s), index) =
+        fun doVal env ((x, n, t, exp, s), index) =
             let
-                val (subexp, index) = pureCache effs ((MonoEnv.empty, exp), index)
+                val (subexp, index) = pureCache effs ((env, exp), index)
             in
                 ((x, n, t, expOfSubexp subexp, s), index)
             end
-        fun doDecl' (decl', index) =
+        fun doDecl' env (decl', index) =
             case decl' of
                 DVal v =>
                 let
-                    val (v, index) = (doVal (v, index))
+                    val (v, index) = doVal env (v, index)
                 in
                     (DVal v, index)
                 end
               | DValRec vs =>
                 let
-                    val (vs, index) = ListUtil.foldlMap doVal index vs
+                    val (vs, index) = ListUtil.foldlMap (doVal env) index vs
                 in
                     (DValRec vs, index)
                 end
               | _ => (decl', index)
-        fun doDecl ((decl', loc), index) =
+        fun doDecl (decl as (decl', loc), (revDecls, env, index)) =
             let
-                val (decl', index) = doDecl' (decl', index)
+                val env = MonoEnv.declBinds env decl
+                val (decl', index) = doDecl' env (decl', index)
+                (* Important that this happens after [MonoFooify.urlify] calls! *)
+                val fmDecls = MonoFooify.getNewFmDecls ()
             in
-                ((decl', loc), index)
+                ((decl', loc) :: (fmDecls @ revDecls), env, index)
             end
-        val decls = #1 (ListUtil.foldlMap doDecl index decls)
-        (* Important that this happens after the MonoFooify.urlify calls! *)
-        val fmDecls = MonoFooify.getNewFmDecls ()
     in
-        (* ASK: fmDecls before or after? *)
-        (fmDecls @ decls, sideInfo)
+        (rev (#1 (List.foldl doDecl ([], MonoEnv.empty, indexStart) decls)), sideInfo)
     end
 
-val go' = addPure o addFlushing o addChecking o inlineSql
+val go' = addPure o addFlushing o addChecking (* DEBUG: add back [o inlineSql]. *)
 
 fun go file =
     let

@@ -321,7 +321,7 @@ val funcName = altL [constK "COUNT",
 
 fun arithmetic pExp = follow (const "(")
                              (follow pExp
-                                     (follow (altL (map const [" + ", " - ", " * ", " / "]))
+                                     (follow (altL (map const [" + ", " - ", " * ", " / ", " >> ", " << "]))
                                              (follow pExp (const ")"))))
 
 val unmodeled = altL [const "COUNT(*)",
@@ -445,9 +445,11 @@ val insert = log "insert"
 val delete = log "delete"
                  (wrap (follow (const "DELETE FROM ")
                                (follow uw_ident
-                                       (follow (follow (opt (const " AS T_T")) (const " WHERE "))
-                                               sqexp)))
-                       (fn ((), (tab, (_, es))) => (tab, es)))
+                                       (follow (opt (const " AS T_T"))
+                                               (opt (follow (const " WHERE ") sqexp)))))
+                       (fn ((), (tab, (_, wher))) => (tab, case wher of
+                                                               SOME (_, es) => es
+                                                             | NONE => SqTrue)))
 
 val setting = log "setting"
                   (wrap (follow uw_ident (follow (const " = ") sqexp))

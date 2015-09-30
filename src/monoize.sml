@@ -4344,12 +4344,14 @@ fun monoize env file =
                             val (nullable, notNullable) = calcClientish xts
 
                             fun cond (x, v) =
-                                (L'.EStrcat (str (Settings.mangleSql x
-                                                  ^ (case v of
-                                                         Client => ""
-                                                       | Channel => " >> 32")
-                                                  ^ " = "),
-                                             target), loc)
+                                (L'.EStrcat ((L'.EStrcat (str ("(("
+                                                               ^ Settings.mangleSql x
+                                                               ^ (case v of
+                                                                      Client => ""
+                                                                    | Channel => " >> 32")
+                                                               ^ ") = "),
+                                                          target), loc),
+                                             str ")"), loc)
 
                             val e =
                                 foldl (fn ((x, v), e) =>
@@ -4490,7 +4492,7 @@ fun monoize env file =
         pvars := RM.empty;
         pvarDefs := [];
         pvarOldDefs := [];
-        MonoFooify.canonicalFm := Fm.empty (MonoUtil.File.maxName monoFile);
+        MonoFooify.canonicalFm := Fm.empty (MonoUtil.File.maxName monoFile + 1);
         monoFile
     end
 

@@ -328,7 +328,7 @@ fun getNewFmDecls () =
     let
         val fm = !canonicalFm
     in
-        (* canonicalFm := Fm.enter fm; *)
+        canonicalFm := Fm.enter fm;
         Fm.decls fm
     end
 
