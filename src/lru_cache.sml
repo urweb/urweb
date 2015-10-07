@@ -91,7 +91,8 @@ fun setupQuery {index, params} =
              newline,
              string ("  uw_Sqlcache_CacheValue *v = uw_Sqlcache_check(cache" ^ i ^ ", ks);"),
              newline,
-             string "  if (v) {",
+             (* If the output is null, it means we had too much recursion, so it's a miss. *)
+             string "  if (v && v->output != NULL) {",
              newline,
              string ("    puts(\"SQLCACHE: hit " ^ i ^ ".\");"),
              newline,

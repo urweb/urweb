@@ -127,9 +127,13 @@ fun capitalize s =
 
 structure E = ErrorMsg
 
+exception TypeMismatch of Fm.t * E.span
+exception CantPass of Fm.t * typ
+exception DontKnow of Fm.t * typ
+
 val dummyExp = (EPrim (Prim.Int 0), E.dummySpan)
 
-fun fooifyExp fk lookupENamed lookupDatatype =
+fun fooifyExpWithExceptions fk lookupENamed lookupDatatype =
     let
         fun fooify fm (e, tAll as (t, loc)) =
             case #1 e of
@@ -155,8 +159,7 @@ fun fooifyExp fk lookupENamed lookupDatatype =
                                                                    arg'), loc)), loc),
                                          fm)
                             end
-                          | _ => (E.errorAt loc "Type mismatch encoding attribute";
-                                  (e, fm))
+                          | _ => raise TypeMismatch (fm, loc)
                 in
                     attrify (args, ft, (EPrim (Prim.String (Prim.Normal, Settings.getUrlPrefix () ^ s)), loc), fm)
                 end
@@ -165,10 +168,8 @@ fun fooifyExp fk lookupENamed lookupDatatype =
                     TFfi ("Basis", "unit") => ((EPrim (Prim.String (Prim.Normal, "")), loc), fm)
                   | TFfi (m, x) => (if Settings.mayClientToServer (m, x)
                                     (* TODO: better error message. (Then again, user should never see this.) *)
-                                    then ()
-                                    else (E.errorAt loc "MonoFooify: can't pass type from client to server";
-                                          Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)]);
-                                    ((EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [(e, tAll)]), loc), fm))
+                                    then ((EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [(e, tAll)]), loc), fm)
+                                    else raise CantPass (fm, tAll))
 
                   | TRecord [] => ((EPrim (Prim.String (Prim.Normal, "")), loc), fm)
                   | TRecord ((x, t) :: xts) =>
@@ -291,38 +292,50 @@ fun fooifyExp fk lookupENamed lookupDatatype =
                         ((EApp ((ENamed n, loc), e), loc), fm)
                     end
 
-                  | _ => (E.errorAt loc "Don't know how to encode attribute/URL type";
-                          Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty tAll)];
-                          (dummyExp, fm))
+                  | _ => raise DontKnow (fm, tAll)
     in
         fooify
     end
+
+fun fooifyExp fk lookupENamed lookupDatatype fm exp =
+    fooifyExpWithExceptions fk lookupENamed lookupDatatype fm exp
+    handle TypeMismatch (fm, loc) =>
+           (E.errorAt loc "Type mismatch encoding attribute";
+            (dummyExp, fm))
+         | CantPass (fm, typ as (_, loc)) =>
+           (E.errorAt loc "MonoFooify: can't pass type from client to server";
+            Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty typ)];
+            (dummyExp, fm))
+         | DontKnow (fm, typ as (_, loc)) =>
+           (E.errorAt loc "Don't know how to encode attribute/URL type";
+            Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty typ)];
+            (dummyExp, fm))
+
 
 (* Has to be set at the end of [Monoize]. *)
 val canonicalFm = ref (Fm.empty 0 : Fm.t)
 
 fun urlify env expTyp =
-    if ErrorMsg.anyErrors ()
-    then ((* DEBUG *) print "already error"; NONE)
-    else
-        let
-            val (exp, fm) =
-                fooifyExp
-                    Url
-                    (fn n =>
-                        let
-                            val (_, t, _, s) = MonoEnv.lookupENamed env n
-                        in
-                            (t, s)
-                        end)
-                    (fn n => MonoEnv.lookupDatatype env n)
-                    (!canonicalFm)
-                    expTyp
-        in
-            if ErrorMsg.anyErrors ()
-            then ((* DEBUG *) print "why"; (ErrorMsg.resetErrors (); NONE))
-            else (canonicalFm := fm; SOME exp)
-        end
+    let
+        val (exp, fm) =
+            fooifyExpWithExceptions
+                Url
+                (fn n =>
+                    let
+                        val (_, t, _, s) = MonoEnv.lookupENamed env n
+                    in
+                        (t, s)
+                    end)
+                (fn n => MonoEnv.lookupDatatype env n)
+                (!canonicalFm)
+                expTyp
+    in
+        canonicalFm := fm;
+        SOME exp
+    end
+    handle TypeMismatch _ => NONE
+         | CantPass _ => NONE
+         | DontKnow _ => NONE
 
 fun getNewFmDecls () =
     let

@@ -72,6 +72,9 @@ void uw_buffer_free(uw_buffer *b) {
 
 void uw_buffer_reset(uw_buffer *b) {
   b->front = b->start;
+  if (b->front != b->back) {
+    *b->front = 0;
+  }
 }
 
 int uw_buffer_check(uw_buffer *b, size_t extra) {
@@ -486,7 +489,8 @@ struct uw_context {
   size_t output_buffer_size;
 
   // For caching.
-  char *recording;
+  int numRecording;
+  int recordingOffset;
 
   int remoteSock;
 };
@@ -572,7 +576,8 @@ uw_context uw_init(int id, uw_loggers *lg) {
   ctx->output_buffer = malloc(1);
   ctx->output_buffer_size = 1;
 
-  ctx->recording = 0;
+  ctx->numRecording = 0;
+  ctx->recordingOffset = 0;
 
   ctx->remoteSock = -1;
 
@@ -1689,11 +1694,18 @@ void uw_write(uw_context ctx, const char* s) {
 }
 
 void uw_recordingStart(uw_context ctx) {
-  ctx->recording = ctx->page.front;
+  if (ctx->numRecording++ == 0) {
+    ctx->recordingOffset = ctx->page.front - ctx->page.start;
+  }
 }
 
 char *uw_recordingRead(uw_context ctx) {
-  return strdup(ctx->recording);
+  // Only the outermost recorder can read unless the recording is empty.
+  char *recording = ctx->page.start + ctx->recordingOffset;
+  if (--ctx->numRecording > 0 && recording != ctx->page.front) {
+    return NULL;
+  }
+  return strdup(recording);
 }
 
 char *uw_Basis_attrifyInt(uw_context ctx, uw_Basis_int n) {
@@ -4543,7 +4555,7 @@ time_t uw_Sqlcache_timeMax(time_t x, time_t y) {
   return difftime(x, y) > 0 ? x : y;
 }
 
-void uw_Sqlcache_freeuw_Sqlcache_CacheValue(uw_Sqlcache_CacheValue *value) {
+void uw_Sqlcache_free(uw_Sqlcache_CacheValue *value) {
   if (value) {
     free(value->result);
     free(value->output);
@@ -4554,7 +4566,7 @@ void uw_Sqlcache_freeuw_Sqlcache_CacheValue(uw_Sqlcache_CacheValue *value) {
 void uw_Sqlcache_delete(uw_Sqlcache_Cache *cache, uw_Sqlcache_CacheEntry* entry) {
   //uw_Sqlcache_listUw_Sqlcache_Delete(cache->lru, entry);
   HASH_DELETE(hh, cache->table, entry);
-  uw_Sqlcache_freeuw_Sqlcache_CacheValue(entry->value);
+  uw_Sqlcache_free(entry->value);
   free(entry->key);
   free(entry);
 }
@@ -4595,7 +4607,7 @@ void uw_Sqlcache_storeHelper(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcache_
   entry->timeValid = timeNow;
   if (cache->height == 0) {
     //uw_Sqlcache_listAdd(cache->lru, entry);
-    uw_Sqlcache_freeuw_Sqlcache_CacheValue(entry->value);
+    uw_Sqlcache_free(entry->value);
     entry->value = value;
     //if (cache->lru->size > MAX_SIZE) {
       //uw_Sqlcache_delete(cache, cache->lru->first);
