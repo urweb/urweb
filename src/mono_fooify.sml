@@ -167,7 +167,6 @@ fun fooifyExpWithExceptions fk lookupENamed lookupDatatype =
                 case t of
                     TFfi ("Basis", "unit") => ((EPrim (Prim.String (Prim.Normal, "")), loc), fm)
                   | TFfi (m, x) => (if Settings.mayClientToServer (m, x)
-                                    (* TODO: better error message. (Then again, user should never see this.) *)
                                     then ((EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [(e, tAll)]), loc), fm)
                                     else raise CantPass (fm, tAll))
 
@@ -310,7 +309,6 @@ fun fooifyExp fk lookupENamed lookupDatatype fm exp =
            (E.errorAt loc "Don't know how to encode attribute/URL type";
             Print.eprefaces' [("Type", MonoPrint.p_typ MonoEnv.empty typ)];
             (dummyExp, fm))
-
 
 (* Has to be set at the end of [Monoize]. *)
 val canonicalFm = ref (Fm.empty 0 : Fm.t)

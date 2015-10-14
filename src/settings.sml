@@ -151,7 +151,8 @@ val effectfulBase = basis ["dml",
 
 val effectful = ref effectfulBase
 fun setEffectful ls = effectful := S.addList (effectfulBase, ls)
-fun isEffectful x = S.member (!effectful, x)
+fun isEffectful ("Sqlcache", _) = true
+  | isEffectful x = S.member (!effectful, x)
 fun addEffectful x = effectful := S.add (!effectful, x)
 
 val benignBase = basis ["get_cookie",

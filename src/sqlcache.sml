@@ -15,7 +15,7 @@ fun iterate f n x = if n < 0
                     then x
                     else iterate f (n-1) (f x)
 
-(* Filled in by [cacheWrap] during [Sqlcache]. *)
+(* Filled in by [cacheWrap]. *)
 val ffiInfo : {index : int, params : int} list ref = ref []
 
 fun resetFfiInfo () = ffiInfo := []
@@ -41,8 +41,7 @@ val ffiEffectful =
                                       "urlifyBool_w",
                                       "urlifyChannel_w"]
     in
-        (* ASK: nicer way than using [Settings.addEffectful] for each Sqlcache
-           function? Right now they're all always effectful. *)
+        (* ASK: is it okay to hardcode Sqlcache functions as effectful? *)
         fn (m, f) => Settings.isEffectful (m, f)
                      andalso not (m = "Basis" andalso SS.member (okayWrites, f))
     end
@@ -456,9 +455,9 @@ val tableDml =
   | Sql.Update (tab, _, _) => tab
 
 
-(***************************)
-(* Program Instrumentation *)
-(***************************)
+(*************************************)
+(* Program Instrumentation Utilities *)
+(*************************************)
 
 val varName =
     let
@@ -495,33 +494,6 @@ fun incRels inc =
                     | e' => e'),
          bind = fn (bound, MonoUtil.Exp.RelE _) => bound + 1 | (bound, _) => bound}
         0
-
-fun cacheWrap (env, exp, resultTyp, args, i) =
-    let
-        val loc = dummyLoc
-        val rel0 = (ERel 0, loc)
-    in
-        case MonoFooify.urlify env (rel0, resultTyp) of
-            NONE => NONE
-          | SOME urlified =>
-            let
-                val () = ffiInfo := {index = i, params = length args} :: !ffiInfo
-                (* We ensure before this step that all arguments aren't effectful.
-                   by turning them into local variables as needed. *)
-                val argsInc = map (incRels 1) args
-                val check = (check (i, args), loc)
-                val store = (store (i, argsInc, urlified), loc)
-            in
-                SOME (ECase
-                          (check,
-                           [((PNone stringTyp, loc),
-                             (ELet (varName "q", resultTyp, exp, (ESeq (store, rel0), loc)), loc)),
-                            ((PSome (stringTyp, (PVar (varName "hit", stringTyp), loc)), loc),
-                             (* Boolean is false because we're not unurlifying from a cookie. *)
-                             (EUnurlify (rel0, resultTyp, false), loc))],
-                           {disc = (TOption stringTyp, loc), result = resultTyp}))
-            end
-    end
 
 fun fileTopLevelMapfoldB doTopLevelExp (decls, sideInfo) state =
     let
@@ -569,205 +541,6 @@ fun fileAllMapfoldB doExp file start =
       | Search.Return _ => raise Match
 
 fun fileMap doExp file = #1 (fileAllMapfoldB (fn _ => fn e => fn _ => (doExp e, ())) file ())
-
-fun factorOutNontrivial text =
-    let
-        val loc = dummyLoc
-        fun strcat (e1, e2) = (EStrcat (e1, e2), loc)
-        val chunks = Sql.chunkify text
-        val (newText, newVariables) =
-            (* Important that this is foldr (to oppose foldl below). *)
-            List.foldr
-                (fn (chunk, (qText, newVars)) =>
-                    (* Variable bound to the head of newBs will have the lowest index. *)
-                    case chunk of
-                        Sql.Exp (e as (EPrim _, _)) => (strcat (e, qText), newVars)
-                      | Sql.Exp e =>
-                        let
-                            val n = length newVars
-                        in
-                            (* This is the (n+1)th new variable, so there are
-                               already n new variables bound, so we increment
-                               indices by n. *)
-                            (strcat ((ERel (~(n+1)), loc), qText), incRels n e :: newVars)
-                        end
-                      | Sql.String s => (strcat (stringExp s, qText), newVars))
-                (stringExp "", [])
-                chunks
-        fun wrapLets e' =
-            (* Important that this is foldl (to oppose foldr above). *)
-            List.foldl (fn (v, e') => ELet (varName "sqlArg", stringTyp, v, (e', loc)))
-                       e'
-                       newVariables
-        val numArgs = length newVariables
-    in
-        (newText, wrapLets, numArgs)
-    end
-
-fun cacheQuery effs env (queryInfo as (tableToIndices, indexToQueryNumArgs, index)) =
- fn e' as EQuery {query = origQueryText,
-                  state = resultTyp,
-                  initial, body, tables, exps} =>
-    let
-        val (newQueryText, wrapLets, numArgs) = factorOutNontrivial origQueryText
-        (* Increment once for each new variable just made. *)
-        val queryExp = incRels numArgs
-                               (EQuery {query = newQueryText,
-                                        state = resultTyp,
-                                        initial = initial,
-                                        body = body,
-                                        tables = tables,
-                                        exps = exps},
-                                dummyLoc)
-        (* DEBUG *)
-        (* val () = Print.preface ("sqlcache> ", MonoPrint.p_exp MonoEnv.empty queryText) *)
-        val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
-        fun bind x f = Option.mapPartial f x
-        fun guard b x = if b then x else NONE
-        (* We use dummyTyp here. I think this is okay because databases don't
-           store (effectful) functions, but perhaps there's some pathalogical
-           corner case missing.... *)
-        fun safe bound =
-            not
-            o effectful effs
-                        (iterate (fn env => MonoEnv.pushERel env "_" dummyTyp NONE)
-                                 bound
-                                 env)
-        val textOfQuery = fn (EQuery {query, ...}, _) => SOME query | _ => NONE
-        val attempt =
-            (* Ziv misses Haskell's do notation.... *)
-            bind (textOfQuery queryExp) (fn queryText =>
-            guard (safe 0 queryText andalso safe 0 initial andalso safe 2 body) (
-            bind (Sql.parse Sql.query queryText) (fn queryParsed =>
-            bind (cacheWrap (env, queryExp, resultTyp, args, index)) (fn cachedExp =>
-            SOME (wrapLets cachedExp,
-                  (SS.foldr (fn (tab, qi) => SIMM.insert (qi, tab, index))
-                            tableToIndices
-                            (tablesQuery queryParsed),
-                   IM.insert (indexToQueryNumArgs, index, (queryParsed, numArgs)),
-                   index + 1))))))
-    in
-        case attempt of
-            SOME pair => pair
-          (* We have to increment index conservatively. *)
-          (* TODO: just use a reference for current index.... *)
-          | NONE => (e', (tableToIndices, indexToQueryNumArgs, index + 1))
-    end
-  | e' => (e', queryInfo)
-
-fun addChecking file =
-    let
-        val effs = effectfulDecls file
-    in
-        (fileAllMapfoldB (fn env => fn exp => fn state => cacheQuery effs env state exp)
-                         file
-                         (SIMM.empty, IM.empty, 0),
-         effs)
-    end
-
-structure Invalidations = struct
-
-    val loc = dummyLoc
-
-    val optionAtomExpToExp =
-     fn NONE => (ENone stringTyp, loc)
-      | SOME e => (ESome (stringTyp,
-                          (case e of
-                               DmlRel n => ERel n
-                             | Prim p => EPrim p
-                             (* TODO: make new type containing only these two. *)
-                             | _ => raise Match,
-                           loc)),
-                   loc)
-
-    fun eqsToInvalidation numArgs eqs =
-        let
-            fun inv n = if n < 0 then [] else IM.find (eqs, n) :: inv (n - 1)
-        in
-            inv (numArgs - 1)
-        end
-
-    (* Tests if [ys] makes [xs] a redundant cache invalidation. [NONE] here
-       represents unknown, which means a wider invalidation. *)
-    val rec madeRedundantBy : atomExp option list * atomExp option list -> bool =
-     fn ([], []) => true
-      | (_ :: xs, NONE :: ys) => madeRedundantBy (xs, ys)
-      | (SOME x :: xs, SOME y :: ys) => (case AtomExpKey.compare (x, y) of
-                                             EQUAL => madeRedundantBy (xs, ys)
-                                           | _ => false)
-      | _ => false
-
-    fun eqss (query, dml) = conflictMaps (queryToFormula query, dmlToFormula dml)
-
-    fun invalidations ((query, numArgs), dml) =
-        (map (map optionAtomExpToExp)
-         o removeRedundant madeRedundantBy
-         o map (eqsToInvalidation numArgs)
-         o eqss)
-            (query, dml)
-
-end
-
-val invalidations = Invalidations.invalidations
-
-(* DEBUG *)
-(* val gunk : ((Sql.query * int) * Sql.dml) list ref = ref [] *)
-(* val gunk' : exp list ref = ref [] *)
-
-fun addFlushing ((file, (tableToIndices, indexToQueryNumArgs, index)), effs) =
-    let
-        val flushes = List.concat
-                      o map (fn (i, argss) => map (fn args => flush (i, args)) argss)
-        val doExp =
-         fn EDml (origDmlText, failureMode) =>
-            let
-                (* DEBUG *)
-                (* val () = gunk' := origDmlText :: !gunk' *)
-                val (newDmlText, wrapLets, numArgs) = factorOutNontrivial origDmlText
-                val dmlText = incRels numArgs newDmlText
-                val dmlExp = EDml (dmlText, failureMode)
-                (* DEBUG *)
-                val () = Print.preface ("SQLCACHE: ", (MonoPrint.p_exp MonoEnv.empty origDmlText))
-                val inval =
-                    case Sql.parse Sql.dml dmlText of
-                        SOME dmlParsed =>
-                        SOME (map (fn i => (case IM.find (indexToQueryNumArgs, i) of
-                                                SOME queryNumArgs =>
-                                                (* DEBUG *)
-                                                ((* gunk := (queryNumArgs, dmlParsed) :: !gunk; *)
-                                                 (i, invalidations (queryNumArgs, dmlParsed)))
-                                              (* TODO: fail more gracefully. *)
-                                              | NONE => raise Match))
-                                  (SIMM.findList (tableToIndices, tableDml dmlParsed)))
-                      | NONE => NONE
-            in
-                case inval of
-                    (* TODO: fail more gracefully. *)
-                    NONE => raise Match
-                  | SOME invs => wrapLets (sequence (flushes invs @ [dmlExp]))
-            end
-          | e' => e'
-    in
-        (* DEBUG *)
-        (* gunk := []; *)
-        (fileMap doExp file, index, effs)
-    end
-
-val inlineSql =
-    let
-        val doExp =
-         (* TODO: EQuery, too? *)
-         (* ASK: should this live in [MonoOpt]? *)
-         fn EDml ((ECase (disc, cases, {disc = dTyp, ...}), loc), failureMode) =>
-            let
-                val newCases = map (fn (p, e) => (p, (EDml (e, failureMode), loc))) cases
-            in
-                ECase (disc, newCases, {disc = dTyp, result = (TRecord [], loc)})
-            end
-          | e => e
-    in
-        fileMap doExp
-    end
 
 
 (**********************)
@@ -829,6 +602,33 @@ and typOfExp env (e', loc) = typOfExp' env e'
 (*******************************)
 (* Caching Pure Subexpressions *)
 (*******************************)
+
+fun cacheWrap (env, exp, resultTyp, args, i) =
+    let
+        val loc = dummyLoc
+        val rel0 = (ERel 0, loc)
+    in
+        case MonoFooify.urlify env (rel0, resultTyp) of
+            NONE => NONE
+          | SOME urlified =>
+            let
+                val () = ffiInfo := {index = i, params = length args} :: !ffiInfo
+                (* We ensure before this step that all arguments aren't effectful.
+                   by turning them into local variables as needed. *)
+                val argsInc = map (incRels 1) args
+                val check = (check (i, args), loc)
+                val store = (store (i, argsInc, urlified), loc)
+            in
+                SOME (ECase
+                          (check,
+                           [((PNone stringTyp, loc),
+                             (ELet (varName "q", resultTyp, exp, (ESeq (store, rel0), loc)), loc)),
+                            ((PSome (stringTyp, (PVar (varName "hit", stringTyp), loc)), loc),
+                             (* Boolean is false because we're not unurlifying from a cookie. *)
+                             (EUnurlify (rel0, resultTyp, false), loc))],
+                           {disc = (TOption stringTyp, loc), result = resultTyp}))
+            end
+    end
 
 val freeVars =
     IS.listItems
@@ -1003,6 +803,220 @@ fun addPure (file, indexStart, effs) =
             end
     in
         #1 (fileTopLevelMapfoldB doTopLevelExp file indexStart)
+    end
+
+
+(***********************)
+(* Caching SQL Queries *)
+(***********************)
+
+fun factorOutNontrivial text =
+    let
+        val loc = dummyLoc
+        fun strcat (e1, e2) = (EStrcat (e1, e2), loc)
+        val chunks = Sql.chunkify text
+        val (newText, newVariables) =
+            (* Important that this is foldr (to oppose foldl below). *)
+            List.foldr
+                (fn (chunk, (qText, newVars)) =>
+                    (* Variable bound to the head of newBs will have the lowest index. *)
+                    case chunk of
+                        Sql.Exp (e as (EPrim _, _)) => (strcat (e, qText), newVars)
+                      | Sql.Exp e =>
+                        let
+                            val n = length newVars
+                        in
+                            (* This is the (n+1)th new variable, so there are
+                               already n new variables bound, so we increment
+                               indices by n. *)
+                            (strcat ((ERel (~(n+1)), loc), qText), incRels n e :: newVars)
+                        end
+                      | Sql.String s => (strcat (stringExp s, qText), newVars))
+                (stringExp "", [])
+                chunks
+        fun wrapLets e' =
+            (* Important that this is foldl (to oppose foldr above). *)
+            List.foldl (fn (v, e') => ELet (varName "sqlArg", stringTyp, v, (e', loc)))
+                       e'
+                       newVariables
+        val numArgs = length newVariables
+    in
+        (newText, wrapLets, numArgs)
+    end
+
+fun cacheQuery effs env (queryInfo as (tableToIndices, indexToQueryNumArgs, index)) =
+ fn e' as EQuery {query = origQueryText,
+                  state = resultTyp,
+                  initial, body, tables, exps} =>
+    let
+        val (newQueryText, wrapLets, numArgs) = factorOutNontrivial origQueryText
+        (* Increment once for each new variable just made. *)
+        val queryExp = incRels numArgs
+                               (EQuery {query = newQueryText,
+                                        state = resultTyp,
+                                        initial = initial,
+                                        body = body,
+                                        tables = tables,
+                                        exps = exps},
+                                dummyLoc)
+        (* DEBUG *)
+        (* val () = Print.preface ("sqlcache> ", MonoPrint.p_exp MonoEnv.empty queryText) *)
+        val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
+        fun bind x f = Option.mapPartial f x
+        fun guard b x = if b then x else NONE
+        (* We use dummyTyp here. I think this is okay because databases don't
+           store (effectful) functions, but perhaps there's some pathalogical
+           corner case missing.... *)
+        fun safe bound =
+            not
+            o effectful effs
+                        (iterate (fn env => MonoEnv.pushERel env "_" dummyTyp NONE)
+                                 bound
+                                 env)
+        val textOfQuery = fn (EQuery {query, ...}, _) => SOME query | _ => NONE
+        val attempt =
+            (* Ziv misses Haskell's do notation.... *)
+            bind (textOfQuery queryExp) (fn queryText =>
+            guard (safe 0 queryText andalso safe 0 initial andalso safe 2 body) (
+            bind (Sql.parse Sql.query queryText) (fn queryParsed =>
+            bind (cacheWrap (env, queryExp, resultTyp, args, index)) (fn cachedExp =>
+            SOME (wrapLets cachedExp,
+                  (SS.foldr (fn (tab, qi) => SIMM.insert (qi, tab, index))
+                            tableToIndices
+                            (tablesQuery queryParsed),
+                   IM.insert (indexToQueryNumArgs, index, (queryParsed, numArgs)),
+                   index + 1))))))
+    in
+        case attempt of
+            SOME pair => pair
+          (* We have to increment index conservatively. *)
+          (* TODO: just use a reference for current index.... *)
+          | NONE => (e', (tableToIndices, indexToQueryNumArgs, index + 1))
+    end
+  | e' => (e', queryInfo)
+
+fun addChecking file =
+    let
+        val effs = effectfulDecls file
+    in
+        (fileAllMapfoldB (fn env => fn exp => fn state => cacheQuery effs env state exp)
+                         file
+                         (SIMM.empty, IM.empty, 0),
+         effs)
+    end
+
+
+(************)
+(* Flushing *)
+(************)
+
+structure Invalidations = struct
+
+    val loc = dummyLoc
+
+    val optionAtomExpToExp =
+     fn NONE => (ENone stringTyp, loc)
+      | SOME e => (ESome (stringTyp,
+                          (case e of
+                               DmlRel n => ERel n
+                             | Prim p => EPrim p
+                             (* TODO: make new type containing only these two. *)
+                             | _ => raise Match,
+                           loc)),
+                   loc)
+
+    fun eqsToInvalidation numArgs eqs =
+        let
+            fun inv n = if n < 0 then [] else IM.find (eqs, n) :: inv (n - 1)
+        in
+            inv (numArgs - 1)
+        end
+
+    (* Tests if [ys] makes [xs] a redundant cache invalidation. [NONE] here
+       represents unknown, which means a wider invalidation. *)
+    val rec madeRedundantBy : atomExp option list * atomExp option list -> bool =
+     fn ([], []) => true
+      | (_ :: xs, NONE :: ys) => madeRedundantBy (xs, ys)
+      | (SOME x :: xs, SOME y :: ys) => (case AtomExpKey.compare (x, y) of
+                                             EQUAL => madeRedundantBy (xs, ys)
+                                           | _ => false)
+      | _ => false
+
+    fun eqss (query, dml) = conflictMaps (queryToFormula query, dmlToFormula dml)
+
+    fun invalidations ((query, numArgs), dml) =
+        (map (map optionAtomExpToExp)
+         o removeRedundant madeRedundantBy
+         o map (eqsToInvalidation numArgs)
+         o eqss)
+            (query, dml)
+
+end
+
+val invalidations = Invalidations.invalidations
+
+(* DEBUG *)
+(* val gunk : ((Sql.query * int) * Sql.dml) list ref = ref [] *)
+(* val gunk' : exp list ref = ref [] *)
+
+fun addFlushing ((file, (tableToIndices, indexToQueryNumArgs, index)), effs) =
+    let
+        val flushes = List.concat
+                      o map (fn (i, argss) => map (fn args => flush (i, args)) argss)
+        val doExp =
+         fn EDml (origDmlText, failureMode) =>
+            let
+                (* DEBUG *)
+                (* val () = gunk' := origDmlText :: !gunk' *)
+                val (newDmlText, wrapLets, numArgs) = factorOutNontrivial origDmlText
+                val dmlText = incRels numArgs newDmlText
+                val dmlExp = EDml (dmlText, failureMode)
+                (* DEBUG *)
+                (* val () = Print.preface ("SQLCACHE: ", (MonoPrint.p_exp MonoEnv.empty origDmlText)) *)
+                val inval =
+                    case Sql.parse Sql.dml dmlText of
+                        SOME dmlParsed =>
+                        SOME (map (fn i => (case IM.find (indexToQueryNumArgs, i) of
+                                                SOME queryNumArgs =>
+                                                (* DEBUG *)
+                                                ((* gunk := (queryNumArgs, dmlParsed) :: !gunk; *)
+                                                 (i, invalidations (queryNumArgs, dmlParsed)))
+                                              (* TODO: fail more gracefully. *)
+                                              | NONE => raise Match))
+                                  (SIMM.findList (tableToIndices, tableDml dmlParsed)))
+                      | NONE => NONE
+            in
+                case inval of
+                    (* TODO: fail more gracefully. *)
+                    NONE => raise Match
+                  | SOME invs => wrapLets (sequence (flushes invs @ [dmlExp]))
+            end
+          | e' => e'
+    in
+        (* DEBUG *)
+        (* gunk := []; *)
+        (fileMap doExp file, index, effs)
+    end
+
+
+(***************)
+(* Entry point *)
+(***************)
+
+val inlineSql =
+    let
+        val doExp =
+         (* TODO: EQuery, too? *)
+         (* ASK: should this live in [MonoOpt]? *)
+         fn EDml ((ECase (disc, cases, {disc = dTyp, ...}), loc), failureMode) =>
+            let
+                val newCases = map (fn (p, e) => (p, (EDml (e, failureMode), loc))) cases
+            in
+                ECase (disc, newCases, {disc = dTyp, result = (TRecord [], loc)})
+            end
+          | e => e
+    in
+        fileMap doExp
     end
 
 fun insertAfterDatatypes ((decls, sideInfo), newDecls) =
