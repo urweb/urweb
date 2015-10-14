@@ -4371,16 +4371,19 @@ fun monoize env file =
                                     [] => e
                                   | eb :: ebs =>
                                     (L'.ESeq (
-                                     (L'.EDml (foldl
-                                                   (fn (eb, s) =>
-                                                       (L'.EStrcat (s,
-                                                                    (L'.EStrcat (str " OR ",
-                                                                                 cond eb), loc)), loc))
-                                                   (L'.EStrcat (str ("DELETE FROM "
-                                                                     ^ Settings.mangleSql tab
-                                                                     ^ " WHERE "),
-                                                                cond eb), loc)
-                                                   ebs, L'.Error), loc),
+                                     (L'.EDml ((L'.EStrcat (str ("DELETE FROM "
+                                                                 ^ Settings.mangleSql tab
+                                                                 ^ " WHERE "),
+                                                            foldl (fn (eb, s) =>
+                                                                      (L'.EStrcat (str "(",
+                                                                       (L'.EStrcat (s,
+                                                                        (L'.EStrcat (str " OR ",
+                                                                         (L'.EStrcat (cond eb,
+                                                                                      str ")"),
+                                                                          loc)), loc)), loc)), loc))
+                                                                  (cond eb)
+                                                                  ebs), loc),
+                                      L'.Error), loc),
                                      e), loc)
                         in
                             e

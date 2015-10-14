@@ -604,62 +604,64 @@ fun factorOutNontrivial text =
         (newText, wrapLets, numArgs)
     end
 
+fun cacheQuery effs env (queryInfo as (tableToIndices, indexToQueryNumArgs, index)) =
+ fn e' as EQuery {query = origQueryText,
+                  state = resultTyp,
+                  initial, body, tables, exps} =>
+    let
+        val (newQueryText, wrapLets, numArgs) = factorOutNontrivial origQueryText
+        (* Increment once for each new variable just made. *)
+        val queryExp = incRels numArgs
+                               (EQuery {query = newQueryText,
+                                        state = resultTyp,
+                                        initial = initial,
+                                        body = body,
+                                        tables = tables,
+                                        exps = exps},
+                                dummyLoc)
+        (* DEBUG *)
+        (* val () = Print.preface ("sqlcache> ", MonoPrint.p_exp MonoEnv.empty queryText) *)
+        val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
+        fun bind x f = Option.mapPartial f x
+        fun guard b x = if b then x else NONE
+        (* We use dummyTyp here. I think this is okay because databases don't
+           store (effectful) functions, but perhaps there's some pathalogical
+           corner case missing.... *)
+        fun safe bound =
+            not
+            o effectful effs
+                        (iterate (fn env => MonoEnv.pushERel env "_" dummyTyp NONE)
+                                 bound
+                                 env)
+        val textOfQuery = fn (EQuery {query, ...}, _) => SOME query | _ => NONE
+        val attempt =
+            (* Ziv misses Haskell's do notation.... *)
+            bind (textOfQuery queryExp) (fn queryText =>
+            guard (safe 0 queryText andalso safe 0 initial andalso safe 2 body) (
+            bind (Sql.parse Sql.query queryText) (fn queryParsed =>
+            bind (cacheWrap (env, queryExp, resultTyp, args, index)) (fn cachedExp =>
+            SOME (wrapLets cachedExp,
+                  (SS.foldr (fn (tab, qi) => SIMM.insert (qi, tab, index))
+                            tableToIndices
+                            (tablesQuery queryParsed),
+                   IM.insert (indexToQueryNumArgs, index, (queryParsed, numArgs)),
+                   index + 1))))))
+    in
+        case attempt of
+            SOME pair => pair
+          (* We have to increment index conservatively. *)
+          (* TODO: just use a reference for current index.... *)
+          | NONE => (e', (tableToIndices, indexToQueryNumArgs, index + 1))
+    end
+  | e' => (e', queryInfo)
+
 fun addChecking file =
     let
         val effs = effectfulDecls file
-        fun doExp env (queryInfo as (tableToIndices, indexToQueryNumArgs, index)) =
-         fn e' as EQuery {query = origQueryText,
-                          state = resultTyp,
-                          initial, body, tables, exps} =>
-            let
-                val (newQueryText, wrapLets, numArgs) = factorOutNontrivial origQueryText
-                (* Increment once for each new variable just made. *)
-                val queryExp = incRels numArgs
-                                       (EQuery {query = newQueryText,
-                                                state = resultTyp,
-                                                initial = initial,
-                                                body = body,
-                                                tables = tables,
-                                                exps = exps},
-                                        dummyLoc)
-                val (EQuery {query = queryText, ...}, _) = queryExp
-                (* DEBUG *)
-                (* val () = Print.preface ("sqlcache> ", MonoPrint.p_exp MonoEnv.empty queryText) *)
-                val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
-                fun bind x f = Option.mapPartial f x
-                fun guard b x = if b then x else NONE
-                (* We use dummyTyp here. I think this is okay because databases
-                   don't store (effectful) functions, but perhaps there's some
-                   pathalogical corner case missing.... *)
-                fun safe bound =
-                    not
-                    o effectful effs
-                                (iterate (fn env => MonoEnv.pushERel env "_" dummyTyp NONE)
-                                         bound
-                                         env)
-                val attempt =
-                    (* Ziv misses Haskell's do notation.... *)
-                    guard (safe 0 queryText andalso safe 0 initial andalso safe 2 body) (
-                    bind (Sql.parse Sql.query queryText) (fn queryParsed =>
-                    bind (cacheWrap (env, queryExp, resultTyp, args, index)) (fn cachedExp =>
-                    SOME (wrapLets cachedExp,
-                          (SS.foldr (fn (tab, qi) => SIMM.insert (qi, tab, index))
-                                    tableToIndices
-                                    (tablesQuery queryParsed),
-                           IM.insert (indexToQueryNumArgs, index, (queryParsed, numArgs)),
-                           index + 1)))))
-            in
-                case attempt of
-                    SOME pair => pair
-                  (* We have to increment index conservatively. *)
-                  (* TODO: just use a reference for current index.... *)
-                  | NONE => (e', (tableToIndices, indexToQueryNumArgs, index + 1))
-            end
-          | e' => (e', queryInfo)
     in
-        (fileAllMapfoldB (fn env => fn exp => fn state => doExp env state exp)
-                      file
-                      (SIMM.empty, IM.empty, 0),
+        (fileAllMapfoldB (fn env => fn exp => fn state => cacheQuery effs env state exp)
+                         file
+                         (SIMM.empty, IM.empty, 0),
          effs)
     end
 
@@ -725,7 +727,7 @@ fun addFlushing ((file, (tableToIndices, indexToQueryNumArgs, index)), effs) =
                 val dmlText = incRels numArgs newDmlText
                 val dmlExp = EDml (dmlText, failureMode)
                 (* DEBUG *)
-                (* val () = Print.preface ("SQLCACHE: ", (MonoPrint.p_exp MonoEnv.empty origDmlText)) *)
+                val () = Print.preface ("SQLCACHE: ", (MonoPrint.p_exp MonoEnv.empty origDmlText))
                 val inval =
                     case Sql.parse Sql.dml dmlText of
                         SOME dmlParsed =>
