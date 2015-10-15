@@ -246,7 +246,7 @@ See doc for the variable `urweb-mode-info'."
     ("\\<\\(signature\\)\\s-+\\(\\sw+\\)"
      (1 font-lock-keyword-face)
      (2 (amAttribute font-lock-interface-def-face)))
-    
+
     (,urweb-keywords-regexp . font-lock-keyword-face)
     (,urweb-sql-keywords-regexp . font-lock-sql-face)
     (,urweb-cident-regexp . font-lock-cvariable-face))
@@ -377,7 +377,7 @@ See doc for the variable `urweb-mode-info'."
 (add-to-list 'auto-mode-alist '("\\.urs?\\'" . urweb-mode))
 
 ;;;###autoload
-(define-derived-mode urweb-mode fundamental-mode "Ur/Web"
+(define-derived-mode urweb-mode prog-mode "Ur/Web"
   "\\<urweb-mode-map>Major mode for editing Ur/Web code.
 This mode runs `urweb-mode-hook' just before exiting.
 \\{urweb-mode-map}"
@@ -409,7 +409,7 @@ This mode runs `urweb-mode-hook' just before exiting.
   (set-syntax-table urweb-mode-syntax-table)
   (setq local-abbrev-table urweb-mode-abbrev-table)
   ;; A paragraph is separated by blank lines or ^L only.
-  
+
   (set (make-local-variable 'indent-line-function) 'urweb-indent-line)
   (set (make-local-variable 'comment-start) "(* ")
   (set (make-local-variable 'comment-end) " *)")
