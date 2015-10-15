@@ -11,6 +11,17 @@ fun cache id =
          | Some row => <xml>{[row.Tab.Val]}</xml>}
     </body></xml>
 
+fun cache2 id v =
+    res <- oneOrNoRows (SELECT tab.Val
+                        FROM tab
+                        WHERE tab.Id = {[id]} AND tab.Val = {[v]});
+    return <xml><body>
+      Reading {[id]}.
+      {case res of
+           None => <xml>Nope, that's not it.</xml>
+         | Some _ => <xml>Hooray! You guessed it!</xml>}
+    </body></xml>
+
 fun flush id =
     dml (UPDATE tab
          SET Val = Val * (Id + 2) / Val - 3

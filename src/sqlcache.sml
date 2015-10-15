@@ -675,6 +675,7 @@ fun typOfExp' (env : MonoEnv.env) : exp' -> typ option =
   | ELet (s, t, e1, e2) => typOfExp (MonoEnv.pushERel env s t (SOME e1)) e2
   | EClosure _ => NONE
   | EUnurlify (_, t, _) => SOME t
+  | EQuery {state, ...} => SOME state
   | _ => NONE
 
 and typOfExp env (e', loc) = typOfExp' env e'
@@ -770,17 +771,35 @@ val runSubexp : subexp * state -> exp * state =
 (* TODO: pick a number. *)
 val sizeWorthCaching = 5
 
+val worthCaching =
+ fn EQuery _ => true
+  | exp' => expSize (exp', dummyLoc) > sizeWorthCaching
+
+fun cachePure (env, exp', state as (_, _, _, index)) =
+    case (worthCaching exp')
+             </oguard/>
+             typOfExp' env exp' of
+        NONE => NONE
+      | SOME (TFun _, _) => NONE
+      | SOME typ =>
+        (List.foldr (fn (_, NONE) => NONE
+                      | ((n, typ), SOME args) =>
+                        (MonoFooify.urlify env ((ERel n, dummyLoc), typ))
+                            </obind/>
+                            (fn arg => SOME (arg :: args)))
+                    (SOME [])
+                    (map (fn n => (n, #2 (MonoEnv.lookupERel env n)))
+                         (ListMergeSort.sort op> (freeVars (exp', dummyLoc)))))
+            </obind/>
+            (fn args => cacheWrap (env, (exp', dummyLoc), typ, args, state))
+
 fun cacheQuery (effs, env, state, q) : (exp' * state) =
     let
         val (tableToIndices, indexToQueryNumArgs, ffiInfo, index) = state
-        val {query = queryText,
-             state = resultTyp,
-             initial, body, tables, exps} = q
+        val {query = queryText, initial, body, ...} = q
         val numArgs = maxFreeVar queryText + 1
-        val queryExp = (EQuery q, dummyLoc)
         (* DEBUG *)
         (* val () = Print.preface ("sqlcache> ", MonoPrint.p_exp MonoEnv.empty queryText) *)
-        val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
         (* We use dummyTyp here. I think this is okay because databases don't
            store (effectful) functions, but perhaps there's some pathalogical
            corner case missing.... *)
@@ -790,6 +809,8 @@ fun cacheQuery (effs, env, state, q) : (exp' * state) =
                         (iterate (fn env => MonoEnv.pushERel env "_" dummyTyp NONE)
                                  bound
                                  env)
+        val {state = resultTyp, ...} = q
+        val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
         val attempt =
             (* Ziv misses Haskell's do notation.... *)
             (safe 0 queryText andalso safe 0 initial andalso safe 2 body)
@@ -797,7 +818,7 @@ fun cacheQuery (effs, env, state, q) : (exp' * state) =
             Sql.parse Sql.query queryText
             </obind/>
             (fn queryParsed =>
-                (cacheWrap (env, queryExp, resultTyp, args, state))
+                (cachePure (env, EQuery q, state))
                     </obind/>
                     (fn (cachedExp, state) =>
                         SOME (cachedExp,
@@ -812,24 +833,6 @@ fun cacheQuery (effs, env, state, q) : (exp' * state) =
             SOME pair => pair
           | NONE => (EQuery q, state)
     end
-
-fun cachePure (env, exp', state as (_, _, _, index)) =
-    case (expSize (exp', dummyLoc) > sizeWorthCaching)
-             </oguard/>
-             typOfExp' env exp' of
-        NONE => NONE
-      | SOME (TFun _, _) => NONE
-      | SOME typ =>
-        (List.foldr (fn (_, NONE) => NONE
-                      | ((n, typ), SOME args) =>
-                        (MonoFooify.urlify env ((ERel n, dummyLoc), typ))
-                            </obind/>
-                            (fn arg => SOME (arg :: args)))
-                    (SOME [])
-                    (map (fn n => (n, #2 (MonoEnv.lookupERel env n)))
-                         (freeVars (exp', dummyLoc))))
-            </obind/>
-            (fn args => cacheWrap (env, (exp', dummyLoc), typ, args, state))
 
 fun cache (effs : IS.set) ((env, exp as (exp', loc)), state) =
     let
@@ -896,13 +899,13 @@ fun cache (effs : IS.set) ((env, exp as (exp', loc)), state) =
             in
                 (Impure (exp', loc), state)
             end
-          | _ => if effectful effs env exp
-                 then (Impure exp, state)
-                 else (Cachable (fn state =>
+          | _ => (if effectful effs env exp
+                  then Impure exp
+                  else Cachable (fn state =>
                                     case cachePure (env, exp', state) of
-                                         NONE => ((exp', loc), state)
-                                       | SOME (exp', state) => ((exp', loc), state)),
-                       state)
+                                        NONE => ((exp', loc), state)
+                                      | SOME (exp', state) => ((exp', loc), state)),
+                  state)
     end
 
 fun addCaching file =
@@ -934,11 +937,7 @@ structure Invalidations = struct
                    loc)
 
     fun eqsToInvalidation numArgs eqs =
-        let
-            fun inv n = if n < 0 then [] else IM.find (eqs, n) :: inv (n - 1)
-        in
-            inv (numArgs - 1)
-        end
+        List.tabulate (numArgs, (fn n => IM.find (eqs, n)))
 
     (* Tests if [ys] makes [xs] a redundant cache invalidation. [NONE] here
        represents unknown, which means a wider invalidation. *)
