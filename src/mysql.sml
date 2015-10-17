@@ -546,7 +546,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                   newline,
                   string "mysql_close(mysql);",
                   newline,
-                  string "uw_error(ctx, BOUNDED_RETRY, ",
+                  string "uw_error(ctx, FATAL, ",
                   string "\"Connection to MySQL server failed: %s\", msg);"],
              newline,
              string "}",

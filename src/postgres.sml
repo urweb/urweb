@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2010, Adam Chlipala
+(* Copyright (c) 2008-2010, 2015, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -520,7 +520,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
               newline,
               string "PQfinish(conn);",
               newline,
-              string "uw_error(ctx, BOUNDED_RETRY, ",
+              string "uw_error(ctx, FATAL, ",
               string "\"Connection to Postgres server failed: %s\", msg);"],
          newline,
          string "}",
@@ -612,12 +612,24 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
         getter t
     end
 
-fun queryCommon {loc, query, cols, doCols} =
+fun queryCommon {loc, query, cols, doCols, runit} =
     box [string "int n, i;",
          newline,
          newline,
 
-         string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+         string "if (res == NULL) {",
+         box [newline,
+              string "if (uw_try_reconnecting_if_at_most_one(ctx)) {",
+              box [newline,
+                   string "conn = uw_get_db(ctx);",
+                   newline,
+                   runit,
+                   newline],
+              string "}",
+              newline,
+              string "if (res == NULL) uw_error(ctx, FATAL, \"Can't allocate query result; database server might be down.\");",
+              newline],
+         string "}",
          newline,
          newline,
 
@@ -687,12 +699,18 @@ fun queryCommon {loc, query, cols, doCols} =
          newline]
 
 fun query {loc, cols, doCols} =
-    box [string "PGconn *conn = uw_get_db(ctx);",
-         newline,
-         string "PGresult *res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);",
-         newline,
-         newline,
-         queryCommon {loc = loc, cols = cols, doCols = doCols, query = string "query"}]
+    let
+        val runit = string "res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);"
+    in
+        box [string "PGconn *conn = uw_get_db(ctx);",
+             newline,
+             string "PGresult *res;",
+             newline,
+             runit,
+             newline,
+             newline,
+             queryCommon {loc = loc, cols = cols, doCols = doCols, query = string "query", runit = runit}]
+    end
 
 fun p_ensql t e =
     case t of
@@ -756,33 +774,52 @@ fun makeParams inputs =
          newline]
 
 fun queryPrepared {loc, id, query, inputs, cols, doCols, nested = _} =
-    box [string "PGconn *conn = uw_get_db(ctx);",
-         newline,
+    let
+        val runit =
+            box [string "res = ",
+                 if #persistent (Settings.currentProtocol ()) then
+                     box [string "PQexecPrepared(conn, \"uw",
+                          string (Int.toString id),
+                          string "\", ",
+                          string (Int.toString (length inputs)),
+                          string ", paramValues, paramLengths, paramFormats, 0);"]
+                 else
+                     box [string "PQexecParams(conn, \"",
+                          string (Prim.toCString query),
+                          string "\", ",
+                          string (Int.toString (length inputs)),
+                          string ", NULL, paramValues, paramLengths, paramFormats, 0);"]]
+    in
+        box [string "PGconn *conn = uw_get_db(ctx);",
+             newline,
+             
+             makeParams inputs,
+             
+             newline,
+             string "PGresult *res;",
+             runit,
+             newline,
+             newline,
+             queryCommon {loc = loc, cols = cols, doCols = doCols, query = box [string "\"",
+                                                                                string (Prim.toCString query),
+                                                                                string "\""],
+                          runit = runit}]
+    end
 
-         makeParams inputs,
-
-         newline,
-         string "PGresult *res = ",
-         if #persistent (Settings.currentProtocol ()) then
-             box [string "PQexecPrepared(conn, \"uw",
-                  string (Int.toString id),
-                  string "\", ",
-                  string (Int.toString (length inputs)),
-                  string ", paramValues, paramLengths, paramFormats, 0);"]
-         else
-             box [string "PQexecParams(conn, \"",
-                  string (Prim.toCString query),
-                  string "\", ",
-                  string (Int.toString (length inputs)),
-                  string ", NULL, paramValues, paramLengths, paramFormats, 0);"],
-         newline,
-         newline,
-         queryCommon {loc = loc, cols = cols, doCols = doCols, query = box [string "\"",
-                                                                            string (Prim.toCString query),
-                                                                            string "\""]}]
-
-fun dmlCommon {loc, dml, mode} =
-    box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+fun dmlCommon {loc, dml, mode, runit} =
+    box [string "if (res == NULL) {",
+         box [newline,
+              string "if (uw_try_reconnecting_if_at_most_one(ctx)) {",
+              box [newline,
+                   string "conn = uw_get_db(ctx);",
+                   newline,
+                   runit,
+                   newline],
+              string "}",
+              newline,
+              string "if (res == NULL) uw_error(ctx, FATAL, \"Can't allocate DML result; database server might be down.\");",
+              newline],
+         string "}",
          newline,
          newline,
 
@@ -818,7 +855,11 @@ fun dmlCommon {loc, dml, mode} =
 
                                         string "res = PQexec(conn, \"ROLLBACK TO s\");",
                                         newline,
-                                        string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+                                        string "if (res == NULL) {",
+                                        box [newline,
+                                             string "uw_error(ctx, FATAL, \"Can't allocate DML ROLLBACK result; database server might be down.\");",
+                                             newline],
+                                        string "}",
                                         newline,
                                         newline,
 
@@ -851,7 +892,7 @@ fun dmlCommon {loc, dml, mode} =
                               newline,
                               string "res = PQexec(conn, \"RELEASE s\");",
                               newline,
-                              string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+                              string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML RELEASE result.\");",
                               newline,
                               newline,
 
@@ -877,7 +918,7 @@ fun makeSavepoint mode =
         Error => box []
       | None => box [string "res = PQexec(conn, \"SAVEPOINT s\");",
                      newline,
-                     string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+                     string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML SAVEPOINT result.\");",
                      newline,
                      newline,
                      string "if (PQresultStatus(res) != PGRES_COMMAND_OK) {",
@@ -893,52 +934,71 @@ fun makeSavepoint mode =
                      newline]
 
 fun dml (loc, mode) =
-    box [string "PGconn *conn = uw_get_db(ctx);",
-         newline,
-         string "PGresult *res;",
-         newline,
+    let
+        val runit = string "res = PQexecParams(conn, dml, 0, NULL, NULL, NULL, NULL, 0);"
+    in
+        box [string "PGconn *conn = uw_get_db(ctx);",
+             newline,
+             string "PGresult *res;",
+             newline,
 
-         makeSavepoint mode,
+             makeSavepoint mode,
 
-         string "res = PQexecParams(conn, dml, 0, NULL, NULL, NULL, NULL, 0);",
-         newline,
-         newline,
-         dmlCommon {loc = loc, dml = string "dml", mode = mode}]
+         runit,
+             newline,
+             newline,
+             dmlCommon {loc = loc, dml = string "dml", mode = mode, runit = runit}]
+    end
 
 fun dmlPrepared {loc, id, dml, inputs, mode} =
-    box [string "PGconn *conn = uw_get_db(ctx);",
-         newline,
+    let
+        val runit =
+            box [string "res = ",
+                 if #persistent (Settings.currentProtocol ()) then
+                     box [string "PQexecPrepared(conn, \"uw",
+                          string (Int.toString id),
+                          string "\", ",
+                          string (Int.toString (length inputs)),
+                          string ", paramValues, paramLengths, paramFormats, 0);"]
+                 else
+                     box [string "PQexecParams(conn, \"",
+                          string (Prim.toCString dml),
+                          string "\", ",
+                          string (Int.toString (length inputs)),
+                          string ", NULL, paramValues, paramLengths, paramFormats, 0);"]]
+    in
+        box [string "PGconn *conn = uw_get_db(ctx);",
+             newline,
 
-         makeParams inputs,
+             makeParams inputs,
 
-         newline,
-         string "PGresult *res;",
-         newline,
-         newline,
+             newline,
+             string "PGresult *res;",
+             newline,
+             newline,
 
-         makeSavepoint mode,
+             makeSavepoint mode,
 
-         string "res = ",
-         if #persistent (Settings.currentProtocol ()) then
-             box [string "PQexecPrepared(conn, \"uw",
-                  string (Int.toString id),
-                  string "\", ",
-                  string (Int.toString (length inputs)),
-                  string ", paramValues, paramLengths, paramFormats, 0);"]
-         else
-             box [string "PQexecParams(conn, \"",
-                  string (Prim.toCString dml),
-                  string "\", ",
-                  string (Int.toString (length inputs)),
-                  string ", NULL, paramValues, paramLengths, paramFormats, 0);"],
-         newline,
-         newline,
-         dmlCommon {loc = loc, dml = box [string "\"",
-                                          string (Prim.toCString dml),
-                                          string "\""], mode = mode}]
+             runit,
+             newline,
+             newline,
+             dmlCommon {loc = loc, dml = box [string "\"",
+                                              string (Prim.toCString dml),
+                                              string "\""], mode = mode, runit = runit}]
+    end
 
-fun nextvalCommon {loc, query} =
-    box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating nextval result.\");",
+fun nextvalCommon {loc, query, runit} =
+    box [string "if (res == NULL) {",
+         box [newline,
+              string "if (uw_try_reconnecting_if_at_most_one(ctx))",
+              newline,
+              string "conn = uw_get_db(ctx);",
+              newline,
+              runit,
+              newline,
+              string "uw_error(ctx, FATAL, \"Out of memory allocating nextval result.\");",
+              newline],
+         string "}",
          newline,
          newline,
 
@@ -987,6 +1047,8 @@ fun nextval {loc, seqE, seqName} =
                       | _ => box [string "uw_Basis_strcat(ctx, \"SELECT NEXTVAL('\", uw_Basis_strcat(ctx, ",
                                   seqE,
                                   string ", \"')\"))"]
+
+        val runit = string "res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);"
     in
         box [string "char *query = ",
              query,
@@ -994,33 +1056,53 @@ fun nextval {loc, seqE, seqName} =
              newline,
              string "PGconn *conn = uw_get_db(ctx);",
              newline,
-             string "PGresult *res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);",
+             string "PGresult *res;",
+             newline,
+             runit,
              newline,
              newline,
-             nextvalCommon {loc = loc, query = string "query"}]
+             nextvalCommon {loc = loc, query = string "query", runit = runit}]
     end
 
 fun nextvalPrepared {loc, id, query} =
-    box [string "PGconn *conn = uw_get_db(ctx);",
-         newline,
-         newline,
-         string "PGresult *res = ",
-         if #persistent (Settings.currentProtocol ()) then
-             box [string "PQexecPrepared(conn, \"uw",
-                  string (Int.toString id),
-                  string "\", 0, NULL, NULL, NULL, 0);"]
-         else
-             box [string "PQexecParams(conn, \"",
-                  string (Prim.toCString query),
-                  string "\", 0, NULL, NULL, NULL, NULL, 0);"],
-         newline,
-         newline,
-         nextvalCommon {loc = loc, query = box [string "\"",
-                                                string (Prim.toCString query),
-                                                string "\""]}]
+    let
+        val runit =
+            box [string "res = ",
+                 if #persistent (Settings.currentProtocol ()) then
+                     box [string "PQexecPrepared(conn, \"uw",
+                          string (Int.toString id),
+                          string "\", 0, NULL, NULL, NULL, 0);"]
+                 else
+                     box [string "PQexecParams(conn, \"",
+                          string (Prim.toCString query),
+                          string "\", 0, NULL, NULL, NULL, NULL, 0);"]]
+    in
+        box [string "PGconn *conn = uw_get_db(ctx);",
+             newline,
+             newline,
 
-fun setvalCommon {loc, query} =
-    box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating setval result.\");",
+             string "PGresult *res;",
+             newline,
+             runit,
+             newline,
+             newline,
+             nextvalCommon {loc = loc, query = box [string "\"",
+                                                    string (Prim.toCString query),
+                                                    string "\""], runit = runit}]
+    end
+
+fun setvalCommon {loc, query, runit} =
+    box [string "if (res == NULL) {",
+         box [newline,
+              string "if (uw_try_reconnecting_if_at_most_one(ctx))",
+              newline,
+              string "conn = uw_get_db(ctx);",
+              newline,
+              runit,
+              newline,
+              string "uw_error(ctx, FATAL, \"Out of memory allocating setval result.\");",
+              newline],
+         string "}",
          newline,
          newline,
 
@@ -1048,6 +1130,8 @@ fun setval {loc, seqE, count} =
                          string ", uw_Basis_strcat(ctx, \"', \", uw_Basis_strcat(ctx, uw_Basis_sqlifyInt(ctx, ",
                          count,
                          string "), \")\"))))"]
+
+        val runit = string "res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);"
     in
         box [string "char *query = ",
              query,
@@ -1055,10 +1139,13 @@ fun setval {loc, seqE, count} =
              newline,
              string "PGconn *conn = uw_get_db(ctx);",
              newline,
-             string "PGresult *res = PQexecParams(conn, query, 0, NULL, NULL, NULL, NULL, 0);",
+
+             string "PGresult *res;",
+             newline,
+             runit,
              newline,
              newline,
-             setvalCommon {loc = loc, query = string "query"}]
+             setvalCommon {loc = loc, query = string "query", runit = runit}]
     end
 
 fun sqlifyString s = "E'" ^ String.translate (fn #"'" => "\\'"
