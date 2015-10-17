@@ -813,7 +813,7 @@ static void uw_try_reconnecting(uw_context ctx) {
 
 void uw_try_reconnecting_and_restarting(uw_context ctx) {
   uw_try_reconnecting(ctx);
-  uw_error(ctx, UNLIMITED_RETRY, "Restarting transaction after fixing database connection");
+  uw_error(ctx, BOUNDED_RETRY, "Restarting transaction after fixing database connection");
 }
 
 void uw_ensure_transaction(uw_context ctx) {
@@ -826,7 +826,8 @@ void uw_ensure_transaction(uw_context ctx) {
     }
 
     ctx->transaction_started = 1;
-  }
+  } else if (ctx->at_most_one_query && !ctx->db)
+    uw_try_reconnecting(ctx);
 }
 
 uw_Basis_client uw_Basis_self(uw_context ctx) {
