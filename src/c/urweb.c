@@ -811,12 +811,9 @@ static void uw_try_reconnecting(uw_context ctx) {
     uw_error(ctx, FATAL, "Error reopening database connection");
 }
 
-int uw_try_reconnecting_if_at_most_one(uw_context ctx) {
-  if (ctx->at_most_one_query) {
-    uw_try_reconnecting(ctx);
-    return 1;
-  } else
-    return 0;
+void uw_try_reconnecting_and_restarting(uw_context ctx) {
+  uw_try_reconnecting(ctx);
+  uw_error(ctx, UNLIMITED_RETRY, "Restarting transaction after fixing database connection");
 }
 
 void uw_ensure_transaction(uw_context ctx) {
