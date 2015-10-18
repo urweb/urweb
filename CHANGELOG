@@ -1,4 +1,11 @@
 ========
+20151018
+========
+
+- Applications now reconnect to database server automatically after losing connection.
+- Bug fixes and improvements to compatibility, documentation, and error messages
+
+========
 20150819
 ========
 
