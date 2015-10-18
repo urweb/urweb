@@ -880,7 +880,7 @@ fun addFile {Uri, LoadFromFilename} =
     in
         case SM.find (!files, Uri) of
             SOME (path', _) =>
-            if path' = path then
+            if OS.Path.mkCanonical path' = OS.Path.mkCanonical path then
                 ()
             else
                 ErrorMsg.error ("Two different files requested for URI " ^ Uri ^ " ( " ^ path' ^ " vs. " ^ path ^ ")")
