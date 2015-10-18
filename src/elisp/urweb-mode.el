@@ -377,7 +377,11 @@ See doc for the variable `urweb-mode-info'."
 (add-to-list 'auto-mode-alist '("\\.urs?\\'" . urweb-mode))
 
 ;;;###autoload
-(define-derived-mode urweb-mode prog-mode "Ur/Web"
+(defalias 'urweb-mode-derived-from
+  (if (fboundp 'prog-mode) 'prog-mode 'fundamental-mode))
+
+;;;###autoload
+(define-derived-mode urweb-mode urweb-mode-derived-from "Ur/Web"
   "\\<urweb-mode-map>Major mode for editing Ur/Web code.
 This mode runs `urweb-mode-hook' just before exiting.
 \\{urweb-mode-map}"
