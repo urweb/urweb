@@ -809,12 +809,37 @@ failure_kind uw_begin(uw_context ctx, char *path) {
   return r;
 }
 
+static void uw_try_reconnecting(uw_context ctx) {
+  // Hm, error starting transaction.
+  // Maybe the database server died but has since come back up.
+  // Let's try starting from scratch.
+  if (ctx->db) {
+    ctx->app->db_close(ctx);
+    ctx->db = NULL;
+  }
+  ctx->app->db_init(ctx);
+
+  if (!ctx->db)
+    uw_error(ctx, FATAL, "Error reopening database connection");
+}
+
+void uw_try_reconnecting_and_restarting(uw_context ctx) {
+  uw_try_reconnecting(ctx);
+  uw_error(ctx, BOUNDED_RETRY, "Restarting transaction after fixing database connection");
+}
+
 void uw_ensure_transaction(uw_context ctx) {
   if (!ctx->transaction_started && !ctx->at_most_one_query) {
-    if (ctx->app->db_begin(ctx, ctx->could_write_db))
-      uw_error(ctx, BOUNDED_RETRY, "Error running SQL BEGIN");
+    if (!ctx->db || ctx->app->db_begin(ctx, ctx->could_write_db)) {
+      uw_try_reconnecting(ctx);
+
+      if (ctx->app->db_begin(ctx, ctx->could_write_db))
+        uw_error(ctx, FATAL, "Error running SQL BEGIN");
+    }
+
     ctx->transaction_started = 1;
-  }
+  } else if (ctx->at_most_one_query && !ctx->db)
+    uw_try_reconnecting(ctx);
 }
 
 uw_Basis_client uw_Basis_self(uw_context ctx) {

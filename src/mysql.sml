@@ -1,4 +1,4 @@
-(* Copyright (c) 2009-2010, Adam Chlipala
+(* Copyright (c) 2009-2010, 2015, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -546,7 +546,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                   newline,
                   string "mysql_close(mysql);",
                   newline,
-                  string "uw_error(ctx, BOUNDED_RETRY, ",
+                  string "uw_error(ctx, FATAL, ",
                   string "\"Connection to MySQL server failed: %s\", msg);"],
              newline,
              string "}",
@@ -861,11 +861,17 @@ fun queryCommon {loc, query, cols, doCols} =
                                           end) cols,
          newline,
 
-         string "if (mysql_stmt_reset(stmt)) uw_error(ctx, FATAL, \"",
-         string (ErrorMsg.spanToString loc),
-         string ": Error reseting statement: %s\\n%s\", ",
-         query,
-         string ", mysql_error(conn->conn));",
+         string "if (mysql_stmt_reset(stmt)) {",
+         box [newline,
+              string "if (mysql_errno(conn->conn) == 2006) uw_try_reconnecting_and_restarting(ctx);",
+              newline,
+              string "uw_error(ctx, FATAL, \"",
+              string (ErrorMsg.spanToString loc),
+              string ": Error reseting statement: %s\\n%s\", ",
+              query,
+              string ", mysql_error(conn->conn));",
+              newline],
+         string "}",
          newline,
          newline,
 
@@ -1233,7 +1239,9 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
 
 fun dmlCommon {loc, dml, mode} =
     box [string "if (mysql_stmt_execute(stmt)) {",
-         box [string "if (mysql_errno(conn->conn) == 1213)",
+         box [string "if (mysql_errno(conn->conn) == 2006) uw_try_reconnecting_and_restarting(ctx);",
+              newline,
+              string "if (mysql_errno(conn->conn) == 1213)",
               newline,
               box [string "uw_error(ctx, UNLIMITED_RETRY, \"Deadlock detected\");",
                    newline],
@@ -1540,7 +1548,13 @@ fun nextval {loc, seqE, seqName} =
          newline,
          newline,
 
-         string "if (mysql_query(conn->conn, insert)) uw_error(ctx, FATAL, \"'nextval' INSERT failed\");",
+         string "if (mysql_query(conn->conn, insert)) {",
+         box [newline,
+              string "if (mysql_errno(conn->conn) == 2006) uw_try_reconnecting_and_restarting(ctx);",
+              newline,
+              string "uw_error(ctx, FATAL, \"'nextval' INSERT failed\");",
+              newline],
+         string "}",
          newline,
          string "n = mysql_insert_id(conn->conn);",
          newline,

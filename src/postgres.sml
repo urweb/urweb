@@ -617,7 +617,13 @@ fun queryCommon {loc, query, cols, doCols} =
          newline,
          newline,
 
-         string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+         string "if (res == NULL) {",
+         box [newline,
+              string "uw_try_reconnecting_and_restarting(ctx);",
+              newline,
+              string "uw_error(ctx, FATAL, \"Can't allocate query result; database server may be down.\");",
+              newline],
+         string "}",
          newline,
          newline,
 
@@ -782,7 +788,13 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested = _} =
                                                                             string "\""]}]
 
 fun dmlCommon {loc, dml, mode} =
-    box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+    box [string "if (res == NULL) {",
+         box [newline,
+              string "uw_try_reconnecting_and_restarting(ctx);",
+              newline,
+              string "uw_error(ctx, FATAL, \"Can't allocate DML result; database server may be down.\");",
+              newline],
+         string "}",
          newline,
          newline,
 
@@ -818,7 +830,13 @@ fun dmlCommon {loc, dml, mode} =
 
                                         string "res = PQexec(conn, \"ROLLBACK TO s\");",
                                         newline,
-                                        string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+                                        string "if (res == NULL) {",
+                                        box [newline,
+                                             string "uw_try_reconnecting_and_restarting(ctx);",
+                                             newline,
+                                             string "uw_error(ctx, FATAL, \"Can't allocate DML ROLLBACK result; database server may be down.\");",
+                                             newline],
+                                        string "}",
                                         newline,
                                         newline,
 
@@ -851,7 +869,13 @@ fun dmlCommon {loc, dml, mode} =
                               newline,
                               string "res = PQexec(conn, \"RELEASE s\");",
                               newline,
-                              string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+                              string "if (res == NULL) {",
+                              box [newline,
+                                   string "uw_try_reconnecting_and_restarting(ctx);",
+                                   newline,
+                                   string "uw_error(ctx, FATAL, \"Can't allocate DML RELEASE result; database server may be down.\");",
+                                   newline],
+                              string "}",
                               newline,
                               newline,
 
@@ -877,7 +901,13 @@ fun makeSavepoint mode =
         Error => box []
       | None => box [string "res = PQexec(conn, \"SAVEPOINT s\");",
                      newline,
-                     string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating DML result.\");",
+                     string "if (res == NULL) {",
+                     box [newline,
+                          string "uw_try_reconnecting_and_restarting(ctx);",
+                          newline,
+                          string "uw_error(ctx, FATAL, \"Can't allocate DML SAVEPOINT result; database server may be down.\");",
+                          newline],
+                     string "}",
                      newline,
                      newline,
                      string "if (PQresultStatus(res) != PGRES_COMMAND_OK) {",
@@ -938,7 +968,13 @@ fun dmlPrepared {loc, id, dml, inputs, mode} =
                                           string "\""], mode = mode}]
 
 fun nextvalCommon {loc, query} =
-    box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating nextval result.\");",
+    box [string "if (res == NULL) {",
+         box [newline,
+              string "uw_try_reconnecting_and_restarting(ctx);",
+              newline,
+              string "uw_error(ctx, FATAL, \"Can't allocate NEXTVAL result; database server may be down.\");",
+              newline],
+         string "}",
          newline,
          newline,
 
@@ -1020,7 +1056,13 @@ fun nextvalPrepared {loc, id, query} =
                                                 string "\""]}]
 
 fun setvalCommon {loc, query} =
-    box [string "if (res == NULL) uw_error(ctx, FATAL, \"Out of memory allocating setval result.\");",
+    box [string "if (res == NULL) {",
+         box [newline,
+              string "uw_try_reconnecting_and_restarting(ctx);",
+              newline,
+              string "uw_error(ctx, FATAL, \"Can't allocate SETVAL result; database server may be down.\");",
+              newline],
+         string "}",
          newline,
          newline,
 

@@ -40,6 +40,7 @@ uw_loggers* uw_get_loggers(struct uw_context *ctx);
 uw_loggers* uw_get_loggers(struct uw_context *ctx);
 failure_kind uw_begin(struct uw_context *, char *path);
 void uw_ensure_transaction(struct uw_context *);
+void uw_try_reconnecting_and_restarting(struct uw_context *);
 failure_kind uw_begin_onError(struct uw_context *, char *msg);
 void uw_login(struct uw_context *);
 int uw_commit(struct uw_context *);
