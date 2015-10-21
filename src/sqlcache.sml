@@ -56,20 +56,34 @@ val doBind =
   | (env, MonoUtil.Exp.NamedE (x, n, t, eo, s)) => MonoEnv.pushENamed env x n t eo s
   | (env, MonoUtil.Exp.Datatype (x, n, cs)) => MonoEnv.pushDatatype env x n cs
 
-(***********************)
-(* General Combinators *)
-(***********************)
+val dummyLoc = ErrorMsg.dummySpan
+
+
+(*********************)
+(* General Utilities *)
+(*********************)
 
 (* From the MLton wiki. *)
 infixr 3 />     fun f /> y = fn x => f (x, y)     (* Right section     *)
 infixr 3 </     fun x </ f = f x                  (* Right application *)
 
+fun mapFst f (x, y) = (f x, y)
+
 (* Option monad. *)
 fun obind (x, f) = Option.mapPartial f x
 fun oguard (b, x) = if b then x else NONE
+fun omap f = fn SOME x => SOME (f x) | _ => NONE
+fun omap2 f = fn (SOME x, SOME y) => SOME (f (x,y)) | _ => NONE
+fun osequence ys = List.foldr (omap2 op::) (SOME []) ys
 
-fun mapFst f (x, y) = (f x, y)
-
+fun indexOf test =
+    let
+        fun f n =
+         fn [] => NONE
+          | (x::xs) => if test x then SOME n else f (n+1) xs
+    in
+        f 0
+    end
 
 (*******************)
 (* Effect Analysis *)
@@ -289,6 +303,170 @@ end
 
 structure AtomOptionKey = OptionKeyFn(AtomExpKey)
 
+val rec tablesOfQuery =
+ fn Sql.Query1 {From = tablePairs, ...} => SS.fromList (map #1 tablePairs)
+  | Sql.Union (q1, q2) => SS.union (tablesOfQuery q1, tablesOfQuery q2)
+
+val tableOfDml =
+ fn Sql.Insert (tab, _) => tab
+  | Sql.Delete (tab, _) => tab
+  | Sql.Update (tab, _, _) => tab
+
+val freeVars =
+    MonoUtil.Exp.foldB
+        {typ = #2,
+         exp = fn (bound, ERel n, vars) => if n < bound
+                                           then vars
+                                           else IS.add (vars, n - bound)
+                | (_, _, vars) => vars,
+         bind = fn (bound, MonoUtil.Exp.RelE _) => bound + 1 | (bound, _) => bound}
+        0
+        IS.empty
+
+datatype unbind = Known of exp | Unknowns of int
+
+structure InvalInfo :> sig
+    type t
+    type state = {tableToIndices : SIMM.multimap,
+                  indexToInvalInfo : (t * int) IntBinaryMap.map,
+                  ffiInfo : {index : int, params : int} list,
+                  index : int}
+    val empty : t
+    val singleton : Sql.query -> t
+    val query : t -> Sql.query
+    val orderArgs : t * IS.set -> int list
+    val unbind : t * unbind -> t option
+    val union : t * t -> t
+    val updateState : t * int * state -> state
+end = struct
+
+    type t = Sql.query list
+
+    type state = {tableToIndices : SIMM.multimap,
+                  indexToInvalInfo : (t * int) IntBinaryMap.map,
+                  ffiInfo : {index : int, params : int} list,
+                  index : int}
+
+    val empty = []
+
+    fun singleton q = [q]
+
+    val union = op@
+
+    (* Need lift', etc. because we don't have rank-2 polymorphism. This should
+       probably use a functor, but this works for now. *)
+    fun traverseSqexp (pure, _, lift, _, lift'', lift2, _) f =
+        let
+            val rec tr =
+             fn Sql.SqNot se => lift Sql.SqNot (tr se)
+              | Sql.Binop (r, se1, se2) =>
+                lift2 (fn (trse1, trse2) => Sql.Binop (r, trse1, trse2)) (tr se1, tr se2)
+              | Sql.SqKnown se => lift Sql.SqKnown (tr se)
+              | Sql.Inj (e', loc) => lift'' (fn fe' => Sql.Inj (fe', loc)) (f e')
+              | Sql.SqFunc (s, se) => lift (fn trse => Sql.SqFunc (s, trse)) (tr se)
+              | se => pure se
+        in
+            tr
+        end
+
+    fun traverseQuery (ops as (_, pure', _, lift', _, _, lift2')) f =
+        let
+            val rec mp =
+             fn Sql.Query1 q =>
+                (case #Where q of
+                     NONE => pure' (Sql.Query1 q)
+                   | SOME se =>
+                     lift' (fn mpse => Sql.Query1 {Select = #Select q,
+                                                   From = #From q,
+                                                   Where = SOME mpse})
+                           (traverseSqexp ops f se))
+              | Sql.Union (q1, q2) => lift2' Sql.Union (mp q1, mp q2)
+        in
+            mp
+        end
+
+    fun foldMapQuery plus zero = traverseQuery (fn _ => zero,
+                                                fn _ => zero,
+                                                fn _ => fn x => x,
+                                                fn _ => fn x => x,
+                                                fn _ => fn x => x,
+                                                fn _ => plus,
+                                                fn _ => plus)
+
+    val omapQuery = traverseQuery (SOME, SOME, omap, omap, omap, omap2, omap2)
+
+    val varsOfQuery = foldMapQuery IS.union
+                                   IS.empty
+                                   (fn e' => freeVars (e', dummyLoc))
+
+    val varsOfList =
+     fn [] => IS.empty
+      | (q::qs) => varsOfQuery (List.foldl Sql.Union q qs)
+
+    fun orderArgs (qs, vars) =
+        let
+            val invalVars = varsOfList qs
+        in
+            (* Put arguments we might invalidate by first. *)
+            IS.listItems invalVars @ IS.listItems (IS.difference (vars, invalVars))
+        end
+
+    (* As a kludge, we rename the variables in the query to correspond to the
+       argument of the cache they're part of. *)
+    val query =
+     fn (q::qs) =>
+        let
+            val q = List.foldl Sql.Union q qs
+            val ns = IS.listItems (varsOfQuery q)
+            val rename =
+             fn ERel n => omap ERel (indexOf (fn n' => n' = n) ns)
+              | _ => raise Match
+        in
+            case omapQuery rename q of
+                SOME q => q
+              (* We should never get NONE because indexOf should never fail. *)
+              | NONE => raise Match
+        end
+      (* We should never reach this case because [updateState] won't put
+         anything in the state if there are no queries. *)
+      | [] => raise Match
+
+    fun unbind1 ub =
+        case ub of
+            Known (e', loc) =>
+            let
+                val replaceRel0 = case e' of
+                                      ERel m => SOME (ERel m)
+                                    | _ => NONE
+            in
+                omapQuery (fn ERel 0 => replaceRel0
+                            | ERel n => SOME (ERel (n-1))
+                            | _ => raise Match)
+            end
+          | Unknowns k =>
+            omapQuery (fn ERel n => if n >= k then NONE else SOME (ERel (n-k))
+                        | _ => raise Match)
+
+    fun unbind (qs, ub) =
+        case ub of
+            (* Shortcut if nothing's changing. *)
+            Unknowns 0 => SOME qs
+          | _ => osequence (map (unbind1 ub) qs)
+
+    fun updateState ((qs, numArgs, state as {index, ...}) : t * int * state) =
+        {tableToIndices = List.foldr (fn (q, acc) =>
+                                         SS.foldl (fn (tab, acc) =>
+                                                      SIMM.insert (acc, tab, index))
+                                                  acc
+                                                  (tablesOfQuery q))
+                                     (#tableToIndices state)
+                                     qs,
+         indexToInvalInfo = IM.insert (#indexToInvalInfo state, index, (qs, numArgs)),
+         ffiInfo = {index = index, params = numArgs} :: #ffiInfo state,
+         index = index + 1}
+
+end
+
 structure UF = UnionFindFn(AtomExpKey)
 
 structure ConflictMaps = struct
@@ -388,8 +566,7 @@ structure ConflictMaps = struct
        equivalence classes, so the [#1] could be [#2]. *)
     val mergeEqs : (atomExp IntBinaryMap.map option list
                     -> atomExp IntBinaryMap.map option) =
-        List.foldr (fn (SOME eqs, SOME acc) => SOME (IM.unionWith #1 (eqs, acc)) | _ => NONE)
-                   (SOME IM.empty)
+        List.foldr (omap2 (IM.unionWith #1)) (SOME IM.empty)
 
     val simplify =
         map TS.listItems
@@ -459,15 +636,6 @@ val rec dmlToFormula =
                                     Combo (Conj, [mark fVals, fWhere])]))
     end
 
-val rec tablesQuery =
- fn Sql.Query1 {From = tablePairs, ...} => SS.fromList (map #1 tablePairs)
-  | Sql.Union (q1, q2) => SS.union (tablesQuery q1, tablesQuery q2)
-
-val tableDml =
- fn Sql.Insert (tab, _) => tab
-  | Sql.Delete (tab, _) => tab
-  | Sql.Update (tab, _, _) => tab
-
 
 (*************************************)
 (* Program Instrumentation Utilities *)
@@ -481,8 +649,6 @@ val varName =
     end
 
 val {check, store, flush, ...} = getCache ()
-
-val dummyLoc = ErrorMsg.dummySpan
 
 val dummyTyp = (TRecord [], dummyLoc)
 
@@ -701,12 +867,28 @@ Both queries and caches should have IDs.
 
 *)
 
-fun cacheWrap (env, exp, resultTyp, args, state as (_, _, ffiInfo, index)) =
+type state = InvalInfo.state
+
+datatype subexp = Cachable of InvalInfo.t * (state -> exp * state) | Impure of exp
+
+val isImpure =
+ fn Cachable _ => false
+  | Impure _ => true
+
+val runSubexp : subexp * state -> exp * state =
+ fn (Cachable (_, f), state) => f state
+  | (Impure e, state) => (e, state)
+
+val invalInfoOfSubexp =
+ fn Cachable (invalInfo, _) => invalInfo
+  | Impure _ => raise Match
+
+fun cacheWrap (env, exp, typ, args, index) =
     let
         val loc = dummyLoc
         val rel0 = (ERel 0, loc)
     in
-        case MonoFooify.urlify env (rel0, resultTyp) of
+        case MonoFooify.urlify env (rel0, typ) of
             NONE => NONE
           | SOME urlified =>
             let
@@ -716,57 +898,17 @@ fun cacheWrap (env, exp, resultTyp, args, state as (_, _, ffiInfo, index)) =
                 val check = (check (index, args), loc)
                 val store = (store (index, argsInc, urlified), loc)
             in
-                SOME ((ECase
-                           (check,
-                            [((PNone stringTyp, loc),
-                              (ELet (varName "q", resultTyp, exp, (ESeq (store, rel0), loc)), loc)),
-                             ((PSome (stringTyp, (PVar (varName "hit", stringTyp), loc)), loc),
-                              (* Boolean is false because we're not unurlifying from a cookie. *)
-                              (EUnurlify (rel0, resultTyp, false), loc))],
-                            {disc = (TOption stringTyp, loc), result = resultTyp})),
-                      (#1 state,
-                       #2 state,
-                       {index = index, params = length args} :: ffiInfo,
-                       index + 1))
+                SOME (ECase (check,
+                             [((PNone stringTyp, loc),
+                               (ELet (varName "q", typ, exp, (ESeq (store, rel0), loc)), loc)),
+                              ((PSome (stringTyp, (PVar (varName "hit", stringTyp), loc)), loc),
+                               (* Boolean is false because we're not unurlifying from a cookie. *)
+                               (EUnurlify (rel0, typ, false), loc))],
+                             {disc = (TOption stringTyp, loc), result = typ}))
             end
     end
 
-val maxFreeVar =
-    MonoUtil.Exp.foldB
-        {typ = #2,
-         exp = fn (bound, ERel n, v) => Int.max (v, n - bound) | (_, _, v) => v,
-         bind = fn (bound, MonoUtil.Exp.RelE _) => bound + 1 | (bound, _) => bound}
-        0
-        ~1
-
-val freeVars =
-    IS.listItems
-    o MonoUtil.Exp.foldB
-          {typ = #2,
-           exp = fn (bound, ERel n, vars) => if n < bound
-                                             then vars
-                                             else IS.add (vars, n - bound)
-                  | (_, _, vars) => vars,
-           bind = fn (bound, MonoUtil.Exp.RelE _) => bound + 1 | (bound, _) => bound}
-          0
-          IS.empty
-
 val expSize = MonoUtil.Exp.fold {typ = #2, exp = fn (_, n) => n+1} 0
-
-type state = (SIMM.multimap
-              * (Sql.query * int) IntBinaryMap.map
-              * {index : int, params : int} list
-              * int)
-
-datatype subexp = Cachable of state -> (exp * state) | Impure of exp
-
-val isImpure =
- fn Cachable _ => false
-  | Impure _ => true
-
-val runSubexp : subexp * state -> exp * state =
- fn (Cachable f, state) => f state
-  | (Impure e, state) => (e, state)
 
 (* TODO: pick a number. *)
 val sizeWorthCaching = 5
@@ -775,31 +917,33 @@ val worthCaching =
  fn EQuery _ => true
   | exp' => expSize (exp', dummyLoc) > sizeWorthCaching
 
-fun cachePure (env, exp', state as (_, _, _, index)) =
+fun cacheExp ((env, exp', invalInfo, state) : MonoEnv.env * exp' * InvalInfo.t * state) =
     case (worthCaching exp')
              </oguard/>
              typOfExp' env exp' of
         NONE => NONE
       | SOME (TFun _, _) => NONE
       | SOME typ =>
-        (List.foldr (fn (_, NONE) => NONE
-                      | ((n, typ), SOME args) =>
-                        (MonoFooify.urlify env ((ERel n, dummyLoc), typ))
-                            </obind/>
-                            (fn arg => SOME (arg :: args)))
-                    (SOME [])
-                    (map (fn n => (n, #2 (MonoEnv.lookupERel env n)))
-                         (ListMergeSort.sort op> (freeVars (exp', dummyLoc)))))
-            </obind/>
-            (fn args => cacheWrap (env, (exp', dummyLoc), typ, args, state))
+        let
+            val ns = InvalInfo.orderArgs (invalInfo, freeVars (exp', dummyLoc))
+            val numArgs = length ns
+        in  (List.foldr (fn (_, NONE) => NONE
+                        | ((n, typ), SOME args) =>
+                          (MonoFooify.urlify env ((ERel n, dummyLoc), typ))
+                              </obind/>
+                              (fn arg => SOME (arg :: args)))
+                        (SOME [])
+                        (map (fn n => (n, #2 (MonoEnv.lookupERel env n))) ns))
+                </obind/>
+                (fn args =>
+                    (cacheWrap (env, (exp', dummyLoc), typ, args, #index state))
+                        </obind/>
+                        (fn cachedExp =>
+                            SOME (cachedExp, InvalInfo.updateState (invalInfo, numArgs, state))))
+        end
 
-fun cacheQuery (effs, env, state, q) : (exp' * state) =
+fun cacheQuery (effs, env, q) : subexp =
     let
-        val (tableToIndices, indexToQueryNumArgs, ffiInfo, index) = state
-        val {query = queryText, initial, body, ...} = q
-        val numArgs = maxFreeVar queryText + 1
-        (* DEBUG *)
-        (* val () = Print.preface ("sqlcache> ", MonoPrint.p_exp MonoEnv.empty queryText) *)
         (* We use dummyTyp here. I think this is okay because databases don't
            store (effectful) functions, but perhaps there's some pathalogical
            corner case missing.... *)
@@ -809,8 +953,9 @@ fun cacheQuery (effs, env, state, q) : (exp' * state) =
                         (iterate (fn env => MonoEnv.pushERel env "_" dummyTyp NONE)
                                  bound
                                  env)
-        val {state = resultTyp, ...} = q
-        val args = List.tabulate (numArgs, fn n => (ERel n, dummyLoc))
+        val {query = queryText, initial, body, ...} = q
+        (* DEBUG *)
+        (* val () = Print.preface ("sqlcache> ", MonoPrint.p_exp MonoEnv.empty queryText) *)
         val attempt =
             (* Ziv misses Haskell's do notation.... *)
             (safe 0 queryText andalso safe 0 initial andalso safe 2 body)
@@ -818,45 +963,64 @@ fun cacheQuery (effs, env, state, q) : (exp' * state) =
             Sql.parse Sql.query queryText
             </obind/>
             (fn queryParsed =>
-                (cachePure (env, EQuery q, state))
-                    </obind/>
-                    (fn (cachedExp, state) =>
-                        SOME (cachedExp,
-                              (SS.foldr (fn (tab, qi) => SIMM.insert (qi, tab, index))
-                                        tableToIndices
-                                        (tablesQuery queryParsed),
-                               IM.insert (indexToQueryNumArgs, index, (queryParsed, numArgs)),
-                               #3 state,
-                               #4 state))))
+                let
+                    val invalInfo = InvalInfo.singleton queryParsed
+                    fun mkExp state =
+                        case cacheExp (env, EQuery q, invalInfo, state) of
+                            NONE => ((EQuery q, dummyLoc), state)
+                          | SOME (cachedExp, state) => ((cachedExp, dummyLoc), state)
+                in
+                    SOME (Cachable (invalInfo, mkExp))
+                end)
     in
         case attempt of
-            SOME pair => pair
-          | NONE => (EQuery q, state)
+            NONE => Impure (EQuery q, dummyLoc)
+          | SOME subexp => subexp
     end
 
-fun cache (effs : IS.set) ((env, exp as (exp', loc)), state) =
+fun cacheTree (effs : IS.set) ((env, exp as (exp', loc)), state) =
     let
-        fun wrapBindN (f : exp list -> exp') (args : (MonoEnv.env * exp) list) =
+        fun wrapBindN (f : exp list -> exp')
+                      (args : ((MonoEnv.env * exp) * unbind) list) =
             let
-                val (subexps, state) = ListUtil.foldlMap (cache effs) state args
+                val (subexps, state) =
+                    ListUtil.foldlMap (cacheTree effs)
+                                      state
+                                      (map #1 args)
                 fun mkExp state = mapFst (fn exps => (f exps, loc))
                                          (ListUtil.foldlMap runSubexp state subexps)
+                val attempt =
+                    if List.exists isImpure subexps
+                    then NONE
+                    else (List.foldl (omap2 InvalInfo.union)
+                                     (SOME InvalInfo.empty)
+                                     (ListPair.map
+                                          (fn (subexp, (_, unbinds)) =>
+                                              InvalInfo.unbind (invalInfoOfSubexp subexp, unbinds))
+                                          (subexps, args)))
+                             </obind/>
+                             (fn invalInfo =>
+                                 SOME (Cachable (invalInfo,
+                                                 fn state =>
+                                                    case cacheExp (env,
+                                                                   f (map (#2 o #1) args),
+                                                                   invalInfo,
+                                                                   state) of
+                                                        NONE => mkExp state
+                                                      | SOME (e', state) => ((e', loc), state)),
+                                       state))
             in
-                if List.exists isImpure subexps
-                then mapFst Impure (mkExp state)
-                else (Cachable (fn state =>
-                                   case cachePure (env, f (map #2 args), state) of
-                                       NONE => mkExp state
-                                     | SOME (e', state) => ((e', loc), state)),
-                      state)
+                case attempt of
+                    SOME (subexp, state) => (subexp, state)
+                  | NONE => mapFst Impure (mkExp state)
             end
         fun wrapBind1 f arg =
             wrapBindN (fn [arg] => f arg | _ => raise Match) [arg]
         fun wrapBind2 f (arg1, arg2) =
             wrapBindN (fn [arg1, arg2] => f (arg1, arg2) | _ => raise Match) [arg1, arg2]
-        fun wrapN f es = wrapBindN f (map (fn e => (env, e)) es)
-        fun wrap1 f e = wrapBind1 f (env, e)
-        fun wrap2 f (e1, e2) = wrapBind2 f ((env, e1), (env, e2))
+        fun wrapN f es = wrapBindN f (map (fn e => ((env, e), Unknowns 0)) es)
+        fun wrap1 f e = wrapBind1 f ((env, e), Unknowns 0)
+        fun wrap2 f (e1, e2) = wrapBind2 f (((env, e1), Unknowns 0), ((env, e2), Unknowns 0))
     in
         case exp' of
             ECon (dk, pc, SOME e) => wrap1 (fn e => ECon (dk, pc, SOME e)) e
@@ -870,7 +1034,7 @@ fun cache (effs : IS.set) ((env, exp as (exp', loc)), state) =
           | EApp (e1, e2) => wrap2 EApp (e1, e2)
           | EAbs (s, t1, t2, e) =>
             wrapBind1 (fn e => EAbs (s, t1, t2, e))
-                      (MonoEnv.pushERel env s t1 NONE, e)
+                      ((MonoEnv.pushERel env s t1 NONE, e), Unknowns 1)
           | EUnop (s, e) => wrap1 (fn e => EUnop (s, e)) e
           | EBinop (bi, s, e1, e2) => wrap2 (fn (e1, e2) => EBinop (bi, s, e1, e2)) (e1, e2)
           | ERecord fields =>
@@ -883,26 +1047,26 @@ fun cache (effs : IS.set) ((env, exp as (exp', loc)), state) =
                                  (ListPair.map (fn (e, (p, _)) => (p, e)) (es, cases)),
                                  {disc = disc, result = result})
                         | _ => raise Match)
-                      ((env, e) :: map (fn (p, e) => (MonoEnv.patBinds env p, e)) cases)
+                      (((env, e), Unknowns 0)
+                       :: map (fn (p, e) =>
+                                  ((MonoEnv.patBinds env p, e), Unknowns (MonoEnv.patBindsN p)))
+                              cases)
           | EStrcat (e1, e2) => wrap2 EStrcat (e1, e2)
           (* We record page writes, so they're cachable. *)
           | EWrite e => wrap1 EWrite e
           | ESeq (e1, e2) => wrap2 ESeq (e1, e2)
           | ELet (s, t, e1, e2) =>
             wrapBind2 (fn (e1, e2) => ELet (s, t, e1, e2))
-                      ((env, e1), (MonoEnv.pushERel env s t (SOME e1), e2))
+                      (((env, e1), Unknowns 0),
+                       ((MonoEnv.pushERel env s t (SOME e1), e2), Known e1))
           (* ASK: | EClosure (n, es) => ? *)
           | EUnurlify (e, t, b) => wrap1 (fn e => EUnurlify (e, t, b)) e
-          | EQuery q =>
-            let
-                val (exp', state) = cacheQuery (effs, env, state, q)
-            in
-                (Impure (exp', loc), state)
-            end
+          | EQuery q => (cacheQuery (effs, env, q), state)
           | _ => (if effectful effs env exp
                   then Impure exp
-                  else Cachable (fn state =>
-                                    case cachePure (env, exp', state) of
+                  else Cachable (InvalInfo.empty,
+                                 fn state =>
+                                    case cacheExp (env, exp', InvalInfo.empty, state) of
                                         NONE => ((exp', loc), state)
                                       | SOME (exp', state) => ((exp', loc), state)),
                   state)
@@ -911,9 +1075,15 @@ fun cache (effs : IS.set) ((env, exp as (exp', loc)), state) =
 fun addCaching file =
     let
         val effs = effectfulDecls file
-        fun doTopLevelExp env exp state = runSubexp (cache effs ((env, exp), state))
+        fun doTopLevelExp env exp state = runSubexp (cacheTree effs ((env, exp), state))
     in
-        ((fileTopLevelMapfoldB doTopLevelExp file (SIMM.empty, IM.empty, [], 0)), effs)
+        (fileTopLevelMapfoldB doTopLevelExp
+                              file
+                              {tableToIndices = SIMM.empty,
+                               indexToInvalInfo = IM.empty,
+                               ffiInfo = [],
+                               index = 0},
+         effs)
     end
 
 
@@ -951,12 +1121,16 @@ structure Invalidations = struct
 
     fun eqss (query, dml) = conflictMaps (queryToFormula query, dmlToFormula dml)
 
-    fun invalidations ((query, numArgs), dml) =
-        (map (map optionAtomExpToExp)
-         o removeRedundant madeRedundantBy
-         o map (eqsToInvalidation numArgs)
-         o eqss)
-            (query, dml)
+    fun invalidations ((invalInfo, numArgs), dml) =
+        let
+            val query = InvalInfo.query invalInfo
+        in
+            (map (map optionAtomExpToExp)
+             o removeRedundant madeRedundantBy
+             o map (eqsToInvalidation numArgs)
+             o eqss)
+                (query, dml)
+        end
 
 end
 
@@ -966,7 +1140,7 @@ val invalidations = Invalidations.invalidations
 (* val gunk : ((Sql.query * int) * Sql.dml) list ref = ref [] *)
 (* val gunk' : exp list ref = ref [] *)
 
-fun addFlushing ((file, (tableToIndices, indexToQueryNumArgs, ffiInfo, index)), effs) =
+fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, index}), effs) =
     let
         val flushes = List.concat
                       o map (fn (i, argss) => map (fn args => flush (i, args)) argss)
@@ -979,14 +1153,13 @@ fun addFlushing ((file, (tableToIndices, indexToQueryNumArgs, ffiInfo, index)), 
                 val inval =
                     case Sql.parse Sql.dml dmlText of
                         SOME dmlParsed =>
-                        SOME (map (fn i => (case IM.find (indexToQueryNumArgs, i) of
-                                                SOME queryNumArgs =>
-                                                (* DEBUG *)
-                                                ((* gunk := (queryNumArgs, dmlParsed) :: !gunk; *)
-                                                 (i, invalidations (queryNumArgs, dmlParsed)))
+                        SOME (map (fn i => (case IM.find (indexToInvalInfo, i) of
+                                                SOME invalInfo =>
+                                                (i, invalidations (invalInfo, dmlParsed))
                                               (* TODO: fail more gracefully. *)
+                                              (* This probably means invalidating everything.... *)
                                               | NONE => raise Match))
-                                  (SIMM.findList (tableToIndices, tableDml dmlParsed)))
+                                  (SIMM.findList (tableToIndices, tableOfDml dmlParsed)))
                       | NONE => NONE
             in
                 case inval of
