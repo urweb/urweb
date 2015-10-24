@@ -783,7 +783,8 @@
 
          val sum =
              case c of
-                 (L'.CRecord (_, xcs), _) => {fields = xcs, unifs = [], others = []}
+                 (L'.CRecord (_, xcs), _) => {fields = map (fn (x, c) => (hnormCon env x, hnormCon env c)) xcs,
+                                              unifs = [], others = []}
                | (L'.CConcat (c1, c2), _) =>
                  let
                      val s1 = recordSummary env c1
