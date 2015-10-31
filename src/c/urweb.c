@@ -806,9 +806,6 @@ static void uw_try_reconnecting(uw_context ctx) {
     ctx->db = NULL;
   }
   ctx->app->db_init(ctx);
-
-  if (!ctx->db)
-    uw_error(ctx, FATAL, "Error reopening database connection");
 }
 
 void uw_try_reconnecting_and_restarting(uw_context ctx) {
