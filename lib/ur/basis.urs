@@ -554,6 +554,9 @@ val sql_div : t ::: Type -> sql_arith t -> sql_binary t t t
 val sql_mod : sql_binary int int int
 
 val sql_eq : t ::: Type -> sql_binary t t bool
+(* Note that the semantics of this operator on nullable types are different than for standard SQL!
+ * Instead, we do it the sane way, where [NULL = NULL]. *)
+
 val sql_ne : t ::: Type -> sql_binary t t bool
 val sql_lt : t ::: Type -> sql_binary t t bool
 val sql_le : t ::: Type -> sql_binary t t bool

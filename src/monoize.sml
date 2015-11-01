@@ -2592,22 +2592,45 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                  _), _),
                 _), _),
                _), _),
-              _), _),
+              arg1), _),
              _), _),
             _) =>
             let
                 val s = (L'.TFfi ("Basis", "string"), loc)
+
+                val default = strcat [str "(",
+                                      (L'.ERel 1, loc),
+                                      str " ",
+                                      (L'.ERel 2, loc),
+                                      str " ",
+                                      (L'.ERel 0, loc),
+                                      str ")"]
+
+                val body = case #1 arg1 of
+                               L.CApp ((L.CFfi ("Basis", "option"), _), _) =>
+                                (L'.ECase ((L'.ERel 2, loc),
+                                           [((L'.PPrim (Prim.String (Prim.Normal, "=")), loc),
+                                             strcat [str "((",
+                                                     (L'.ERel 1, loc),
+                                                     str " ",
+                                                     (L'.ERel 2, loc),
+                                                     str " ",
+                                                     (L'.ERel 0, loc),
+                                                     str ") OR ((",
+                                                     (L'.ERel 1, loc),
+                                                     str ") IS NULL AND (",
+                                                     (L'.ERel 0, loc),
+                                                     str ") IS NULL))"]),
+                                            ((L'.PWild, loc),
+                                             default)],
+                                           {disc = s,
+                                            result = s}), loc)
+                             | _ => default
             in
                 ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                            (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),
                                      (L'.EAbs ("e2", s, s,
-                                               strcat [str "(",
-                                                       (L'.ERel 1, loc),
-                                                       str " ",
-                                                       (L'.ERel 2, loc),
-                                                       str " ",
-                                                       (L'.ERel 0, loc),
-                                                       str ")"]), loc)), loc)), loc),
+                                               body), loc)), loc)), loc),
                  fm)
             end
           | L.EFfi ("Basis", "sql_and") => (str "AND", fm)
