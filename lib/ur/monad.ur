@@ -81,6 +81,15 @@ fun mapR2 [K] [m] (_ : monad m) [tf1 :: K -> Type] [tf2 :: K -> Type] [tr :: K -
         return (acc ++ {nm = v'}))
     {}
 
+fun mapR3 [K] [m] (_ : monad m) [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [tr :: K -> Type]
+         (f : nm :: Name -> t :: K -> tf1 t -> tf2 t -> tf3 t -> m (tr t)) =
+    @@foldR3 [m] _ [tf1] [tf2] [tf3] [fn r => $(map tr r)]
+    (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] (v1 : tf1 t) (v2 : tf2 t) (v3 : tf3 t)
+                     (acc : $(map tr rest)) =>
+        v' <- f [nm] [t] v1 v2 v3;
+        return (acc ++ {nm = v'}))
+    {}
+
 fun foldMapR [K] [m] (_ : monad m) [tf :: K -> Type] [tf' :: K -> Type] [tr :: {K} -> Type]
              (f : nm :: Name -> t :: K -> rest :: {K}
                   -> [[nm] ~ rest] =>
