@@ -4060,6 +4060,11 @@ uw_Basis_int uw_Basis_toMilliseconds(uw_context ctx, uw_Basis_time tm) {
   return tm.seconds * 1000 + tm.microseconds / 1000;
 }
 
+uw_Basis_time uw_Basis_fromMilliseconds(uw_context ctx, uw_Basis_int n) {
+  uw_Basis_time tm = {n / 1000, n % 1000 * 1000};
+  return tm;
+}
+
 uw_Basis_int uw_Basis_diffInMilliseconds(uw_context ctx, uw_Basis_time tm1, uw_Basis_time tm2) {
   return uw_Basis_toMilliseconds(ctx, tm2) - uw_Basis_toMilliseconds(ctx, tm1);
 }

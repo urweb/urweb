@@ -273,6 +273,7 @@ uw_Basis_int uw_Basis_diffInSeconds(struct uw_context *, uw_Basis_time, uw_Basis
 uw_Basis_int uw_Basis_toSeconds(struct uw_context *, uw_Basis_time);
 uw_Basis_int uw_Basis_diffInMilliseconds(struct uw_context *, uw_Basis_time, uw_Basis_time);
 uw_Basis_int uw_Basis_toMilliseconds(struct uw_context *, uw_Basis_time);
+uw_Basis_time uw_Basis_fromMilliseconds(struct uw_context *, uw_Basis_int);
 uw_Basis_time uw_Basis_fromDatetime(struct uw_context *, uw_Basis_int, uw_Basis_int, uw_Basis_int, uw_Basis_int, uw_Basis_int, uw_Basis_int);
 uw_Basis_int uw_Basis_datetimeYear(struct uw_context *, uw_Basis_time);
 uw_Basis_int uw_Basis_datetimeMonth(struct uw_context *, uw_Basis_time);

@@ -342,6 +342,7 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("addSeconds", "addSeconds"),
                           ("diffInSeconds", "diffInSeconds"),
                           ("toMilliseconds", "toMilliseconds"),
+                          ("fromMilliseconds", "fromMilliseconds"),
                           ("diffInMilliseconds", "diffInMilliseconds"),
 
                           ("fromDatetime", "fromDatetime"),
