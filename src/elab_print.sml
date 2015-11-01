@@ -611,13 +611,13 @@ fun p_sgn_item env (sgiAll as (sgi, _)) =
                                  string ":",
                                  space,
                                  p_con env c]
-      | SgiStr (x, n, sgn) => box [string "structure",
-                                   space,
-                                   p_named x n,
-                                   space,
-                                   string ":",
-                                   space,
-                                   p_sgn env sgn]
+      | SgiStr (_, x, n, sgn) => box [string "structure",
+                                      space,
+                                      p_named x n,
+                                      space,
+                                      string ":",
+                                      space,
+                                      p_sgn env sgn]
       | SgiSgn (x, n, sgn) => box [string "signature",
                                    space,
                                    p_named x n,

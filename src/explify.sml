@@ -150,7 +150,7 @@ fun explifySgi (sgi, loc) =
         SOME (L'.SgiDatatypeImp (x, n, m1, ms, s, xs, map (fn (x, n, co) =>
                                                               (x, n, Option.map explifyCon co)) xncs), loc)
       | L.SgiVal (x, n, c) => SOME (L'.SgiVal (x, n, explifyCon c), loc)
-      | L.SgiStr (x, n, sgn) => SOME (L'.SgiStr (x, n, explifySgn sgn), loc)
+      | L.SgiStr (_, x, n, sgn) => SOME (L'.SgiStr (x, n, explifySgn sgn), loc)
       | L.SgiSgn (x, n, sgn) => SOME (L'.SgiSgn (x, n, explifySgn sgn), loc)
       | L.SgiConstraint _ => NONE
       | L.SgiClassAbs (x, n, k) => SOME (L'.SgiConAbs (x, n, (L'.KArrow (explifyKind k, (L'.KType, loc)), loc)), loc)

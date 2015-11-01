@@ -2481,7 +2481,7 @@ fun dopenConstraints (loc, env, denv) {str, strs} =
                         L'.SgnConst sgis =>
                         foldl (fn (sgi, cs) =>
                                   case #1 sgi of
-                                      L'.SgiStr (x, _, _) =>
+                                      L'.SgiStr (L'.Import, x, _, _) =>
                                       (case E.projectStr env {sgn = sgn, str = st, field = x} of
                                            NONE => raise Fail "Elaborate: projectStr in collect"
                                          | SOME sgn' =>
@@ -2493,6 +2493,18 @@ fun dopenConstraints (loc, env, denv) {str, strs} =
             foldl (fn ((c1, c2), denv) =>
                       D.assert env denv (c1, c2)) denv (collect true (st, sgn))
         end
+
+fun tcdump env =
+    Print.preface("Instances", p_list_sep Print.PD.newline
+                                          (fn (cl, ls) =>
+                                              box [p_con env cl,
+                                                   box [Print.PD.string "{",
+                                                        p_list (fn (t, e) =>
+                                                                   box [p_exp env e,
+                                                                        Print.PD.string " : ",
+                                                                        p_con env t]) ls,
+                                                        Print.PD.string "}"]])
+                                          (E.listClasses env))
 
 fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
     ((*Print.preface ("elabSgi", SourcePrint.p_sgn_item (sgi, loc));*)
@@ -2695,7 +2707,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
              val (env', n) = E.pushStrNamed env x sgn'
              val denv' = dopenConstraints (loc, env', denv) {str = x, strs = []}
          in
-             ([(L'.SgiStr (x, n, sgn'), loc)], (env', denv', gs' @ gs))
+             ([(L'.SgiStr (L'.Import, x, n, sgn'), loc)], (env', denv', gs' @ gs))
          end
 
        | L.SgiSgn (x, sgn) =>
@@ -2814,7 +2826,7 @@ and elabSgn (env, denv) (sgn, loc) =
                                    else
                                        ();
                                    (cons, vals, SS.add (sgns, x), strs))
-                                | L'.SgiStr (x, _, _) =>
+                                | L'.SgiStr (_, x, _, _) =>
                                   (if SS.member (strs, x) then
                                        sgnError env (DuplicateStr (loc, x))
                                    else
@@ -2865,7 +2877,7 @@ and elabSgn (env, denv) (sgn, loc) =
                                     (unifyKinds env k ck
 				     handle KUnify x => sgnError env (WhereWrongKind x);
 				     true)
-				  | (L'.SgiStr (x', _, sgn''), _) =>
+				  | (L'.SgiStr (_, x', _, sgn''), _) =>
 				    (case ms of
 					 [] => false
 				       | m :: ms' =>
@@ -2914,8 +2926,8 @@ and selfify env {str, strs, sgn} =
                                                map (fn (x, n, xs, xncs) => (L'.SgiDatatypeImp (x, n, str, strs, x, xs, xncs), loc)) dts
                                              | (L'.SgiClassAbs (x, n, k), loc) =>
                                                [(L'.SgiClass (x, n, k, (L'.CModProj (str, strs, x), loc)), loc)]
-                                             | (L'.SgiStr (x, n, sgn), loc) =>
-                                               [(L'.SgiStr (x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)]
+                                             | (L'.SgiStr (im, x, n, sgn), loc) =>
+                                               [(L'.SgiStr (im, x, n, selfify env {str = str, strs = strs @ [x], sgn = sgn}), loc)]
                                              | x => [x],
                                    E.sgiBinds env sgi)) env sgis)), #2 sgn)
       | L'.SgnFun _ => sgn
@@ -2987,7 +2999,7 @@ and dopen env {str, strs, sgn} =
                                     [(L'.DVal (x, n, t, (L'.EModProj (str, strs, x), loc)), loc)]
                                 else
                                     []
-                              | L'.SgiStr (x, n, sgn) =>
+                              | L'.SgiStr (_, x, n, sgn) =>
                                 if isVisible x then
                                     [(L'.DStr (x, n, sgn, (L'.StrProj (m, x), loc)), loc)]
                                 else
@@ -3033,8 +3045,8 @@ and sgiOfDecl (d, loc) =
       | L'.DVal (x, n, t, _) => [(L'.SgiVal (x, n, t), loc)]
       | L'.DValRec vis => map (fn (x, n, t, _) => (L'.SgiVal (x, n, t), loc)) vis
       | L'.DSgn (x, n, sgn) => [(L'.SgiSgn (x, n, sgn), loc)]
-      | L'.DStr (x, n, sgn, _) => [(L'.SgiStr (x, n, sgn), loc)]
-      | L'.DFfiStr (x, n, sgn) => [(L'.SgiStr (x, n, sgn), loc)]
+      | L'.DStr (x, n, sgn, _) => [(L'.SgiStr (L'.Import, x, n, sgn), loc)]
+      | L'.DFfiStr (x, n, sgn) => [(L'.SgiStr (L'.Import, x, n, sgn), loc)]
       | L'.DConstraint cs => [(L'.SgiConstraint cs, loc)]
       | L'.DExport _ => []
       | L'.DTable (tn, x, n, c, _, pc, _, cc) =>
@@ -3344,10 +3356,10 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                          NONE
                                    | _ => NONE)
 
-                      | L'.SgiStr (x, n2, sgn2) =>
+                      | L'.SgiStr (_, x, n2, sgn2) =>
                         seek (fn (env, sgi1All as (sgi1, loc)) =>
                                  case sgi1 of
-                                     L'.SgiStr (x', n1, sgn1) =>
+                                     L'.SgiStr (_, x', n1, sgn1) =>
                                      if x = x' then
                                          let
                                              (* Don't forget to save & restore the
@@ -3749,7 +3761,7 @@ and wildifyStr env (str, sgn) =
                                             else
                                                 nd
                                         end
-                                      | L'.SgiStr (x, _, s) =>
+                                      | L'.SgiStr (_, x, _, s) =>
                                         (case #1 (hnormSgn env' s) of
                                              L'.SgnConst sgis' => naddMod (nd, x, (env', buildNeeded env' sgis'))
                                            | _ => nd)
@@ -4496,7 +4508,7 @@ and elabStr (env, denv) (str, loc) =
                                   ((L'.SgiSgn (x, n, sgn), loc) :: sgis, cons, vals, sgns, strs)
                               end
  
-                            | L'.SgiStr (x, n, sgn) =>
+                            | L'.SgiStr (im, x, n, sgn) =>
                               let
                                   val (strs, x) =
                                       if SS.member (strs, x) then
@@ -4504,7 +4516,7 @@ and elabStr (env, denv) (str, loc) =
                                       else
                                           (SS.add (strs, x), x)
                               in
-                                  ((L'.SgiStr (x, n, sgn), loc) :: sgis, cons, vals, sgns, strs)
+                                  ((L'.SgiStr (im, x, n, sgn), loc) :: sgis, cons, vals, sgns, strs)
                               end
                             | L'.SgiConstraint _ => ((sgi, loc) :: sgis, cons, vals, sgns, strs)
                             | L'.SgiClassAbs (x, n, k) =>
@@ -4610,7 +4622,7 @@ and elabStr (env, denv) (str, loc) =
                           * question-mark identifiers generated previously by this
                           * very code fragment. *)
                          fun mungeName m =
-                             if List.exists (fn (L'.SgiStr (x, _, _), _) => x = m
+                             if List.exists (fn (L'.SgiStr (_, x, _, _), _) => x = m
                                               | _ => false) sgis then
                                  mungeName ("?" ^ m)
                              else
@@ -4619,7 +4631,7 @@ and elabStr (env, denv) (str, loc) =
                          val m = mungeName m
                      in
                          ((L'.StrApp (str1', str2'), loc),
-                          (L'.SgnConst ((L'.SgiStr (m, n, selfifyAt env {str = str2', sgn = sgn2}), loc) :: sgis), loc),
+                          (L'.SgnConst ((L'.SgiStr (L'.Skip, m, n, selfifyAt env {str = str2', sgn = sgn2}), loc) :: sgis), loc),
                           gs1 @ gs2)
                      end
                    | _ => raise Fail "Unable to hnormSgn in functor application")
@@ -5001,7 +5013,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
             ();
 
         (*Print.preface("File", ElabPrint.p_file env file);*)
-        
+
         (L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan)
         :: ds
         @ (L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan)
