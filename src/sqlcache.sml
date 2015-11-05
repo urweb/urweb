@@ -9,6 +9,10 @@ structure SS = BinarySetFn(SK)
 structure SM = BinaryMapFn(SK)
 structure SIMM = MultimapFn(structure KeyMap = SM structure ValSet = IS)
 
+(* ASK: how do we deal with heap reallocation? *)
+
+fun id x = x
+
 fun iterate f n x = if n < 0
                     then raise Fail "Can't iterate function negative number of times."
                     else if n = 0
@@ -226,6 +230,8 @@ fun mapFormula mf =
  fn Atom x => Atom (mf x)
   | Negate f => Negate (mapFormula mf f)
   | Combo (j, fs) => Combo (j, map (mapFormula mf) fs)
+
+fun mapFormulaExps mf = mapFormula (fn (cmp, e1, e2) => (cmp, mf e1, mf e2))
 
 
 (****************)
@@ -582,56 +588,117 @@ fun renameTables tablePairs =
         val renameSqexp =
          fn Sql.Field (table, field) => Sql.Field (renameString table, field)
           | e => e
-        fun renameAtom (cmp, e1, e2) = (cmp, renameSqexp e1, renameSqexp e2)
+        (* fun renameAtom (cmp, e1, e2) = (cmp, renameSqexp e1, renameSqexp e2) *)
     in
-        mapFormula renameAtom
+        mapFormulaExps renameSqexp
     end
 
-val rec queryToFormula =
- fn Sql.Query1 {Where = NONE, ...} => Combo (Conj, [])
-  | Sql.Query1 {From = tablePairs, Where = SOME e, ...} =>
-    renameTables tablePairs (sqexpToFormula e)
-  | Sql.Union (q1, q2) => Combo (Disj, [queryToFormula q1, queryToFormula q2])
+fun queryToFormula marker =
+ fn Sql.Query1 {Select = sitems, From = tablePairs, Where = wher} =>
+    let
+        val fWhere = case wher of
+                         NONE => Combo (Conj, [])
+                       | SOME e => sqexpToFormula e
+    in
+        renameTables tablePairs
+                     (case marker of
+                          NONE => fWhere
+                        | SOME markFields =>
+                          let
+                              val fWhereMarked = mapFormulaExps markFields fWhere
+                              val toSqexp =
+                               fn Sql.SqField tf => Sql.Field tf
+                                | Sql.SqExp (se, _) => se
+                              fun ineq se = Atom (Sql.Ne, se, markFields se)
+                              val fIneqs = Combo (Disj, map (ineq o toSqexp) sitems)
+                          in
+                              (Combo (Conj,
+                                      [fWhere,
+                                       Combo (Disj,
+                                              [Negate fWhereMarked,
+                                               Combo (Conj, [fWhereMarked, fIneqs])])]))
+                          end)
+    end
+  | Sql.Union (q1, q2) => Combo (Disj, [queryToFormula marker q1, queryToFormula marker q2])
 
-fun valsToFormula (table, vals) =
-    Combo (Conj, map (fn (field, v) => Atom (Sql.Eq, Sql.Field (table, field), v)) vals)
+fun valsToFormula (markLeft, markRight) (table, vals) =
+    Combo (Conj,
+           map (fn (field, v) => Atom (Sql.Eq, markLeft (Sql.Field (table, field)), markRight v))
+               vals)
 
-val rec dmlToFormula =
- fn Sql.Insert (table, vals) => valsToFormula (table, vals)
-  | Sql.Delete (table, wher) => renameTables [(table, "T")] (sqexpToFormula wher)
+(* TODO: verify logic for insertion and deletion. *)
+val rec dmlToFormulaMarker =
+ fn Sql.Insert (table, vals) => (valsToFormula (id, id) (table, vals), NONE)
+  | Sql.Delete (table, wher) => (renameTables [(table, "T")] (sqexpToFormula wher), NONE)
   | Sql.Update (table, vals, wher) =>
     let
         val fWhere = sqexpToFormula wher
-        val fVals = valsToFormula (table, vals)
+        fun fVals marks = valsToFormula marks (table, vals)
         val modifiedFields = SS.addList (SS.empty, map #1 vals)
         (* TODO: don't use field name hack. *)
-        val markField =
-         fn e as Sql.Field (t, v) => if SS.member (modifiedFields, v)
+        fun markFields table =
+         fn e as Sql.Field (t, v) => if t = table andalso SS.member (modifiedFields, v)
                                      then Sql.Field (t, v ^ "'")
                                      else e
+          | Sql.SqNot e => Sql.SqNot (markFields table e)
+          | Sql.Binop (r, e1, e2) => Sql.Binop (r, markFields table e1, markFields table e2)
+          | Sql.SqKnown e => Sql.SqKnown (markFields table e)
+          | Sql.SqFunc (s, e) => Sql.SqFunc (s, markFields table e)
           | e => e
-        val mark = mapFormula (fn (cmp, e1, e2) => (cmp, markField e1, markField e2))
+        val mark = mapFormulaExps (markFields "T")
     in
-        renameTables [(table, "T")]
-                     (Combo (Disj, [Combo (Conj, [fVals, mark fWhere]),
-                                    Combo (Conj, [mark fVals, fWhere])]))
+        (* Inside renameTables, we mark with table "T". Outside, we use the real table name. *)
+        (renameTables [(table, "T")]
+                      (Combo (Disj, [Combo (Conj, [fVals (id, markFields "T"), mark fWhere]),
+                                     Combo (Conj, [fVals (markFields "T", id), fWhere])])),
+         SOME (markFields table))
     end
 
-(* val rec toFormula = *)
-(*  fn (Sql.Union (q1, q2), d) => Combo (Disj, [toFormula (q1, d), toFormula (q2, d)]) *)
-(*   | (q as Sql.Query1 {Select = items, ...}, d) => *)
-(*     let *)
-(*         val selected = osequence (map (fn )) *)
-(*     in *)
-(*         case selected of *)
-(*             NONE => (Combo (Conj, [markQuery (), markDml fDml])) *)
-(*     end *)
+fun pairToFormulas (query, dml) =
+    let
+        val (fDml, marker) = dmlToFormulaMarker dml
+    in
+        (queryToFormula marker query, fDml)
+    end
+
+(* structure ToFormula = struct *)
+
+(*     val testOfQuery : Sql.query1 -> (Sql.cmp * Sql.sqexp * Sql.sqexp) formula = *)
+(*      fn {From = tablePairs, Where = SOME e, ...} => renameTables tablePairs (sqexpToFormula e) *)
+(*       | {Where = NONE, ...} => Combo (Conj, []) *)
+
+(*     (* If selecting some parsable subset of fields, says which ones. [NONE] *)
+(*        means anything could be selected. *) *)
+(*     fun fieldsOfQuery (q : Sql.query1) = *)
+(*         osequence (map (fn Sql.SqField tf => SOME tf *)
+(*                          | Sql.SqExp (Sql.Field tf) => SOME tf *)
+(*                          | _ => NONE) (#Select q)) *)
+
+(*     fun fieldsOfVals (table, vals, wher) = *)
+(*         let *)
+(*             val fWhere = renameTables [(table, "T")] (sqexpToFormula wher) *)
+(*             val fVals = valsToFormula (table, vals) *)
+(*             val modifiedFields = SS.addList (SS.empty, map #1 vals) *)
+(*             (* TODO: don't use field name hack. *) *)
+(*             val markField = *)
+(*              fn e as Sql.Field (t, v) => if SS.member (modifiedFields, v) *)
+(*                                          then Sql.Field (t, v ^ "'") *)
+(*                                          else e *)
+(*               | e => e *)
+(*             val mark = mapFormula (fn (cmp, e1, e2) => (cmp, markField e1, markField e2)) *)
+(*         in *)
+(*             renameTables [(table, "T")] *)
+(*                          (Combo (Disj, [Combo (Conj, [fVals, mark fWhere]), *)
+(*                                         Combo (Conj, [mark fVals, fWhere])])) *)
+(*         end *)
+(* end *)
 
 structure ConflictMaps = struct
 
     structure TK = TripleKeyFn(structure I = CmpKey
                                structure J = AtomOptionKey
                                structure K = AtomOptionKey)
+
     structure TS : ORD_SET = BinarySetFn(TK)
 
     val toKnownEquality =
@@ -641,10 +708,20 @@ structure ConflictMaps = struct
      fn (Sql.Eq, SOME e1, SOME e2) => SOME (e1, e2)
       | _ => NONE
 
-    val equivClasses : (Sql.cmp * atomExp option * atomExp option) list -> atomExp list list =
-        UF.classes
-        o List.foldl UF.union' UF.empty
-        o List.mapPartial toKnownEquality
+    fun equivClasses atoms : atomExp list list option =
+        let
+            val uf = List.foldl UF.union' UF.empty (List.mapPartial toKnownEquality atoms)
+            val ineqs = List.filter (fn (cmp, _, _) =>
+                                        cmp = Sql.Ne orelse cmp = Sql.Lt orelse cmp = Sql.Gt)
+                                    atoms
+            val contradiction =
+             fn (cmp, SOME ae1, SOME ae2) => (cmp = Sql.Ne orelse cmp = Sql.Lt orelse cmp = Sql.Gt)
+                                             andalso not (UF.together (uf, ae1, ae2))
+              (* If we don't know one side of the comparision, not a contradiction. *)
+              | _ => false
+        in
+            not (List.exists contradiction atoms) <\oguard\> SOME (UF.classes uf)
+        end
 
     fun addToEqs (eqs, n, e) =
         case IM.find (eqs, n) of
@@ -734,7 +811,10 @@ structure ConflictMaps = struct
     fun dnf (fQuery, fDml) =
         normalize simplify normalizeAtom Disj (Combo (Conj, [markQuery fQuery, markDml fDml]))
 
-    val conflictMaps = List.mapPartial (mergeEqs o map eqsOfClass o equivClasses) o dnf
+    val conflictMaps =
+        List.mapPartial (mergeEqs o map eqsOfClass)
+        o List.mapPartial equivClasses
+        o dnf
 
 end
 
@@ -1230,7 +1310,7 @@ structure Invalidations = struct
              o removeRedundant madeRedundantBy
              o map (eqsToInvalidation numArgs)
              o conflictMaps)
-                (queryToFormula query, dmlToFormula dml)
+                (pairToFormulas (query, dml))
         end
 
 end
@@ -1269,11 +1349,13 @@ fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, ...} : state
                   | SOME invs => sequence (flushes invs @ [dmlExp])
             end
           | e' => e'
+        val file = fileMap doExp file
+
     in
         (* DEBUG *)
         (* gunk := []; *)
         ffiInfoRef := ffiInfo;
-        fileMap doExp file
+        file
     end
 
 

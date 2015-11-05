@@ -3,6 +3,7 @@ functor UnionFindFn(K : ORD_KEY) :> sig
     val empty : unionFind
     val union : unionFind * K.ord_key * K.ord_key -> unionFind
     val union' : (K.ord_key * K.ord_key) * unionFind -> unionFind
+    val together : unionFind * K.ord_key * K.ord_key -> bool
     val classes : unionFind -> K.ord_key list list
 end = struct
 
@@ -33,6 +34,10 @@ fun findPair (uf, x) =
 fun find ((uf, _), x) = (S.listItems o #1 o findPair) (uf, x)
 
 fun classes (_, cs) = (map S.listItems o M.listItems) cs
+
+fun together ((uf, _), x, y) = case K.compare (#2 (findPair (uf, x)), #2 (findPair (uf, y))) of
+                                   EQUAL => true
+                                 | _ => false
 
 fun union ((uf, cs), x, y) =
     let
