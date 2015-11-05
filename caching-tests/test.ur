@@ -11,15 +11,29 @@ fun cache id =
          | Some row => <xml>{[row.Tab.Val]}</xml>}
     </body></xml>
 
-fun cache2 id v =
-    res <- oneOrNoRows (SELECT tab.Val
-                        FROM tab
-                        WHERE tab.Id = {[id]} AND tab.Val = {[v]});
+(* fun cache2 id v = *)
+(*     res <- oneOrNoRows (SELECT tab.Val *)
+(*                         FROM tab *)
+(*                         WHERE tab.Id = {[id]} AND tab.Val = {[v]}); *)
+(*     return <xml><body> *)
+(*       Reading {[id]}. *)
+(*       {case res of *)
+(*            None => <xml>Nope, that's not it.</xml> *)
+(*          | Some _ => <xml>Hooray! You guessed it!</xml>} *)
+(*     </body></xml> *)
+
+fun cache2 id1 id2 =
+    res1 <- oneOrNoRows (SELECT tab.Val
+                         FROM tab
+                         WHERE tab.Id = {[id1]});
+    res2 <- oneOrNoRows (SELECT tab.Val
+                         FROM tab
+                         WHERE tab.Id = {[id2]});
     return <xml><body>
-      Reading {[id]}.
-      {case res of
-           None => <xml>Nope, that's not it.</xml>
-         | Some _ => <xml>Hooray! You guessed it!</xml>}
+      Reading {[id1]} and {[id2]}.
+      {case (res1, res2) of
+           (Some _, Some _) => <xml>Both are there.</xml>
+         | _ => <xml>One of them is missing.</xml>}
     </body></xml>
 
 fun flush id =

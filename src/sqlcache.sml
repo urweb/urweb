@@ -64,8 +64,8 @@ val dummyLoc = ErrorMsg.dummySpan
 (*********************)
 
 (* From the MLton wiki. *)
-infixr 3 />     fun f /> y = fn x => f (x, y)     (* Right section     *)
-infixr 3 </     fun x </ f = f x                  (* Right application *)
+infix  3 <\     fun x <\ f = fn y => f (x, y)     (* Left section      *)
+infix  3 \>     fun f \> y = f y                  (* Left application  *)
 
 fun mapFst f (x, y) = (f x, y)
 
@@ -319,11 +319,14 @@ val freeVars =
                                            then vars
                                            else IS.add (vars, n - bound)
                 | (_, _, vars) => vars,
-         bind = fn (bound, MonoUtil.Exp.RelE _) => bound + 1 | (bound, _) => bound}
+         bind = fn (bound, MonoUtil.Exp.RelE _) => bound + 1
+                 | (bound, _) => bound}
         0
         IS.empty
 
 datatype unbind = Known of exp | Unknowns of int
+
+datatype cacheArg = AsIs of exp | Urlify of exp
 
 structure InvalInfo :> sig
     type t
@@ -334,27 +337,48 @@ structure InvalInfo :> sig
     val empty : t
     val singleton : Sql.query -> t
     val query : t -> Sql.query
-    val orderArgs : t * IS.set -> int list
+    val orderArgs : t * IS.set -> cacheArg list
     val unbind : t * unbind -> t option
     val union : t * t -> t
     val updateState : t * int * state -> state
 end = struct
 
-    type t = Sql.query list
+    datatype sqlArg = FreeVar of int | Sqlify of string * string * sqlArg * typ
+
+    type subst = sqlArg IM.map
+
+    (* TODO: store free variables as well? *)
+    type t = (Sql.query * subst) list
 
     type state = {tableToIndices : SIMM.multimap,
                   indexToInvalInfo : (t * int) IntBinaryMap.map,
                   ffiInfo : {index : int, params : int} list,
                   index : int}
 
-    val empty = []
+    structure AM = BinaryMapFn(struct
+        type ord_key = sqlArg
+        (* Saw this on MLton wiki. *)
+        fun ifNotEq (cmp, thunk) = case cmp of
+                                       EQUAL => thunk ()
+                                     | _ => cmp
+        fun try f x () = f x
+        val rec compare =
+         fn (FreeVar n1, FreeVar n2) =>
+            Int.compare (n1, n2)
+          | (FreeVar _, _) => LESS
+          | (_, FreeVar _) => GREATER
+          | (Sqlify (m1, x1, arg1, t1), Sqlify (m2, x2, arg2, t2)) =>
+            String.compare (m1, m2)
+            <\ifNotEq\> try String.compare (x1, x2)
+            <\ifNotEq\> try MonoUtil.Typ.compare (t1, t2)
+            <\ifNotEq\> try compare (arg1, arg2)
+    end)
 
-    fun singleton q = [q]
-
-    val union = op@
+    (* Traversal Utilities *)
+    (* TODO: get rid of unused ones. *)
 
     (* Need lift', etc. because we don't have rank-2 polymorphism. This should
-       probably use a functor, but this works for now. *)
+       probably use a functor (an ML one, not Haskell) but works for now. *)
     fun traverseSqexp (pure, _, lift, _, lift'', lift2, _) f =
         let
             val rec tr =
@@ -385,76 +409,146 @@ end = struct
             mp
         end
 
-    fun foldMapQuery plus zero = traverseQuery (fn _ => zero,
-                                                fn _ => zero,
-                                                fn _ => fn x => x,
-                                                fn _ => fn x => x,
-                                                fn _ => fn x => x,
-                                                fn _ => plus,
-                                                fn _ => plus)
+    (* Include unused tuple elements in argument for convenience of using same
+       argument as [traverseQuery]. *)
+    fun traverseIM (pure, _, _, _, _, lift2, _) f =
+        IM.foldli (fn (k, v, acc) => lift2 (fn (acc, w) => IM.insert (acc, k, w)) (acc, f (k,v)))
+                  (pure IM.empty)
 
-    val omapQuery = traverseQuery (SOME, SOME, omap, omap, omap, omap2, omap2)
+    fun traverseSubst (ops as (_, pure', lift, _, _, _, lift2')) f =
+        let
+            val rec mp =
+             fn FreeVar n => f n
+              | Sqlify (m, x, arg, t) => lift (fn mparg => Sqlify (m, x, mparg, t)) (mp arg)
+        in
+            traverseIM ops (fn (_, v) => mp v)
+        end
+
+    fun monoidOps plus zero = (fn _ => zero, fn _ => zero,
+                               fn _ => fn x => x, fn _ => fn x => x, fn _ => fn x => x,
+                               fn _ => plus, fn _ => plus)
+
+    val optionOps = (SOME, SOME, omap, omap, omap, omap2, omap2)
+
+    fun foldMapQuery plus zero = traverseQuery (monoidOps plus zero)
+    val omapQuery = traverseQuery optionOps
+    fun foldMapIM plus zero = traverseIM (monoidOps plus zero)
+    fun omapIM f = traverseIM optionOps f
+    fun foldMapSubst plus zero = traverseSubst (monoidOps plus zero)
+    fun omapSubst f = traverseSubst optionOps f
 
     val varsOfQuery = foldMapQuery IS.union
                                    IS.empty
                                    (fn e' => freeVars (e', dummyLoc))
 
+    val varsOfSubst = foldMapSubst IS.union IS.empty IS.singleton
+
     val varsOfList =
      fn [] => IS.empty
       | (q::qs) => varsOfQuery (List.foldl Sql.Union q qs)
 
-    fun orderArgs (qs, vars) =
+    (* Signature Implementation *)
+
+    val empty = []
+
+    fun singleton q = [(q, IS.foldl (fn (n, acc) => IM.insert (acc, n, FreeVar n))
+                                    IM.empty
+                                    (varsOfQuery q))]
+
+    val union = op@
+
+    fun sqlArgsMap (qs : t) =
         let
-            val invalVars = varsOfList qs
+            val args =
+                List.foldl (fn ((q, subst), acc) =>
+                               IM.foldl (fn (arg, acc) => AM.insert (acc, arg, ())) acc subst)
+                           AM.empty
+                           qs
+            val countRef = ref (~1)
+            fun count () = (countRef := !countRef + 1; !countRef)
+        in
+            (* Maps each arg to a different consecutive integer, starting from 0. *)
+            AM.map count args
+        end
+
+    val rec expOfArg =
+     fn FreeVar n => (ERel n, dummyLoc)
+      | Sqlify (m, x, arg, t) => (EFfiApp (m, x, [(expOfArg arg, t)]), dummyLoc)
+
+    fun orderArgs (qs : t, vars) =
+        let
+            fun erel n = (ERel n, dummyLoc)
+            val argsMap = sqlArgsMap qs
+            val args = map (expOfArg o #1) (AM.listItemsi argsMap)
+            val invalVars = List.foldl IS.union IS.empty (map freeVars args)
         in
             (* Put arguments we might invalidate by first. *)
-            IS.listItems invalVars @ IS.listItems (IS.difference (vars, invalVars))
+            map AsIs args
+            (* TODO: make sure these variables are okay to remove from the argument list. *)
+            @ map (Urlify o erel) (IS.listItems (IS.difference (vars, invalVars)))
         end
 
     (* As a kludge, we rename the variables in the query to correspond to the
        argument of the cache they're part of. *)
-    val query =
-     fn (q::qs) =>
+    fun query (qs : t) =
         let
-            val q = List.foldl Sql.Union q qs
-            val ns = IS.listItems (varsOfQuery q)
-            val rename =
-             fn ERel n => omap ERel (indexOf (fn n' => n' = n) ns)
+            val argsMap = sqlArgsMap qs
+            fun substitute subst =
+             fn ERel n => IM.find (subst, n)
+                          <\obind\>
+                           (fn arg =>
+                               AM.find (argsMap, arg)
+                               <\obind\>
+                                (fn n' => SOME (ERel n')))
               | _ => raise Match
         in
-            case omapQuery rename q of
-                SOME q => q
-              (* We should never get NONE because indexOf should never fail. *)
-              | NONE => raise Match
+            case (map #1 qs) of
+                (q :: qs) =>
+                let
+                    val q = List.foldl Sql.Union q qs
+                    val ns = IS.listItems (varsOfQuery q)
+                    val rename =
+                     fn ERel n => omap ERel (indexOf (fn n' => n' = n) ns)
+                      | _ => raise Match
+                in
+                    case omapQuery rename q of
+                        SOME q => q
+                      (* We should never get NONE because indexOf should never fail. *)
+                      | NONE => raise Match
+                end
+              (* We should never reach this case because [updateState] won't
+                 put anything in the state if there are no queries. *)
+              | [] => raise Match
         end
-      (* We should never reach this case because [updateState] won't put
-         anything in the state if there are no queries. *)
-      | [] => raise Match
 
-    fun unbind1 ub =
-        case ub of
-            Known (e', loc) =>
-            let
-                val replaceRel0 = case e' of
-                                      ERel m => SOME (ERel m)
-                                    | _ => NONE
-            in
-                omapQuery (fn ERel 0 => replaceRel0
-                            | ERel n => SOME (ERel (n-1))
-                            | _ => raise Match)
-            end
-          | Unknowns k =>
-            omapQuery (fn ERel n => if n >= k then NONE else SOME (ERel (n-k))
-                        | _ => raise Match)
+    val rec argOfExp =
+     fn (ERel n, _) => SOME (FreeVar n)
+      | (EFfiApp ("Basis", x, [(exp, t)]), _) =>
+        if String.isPrefix "sqlify" x
+        then omap (fn arg => Sqlify ("Basis", x, arg, t)) (argOfExp exp)
+        else NONE
+      | _ => NONE
+
+    val unbind1 =
+     fn Known e =>
+        let
+            val replacement = argOfExp e
+        in
+            omapSubst (fn 0 => replacement
+                        | n => SOME (FreeVar (n-1)))
+        end
+      | Unknowns k => omapSubst (fn n => if n >= k then NONE else SOME (FreeVar (n-k)))
 
     fun unbind (qs, ub) =
         case ub of
             (* Shortcut if nothing's changing. *)
             Unknowns 0 => SOME qs
-          | _ => osequence (map (unbind1 ub) qs)
+          | _ => osequence (map (fn (q, subst) => unbind1 ub subst
+                                                  <\obind\>
+                                                   (fn subst' => SOME (q, subst'))) qs)
 
-    fun updateState ((qs, numArgs, state as {index, ...}) : t * int * state) =
-        {tableToIndices = List.foldr (fn (q, acc) =>
+    fun updateState (qs, numArgs, state as {index, ...} : state) =
+        {tableToIndices = List.foldr (fn ((q, _), acc) =>
                                          SS.foldl (fn (tab, acc) =>
                                                       SIMM.insert (acc, tab, index))
                                                   acc
@@ -468,6 +562,70 @@ end = struct
 end
 
 structure UF = UnionFindFn(AtomExpKey)
+
+val rec sqexpToFormula =
+ fn Sql.SqTrue => Combo (Conj, [])
+  | Sql.SqFalse => Combo (Disj, [])
+  | Sql.SqNot e => Negate (sqexpToFormula e)
+  | Sql.Binop (Sql.RCmp c, e1, e2) => Atom (c, e1, e2)
+  | Sql.Binop (Sql.RLop l, p1, p2) => Combo (case l of Sql.And => Conj | Sql.Or => Disj,
+                                             [sqexpToFormula p1, sqexpToFormula p2])
+  (* ASK: any other sqexps that can be props? *)
+  | _ => raise Match
+
+fun renameTables tablePairs =
+    let
+        fun renameString table =
+            case List.find (fn (_, t) => table = t) tablePairs of
+                NONE => table
+              | SOME (realTable, _) => realTable
+        val renameSqexp =
+         fn Sql.Field (table, field) => Sql.Field (renameString table, field)
+          | e => e
+        fun renameAtom (cmp, e1, e2) = (cmp, renameSqexp e1, renameSqexp e2)
+    in
+        mapFormula renameAtom
+    end
+
+val rec queryToFormula =
+ fn Sql.Query1 {Where = NONE, ...} => Combo (Conj, [])
+  | Sql.Query1 {From = tablePairs, Where = SOME e, ...} =>
+    renameTables tablePairs (sqexpToFormula e)
+  | Sql.Union (q1, q2) => Combo (Disj, [queryToFormula q1, queryToFormula q2])
+
+fun valsToFormula (table, vals) =
+    Combo (Conj, map (fn (field, v) => Atom (Sql.Eq, Sql.Field (table, field), v)) vals)
+
+val rec dmlToFormula =
+ fn Sql.Insert (table, vals) => valsToFormula (table, vals)
+  | Sql.Delete (table, wher) => renameTables [(table, "T")] (sqexpToFormula wher)
+  | Sql.Update (table, vals, wher) =>
+    let
+        val fWhere = sqexpToFormula wher
+        val fVals = valsToFormula (table, vals)
+        val modifiedFields = SS.addList (SS.empty, map #1 vals)
+        (* TODO: don't use field name hack. *)
+        val markField =
+         fn e as Sql.Field (t, v) => if SS.member (modifiedFields, v)
+                                     then Sql.Field (t, v ^ "'")
+                                     else e
+          | e => e
+        val mark = mapFormula (fn (cmp, e1, e2) => (cmp, markField e1, markField e2))
+    in
+        renameTables [(table, "T")]
+                     (Combo (Disj, [Combo (Conj, [fVals, mark fWhere]),
+                                    Combo (Conj, [mark fVals, fWhere])]))
+    end
+
+(* val rec toFormula = *)
+(*  fn (Sql.Union (q1, q2), d) => Combo (Disj, [toFormula (q1, d), toFormula (q2, d)]) *)
+(*   | (q as Sql.Query1 {Select = items, ...}, d) => *)
+(*     let *)
+(*         val selected = osequence (map (fn )) *)
+(*     in *)
+(*         case selected of *)
+(*             NONE => (Combo (Conj, [markQuery (), markDml fDml])) *)
+(*     end *)
 
 structure ConflictMaps = struct
 
@@ -582,71 +740,10 @@ end
 
 val conflictMaps = ConflictMaps.conflictMaps
 
-val rec sqexpToFormula =
- fn Sql.SqTrue => Combo (Conj, [])
-  | Sql.SqFalse => Combo (Disj, [])
-  | Sql.SqNot e => Negate (sqexpToFormula e)
-  | Sql.Binop (Sql.RCmp c, e1, e2) => Atom (c, e1, e2)
-  | Sql.Binop (Sql.RLop l, p1, p2) => Combo (case l of Sql.And => Conj | Sql.Or => Disj,
-                                             [sqexpToFormula p1, sqexpToFormula p2])
-  (* ASK: any other sqexps that can be props? *)
-  | _ => raise Match
-
-fun renameTables tablePairs =
-    let
-        fun renameString table =
-            case List.find (fn (_, t) => table = t) tablePairs of
-                NONE => table
-              | SOME (realTable, _) => realTable
-        val renameSqexp =
-         fn Sql.Field (table, field) => Sql.Field (renameString table, field)
-          | e => e
-        fun renameAtom (cmp, e1, e2) = (cmp, renameSqexp e1, renameSqexp e2)
-    in
-        mapFormula renameAtom
-    end
-
-val rec queryToFormula =
- fn Sql.Query1 {Where = NONE, ...} => Combo (Conj, [])
-  | Sql.Query1 {From = tablePairs, Where = SOME e, ...} =>
-    renameTables tablePairs (sqexpToFormula e)
-  | Sql.Union (q1, q2) => Combo (Disj, [queryToFormula q1, queryToFormula q2])
-
-fun valsToFormula (table, vals) =
-    Combo (Conj, map (fn (field, v) => Atom (Sql.Eq, Sql.Field (table, field), v)) vals)
-
-val rec dmlToFormula =
- fn Sql.Insert (table, vals) => valsToFormula (table, vals)
-  | Sql.Delete (table, wher) => renameTables [(table, "T")] (sqexpToFormula wher)
-  | Sql.Update (table, vals, wher) =>
-    let
-        val fWhere = sqexpToFormula wher
-        val fVals = valsToFormula (table, vals)
-        val modifiedFields = SS.addList (SS.empty, map #1 vals)
-        (* TODO: don't use field name hack. *)
-        val markField =
-         fn e as Sql.Field (t, v) => if SS.member (modifiedFields, v)
-                                     then Sql.Field (t, v ^ "'")
-                                     else e
-          | e => e
-        val mark = mapFormula (fn (cmp, e1, e2) => (cmp, markField e1, markField e2))
-    in
-        renameTables [(table, "T")]
-                     (Combo (Disj, [Combo (Conj, [fVals, mark fWhere]),
-                                    Combo (Conj, [mark fVals, fWhere])]))
-    end
-
 
 (*************************************)
 (* Program Instrumentation Utilities *)
 (*************************************)
-
-val varName =
-    let
-        val varNumber = ref 0
-    in
-        fn s => (varNumber := !varNumber + 1; s ^ Int.toString (!varNumber))
-    end
 
 val {check, store, flush, ...} = getCache ()
 
@@ -752,7 +849,7 @@ val simplifySql =
                         chunks
                 fun wrapLets e' =
                     (* Important that this is foldl (to oppose foldr above). *)
-                    List.foldl (fn (v, e') => ELet (varName "sqlArg", stringTyp, v, (e', loc)))
+                    List.foldl (fn (v, e') => ELet ("sqlArg", stringTyp, v, (e', loc)))
                                e'
                                newVariables
                 val numArgs = length newVariables
@@ -900,8 +997,8 @@ fun cacheWrap (env, exp, typ, args, index) =
             in
                 SOME (ECase (check,
                              [((PNone stringTyp, loc),
-                               (ELet (varName "q", typ, exp, (ESeq (store, rel0), loc)), loc)),
-                              ((PSome (stringTyp, (PVar (varName "hit", stringTyp), loc)), loc),
+                               (ELet ("q", typ, exp, (ESeq (store, rel0), loc)), loc)),
+                              ((PSome (stringTyp, (PVar ("hit", stringTyp), loc)), loc),
                                (* Boolean is false because we're not unurlifying from a cookie. *)
                                (EUnurlify (rel0, typ, false), loc))],
                              {disc = (TOption stringTyp, loc), result = typ}))
@@ -917,29 +1014,35 @@ val worthCaching =
  fn EQuery _ => true
   | exp' => expSize (exp', dummyLoc) > sizeWorthCaching
 
-fun cacheExp ((env, exp', invalInfo, state) : MonoEnv.env * exp' * InvalInfo.t * state) =
-    case (worthCaching exp')
-             </oguard/>
-             typOfExp' env exp' of
+fun cacheExp (env, exp', invalInfo, state : state) =
+    case worthCaching exp' <\oguard\> typOfExp' env exp' of
         NONE => NONE
       | SOME (TFun _, _) => NONE
       | SOME typ =>
         let
-            val ns = InvalInfo.orderArgs (invalInfo, freeVars (exp', dummyLoc))
-            val numArgs = length ns
-        in  (List.foldr (fn (_, NONE) => NONE
-                        | ((n, typ), SOME args) =>
-                          (MonoFooify.urlify env ((ERel n, dummyLoc), typ))
-                              </obind/>
-                              (fn arg => SOME (arg :: args)))
-                        (SOME [])
-                        (map (fn n => (n, #2 (MonoEnv.lookupERel env n))) ns))
-                </obind/>
-                (fn args =>
-                    (cacheWrap (env, (exp', dummyLoc), typ, args, #index state))
-                        </obind/>
-                        (fn cachedExp =>
-                            SOME (cachedExp, InvalInfo.updateState (invalInfo, numArgs, state))))
+            val args = InvalInfo.orderArgs (invalInfo, freeVars (exp', dummyLoc))
+            val numArgs = length args
+        in (List.foldr (fn (arg, acc) =>
+                           acc
+                           <\obind\>
+                            (fn args' =>
+                                (case arg of
+                                     AsIs exp => SOME exp
+                                   | Urlify exp =>
+                                     typOfExp env exp
+                                     <\obind\>
+                                      (fn typ =>
+                                          (MonoFooify.urlify env (exp, typ))))
+                                <\obind\>
+                                 (fn arg' => SOME (arg' :: args'))))
+                       (SOME [])
+                       args)
+               <\obind\>
+                (fn args' =>
+                    cacheWrap (env, (exp', dummyLoc), typ, args', #index state)
+                    <\obind\>
+                     (fn cachedExp =>
+                         SOME (cachedExp, InvalInfo.updateState (invalInfo, numArgs, state))))
         end
 
 fun cacheQuery (effs, env, q) : subexp =
@@ -959,9 +1062,9 @@ fun cacheQuery (effs, env, q) : subexp =
         val attempt =
             (* Ziv misses Haskell's do notation.... *)
             (safe 0 queryText andalso safe 0 initial andalso safe 2 body)
-            </oguard/>
+            <\oguard\>
             Sql.parse Sql.query queryText
-            </obind/>
+            <\obind\>
             (fn queryParsed =>
                 let
                     val invalInfo = InvalInfo.singleton queryParsed
@@ -998,7 +1101,7 @@ fun cacheTree (effs : IS.set) ((env, exp as (exp', loc)), state) =
                                           (fn (subexp, (_, unbinds)) =>
                                               InvalInfo.unbind (invalInfoOfSubexp subexp, unbinds))
                                           (subexps, args)))
-                             </obind/>
+                             <\obind\>
                              (fn invalInfo =>
                                  SOME (Cachable (invalInfo,
                                                  fn state =>
@@ -1119,8 +1222,6 @@ structure Invalidations = struct
                                            | _ => false)
       | _ => false
 
-    fun eqss (query, dml) = conflictMaps (queryToFormula query, dmlToFormula dml)
-
     fun invalidations ((invalInfo, numArgs), dml) =
         let
             val query = InvalInfo.query invalInfo
@@ -1128,8 +1229,8 @@ structure Invalidations = struct
             (map (map optionAtomExpToExp)
              o removeRedundant madeRedundantBy
              o map (eqsToInvalidation numArgs)
-             o eqss)
-                (query, dml)
+             o conflictMaps)
+                (queryToFormula query, dmlToFormula dml)
         end
 
 end
@@ -1140,7 +1241,7 @@ val invalidations = Invalidations.invalidations
 (* val gunk : ((Sql.query * int) * Sql.dml) list ref = ref [] *)
 (* val gunk' : exp list ref = ref [] *)
 
-fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, index}), effs) =
+fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, ...} : state), effs) =
     let
         val flushes = List.concat
                       o map (fn (i, argss) => map (fn args => flush (i, args)) argss)
