@@ -1,4 +1,4 @@
-structure Sqlcache :> SQLCACHE = struct
+structure Sqlcache (* DEBUG :> SQLCACHE *) = struct
 
 open Mono
 
@@ -567,6 +567,12 @@ end = struct
 
 end
 
+(* DEBUG *)
+val gunk0 : ((Sql.cmp * Sql.sqexp * Sql.sqexp) formula
+             * (Sql.cmp * Sql.sqexp * Sql.sqexp) formula) list ref = ref []
+val gunk1 : (Sql.cmp * atomExp option * atomExp option) list list list ref = ref []
+val gunk2 : exp list ref = ref []
+
 structure UF = UnionFindFn(AtomExpKey)
 
 val rec sqexpToFormula =
@@ -579,18 +585,22 @@ val rec sqexpToFormula =
   (* ASK: any other sqexps that can be props? *)
   | _ => raise Match
 
+fun mapSqexpFields f =
+    fn Sql.Field (t, v) => f (t, v)
+  | Sql.SqNot e => Sql.SqNot (mapSqexpFields f e)
+  | Sql.Binop (r, e1, e2) => Sql.Binop (r, mapSqexpFields f e1, mapSqexpFields f e2)
+  | Sql.SqKnown e => Sql.SqKnown (mapSqexpFields f e)
+  | Sql.SqFunc (s, e) => Sql.SqFunc (s, mapSqexpFields f e)
+  | e => e
+
 fun renameTables tablePairs =
     let
-        fun renameString table =
+        fun rename table =
             case List.find (fn (_, t) => table = t) tablePairs of
                 NONE => table
               | SOME (realTable, _) => realTable
-        val renameSqexp =
-         fn Sql.Field (table, field) => Sql.Field (renameString table, field)
-          | e => e
-        (* fun renameAtom (cmp, e1, e2) = (cmp, renameSqexp e1, renameSqexp e2) *)
     in
-        mapFormulaExps renameSqexp
+        mapSqexpFields (fn (t, f) => Sql.Field (rename t, f))
     end
 
 fun queryToFormula marker =
@@ -598,26 +608,25 @@ fun queryToFormula marker =
     let
         val fWhere = case wher of
                          NONE => Combo (Conj, [])
-                       | SOME e => sqexpToFormula e
+                       | SOME e => sqexpToFormula (renameTables tablePairs e)
     in
-        renameTables tablePairs
-                     (case marker of
-                          NONE => fWhere
-                        | SOME markFields =>
-                          let
-                              val fWhereMarked = mapFormulaExps markFields fWhere
-                              val toSqexp =
-                               fn Sql.SqField tf => Sql.Field tf
-                                | Sql.SqExp (se, _) => se
-                              fun ineq se = Atom (Sql.Ne, se, markFields se)
-                              val fIneqs = Combo (Disj, map (ineq o toSqexp) sitems)
-                          in
-                              (Combo (Conj,
-                                      [fWhere,
-                                       Combo (Disj,
-                                              [Negate fWhereMarked,
-                                               Combo (Conj, [fWhereMarked, fIneqs])])]))
-                          end)
+        case marker of
+             NONE => fWhere
+           | SOME markFields =>
+             let
+                 val fWhereMarked = mapFormulaExps markFields fWhere
+                 val toSqexp =
+                  fn Sql.SqField tf => Sql.Field tf
+                   | Sql.SqExp (se, _) => se
+                 fun ineq se = Atom (Sql.Ne, se, markFields se)
+                 val fIneqs = Combo (Disj, map (ineq o renameTables tablePairs o toSqexp) sitems)
+             in
+                 (Combo (Conj,
+                         [fWhere,
+                          Combo (Disj,
+                                 [Negate fWhereMarked,
+                                  Combo (Conj, [fWhereMarked, fIneqs])])]))
+             end
     end
   | Sql.Union (q1, q2) => Combo (Disj, [queryToFormula marker q1, queryToFormula marker q2])
 
@@ -629,69 +638,32 @@ fun valsToFormula (markLeft, markRight) (table, vals) =
 (* TODO: verify logic for insertion and deletion. *)
 val rec dmlToFormulaMarker =
  fn Sql.Insert (table, vals) => (valsToFormula (id, id) (table, vals), NONE)
-  | Sql.Delete (table, wher) => (renameTables [(table, "T")] (sqexpToFormula wher), NONE)
+  | Sql.Delete (table, wher) => (sqexpToFormula (renameTables [(table, "T")] wher), NONE)
   | Sql.Update (table, vals, wher) =>
     let
-        val fWhere = sqexpToFormula wher
+        val fWhere = sqexpToFormula (renameTables [(table, "T")] wher)
         fun fVals marks = valsToFormula marks (table, vals)
         val modifiedFields = SS.addList (SS.empty, map #1 vals)
         (* TODO: don't use field name hack. *)
-        fun markFields table =
-         fn e as Sql.Field (t, v) => if t = table andalso SS.member (modifiedFields, v)
-                                     then Sql.Field (t, v ^ "'")
-                                     else e
-          | Sql.SqNot e => Sql.SqNot (markFields table e)
-          | Sql.Binop (r, e1, e2) => Sql.Binop (r, markFields table e1, markFields table e2)
-          | Sql.SqKnown e => Sql.SqKnown (markFields table e)
-          | Sql.SqFunc (s, e) => Sql.SqFunc (s, markFields table e)
-          | e => e
-        val mark = mapFormulaExps (markFields "T")
+        val markFields =
+            mapSqexpFields (fn (t, v) => if t = table andalso SS.member (modifiedFields, v)
+                                         then ((* DEBUG *) print ("yep" ^ Int.toString (length (!gunk0)));
+                                                           Sql.Field (t, v ^ "'"))
+                                         else ((* DEBUG *) print (table ^ " " ^ t ^ "\n"); Sql.Field (t, v)))
+        val mark = mapFormulaExps markFields
     in
-        (* Inside renameTables, we mark with table "T". Outside, we use the real table name. *)
-        (renameTables [(table, "T")]
-                      (Combo (Disj, [Combo (Conj, [fVals (id, markFields "T"), mark fWhere]),
-                                     Combo (Conj, [fVals (markFields "T", id), fWhere])])),
-         SOME (markFields table))
+        ((Combo (Disj, [Combo (Conj, [fVals (id, markFields), mark fWhere]),
+                        Combo (Conj, [fVals (markFields, id), fWhere])])),
+         SOME markFields)
     end
 
 fun pairToFormulas (query, dml) =
     let
-        val (fDml, marker) = dmlToFormulaMarker dml
+        val (fDml, marker) = ((* DEBUG *) print "dml\n"; dmlToFormulaMarker dml)
     in
+        (* DEBUG *) print "query\n";
         (queryToFormula marker query, fDml)
     end
-
-(* structure ToFormula = struct *)
-
-(*     val testOfQuery : Sql.query1 -> (Sql.cmp * Sql.sqexp * Sql.sqexp) formula = *)
-(*      fn {From = tablePairs, Where = SOME e, ...} => renameTables tablePairs (sqexpToFormula e) *)
-(*       | {Where = NONE, ...} => Combo (Conj, []) *)
-
-(*     (* If selecting some parsable subset of fields, says which ones. [NONE] *)
-(*        means anything could be selected. *) *)
-(*     fun fieldsOfQuery (q : Sql.query1) = *)
-(*         osequence (map (fn Sql.SqField tf => SOME tf *)
-(*                          | Sql.SqExp (Sql.Field tf) => SOME tf *)
-(*                          | _ => NONE) (#Select q)) *)
-
-(*     fun fieldsOfVals (table, vals, wher) = *)
-(*         let *)
-(*             val fWhere = renameTables [(table, "T")] (sqexpToFormula wher) *)
-(*             val fVals = valsToFormula (table, vals) *)
-(*             val modifiedFields = SS.addList (SS.empty, map #1 vals) *)
-(*             (* TODO: don't use field name hack. *) *)
-(*             val markField = *)
-(*              fn e as Sql.Field (t, v) => if SS.member (modifiedFields, v) *)
-(*                                          then Sql.Field (t, v ^ "'") *)
-(*                                          else e *)
-(*               | e => e *)
-(*             val mark = mapFormula (fn (cmp, e1, e2) => (cmp, markField e1, markField e2)) *)
-(*         in *)
-(*             renameTables [(table, "T")] *)
-(*                          (Combo (Disj, [Combo (Conj, [fVals, mark fWhere]), *)
-(*                                         Combo (Conj, [mark fVals, fWhere])])) *)
-(*         end *)
-(* end *)
 
 structure ConflictMaps = struct
 
@@ -716,7 +688,7 @@ structure ConflictMaps = struct
                                     atoms
             val contradiction =
              fn (cmp, SOME ae1, SOME ae2) => (cmp = Sql.Ne orelse cmp = Sql.Lt orelse cmp = Sql.Gt)
-                                             andalso not (UF.together (uf, ae1, ae2))
+                                             andalso UF.together (uf, ae1, ae2)
               (* If we don't know one side of the comparision, not a contradiction. *)
               | _ => false
         in
@@ -814,7 +786,9 @@ structure ConflictMaps = struct
     val conflictMaps =
         List.mapPartial (mergeEqs o map eqsOfClass)
         o List.mapPartial equivClasses
+        o (fn x => (gunk1 := x :: !gunk1; x))
         o dnf
+        o (fn x => (gunk0 := x :: !gunk0; x))
 
 end
 
@@ -1317,10 +1291,6 @@ end
 
 val invalidations = Invalidations.invalidations
 
-(* DEBUG *)
-(* val gunk : ((Sql.query * int) * Sql.dml) list ref = ref [] *)
-(* val gunk' : exp list ref = ref [] *)
-
 fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, ...} : state), effs) =
     let
         val flushes = List.concat
@@ -1329,7 +1299,7 @@ fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, ...} : state
          fn dmlExp as EDml (dmlText, failureMode) =>
             let
                 (* DEBUG *)
-                (* val () = gunk' := origDmlText :: !gunk' *)
+                (* val () = gunk2 := dmlText :: !gunk2 *)
                 (* val () = Print.preface ("SQLCACHE: ", (MonoPrint.p_exp MonoEnv.empty origDmlText)) *)
                 val inval =
                     case Sql.parse Sql.dml dmlText of
@@ -1352,8 +1322,6 @@ fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, ...} : state
         val file = fileMap doExp file
 
     in
-        (* DEBUG *)
-        (* gunk := []; *)
         ffiInfoRef := ffiInfo;
         file
     end

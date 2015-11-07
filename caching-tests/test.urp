@@ -1,7 +1,8 @@
 database test.db
 sql test.sql
 safeGet Test/flush
-safeGet Test/flush17
-minHeap 4096
+safeGet Test/flash
+safeGet Test/floosh
+# safeGet Test/flush17
 
 test

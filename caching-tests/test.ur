@@ -1,4 +1,4 @@
-table tab : {Id : int, Val : int} PRIMARY KEY Id
+table tab : {Id : int, Val : int, Foo : int} PRIMARY KEY Id
 
 fun cache id =
     res <- oneOrNoRows (SELECT tab.Val
@@ -22,19 +22,19 @@ fun cache id =
 (*          | Some _ => <xml>Hooray! You guessed it!</xml>} *)
 (*     </body></xml> *)
 
-fun cache2 id1 id2 =
-    res1 <- oneOrNoRows (SELECT tab.Val
-                         FROM tab
-                         WHERE tab.Id = {[id1]});
-    res2 <- oneOrNoRows (SELECT tab.Val
-                         FROM tab
-                         WHERE tab.Id = {[id2]});
-    return <xml><body>
-      Reading {[id1]} and {[id2]}.
-      {case (res1, res2) of
-           (Some _, Some _) => <xml>Both are there.</xml>
-         | _ => <xml>One of them is missing.</xml>}
-    </body></xml>
+(* fun cache2 id1 id2 = *)
+(*     res1 <- oneOrNoRows (SELECT tab.Val *)
+(*                          FROM tab *)
+(*                          WHERE tab.Id = {[id1]}); *)
+(*     res2 <- oneOrNoRows (SELECT tab.Val *)
+(*                          FROM tab *)
+(*                          WHERE tab.Id = {[id2]}); *)
+(*     return <xml><body> *)
+(*       Reading {[id1]} and {[id2]}. *)
+(*       {case (res1, res2) of *)
+(*            (Some _, Some _) => <xml>Both are there.</xml> *)
+(*          | _ => <xml>One of them is missing.</xml>} *)
+(*     </body></xml> *)
 
 fun flush id =
     dml (UPDATE tab
@@ -44,13 +44,29 @@ fun flush id =
       Changed {[id]}!
     </body></xml>
 
-val flush17 =
+fun flash id =
     dml (UPDATE tab
-         SET Val = Val * (Id + 2) / Val - 3
-         WHERE Id = 17);
+         SET Foo = Val
+         WHERE Id = {[id]} OR Id = {[id - 1]} OR Id = {[id + 1]});
     return <xml><body>
-      Changed specifically 17!
+      Maybe changed {[id]}?
     </body></xml>
+
+fun floosh id =
+    dml (UPDATE tab
+         SET Id = {[id + 1]}
+         WHERE Id = {[id]});
+    return <xml><body>
+      Shifted {[id]}!
+    </body></xml>
+
+(* val flush17 = *)
+(*     dml (UPDATE tab *)
+(*          SET Val = Val * (Id + 2) / Val - 3 *)
+(*          WHERE Id = 17); *)
+(*     return <xml><body> *)
+(*       Changed specifically 17! *)
+(*     </body></xml> *)
 
 (* fun flush id = *)
 (*     res <- oneOrNoRows (SELECT tab.Val *)
