@@ -2,6 +2,7 @@ structure Sqlcache (* DEBUG :> SQLCACHE *) = struct
 
 open Mono
 
+structure IK = struct type ord_key = int val compare = Int.compare end
 structure IS = IntBinarySet
 structure IM = IntBinaryMap
 structure SK = struct type ord_key = string val compare = String.compare end
@@ -330,11 +331,89 @@ val freeVars =
         0
         IS.empty
 
+(* A path is a number of field projections of a variable. *)
+structure PK = PairKeyFn(structure I = IK structure J = ListKeyFn(SK))
+structure PS = BinarySetFn(PK)
+
+(* DEBUG *)
+val gunk3 : (PS.set * PS.set) list ref = ref []
+val gunk4 : (PS.set * PS.set) list ref = ref []
+
+val pathOfExp =
+    let
+        fun readFields acc exp =
+            acc
+            <\obind\>
+             (fn fs =>
+                 case #1 exp of
+                     ERel n => SOME (n, fs)
+                   | EField (exp, f) => readFields (SOME (f::fs)) exp
+                   | _ => NONE)
+    in
+        readFields (SOME [])
+    end
+
+fun expOfPath (n, fs) =
+    List.foldl (fn (f, exp) => (EField (exp, f), dummyLoc)) (ERel n, dummyLoc) fs
+
+fun freePaths'' bound exp paths =
+    case pathOfExp (exp, dummyLoc) of
+        NONE => paths
+      | SOME (n, fs) => if n < bound then paths else PS.add (paths, (n - bound, fs))
+
+(* ASK: nicer way? :( *)
+fun freePaths' bound exp =
+    case #1 exp of
+        EPrim _ => id
+      | e as ERel _ => freePaths'' bound e
+      | ENamed _ => id
+      | ECon (_, _, data) => (case data of NONE => id | SOME e => freePaths' bound e)
+      | ENone _ => id
+      | ESome (_, e) => freePaths' bound e
+      | EFfi _ => id
+      | EFfiApp (_, _, args) =>
+        List.foldl (fn ((e, _), acc) => freePaths' bound e o acc) id args
+      | EApp (e1, e2) => freePaths' bound e1 o freePaths' bound e2
+      | EAbs (_, _, _, e) => freePaths' (bound + 1) e
+      | EUnop (_, e) => freePaths' bound e
+      | EBinop (_, _, e1, e2) => freePaths' bound e1 o freePaths' bound e2
+      | ERecord fields => List.foldl (fn ((_, e, _), acc) => freePaths' bound e o acc) id fields
+      | e as EField _ => freePaths'' bound e
+      | ECase (e, cases, _) =>
+        List.foldl (fn ((p, e), acc) => freePaths' (bound + MonoEnv.patBindsN p) e o acc)
+                   (freePaths' bound e)
+                   cases
+      | EStrcat (e1, e2) => freePaths' bound e1 o freePaths' bound e2
+      | EError (e, _) => freePaths' bound e
+      | EReturnBlob {blob, mimeType = e, ...} =>
+        freePaths' bound e o (case blob of NONE => id | SOME e => freePaths' bound e)
+      | ERedirect (e, _) => freePaths' bound e
+      | EWrite e => freePaths' bound e
+      | ESeq (e1, e2) => freePaths' bound e1 o freePaths' bound e2
+      | ELet (_, _, e1, e2) => freePaths' (bound + 1) e1 o freePaths' bound e2
+      | EClosure (_, es) => List.foldl (fn (e, acc) => freePaths' bound e o acc) id es
+      | EQuery {query = e1, body = e2, initial = e3, ...} =>
+        freePaths' bound e1 o freePaths' (bound + 2) e2 o freePaths' bound e3
+      | EDml (e, _) => freePaths' bound e
+      | ENextval e => freePaths' bound e
+      | ESetval (e1, e2) => freePaths' bound e1 o freePaths' bound e2
+      | EUnurlify (e, _, _) => freePaths' bound e
+      | EJavaScript (_, e) => freePaths' bound e
+      | ESignalReturn e => freePaths' bound e
+      | ESignalBind (e1, e2) => freePaths' bound e1 o freePaths' bound e2
+      | ESignalSource e => freePaths' bound e
+      | EServerCall (e, _, _, _) => freePaths' bound e
+      | ERecv (e, _) => freePaths' bound e
+      | ESleep e => freePaths' bound e
+      | ESpawn e => freePaths' bound e
+
+fun freePaths exp = freePaths' 0 exp PS.empty
+
 datatype unbind = Known of exp | Unknowns of int
 
 datatype cacheArg = AsIs of exp | Urlify of exp
 
-structure InvalInfo :> sig
+structure InvalInfo (* DEBUG :> sig
     type t
     type state = {tableToIndices : SIMM.multimap,
                   indexToInvalInfo : (t * int) IntBinaryMap.map,
@@ -347,9 +426,10 @@ structure InvalInfo :> sig
     val unbind : t * unbind -> t option
     val union : t * t -> t
     val updateState : t * int * state -> state
-end = struct
+end *) = struct
 
-    datatype sqlArg = FreeVar of int | Sqlify of string * string * sqlArg * typ
+    (* Variable, field projections, possible wrapped sqlification FFI call. *)
+    type sqlArg = int * string list * (string * string * typ) option
 
     type subst = sqlArg IM.map
 
@@ -361,24 +441,14 @@ end = struct
                   ffiInfo : {index : int, params : int} list,
                   index : int}
 
-    structure AM = BinaryMapFn(struct
-        type ord_key = sqlArg
-        (* Saw this on MLton wiki. *)
-        fun ifNotEq (cmp, thunk) = case cmp of
-                                       EQUAL => thunk ()
-                                     | _ => cmp
-        fun try f x () = f x
-        val rec compare =
-         fn (FreeVar n1, FreeVar n2) =>
-            Int.compare (n1, n2)
-          | (FreeVar _, _) => LESS
-          | (_, FreeVar _) => GREATER
-          | (Sqlify (m1, x1, arg1, t1), Sqlify (m2, x2, arg2, t2)) =>
-            String.compare (m1, m2)
-            <\ifNotEq\> try String.compare (x1, x2)
-            <\ifNotEq\> try MonoUtil.Typ.compare (t1, t2)
-            <\ifNotEq\> try compare (arg1, arg2)
-    end)
+    structure AK = TripleKeyFn(
+        structure I = IK
+        structure J = ListKeyFn(SK)
+        structure K = OptionKeyFn(TripleKeyFn(
+            structure I = SK
+            structure J = SK
+            structure K = struct type ord_key = Mono.typ val compare = MonoUtil.Typ.compare end)))
+    structure AM = BinaryMapFn(AK)
 
     (* Traversal Utilities *)
     (* TODO: get rid of unused ones. *)
@@ -423,9 +493,21 @@ end = struct
 
     fun traverseSubst (ops as (_, pure', lift, _, _, _, lift2')) f =
         let
-            val rec mp =
-             fn FreeVar n => f n
-              | Sqlify (m, x, arg, t) => lift (fn mparg => Sqlify (m, x, mparg, t)) (mp arg)
+            fun mp (n, fields, sqlify) =
+                lift (fn (n', fields', sqlify') =>
+                         let
+                             fun wrap sq = (n', fields' @ fields, sq)
+                         in
+                             case (fields', sqlify', fields, sqlify) of
+                                 (_, NONE, _, NONE) => wrap NONE
+                               | (_, NONE, _, sq as SOME _) => wrap sq
+                               (* Last case should suffice because we don't
+                                  project from a sqlified value (which is a
+                                  string). *)
+                               | (_, sq as SOME _, [], NONE) => wrap sq
+                               | _ => raise Match
+                         end)
+                     (f n)
         in
             traverseIM ops (fn (_, v) => mp v)
         end
@@ -447,7 +529,7 @@ end = struct
                                    IS.empty
                                    (fn e' => freeVars (e', dummyLoc))
 
-    val varsOfSubst = foldMapSubst IS.union IS.empty IS.singleton
+    fun varsOfSubst subst = foldMapSubst IS.union IS.empty IS.singleton subst
 
     val varsOfList =
      fn [] => IS.empty
@@ -457,7 +539,7 @@ end = struct
 
     val empty = []
 
-    fun singleton q = [(q, IS.foldl (fn (n, acc) => IM.insert (acc, n, FreeVar n))
+    fun singleton q = [(q, IS.foldl (fn (n, acc) => IM.insert (acc, n, (n, [], NONE)))
                                     IM.empty
                                     (varsOfQuery q))]
 
@@ -477,21 +559,30 @@ end = struct
             AM.map count args
         end
 
-    val rec expOfArg =
-     fn FreeVar n => (ERel n, dummyLoc)
-      | Sqlify (m, x, arg, t) => (EFfiApp (m, x, [(expOfArg arg, t)]), dummyLoc)
+    fun expOfArg (n, fields, sqlify) =
+        let
+            val exp = List.foldl (fn (field, exp) => (EField (exp, field), dummyLoc))
+                                 (ERel n, dummyLoc)
+                                 fields
+        in
+            case sqlify of
+                NONE => exp
+              | SOME (m, x, typ) => (EFfiApp (m, x, [(exp, typ)]), dummyLoc)
+        end
 
-    fun orderArgs (qs : t, vars) =
+    fun orderArgs (qs : t, paths) =
         let
             fun erel n = (ERel n, dummyLoc)
             val argsMap = sqlArgsMap qs
             val args = map (expOfArg o #1) (AM.listItemsi argsMap)
-            val invalVars = List.foldl IS.union IS.empty (map freeVars args)
+            val invalPaths = List.foldl PS.union PS.empty (map freePaths args)
+            (* DEBUG *)
+            val () = gunk3 := (paths, invalPaths) :: !gunk3
         in
             (* Put arguments we might invalidate by first. *)
             map AsIs args
             (* TODO: make sure these variables are okay to remove from the argument list. *)
-            @ map (Urlify o erel) (IS.listItems (IS.difference (vars, invalVars)))
+            @ map (Urlify o expOfPath) (PS.listItems (PS.difference (paths, invalPaths)))
         end
 
     (* As a kludge, we rename the variables in the query to correspond to the
@@ -527,13 +618,23 @@ end = struct
               | [] => raise Match
         end
 
-    val rec argOfExp =
-     fn (ERel n, _) => SOME (FreeVar n)
-      | (EFfiApp ("Basis", x, [(exp, t)]), _) =>
-        if String.isPrefix "sqlify" x
-        then omap (fn arg => Sqlify ("Basis", x, arg, t)) (argOfExp exp)
-        else NONE
-      | _ => NONE
+    val argOfExp =
+        let
+            fun doFields acc exp =
+                acc
+                <\obind\>
+                 (fn (fs, sqlify) =>
+                     case #1 exp of
+                         ERel n => SOME (n, fs, sqlify)
+                       | EField (exp, f) => doFields (SOME (f::fs, sqlify)) exp
+                       | _ => NONE)
+        in
+         fn (EFfiApp ("Basis", x, [(exp, typ)]), _) =>
+            if String.isPrefix "sqlify" x
+            then doFields (SOME ([], SOME ("Basis", x, typ))) exp
+            else NONE
+          | exp => doFields (SOME ([], NONE)) exp
+        end
 
     val unbind1 =
      fn Known e =>
@@ -541,9 +642,9 @@ end = struct
             val replacement = argOfExp e
         in
             omapSubst (fn 0 => replacement
-                        | n => SOME (FreeVar (n-1)))
+                        | n => SOME (n-1, [], NONE))
         end
-      | Unknowns k => omapSubst (fn n => if n >= k then NONE else SOME (FreeVar (n-k)))
+      | Unknowns k => omapSubst (fn n => if n < k then NONE else SOME (n-k, [], NONE))
 
     fun unbind (qs, ub) =
         case ub of
@@ -647,9 +748,8 @@ val rec dmlToFormulaMarker =
         (* TODO: don't use field name hack. *)
         val markFields =
             mapSqexpFields (fn (t, v) => if t = table andalso SS.member (modifiedFields, v)
-                                         then ((* DEBUG *) print ("yep" ^ Int.toString (length (!gunk0)));
-                                                           Sql.Field (t, v ^ "'"))
-                                         else ((* DEBUG *) print (table ^ " " ^ t ^ "\n"); Sql.Field (t, v)))
+                                         then Sql.Field (t, v ^ "'")
+                                         else Sql.Field (t, v))
         val mark = mapFormulaExps markFields
     in
         ((Combo (Disj, [Combo (Conj, [fVals (id, markFields), mark fWhere]),
@@ -659,9 +759,8 @@ val rec dmlToFormulaMarker =
 
 fun pairToFormulas (query, dml) =
     let
-        val (fDml, marker) = ((* DEBUG *) print "dml\n"; dmlToFormulaMarker dml)
+        val (fDml, marker) = dmlToFormulaMarker dml
     in
-        (* DEBUG *) print "query\n";
         (queryToFormula marker query, fDml)
     end
 
@@ -993,7 +1092,7 @@ fun typOfExp' (env : MonoEnv.env) : exp' -> typ option =
   | EClosure _ => NONE
   | EUnurlify (_, t, _) => SOME t
   | EQuery {state, ...} => SOME state
-  | _ => NONE
+  | e => NONE
 
 and typOfExp env (e', loc) = typOfExp' env e'
 
@@ -1001,22 +1100,6 @@ and typOfExp env (e', loc) = typOfExp' env e'
 (***********)
 (* Caching *)
 (***********)
-
-(*
-
-To get the invalidations for a dml, we need (each <- is list-monad-y):
-  * table <- dml
-  * cache <- table
-  * query <- cache
-  * inval <- (query, dml),
-where inval is a list of query argument indices, so
-  * way to change query args in inval to cache args.
-For now, the last one is just
-  * a map from query arg number to the corresponding free variable (per query)
-  * a map from free variable to cache arg number (per cache).
-Both queries and caches should have IDs.
-
-*)
 
 type state = InvalInfo.state
 
@@ -1062,7 +1145,7 @@ fun cacheWrap (env, exp, typ, args, index) =
 val expSize = MonoUtil.Exp.fold {typ = #2, exp = fn (_, n) => n+1} 0
 
 (* TODO: pick a number. *)
-val sizeWorthCaching = 5
+val sizeWorthCaching = ~1
 
 val worthCaching =
  fn EQuery _ => true
@@ -1074,7 +1157,7 @@ fun cacheExp (env, exp', invalInfo, state : state) =
       | SOME (TFun _, _) => NONE
       | SOME typ =>
         let
-            val args = InvalInfo.orderArgs (invalInfo, freeVars (exp', dummyLoc))
+            val args = InvalInfo.orderArgs (invalInfo, freePaths (exp', dummyLoc))
             val numArgs = length args
         in (List.foldr (fn (arg, acc) =>
                            acc
@@ -1135,7 +1218,12 @@ fun cacheQuery (effs, env, q) : subexp =
           | SOME subexp => subexp
     end
 
-fun cacheTree (effs : IS.set) ((env, exp as (exp', loc)), state) =
+(* DEBUG *)
+(* fun cacheTree (effs : IS.set) ((env, exp as (exp', loc)), state) = *)
+(*     (Print.preface ("cacheTree> ", MonoPrint.p_exp MonoEnv.empty exp); *)
+(*      cacheTree' effs ((env, exp), state)) *)
+
+and cacheTree (effs : IS.set) ((env, exp as (exp', loc)), state) =
     let
         fun wrapBindN (f : exp list -> exp')
                       (args : ((MonoEnv.env * exp) * unbind) list) =
@@ -1300,7 +1388,7 @@ fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, ...} : state
             let
                 (* DEBUG *)
                 (* val () = gunk2 := dmlText :: !gunk2 *)
-                (* val () = Print.preface ("SQLCACHE: ", (MonoPrint.p_exp MonoEnv.empty origDmlText)) *)
+                (* val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty origDmlText)) *)
                 val inval =
                     case Sql.parse Sql.dml dmlText of
                         SOME dmlParsed =>
