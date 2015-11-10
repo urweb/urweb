@@ -1,4 +1,4 @@
-structure Sqlcache (* DEBUG :> SQLCACHE *) = struct
+structure Sqlcache :> SQLCACHE = struct
 
 open Mono
 
@@ -51,9 +51,13 @@ val ffiEffectful =
                      andalso not (m = "Basis" andalso SS.member (okayWrites, f))
     end
 
-val cache = ref LruCache.cache
-fun setCache c = cache := c
-fun getCache () = !cache
+val cacheRef = ref LruCache.cache
+fun setCache c = cacheRef := c
+fun getCache () = !cacheRef
+
+val alwaysConsolidateRef = ref true
+fun setAlwaysConsolidate b = alwaysConsolidateRef := b
+fun getAlwaysConsolidate () = !alwaysConsolidateRef
 
 (* Used to have type context for local variables in MonoUtil functions. *)
 val doBind =
@@ -63,6 +67,17 @@ val doBind =
 
 val dummyLoc = ErrorMsg.dummySpan
 
+(* DEBUG *)
+fun printExp msg exp = Print.preface ("SQLCACHE: " ^ msg ^ ":", MonoPrint.p_exp MonoEnv.empty exp)
+fun printExp' msg exp' = printExp msg (exp', dummyLoc)
+fun printTyp msg typ = Print.preface ("SQLCACHE: " ^ msg ^ ":", MonoPrint.p_typ MonoEnv.empty typ)
+fun printTyp' msg typ' = printTyp msg (typ', dummyLoc)
+fun obindDebug printer (x, f) =
+    case x of
+        NONE => NONE
+      | SOME x' => case f x' of
+                       NONE => (printer (); NONE)
+                     | y => y
 
 (*********************)
 (* General Utilities *)
@@ -332,12 +347,9 @@ val freeVars =
         IS.empty
 
 (* A path is a number of field projections of a variable. *)
+type path = int * string list
 structure PK = PairKeyFn(structure I = IK structure J = ListKeyFn(SK))
 structure PS = BinarySetFn(PK)
-
-(* DEBUG *)
-val gunk3 : (PS.set * PS.set) list ref = ref []
-val gunk4 : (PS.set * PS.set) list ref = ref []
 
 val pathOfExp =
     let
@@ -380,7 +392,7 @@ fun freePaths' bound exp =
       | ERecord fields => List.foldl (fn ((_, e, _), acc) => freePaths' bound e o acc) id fields
       | e as EField _ => freePaths'' bound e
       | ECase (e, cases, _) =>
-        List.foldl (fn ((p, e), acc) => freePaths' (bound + MonoEnv.patBindsN p) e o acc)
+        List.foldl (fn ((p, e), acc) => freePaths' (MonoEnv.patBindsN p + bound) e o acc)
                    (freePaths' bound e)
                    cases
       | EStrcat (e1, e2) => freePaths' bound e1 o freePaths' bound e2
@@ -390,7 +402,7 @@ fun freePaths' bound exp =
       | ERedirect (e, _) => freePaths' bound e
       | EWrite e => freePaths' bound e
       | ESeq (e1, e2) => freePaths' bound e1 o freePaths' bound e2
-      | ELet (_, _, e1, e2) => freePaths' (bound + 1) e1 o freePaths' bound e2
+      | ELet (_, _, e1, e2) => freePaths' bound e1 o freePaths' (bound + 1) e2
       | EClosure (_, es) => List.foldl (fn (e, acc) => freePaths' bound e o acc) id es
       | EQuery {query = e1, body = e2, initial = e3, ...} =>
         freePaths' bound e1 o freePaths' (bound + 2) e2 o freePaths' bound e3
@@ -413,7 +425,7 @@ datatype unbind = Known of exp | Unknowns of int
 
 datatype cacheArg = AsIs of exp | Urlify of exp
 
-structure InvalInfo (* DEBUG :> sig
+structure InvalInfo :> sig
     type t
     type state = {tableToIndices : SIMM.multimap,
                   indexToInvalInfo : (t * int) IntBinaryMap.map,
@@ -422,14 +434,14 @@ structure InvalInfo (* DEBUG :> sig
     val empty : t
     val singleton : Sql.query -> t
     val query : t -> Sql.query
-    val orderArgs : t * IS.set -> cacheArg list
+    val orderArgs : t * Mono.exp -> cacheArg list
     val unbind : t * unbind -> t option
     val union : t * t -> t
     val updateState : t * int * state -> state
-end *) = struct
+end = struct
 
     (* Variable, field projections, possible wrapped sqlification FFI call. *)
-    type sqlArg = int * string list * (string * string * typ) option
+    type sqlArg = path * (string * string * typ) option
 
     type subst = sqlArg IM.map
 
@@ -441,10 +453,9 @@ end *) = struct
                   ffiInfo : {index : int, params : int} list,
                   index : int}
 
-    structure AK = TripleKeyFn(
-        structure I = IK
-        structure J = ListKeyFn(SK)
-        structure K = OptionKeyFn(TripleKeyFn(
+    structure AK = PairKeyFn(
+        structure I = PK
+        structure J = OptionKeyFn(TripleKeyFn(
             structure I = SK
             structure J = SK
             structure K = struct type ord_key = Mono.typ val compare = MonoUtil.Typ.compare end)))
@@ -493,10 +504,10 @@ end *) = struct
 
     fun traverseSubst (ops as (_, pure', lift, _, _, _, lift2')) f =
         let
-            fun mp (n, fields, sqlify) =
-                lift (fn (n', fields', sqlify') =>
+            fun mp ((n, fields), sqlify) =
+                lift (fn ((n', fields'), sqlify') =>
                          let
-                             fun wrap sq = (n', fields' @ fields, sq)
+                             fun wrap sq = ((n', fields' @ fields), sq)
                          in
                              case (fields', sqlify', fields, sqlify) of
                                  (_, NONE, _, NONE) => wrap NONE
@@ -539,7 +550,7 @@ end *) = struct
 
     val empty = []
 
-    fun singleton q = [(q, IS.foldl (fn (n, acc) => IM.insert (acc, n, (n, [], NONE)))
+    fun singleton q = [(q, IS.foldl (fn (n, acc) => IM.insert (acc, n, ((n, []), NONE)))
                                     IM.empty
                                     (varsOfQuery q))]
 
@@ -559,25 +570,22 @@ end *) = struct
             AM.map count args
         end
 
-    fun expOfArg (n, fields, sqlify) =
+    fun expOfArg (path, sqlify) =
         let
-            val exp = List.foldl (fn (field, exp) => (EField (exp, field), dummyLoc))
-                                 (ERel n, dummyLoc)
-                                 fields
+            val exp = expOfPath path
         in
             case sqlify of
                 NONE => exp
               | SOME (m, x, typ) => (EFfiApp (m, x, [(exp, typ)]), dummyLoc)
         end
 
-    fun orderArgs (qs : t, paths) =
+    fun orderArgs (qs : t, exp) =
         let
+            val paths = freePaths exp
             fun erel n = (ERel n, dummyLoc)
             val argsMap = sqlArgsMap qs
             val args = map (expOfArg o #1) (AM.listItemsi argsMap)
             val invalPaths = List.foldl PS.union PS.empty (map freePaths args)
-            (* DEBUG *)
-            val () = gunk3 := (paths, invalPaths) :: !gunk3
         in
             (* Put arguments we might invalidate by first. *)
             map AsIs args
@@ -631,9 +639,9 @@ end *) = struct
         in
          fn (EFfiApp ("Basis", x, [(exp, typ)]), _) =>
             if String.isPrefix "sqlify" x
-            then doFields (SOME ([], SOME ("Basis", x, typ))) exp
+            then omap (fn path => (path, SOME ("Basis", x, typ))) (pathOfExp exp)
             else NONE
-          | exp => doFields (SOME ([], NONE)) exp
+          | exp => omap (fn path => (path, NONE)) (pathOfExp exp)
         end
 
     val unbind1 =
@@ -642,9 +650,9 @@ end *) = struct
             val replacement = argOfExp e
         in
             omapSubst (fn 0 => replacement
-                        | n => SOME (n-1, [], NONE))
+                        | n => SOME ((n-1, []), NONE))
         end
-      | Unknowns k => omapSubst (fn n => if n < k then NONE else SOME (n-k, [], NONE))
+      | Unknowns k => omapSubst (fn n => if n < k then NONE else SOME ((n-k, []), NONE))
 
     fun unbind (qs, ub) =
         case ub of
@@ -667,12 +675,6 @@ end *) = struct
          index = index + 1}
 
 end
-
-(* DEBUG *)
-val gunk0 : ((Sql.cmp * Sql.sqexp * Sql.sqexp) formula
-             * (Sql.cmp * Sql.sqexp * Sql.sqexp) formula) list ref = ref []
-val gunk1 : (Sql.cmp * atomExp option * atomExp option) list list list ref = ref []
-val gunk2 : exp list ref = ref []
 
 structure UF = UnionFindFn(AtomExpKey)
 
@@ -885,9 +887,7 @@ structure ConflictMaps = struct
     val conflictMaps =
         List.mapPartial (mergeEqs o map eqsOfClass)
         o List.mapPartial equivClasses
-        o (fn x => (gunk1 := x :: !gunk1; x))
         o dnf
-        o (fn x => (gunk0 := x :: !gunk0; x))
 
 end
 
@@ -1145,11 +1145,19 @@ fun cacheWrap (env, exp, typ, args, index) =
 val expSize = MonoUtil.Exp.fold {typ = #2, exp = fn (_, n) => n+1} 0
 
 (* TODO: pick a number. *)
-val sizeWorthCaching = ~1
+val sizeWorthCaching = 5
 
 val worthCaching =
  fn EQuery _ => true
   | exp' => expSize (exp', dummyLoc) > sizeWorthCaching
+
+fun shouldConsolidate args =
+    let
+        val isAsIs = fn AsIs _ => true | Urlify _ => false
+    in
+        getAlwaysConsolidate ()
+        orelse not (List.exists isAsIs args andalso List.exists (not o isAsIs) args)
+    end
 
 fun cacheExp (env, exp', invalInfo, state : state) =
     case worthCaching exp' <\oguard\> typOfExp' env exp' of
@@ -1157,29 +1165,30 @@ fun cacheExp (env, exp', invalInfo, state : state) =
       | SOME (TFun _, _) => NONE
       | SOME typ =>
         let
-            val args = InvalInfo.orderArgs (invalInfo, freePaths (exp', dummyLoc))
-            val numArgs = length args
-        in (List.foldr (fn (arg, acc) =>
-                           acc
-                           <\obind\>
-                            (fn args' =>
-                                (case arg of
-                                     AsIs exp => SOME exp
-                                   | Urlify exp =>
-                                     typOfExp env exp
-                                     <\obind\>
-                                      (fn typ =>
-                                          (MonoFooify.urlify env (exp, typ))))
-                                <\obind\>
-                                 (fn arg' => SOME (arg' :: args'))))
-                       (SOME [])
-                       args)
-               <\obind\>
-                (fn args' =>
-                    cacheWrap (env, (exp', dummyLoc), typ, args', #index state)
-                    <\obind\>
-                     (fn cachedExp =>
-                         SOME (cachedExp, InvalInfo.updateState (invalInfo, numArgs, state))))
+            val args = InvalInfo.orderArgs (invalInfo, (exp', dummyLoc))
+        in
+            shouldConsolidate args
+            <\oguard\>
+             List.foldr (fn (arg, acc) =>
+                            acc
+                            <\obind\>
+                             (fn args' =>
+                                 (case arg of
+                                      AsIs exp => SOME exp
+                                    | Urlify exp =>
+                                      typOfExp env exp
+                                      <\obind\>
+                                       (fn typ => (MonoFooify.urlify env (exp, typ))))
+                                 <\obind\>
+                                  (fn arg' => SOME (arg' :: args'))))
+                        (SOME [])
+                        args
+            <\obind\>
+             (fn args' =>
+                 cacheWrap (env, (exp', dummyLoc), typ, args', #index state)
+                 <\obind\>
+                  (fn cachedExp =>
+                      SOME (cachedExp, InvalInfo.updateState (invalInfo, length args', state))))
         end
 
 fun cacheQuery (effs, env, q) : subexp =
@@ -1194,8 +1203,6 @@ fun cacheQuery (effs, env, q) : subexp =
                                  bound
                                  env)
         val {query = queryText, initial, body, ...} = q
-        (* DEBUG *)
-        (* val () = Print.preface ("sqlcache> ", MonoPrint.p_exp MonoEnv.empty queryText) *)
         val attempt =
             (* Ziv misses Haskell's do notation.... *)
             (safe 0 queryText andalso safe 0 initial andalso safe 2 body)
@@ -1218,12 +1225,7 @@ fun cacheQuery (effs, env, q) : subexp =
           | SOME subexp => subexp
     end
 
-(* DEBUG *)
-(* fun cacheTree (effs : IS.set) ((env, exp as (exp', loc)), state) = *)
-(*     (Print.preface ("cacheTree> ", MonoPrint.p_exp MonoEnv.empty exp); *)
-(*      cacheTree' effs ((env, exp), state)) *)
-
-and cacheTree (effs : IS.set) ((env, exp as (exp', loc)), state) =
+fun cacheTree (effs : IS.set) ((env, exp as (exp', loc)), state) =
     let
         fun wrapBindN (f : exp list -> exp')
                       (args : ((MonoEnv.env * exp) * unbind) list) =
@@ -1386,9 +1388,6 @@ fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, ...} : state
         val doExp =
          fn dmlExp as EDml (dmlText, failureMode) =>
             let
-                (* DEBUG *)
-                (* val () = gunk2 := dmlText :: !gunk2 *)
-                (* val () = Print.preface ("sqlcache> ", (MonoPrint.p_exp MonoEnv.empty origDmlText)) *)
                 val inval =
                     case Sql.parse Sql.dml dmlText of
                         SOME dmlParsed =>

@@ -5,23 +5,23 @@ fun cache id =
                         FROM tab
                         WHERE tab.Id = {[id]});
     return <xml><body>
-      (* Reading {[id]}. *)
+      cache
       {case res of
            None => <xml>?</xml>
          | Some row => <xml>{[row.Tab.Val]}</xml>}
     </body></xml>
 
-(* fun sillyRecursive {Id = id, FooBar = fooBar} = *)
-(*     if fooBar <= 0 *)
-(*     then 0 *)
-(*     else 1 + sillyRecursive {Id = id, FooBar = fooBar - 1} *)
+fun sillyRecursive {Id = id : int, FooBar = fooBar} =
+    if fooBar <= 0
+    then 0
+    else 1 + sillyRecursive {Id = id, FooBar = fooBar - 1}
 
 fun cacheR (r : {Id : int, FooBar : int}) =
     res <- oneOrNoRows (SELECT tab.Val
                         FROM tab
                         WHERE tab.Id = {[r.Id]});
     return <xml><body>
-      (* Reading {[r.Id]}. *)
+      cacheR {[r.FooBar]}
       {case res of
            None => <xml>?</xml>
          | Some row => <xml>{[row.Tab.Val]}</xml>}
