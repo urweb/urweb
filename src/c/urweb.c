@@ -585,6 +585,7 @@ uw_context uw_init(int id, uw_loggers *lg) {
 
   ctx->numRecording = 0;
   ctx->recordingOffset = 0;
+  ctx->inval = NULL;
 
   ctx->remoteSock = -1;
 
@@ -4732,9 +4733,11 @@ void uw_Sqlcache_flush(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys) {
   inval->keys = keys;
   inval->next = NULL;
   if (ctx->inval) {
+    // An invalidation is already registered, so just extend it.
     ctx->inval->next = inval;
   } else {
     uw_register_transactional(ctx, inval, uw_Sqlcache_flushCommit, NULL, uw_Sqlcache_flushFree);
   }
+  // [ctx->inval] should always point to the last invalidation.
   ctx->inval = inval;
 }
