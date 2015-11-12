@@ -121,6 +121,7 @@ typedef struct {
 
 // Caching
 
+#include <pthread.h>
 #include "uthash.h"
 
 typedef struct uw_Sqlcache_Value {
@@ -132,7 +133,7 @@ typedef struct uw_Sqlcache_Value {
 typedef struct uw_Sqlcache_Entry uw_Sqlcache_Entry;
 
 typedef struct uw_Sqlcache_Cache {
-  //pthread_rwlock_t *lock;
+  pthread_rwlock_t lock;
   uw_Sqlcache_Entry *table;
   unsigned long timeInvalid;
   unsigned long timeNow;
