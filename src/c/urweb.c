@@ -4545,6 +4545,13 @@ void uw_set_remoteSock(uw_context ctx, int sock) {
 
 // Sqlcache
 
+typedef struct uw_Sqlcache_Entry {
+  char *key;
+  uw_Sqlcache_Value *value;
+  unsigned long timeInvalid;
+  UT_hash_handle hh;
+} uw_Sqlcache_Entry;
+
 void uw_Sqlcache_freeValue(uw_Sqlcache_Value *value) {
   if (value) {
     free(value->result);
@@ -4599,7 +4606,7 @@ unsigned long uw_Sqlcache_timeMax(unsigned long x, unsigned long y) {
 
 char uw_Sqlcache_keySep = '_';
 
-char *uw_Sqlcache_allocKeyBuffer(char **keys, int numKeys) {
+char *uw_Sqlcache_allocKeyBuffer(char **keys, size_t numKeys) {
   size_t len = 0;
   while (numKeys-- > 0) {
     char* k = keys[numKeys];
@@ -4625,6 +4632,7 @@ char *uw_Sqlcache_keyCopy(char *buf, char *key) {
 // TODO: strlen(key) = buf - key?
 
 uw_Sqlcache_Value *uw_Sqlcache_check(uw_Sqlcache_Cache *cache, char **keys) {
+  //pthread_rwlock_rdlock(cache->lock);
   size_t numKeys = cache->numKeys;
   char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
   char *buf = key;
@@ -4642,10 +4650,12 @@ uw_Sqlcache_Value *uw_Sqlcache_check(uw_Sqlcache_Cache *cache, char **keys) {
   }
   free(key);
   uw_Sqlcache_Value *value = entry->value;
+  //pthread_rwlock_unlock(cache->lock);
   return value && value->timeValid > timeInvalid ? value : NULL;
 }
 
 void uw_Sqlcache_store(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcache_Value *value) {
+  //pthread_rwlock_wrlock(cache->lock);
   size_t numKeys = cache->numKeys;
   char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
   char *buf = key;
@@ -4667,6 +4677,7 @@ void uw_Sqlcache_store(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcache_Value 
   uw_Sqlcache_freeValue(entry->value);
   entry->value = value;
   entry->value->timeValid = timeNow;
+  //pthread_rwlock_unlock(cache->lock);
 }
 
 void uw_Sqlcache_flushCommitOne(uw_Sqlcache_Cache *cache, char **keys) {
@@ -4717,20 +4728,28 @@ void uw_Sqlcache_flushFree(void *data, int dontCare) {
 
 void uw_Sqlcache_flushCommit(void *data) {
   uw_Sqlcache_Inval *inval = (uw_Sqlcache_Inval *)data;
-  uw_Sqlcache_Inval *invalFirst = inval;
   while (inval) {
     uw_Sqlcache_Cache *cache = inval->cache;
     char **keys = inval->keys;
     uw_Sqlcache_flushCommitOne(cache, keys);
     inval = inval->next;
   }
-  uw_Sqlcache_flushFree(invalFirst, 0);
+}
+
+char **uw_Sqlcache_copyKeys(char **keys, size_t numKeys) {
+  char **copy = malloc(sizeof(char *) * numKeys);
+  while (numKeys-- > 0) {
+    char * k = keys[numKeys];
+    copy[numKeys] = k ? strdup(k) : NULL;
+  }
+  return copy;
 }
 
 void uw_Sqlcache_flush(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys) {
+  //pthread_rwlock_wrlock(cache->lock);
   uw_Sqlcache_Inval *inval = malloc(sizeof(uw_Sqlcache_Inval));
   inval->cache = cache;
-  inval->keys = keys;
+  inval->keys = uw_Sqlcache_copyKeys(keys, cache->numKeys);
   inval->next = NULL;
   if (ctx->inval) {
     // An invalidation is already registered, so just extend it.
@@ -4740,4 +4759,5 @@ void uw_Sqlcache_flush(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys) {
   }
   // [ctx->inval] should always point to the last invalidation.
   ctx->inval = inval;
+  //pthread_rwlock_unlock(cache->lock);
 }

@@ -65,6 +65,8 @@ fun setupQuery {index, params} =
     in
         Print.box
             [string ("static uw_Sqlcache_Cache cacheStruct" ^ i ^ " = {"),
+             (* newline, *)
+             (* string "  .lock = PTHREAD_RWLOCK_INITIALIZER,", *)
              newline,
              string "  .table = NULL,",
              newline,
@@ -134,7 +136,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  char *ks[] = {" ^ revArgs ^ "};"),
              newline,
-             string ("  uw_Sqlcache_flush(cache" ^ i ^ ", ks);"),
+             string ("  uw_Sqlcache_flush(ctx, cache" ^ i ^ ", ks);"),
              newline,
              string "  return uw_unit_v;",
              newline,
