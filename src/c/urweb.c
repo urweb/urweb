@@ -424,6 +424,12 @@ typedef struct {
   void (*free)(void*);
 } global;
 
+typedef struct uw_Sqlcache_Inval {
+  uw_Sqlcache_Cache *cache;
+  char **keys;
+  struct uw_Sqlcache_Inval *next;
+} uw_Sqlcache_Inval;
+
 struct uw_context {
   uw_app *app;
   int id;
@@ -491,6 +497,7 @@ struct uw_context {
   // Sqlcache.
   int numRecording;
   int recordingOffset;
+  uw_Sqlcache_Inval *inval;
 
   int remoteSock;
 };
@@ -4661,7 +4668,7 @@ void uw_Sqlcache_store(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcache_Value 
   entry->value->timeValid = timeNow;
 }
 
-void uw_Sqlcache_flush(uw_Sqlcache_Cache *cache, char **keys) {
+void uw_Sqlcache_flushCommitOne(uw_Sqlcache_Cache *cache, char **keys) {
   size_t numKeys = cache->numKeys;
   char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
   char *buf = key;
@@ -4690,4 +4697,44 @@ void uw_Sqlcache_flush(uw_Sqlcache_Cache *cache, char **keys) {
   free(key);
   // All the keys were non-null and the relevant entry is present, so we delete it.
   uw_Sqlcache_delete(cache, entry);
+}
+
+void uw_Sqlcache_flushFree(void *data, int dontCare) {
+  uw_Sqlcache_Inval *inval = (uw_Sqlcache_Inval *)data;
+  while (inval) {
+    char** keys = inval->keys;
+    size_t numKeys = inval->cache->numKeys;
+    while (numKeys-- > 0) {
+      free(keys[numKeys]);
+    }
+    free(keys);
+    uw_Sqlcache_Inval *nextInval = inval->next;
+    free(inval);
+    inval = nextInval;
+  }
+}
+
+void uw_Sqlcache_flushCommit(void *data) {
+  uw_Sqlcache_Inval *inval = (uw_Sqlcache_Inval *)data;
+  uw_Sqlcache_Inval *invalFirst = inval;
+  while (inval) {
+    uw_Sqlcache_Cache *cache = inval->cache;
+    char **keys = inval->keys;
+    uw_Sqlcache_flushCommitOne(cache, keys);
+    inval = inval->next;
+  }
+  uw_Sqlcache_flushFree(invalFirst, 0);
+}
+
+void uw_Sqlcache_flush(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys) {
+  uw_Sqlcache_Inval *inval = malloc(sizeof(uw_Sqlcache_Inval));
+  inval->cache = cache;
+  inval->keys = keys;
+  inval->next = NULL;
+  if (ctx->inval) {
+    ctx->inval->next = inval;
+  } else {
+    uw_register_transactional(ctx, inval, uw_Sqlcache_flushCommit, NULL, uw_Sqlcache_flushFree);
+  }
+  ctx->inval = inval;
 }
