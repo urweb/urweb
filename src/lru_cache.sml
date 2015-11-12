@@ -62,13 +62,13 @@ fun setupQuery {index, params} =
 
         val revArgs = paramRepeatRev (fn p => "p" ^ p) ", "
 
-        val numArgs = Int.toString params
-
     in
         Print.box
             [string ("static uw_Sqlcache_Cache cacheStruct" ^ i ^ " = {"),
              newline,
              string "  .table = NULL,",
+             newline,
+             string ("  .numKeys = " ^ Int.toString params ^ ","),
              newline,
              string "  .timeInvalid = 0,",
              newline,
@@ -83,8 +83,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  char *ks[] = {" ^ revArgs ^ "};"),
              newline,
-             string "  uw_Sqlcache_Value *v = ",
-             string ("uw_Sqlcache_check(cache" ^ i ^ ", ks, " ^ numArgs ^ ");"),
+             string ("  uw_Sqlcache_Value *v = uw_Sqlcache_check(cache" ^ i ^ ", ks);"),
              newline,
              (* If the output is null, it means we had too much recursion, so it's a miss. *)
              string "  if (v && v->output != NULL) {",
@@ -122,7 +121,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  puts(\"SQLCACHE: stored " ^ i ^ ".\");"),
              newline,
-             string ("  uw_Sqlcache_store(cache" ^ i ^ ", ks, " ^ numArgs ^ ", v);"),
+             string ("  uw_Sqlcache_store(cache" ^ i ^ ", ks, v);"),
              newline,
              string "  return uw_unit_v;",
              newline,
@@ -135,7 +134,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  char *ks[] = {" ^ revArgs ^ "};"),
              newline,
-             string ("  uw_Sqlcache_flush(cache" ^ i ^ ", ks, " ^ numArgs ^ ");"),
+             string ("  uw_Sqlcache_flush(cache" ^ i ^ ", ks);"),
              newline,
              string "  return uw_unit_v;",
              newline,

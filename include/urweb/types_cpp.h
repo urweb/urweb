@@ -140,6 +140,7 @@ typedef struct uw_Sqlcache_Cache {
   struct uw_Sqlcache_Entry *table;
   unsigned long timeInvalid;
   unsigned long timeNow;
+  size_t numKeys;
   UT_hash_handle hh;
 } uw_Sqlcache_Cache;
 

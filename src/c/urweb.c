@@ -488,7 +488,7 @@ struct uw_context {
   char *output_buffer;
   size_t output_buffer_size;
 
-  // For caching.
+  // Sqlcache.
   int numRecording;
   int recordingOffset;
 
@@ -4616,7 +4616,8 @@ char *uw_Sqlcache_keyCopy(char *buf, char *key) {
 // The NUL-terminated prefix of [key] below always looks something like "_k1_k2_k3..._kn".
 // TODO: strlen(key) = buf - key?
 
-uw_Sqlcache_Value *uw_Sqlcache_check(uw_Sqlcache_Cache *cache, char **keys, int numKeys) {
+uw_Sqlcache_Value *uw_Sqlcache_check(uw_Sqlcache_Cache *cache, char **keys) {
+  size_t numKeys = cache->numKeys;
   char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
   char *buf = key;
   time_t timeInvalid = cache->timeInvalid;
@@ -4636,7 +4637,8 @@ uw_Sqlcache_Value *uw_Sqlcache_check(uw_Sqlcache_Cache *cache, char **keys, int 
   return value && value->timeValid > timeInvalid ? value : NULL;
 }
 
-void uw_Sqlcache_store(uw_Sqlcache_Cache *cache, char **keys, int numKeys, uw_Sqlcache_Value *value) {
+void uw_Sqlcache_store(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcache_Value *value) {
+  size_t numKeys = cache->numKeys;
   char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
   char *buf = key;
   time_t timeNow = uw_Sqlcache_getTimeNow(cache);
@@ -4659,7 +4661,8 @@ void uw_Sqlcache_store(uw_Sqlcache_Cache *cache, char **keys, int numKeys, uw_Sq
   entry->value->timeValid = timeNow;
 }
 
-void uw_Sqlcache_flush(uw_Sqlcache_Cache *cache, char **keys, int numKeys) {
+void uw_Sqlcache_flush(uw_Sqlcache_Cache *cache, char **keys) {
+  size_t numKeys = cache->numKeys;
   char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
   char *buf = key;
   time_t timeNow = uw_Sqlcache_getTimeNow(cache);
