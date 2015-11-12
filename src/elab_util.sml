@@ -688,10 +688,10 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                 S.map2 (con ctx c,
                      fn c' =>
                         (SgiVal (x, n, c'), loc))
-              | SgiStr (x, n, s) =>
+              | SgiStr (im, x, n, s) =>
                 S.map2 (sg ctx s,
                      fn s' =>
-                        (SgiStr (x, n, s'), loc))
+                        (SgiStr (im, x, n, s'), loc))
               | SgiSgn (x, n, s) =>
                 S.map2 (sg ctx s,
                      fn s' =>
@@ -738,7 +738,7 @@ fun mapfoldB {kind, con, sgn_item, sgn, bind} =
                                                    bind (ctx, NamedC (x, n, (KType, loc),
                                                                       SOME (CModProj (m1, ms, s), loc)))
                                                  | SgiVal _ => ctx
-                                                 | SgiStr (x, n, sgn) =>
+                                                 | SgiStr (_, x, n, sgn) =>
                                                    bind (ctx, Str (x, n, sgn))
                                                  | SgiSgn (x, n, sgn) =>
                                                    bind (ctx, Sgn (x, n, sgn))
@@ -1270,7 +1270,7 @@ and maxNameSgi (sgi, _) =
         foldl (fn ((_, n', _), m) => Int.max (n', m))
               (Int.max (n1, n2)) ns
       | SgiVal (_, n, _) => n
-      | SgiStr (_, n, sgn) => Int.max (n, maxNameSgn sgn)
+      | SgiStr (_, _, n, sgn) => Int.max (n, maxNameSgn sgn)
       | SgiSgn (_, n, sgn) => Int.max (n, maxNameSgn sgn)
       | SgiConstraint _ => 0
       | SgiClassAbs (_, n, _) => n

@@ -138,13 +138,19 @@ and edecl' =
 withtype exp = exp' located
      and edecl = edecl' located
 
+(* We have to be careful about crawling automatically generated signatures recursively,
+ * importing all type-class instances that we find.
+ * The reason is that selfification will add signatures of anonymous structures,
+ * and it's counterintuitive for instances to escape anonymous structures! *)
+datatype import_mode = Import | Skip
+
 datatype sgn_item' =
          SgiConAbs of string * int * kind
        | SgiCon of string * int * kind * con
        | SgiDatatype of (string * int * string list * (string * int * con option) list) list
        | SgiDatatypeImp of string * int * int * string list * string * string list * (string * int * con option) list
        | SgiVal of string * int * con
-       | SgiStr of string * int * sgn
+       | SgiStr of import_mode * string * int * sgn
        | SgiSgn of string * int * sgn
        | SgiConstraint of con * con
        | SgiClassAbs of string * int * kind

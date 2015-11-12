@@ -990,7 +990,7 @@ fun sgiSeek (sgi, (sgns, strs, cons)) =
       | SgiDatatypeImp (x, n, _, _, _, _, _) => (sgns, strs, IM.insert (cons, n, x))
       | SgiVal _ => (sgns, strs, cons)
       | SgiSgn (x, n, _) => (IM.insert (sgns, n, x), strs, cons)
-      | SgiStr (x, n, _) => (sgns, IM.insert (strs, n, x), cons)
+      | SgiStr (_, x, n, _) => (sgns, IM.insert (strs, n, x), cons)
       | SgiConstraint _ => (sgns, strs, cons)
       | SgiClassAbs (x, n, _) => (sgns, strs, IM.insert (cons, n, x))
       | SgiClass (x, n, _, _) => (sgns, strs, IM.insert (cons, n, x))
@@ -1143,13 +1143,13 @@ and hnormSgn env (all as (sgn, loc)) =
 				else
 				    traverse (ms, sgi :: pre, rest)
 
-			      | (sgi as (SgiStr (x', n, sgn'), loc)) :: rest =>
+			      | (sgi as (SgiStr (im, x', n, sgn'), loc)) :: rest =>
 				(case ms of
 				     [] => traverse (ms, sgi :: pre, rest)
 				   | x :: ms' =>
 				     if x = x' then
 					 List.revAppend (pre,
-							 (SgiStr (x', n,
+							 (SgiStr (im, x', n,
 								  rewrite (sgn', ms')), loc) :: rest)
 				     else
 					 traverse (ms, sgi :: pre, rest))
@@ -1186,7 +1186,7 @@ fun enrichClasses env classes (m1, ms) sgn =
                               fun default () = (classes, newClasses, sgiSeek (#1 sgi, fmap), env)
                           in
                               case #1 sgi of
-                                  SgiStr (x, _, sgn) =>
+                                  SgiStr (Import, x, _, sgn) =>
                                   let
                                       val str = manifest (m1, ms, #2 sgi)
                                       val sgn' = sgnSubSgn (str, fmap) sgn
@@ -1360,7 +1360,7 @@ fun sgiBinds env (sgi, loc) =
             env xncs
         end
       | SgiVal (x, n, t) => pushENamedAs env x n t
-      | SgiStr (x, n, sgn) => pushStrNamedAs env x n sgn
+      | SgiStr (_, x, n, sgn) => pushStrNamedAs env x n sgn
       | SgiSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
       | SgiConstraint _ => env
 
@@ -1374,7 +1374,7 @@ fun sgnSubCon x =
 fun projectStr env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
         SgnConst sgis =>
-        (case sgnSeek (fn SgiStr (x, _, sgn) => if x = field then SOME sgn else NONE | _ => NONE) sgis of
+        (case sgnSeek (fn SgiStr (_, x, _, sgn) => if x = field then SOME sgn else NONE | _ => NONE) sgis of
              NONE => NONE
            | SOME (sgn, subs) => SOME (sgnSubSgn (str, subs) sgn))
       | SgnError => SOME (SgnError, ErrorMsg.dummySpan)
@@ -1544,7 +1544,7 @@ fun sgnSeekConstraints (str, sgis) =
                   | SgiDatatypeImp (x, n, _, _, _, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiVal _ => seek (sgis, sgns, strs, cons, acc)
                   | SgiSgn (x, n, _) => seek (sgis, IM.insert (sgns, n, x), strs, cons, acc)
-                  | SgiStr (x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons, acc)
+                  | SgiStr (_, x, n, _) => seek (sgis, sgns, IM.insert (strs, n, x), cons, acc)
                   | SgiClassAbs (x, n, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
                   | SgiClass (x, n, _, _) => seek (sgis, sgns, strs, IM.insert (cons, n, x), acc)
     in
