@@ -62,6 +62,8 @@ fun setupQuery {index, params} =
 
         val revArgs = paramRepeatRev (fn p => "p" ^ p) ", "
 
+        val numArgs = Int.toString params
+
     in
         Print.box
             [string ("static uw_Sqlcache_Cache cacheStruct" ^ i ^ " = {"),
@@ -70,9 +72,7 @@ fun setupQuery {index, params} =
              newline,
              string "  .timeInvalid = 0,",
              newline,
-             string "  .lru = NULL,",
-             newline,
-             string ("  .height = " ^ Int.toString (params - 1) ^ "};"),
+             string "  .timeNow = 0};",
              newline,
              string ("static uw_Sqlcache_Cache *cache" ^ i ^ " = &cacheStruct" ^ i ^ ";"),
              newline,
@@ -83,7 +83,8 @@ fun setupQuery {index, params} =
              newline,
              string ("  char *ks[] = {" ^ revArgs ^ "};"),
              newline,
-             string ("  uw_Sqlcache_CacheValue *v = uw_Sqlcache_check(cache" ^ i ^ ", ks);"),
+             string "  uw_Sqlcache_Value *v = ",
+             string ("uw_Sqlcache_check(cache" ^ i ^ ", ks, " ^ numArgs ^ ");"),
              newline,
              (* If the output is null, it means we had too much recursion, so it's a miss. *)
              string "  if (v && v->output != NULL) {",
@@ -113,7 +114,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  char *ks[] = {" ^ revArgs ^ "};"),
              newline,
-             string ("  uw_Sqlcache_CacheValue *v = malloc(sizeof(uw_Sqlcache_CacheValue));"),
+             string ("  uw_Sqlcache_Value *v = malloc(sizeof(uw_Sqlcache_Value));"),
              newline,
              string "  v->result = strdup(s);",
              newline,
@@ -121,7 +122,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  puts(\"SQLCACHE: stored " ^ i ^ ".\");"),
              newline,
-             string ("  uw_Sqlcache_store(cache" ^ i ^ ", ks, v);"),
+             string ("  uw_Sqlcache_store(cache" ^ i ^ ", ks, " ^ numArgs ^ ", v);"),
              newline,
              string "  return uw_unit_v;",
              newline,
@@ -134,7 +135,7 @@ fun setupQuery {index, params} =
              newline,
              string ("  char *ks[] = {" ^ revArgs ^ "};"),
              newline,
-             string ("  uw_Sqlcache_flush(cache" ^ i ^ ", ks);"),
+             string ("  uw_Sqlcache_flush(cache" ^ i ^ ", ks, " ^ numArgs ^ ");"),
              newline,
              string "  return uw_unit_v;",
              newline,

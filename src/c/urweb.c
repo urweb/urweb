@@ -4532,52 +4532,7 @@ void uw_set_remoteSock(uw_context ctx, int sock) {
 
 // Sqlcache
 
-void uw_Sqlcache_listDelete(uw_Sqlcache_CacheList *list, uw_Sqlcache_CacheEntry *entry) {
-  if (list->first == entry) {
-    list->first = entry->next;
-  }
-  if (list->last == entry) {
-    list->last = entry->prev;
-  }
-  if (entry->prev) {
-    entry->prev->next = entry->next;
-  }
-  if (entry->next) {
-    entry->next->prev = entry->prev;
-  }
-  entry->prev = NULL;
-  entry->next = NULL;
-  --(list->size);
-}
-
-void uw_Sqlcache_listAdd(uw_Sqlcache_CacheList *list, uw_Sqlcache_CacheEntry *entry) {
-  if (list->last) {
-    list->last->next = entry;
-    entry->prev = list->last;
-    list->last = entry;
-  } else {
-    list->first = entry;
-    list->last = entry;
-  }
-  ++(list->size);
-}
-
-void uw_Sqlcache_listBump(uw_Sqlcache_CacheList *list, uw_Sqlcache_CacheEntry *entry) {
-  uw_Sqlcache_listDelete(list, entry);
-  uw_Sqlcache_listAdd(list, entry);
-}
-
-// TODO: deal with time properly.
-
-time_t uw_Sqlcache_getTimeNow() {
-  return time(NULL);
-}
-
-time_t uw_Sqlcache_timeMax(time_t x, time_t y) {
-  return difftime(x, y) > 0 ? x : y;
-}
-
-void uw_Sqlcache_free(uw_Sqlcache_CacheValue *value) {
+void uw_Sqlcache_freeValue(uw_Sqlcache_Value *value) {
   if (value) {
     free(value->result);
     free(value->output);
@@ -4585,91 +4540,146 @@ void uw_Sqlcache_free(uw_Sqlcache_CacheValue *value) {
   }
 }
 
-void uw_Sqlcache_delete(uw_Sqlcache_Cache *cache, uw_Sqlcache_CacheEntry* entry) {
-  //uw_Sqlcache_listUw_Sqlcache_Delete(cache->lru, entry);
-  HASH_DELETE(hh, cache->table, entry);
-  uw_Sqlcache_free(entry->value);
-  free(entry->key);
-  free(entry);
+void uw_Sqlcache_freeEntry(uw_Sqlcache_Entry* entry) {
+  if (entry) {
+    free(entry->key);
+    uw_Sqlcache_freeValue(entry->value);
+    free(entry);
+  }
 }
 
-uw_Sqlcache_CacheValue *uw_Sqlcache_checkHelper(uw_Sqlcache_Cache *cache, char **keys, int timeInvalid) {
-  char *key = keys[cache->height];
-  uw_Sqlcache_CacheEntry *entry;
-  HASH_FIND(hh, cache->table, key, strlen(key), entry);
-  timeInvalid = uw_Sqlcache_timeMax(timeInvalid, cache->timeInvalid);
-  if (entry && difftime(entry->timeValid, timeInvalid) > 0) {
-    if (cache->height == 0) {
-      // At height 0, entry->value is the desired value.
-      //uw_Sqlcache_listBump(cache->lru, entry);
-      return entry->value;
-    } else {
-      // At height n+1, entry->value is a pointer to a cache at heignt n.
-      return uw_Sqlcache_checkHelper(entry->value, keys, timeInvalid);
+// TODO: pick a number.
+unsigned int uw_Sqlcache_maxSize = 1234567890;
+
+void uw_Sqlcache_delete(uw_Sqlcache_Cache *cache, uw_Sqlcache_Entry *entry) {
+  HASH_DEL(cache->table, entry);
+  uw_Sqlcache_freeEntry(entry);
+}
+
+uw_Sqlcache_Entry *uw_Sqlcache_find(uw_Sqlcache_Cache *cache, char *key, size_t len, int bump) {
+  uw_Sqlcache_Entry *entry = NULL;
+  HASH_FIND(hh, cache->table, key, len, entry);
+  if (entry && bump) {
+    // Bump for LRU purposes.
+    HASH_DEL(cache->table, entry);
+    // Important that we use [entry->key], because [key] might be ephemeral.
+    HASH_ADD_KEYPTR(hh, cache->table, entry->key, len, entry);
+  }
+  return entry;
+}
+
+void uw_Sqlcache_add(uw_Sqlcache_Cache *cache, uw_Sqlcache_Entry *entry, size_t len) {
+  HASH_ADD_KEYPTR(hh, cache->table, entry->key, len, entry);
+  if (HASH_COUNT(cache->table) > uw_Sqlcache_maxSize) {
+    // Deletes the first element of the cache.
+    uw_Sqlcache_delete(cache, cache->table);
+  }
+}
+
+unsigned long uw_Sqlcache_getTimeNow(uw_Sqlcache_Cache *cache) {
+  return ++cache->timeNow;
+}
+
+unsigned long uw_Sqlcache_timeMax(unsigned long x, unsigned long y) {
+  return x > y ? x : y;
+}
+
+char uw_Sqlcache_keySep = '_';
+
+char *uw_Sqlcache_allocKeyBuffer(char **keys, int numKeys) {
+  size_t len = 0;
+  while (numKeys-- > 0) {
+    char* k = keys[numKeys];
+    if (!k) {
+      // Can only happen when flushihg, in which case we don't need anything past the null key.
+      break;
     }
-  } else {
-    return NULL;
+    // Leave room for separator.
+    len += 1 + strlen(k);
   }
+  char *buf = malloc(len+1);
+  // If nothing is copied into the buffer, it should look like it has length 0.
+  buf[0] = 0;
+  return buf;
 }
 
-uw_Sqlcache_CacheValue *uw_Sqlcache_check(uw_Sqlcache_Cache *cache, char **keys) {
-  return uw_Sqlcache_checkHelper(cache, keys, 0);
+char *uw_Sqlcache_keyCopy(char *buf, char *key) {
+  *buf++ = uw_Sqlcache_keySep;
+  return stpcpy(buf, key);
 }
 
-void uw_Sqlcache_storeHelper(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcache_CacheValue *value, int timeNow) {
-  uw_Sqlcache_CacheEntry *entry;
-  char *key = keys[cache->height];
-  HASH_FIND(hh, cache->table, key, strlen(key), entry);
-  if (!entry) {
-    entry = malloc(sizeof(uw_Sqlcache_CacheEntry));
-    entry->key = strdup(key);
-    entry->value = NULL;
-    HASH_ADD_KEYPTR(hh, cache->table, entry->key, strlen(entry->key), entry);
-  }
-  entry->timeValid = timeNow;
-  if (cache->height == 0) {
-    //uw_Sqlcache_listAdd(cache->lru, entry);
-    uw_Sqlcache_free(entry->value);
-    entry->value = value;
-    //if (cache->lru->size > MAX_SIZE) {
-      //uw_Sqlcache_delete(cache, cache->lru->first);
-      // TODO: return flushed value.
-    //}
-  } else {
-    if (!entry->value) {
-      uw_Sqlcache_Cache *newuw_Sqlcache_Cache = malloc(sizeof(uw_Sqlcache_Cache));
-      newuw_Sqlcache_Cache->table = NULL;
-      newuw_Sqlcache_Cache->timeInvalid = timeNow;
-      newuw_Sqlcache_Cache->lru = cache->lru;
-      newuw_Sqlcache_Cache->height = cache->height - 1;
-      entry->value = newuw_Sqlcache_Cache;
+// The NUL-terminated prefix of [key] below always looks something like "_k1_k2_k3..._kn".
+// TODO: strlen(key) = buf - key?
+
+uw_Sqlcache_Value *uw_Sqlcache_check(uw_Sqlcache_Cache *cache, char **keys, int numKeys) {
+  char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
+  char *buf = key;
+  time_t timeInvalid = cache->timeInvalid;
+  uw_Sqlcache_Entry *entry;
+  while (numKeys-- > 0) {
+    buf = uw_Sqlcache_keyCopy(buf, keys[numKeys]);
+    size_t len = buf - key;
+    entry = uw_Sqlcache_find(cache, key, len, 1);
+    if (!entry) {
+      free(key);
+      return NULL;
     }
-    uw_Sqlcache_storeHelper(entry->value, keys, value, timeNow);
+    timeInvalid = uw_Sqlcache_timeMax(timeInvalid, entry->timeInvalid);
   }
+  free(key);
+  uw_Sqlcache_Value *value = entry->value;
+  return value && value->timeValid > timeInvalid ? value : NULL;
 }
 
-void uw_Sqlcache_store(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcache_CacheValue *value) {
-  uw_Sqlcache_storeHelper(cache, keys, value, uw_Sqlcache_getTimeNow());
+void uw_Sqlcache_store(uw_Sqlcache_Cache *cache, char **keys, int numKeys, uw_Sqlcache_Value *value) {
+  char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
+  char *buf = key;
+  time_t timeNow = uw_Sqlcache_getTimeNow(cache);
+  uw_Sqlcache_Entry *entry;
+  while (numKeys-- > 0) {
+    buf = uw_Sqlcache_keyCopy(buf, keys[numKeys]);
+    size_t len = buf - key;
+    entry = uw_Sqlcache_find(cache, key, len, 1);
+    if (!entry) {
+      entry = malloc(sizeof(uw_Sqlcache_Entry));
+      entry->key = strdup(key);
+      entry->value = NULL;
+      entry->timeInvalid = 0; // ASK: is this okay?
+      uw_Sqlcache_add(cache, entry, len);
+    }
+  }
+  free(key);
+  uw_Sqlcache_freeValue(entry->value);
+  entry->value = value;
+  entry->value->timeValid = timeNow;
 }
 
-void uw_Sqlcache_flushHelper(uw_Sqlcache_Cache *cache, char **keys, int timeNow) {
-  uw_Sqlcache_CacheEntry *entry;
-  char *key = keys[cache->height];
-  if (key) {
-    HASH_FIND(hh, cache->table, key, strlen(key), entry);
-    if (entry) {
-      if (cache->height == 0) {
-        uw_Sqlcache_delete(cache, entry);
+void uw_Sqlcache_flush(uw_Sqlcache_Cache *cache, char **keys, int numKeys) {
+  char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
+  char *buf = key;
+  time_t timeNow = uw_Sqlcache_getTimeNow(cache);
+  uw_Sqlcache_Entry *entry;
+  while (numKeys-- > 0) {
+    char *k = keys[numKeys];
+    if (!k) {
+      if (entry) {
+        entry->timeInvalid = timeNow;
       } else {
-        uw_Sqlcache_flushHelper(entry->value, keys, timeNow);
+        // Haven't found an entry yet, so the first key was null.
+        cache->timeInvalid = timeNow;
       }
+      free(key);
+      return;
     }
-  } else {
-    // Null key means invalidate the entire subtree.
-    cache->timeInvalid = timeNow;
+    buf = uw_Sqlcache_keyCopy(buf, k);
+    size_t len = buf - key;
+    entry = uw_Sqlcache_find(cache, key, len, 0);
+    if (!entry) {
+      free(key);
+      return;
+    }
   }
-}
-
-void uw_Sqlcache_flush(uw_Sqlcache_Cache *cache, char **keys) {
-  uw_Sqlcache_flushHelper(cache, keys, uw_Sqlcache_getTimeNow());
+  free(key);
+  // All the keys were non-null and the relevant entry is present, so we delete it.
+  uw_Sqlcache_delete(cache, entry);
 }
