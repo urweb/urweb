@@ -4713,7 +4713,6 @@ void uw_Sqlcache_flushCommitOne(uw_Sqlcache_Cache *cache, char **keys) {
   time_t timeNow = uw_Sqlcache_getTimeNow(cache);
   uw_Sqlcache_Entry *entry;
   if (numKeys == 0) {
-    puts("flush cache of height 0");
     entry = cache->table;
     if (entry) {
       uw_Sqlcache_freeValue(entry->value);
