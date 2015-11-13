@@ -24,6 +24,9 @@ fun store (index, keys, value) =
 fun flush (index, keys) =
     ffiAppCache' ("flush", index, withTyp optionStringTyp keys)
 
+fun lock (index, keys) =
+    raise Fail "ToyCache doesn't yet implement lock"
+
 
 (* Cjr *)
 
@@ -198,7 +201,7 @@ val setupGlobal = string "/* No global setup for toy cache. */"
 
 (* Bundled up. *)
 
-val cache = {check = check, store = store, flush = flush,
+val cache = {check = check, store = store, flush = flush, lock = lock,
              setupQuery = setupQuery, setupGlobal = setupGlobal}
 
 end

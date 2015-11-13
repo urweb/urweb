@@ -1,6 +1,9 @@
 structure Sqlcache :> SQLCACHE = struct
 
-open Mono
+
+(*********************)
+(* General Utilities *)
+(*********************)
 
 structure IK = struct type ord_key = int val compare = Int.compare end
 structure IS = IntBinarySet
@@ -8,9 +11,8 @@ structure IM = IntBinaryMap
 structure SK = struct type ord_key = string val compare = String.compare end
 structure SS = BinarySetFn(SK)
 structure SM = BinaryMapFn(SK)
+structure IIMM = MultimapFn(structure KeyMap = IM structure ValSet = IS)
 structure SIMM = MultimapFn(structure KeyMap = SM structure ValSet = IS)
-
-(* ASK: how do we deal with heap reallocation? *)
 
 fun id x = x
 
@@ -19,6 +21,35 @@ fun iterate f n x = if n < 0
                     else if n = 0
                     then x
                     else iterate f (n-1) (f x)
+
+(* From the MLton wiki. *)
+infix  3 <\     fun x <\ f = fn y => f (x, y)     (* Left section      *)
+infix  3 \>     fun f \> y = f y                  (* Left application  *)
+
+fun mapFst f (x, y) = (f x, y)
+
+(* Option monad. *)
+fun obind (x, f) = Option.mapPartial f x
+fun oguard (b, x) = if b then x else NONE
+fun omap f = fn SOME x => SOME (f x) | _ => NONE
+fun omap2 f = fn (SOME x, SOME y) => SOME (f (x,y)) | _ => NONE
+fun osequence ys = List.foldr (omap2 op::) (SOME []) ys
+
+fun indexOf test =
+    let
+        fun f n =
+         fn [] => NONE
+          | (x::xs) => if test x then SOME n else f (n+1) xs
+    in
+        f 0
+    end
+
+
+(************)
+(* Settings *)
+(************)
+
+open Mono
 
 (* Filled in by [addFlushing]. *)
 val ffiInfoRef : {index : int, params : int} list ref = ref []
@@ -59,6 +90,11 @@ val alwaysConsolidateRef = ref true
 fun setAlwaysConsolidate b = alwaysConsolidateRef := b
 fun getAlwaysConsolidate () = !alwaysConsolidateRef
 
+
+(************************)
+(* Really Useful Things *)
+(************************)
+
 (* Used to have type context for local variables in MonoUtil functions. *)
 val doBind =
  fn (env, MonoUtil.Exp.RelE (x, t)) => MonoEnv.pushERel env x t NONE
@@ -79,35 +115,25 @@ fun obindDebug printer (x, f) =
                        NONE => (printer (); NONE)
                      | y => y
 
-(*********************)
-(* General Utilities *)
-(*********************)
-
-(* From the MLton wiki. *)
-infix  3 <\     fun x <\ f = fn y => f (x, y)     (* Left section      *)
-infix  3 \>     fun f \> y = f y                  (* Left application  *)
-
-fun mapFst f (x, y) = (f x, y)
-
-(* Option monad. *)
-fun obind (x, f) = Option.mapPartial f x
-fun oguard (b, x) = if b then x else NONE
-fun omap f = fn SOME x => SOME (f x) | _ => NONE
-fun omap2 f = fn (SOME x, SOME y) => SOME (f (x,y)) | _ => NONE
-fun osequence ys = List.foldr (omap2 op::) (SOME []) ys
-
-fun indexOf test =
-    let
-        fun f n =
-         fn [] => NONE
-          | (x::xs) => if test x then SOME n else f (n+1) xs
-    in
-        f 0
-    end
 
 (*******************)
 (* Effect Analysis *)
 (*******************)
+
+(* TODO: test this. *)
+fun transitiveAnalysis doVal state (decls, _) =
+    let
+        val doDecl =
+         fn ((DVal v, _), state) => doVal (v, state)
+          (* Pass over the list of values a number of times equal to its size,
+             making sure whatever property we're testing propagates everywhere
+             it should. This is analagous to the Bellman-Ford algorithm. *)
+          | ((DValRec vs, _), state) =>
+            iterate (fn state => List.foldl doVal state vs) (length vs) state
+          | (_, state) => state
+    in
+        List.foldl doDecl state decls
+    end
 
 (* Makes an exception for [EWrite] (which is recorded when caching). *)
 fun effectful (effs : IS.set) =
@@ -151,24 +177,13 @@ fun effectful (effs : IS.set) =
     end
 
 (* TODO: test this. *)
-fun effectfulDecls (decls, _) =
-    let
-        fun doVal ((_, name, _, e, _), effs) =
-            if effectful effs MonoEnv.empty e
-            then IS.add (effs, name)
-            else effs
-        val doDecl =
-         fn ((DVal v, _), effs) => doVal (v, effs)
-          (* Repeat the list of declarations a number of times equal to its size,
-             making sure effectfulness propagates everywhere it should. This is
-             analagous to the Bellman-Ford algorithm. *)
-          | ((DValRec vs, _), effs) =>
-            List.foldl doVal effs (List.concat (List.map (fn _ => vs) vs))
-          (* ASK: any other cases? *)
-          | (_, effs) => effs
-    in
-        List.foldl doDecl IS.empty decls
-    end
+fun effectfulDecls file =
+    transitiveAnalysis (fn ((_, name, _, e, _), effs) =>
+                           if effectful effs MonoEnv.empty e
+                           then IS.add (effs, name)
+                           else effs)
+                       IS.empty
+                       file
 
 
 (*********************************)
@@ -1080,9 +1095,7 @@ fun typOfExp' (env : MonoEnv.env) : exp' -> typ option =
   | ERecord fields => SOME (TRecord (map (fn (s, _, t) => (s, t)) fields), dummyLoc)
   | EField (e, s) => (case typOfExp env e of
                           SOME (TRecord fields, _) =>
-                          (case List.find (fn (s', _) => s = s') fields of
-                               SOME (_, t) => SOME t
-                             | _ => NONE)
+                          omap #2 (List.find (fn (s', _) => s = s') fields)
                         | _ => NONE)
   | ECase (_, _, {result, ...}) => SOME result
   | EStrcat _ => SOME (TFfi ("Basis", "string"), dummyLoc)
@@ -1413,6 +1426,46 @@ fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, ...} : state
         file
     end
 
+
+(***********)
+(* Locking *)
+(***********)
+
+(* TODO: do this less evil-ly by not relying on specific FFI names, please? *)
+fun locksNeeded file =
+    transitiveAnalysis
+        (fn ((_, name, _, e, _), state) =>
+            MonoUtil.Exp.fold
+                {typ = #2,
+                 exp = fn (EFfiApp ("Sqlcache", x, _), state as {store, flush}) =>
+                          (case Int.fromString (String.extract (x, 5, NONE)) of
+                               NONE => raise Match
+                             | SOME index =>
+                               if String.isPrefix "store" x
+                               then {store = IIMM.insert (store, name, index), flush = flush}
+                               else if String.isPrefix "flush" x
+                               then {store = store, flush = IIMM.insert (flush, name, index)}
+                               else state)
+                        | _ => state}
+                state
+                e)
+        {store = IIMM.empty, flush = IIMM.empty}
+        file
+
+fun exports (decls, _) =
+    List.foldl (fn ((DExport (_, _, n, _, _, _), _), ns) => IS.add (ns, n)
+                 | ((DTask _, _), _) => raise Fail "Sqlcache doesn't yet support tasks."
+                 | (_, ns) => ns)
+               IS.empty
+               decls
+
+(* fun addLocking file = *)
+(*     let *)
+(*         val whichLocks = locksNeeded file *)
+(*         val needsLocks = exports file *)
+(*     in *)
+
+(*     end *)
 
 (************************)
 (* Compiler Entry Point *)

@@ -24,6 +24,9 @@ fun store (index, keys, value) =
 fun flush (index, keys) =
     ffiAppCache' ("flush", index, withTyp optionStringTyp keys)
 
+fun lock (index, write) =
+    ffiAppCache' ((if write then "w" else "r") ^ "lock", index, [])
+
 
 (* Cjr *)
 
@@ -157,18 +160,18 @@ fun toyIfNoKeys numKeys implLru implToy args =
     else implLru args
 
 val cache =
-    let
-        val {check = toyCheck,
-             store = toyStore,
-             flush = toyFlush,
-             setupQuery = toySetupQuery,
-             ...} = ToyCache.cache
-    in
-        {check = toyIfNoKeys (length o #2) check toyCheck,
-         store = toyIfNoKeys (length o #2) store toyStore,
-         flush = toyIfNoKeys (length o #2) flush toyFlush,
-         setupQuery = toyIfNoKeys #params setupQuery toySetupQuery,
-         setupGlobal = setupGlobal}
-    end
+    (* let *)
+    (*     val {check = toyCheck, *)
+    (*          store = toyStore, *)
+    (*          flush = toyFlush, *)
+    (*          setupQuery = toySetupQuery, *)
+    (*          ...} = ToyCache.cache *)
+    (* in *)
+        (* {check = toyIfNoKeys (length o #2) check toyCheck, *)
+        (*  store = toyIfNoKeys (length o #2) store toyStore, *)
+        (*  flush = toyIfNoKeys (length o #2) flush toyFlush, *)
+    {check = check, store = store, flush = flush, lock = lock,
+     setupQuery = setupQuery, setupGlobal = setupGlobal}
+    (* end *)
 
 end

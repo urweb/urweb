@@ -4641,18 +4641,27 @@ uw_Sqlcache_Value *uw_Sqlcache_check(uw_context ctx, uw_Sqlcache_Cache *cache, c
   char *buf = key;
   time_t timeInvalid = cache->timeInvalid;
   uw_Sqlcache_Entry *entry;
-  while (numKeys-- > 0) {
-    buf = uw_Sqlcache_keyCopy(buf, keys[numKeys]);
-    size_t len = buf - key;
-    entry = uw_Sqlcache_find(cache, key, len, 1);
+  if (numKeys == 0) {
+    entry = cache->table;
     if (!entry) {
       free(key);
       pthread_rwlock_unlock(&cache->lock);
       return NULL;
     }
-    timeInvalid = uw_Sqlcache_timeMax(timeInvalid, entry->timeInvalid);
+  } else {
+    while (numKeys-- > 0) {
+      buf = uw_Sqlcache_keyCopy(buf, keys[numKeys]);
+      size_t len = buf - key;
+      entry = uw_Sqlcache_find(cache, key, len, 1);
+      if (!entry) {
+        free(key);
+        pthread_rwlock_unlock(&cache->lock);
+        return NULL;
+      }
+      timeInvalid = uw_Sqlcache_timeMax(timeInvalid, entry->timeInvalid);
+    }
+    free(key);
   }
-  free(key);
   // TODO: pass back copy of value and free it in the generated code... or use uw_malloc?
   uw_Sqlcache_Value *value = entry->value;
   pthread_rwlock_unlock(&cache->lock);
@@ -4666,19 +4675,30 @@ void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcac
   char *buf = key;
   time_t timeNow = uw_Sqlcache_getTimeNow(cache);
   uw_Sqlcache_Entry *entry;
-  while (numKeys-- > 0) {
-    buf = uw_Sqlcache_keyCopy(buf, keys[numKeys]);
-    size_t len = buf - key;
-    entry = uw_Sqlcache_find(cache, key, len, 1);
+  if (numKeys == 0) {
+    entry = cache->table;
     if (!entry) {
       entry = malloc(sizeof(uw_Sqlcache_Entry));
       entry->key = strdup(key);
       entry->value = NULL;
       entry->timeInvalid = 0;
-      uw_Sqlcache_add(cache, entry, len);
+      cache->table = entry;
     }
+  } else {
+    while (numKeys-- > 0) {
+      buf = uw_Sqlcache_keyCopy(buf, keys[numKeys]);
+      size_t len = buf - key;
+      entry = uw_Sqlcache_find(cache, key, len, 1);
+      if (!entry) {
+        entry = malloc(sizeof(uw_Sqlcache_Entry));
+        entry->key = strdup(key);
+        entry->value = NULL;
+        entry->timeInvalid = 0;
+        uw_Sqlcache_add(cache, entry, len);
+      }
+    }
+    free(key);
   }
-  free(key);
   uw_Sqlcache_freeValue(entry->value);
   entry->value = value;
   entry->value->timeValid = timeNow;
@@ -4692,29 +4712,40 @@ void uw_Sqlcache_flushCommitOne(uw_Sqlcache_Cache *cache, char **keys) {
   char *buf = key;
   time_t timeNow = uw_Sqlcache_getTimeNow(cache);
   uw_Sqlcache_Entry *entry;
-  while (numKeys-- > 0) {
-    char *k = keys[numKeys];
-    if (!k) {
-      if (entry) {
-        entry->timeInvalid = timeNow;
-      } else {
-        // Haven't found an entry yet, so the first key was null.
-        cache->timeInvalid = timeNow;
+  if (numKeys == 0) {
+    puts("flush cache of height 0");
+    entry = cache->table;
+    if (entry) {
+      uw_Sqlcache_freeValue(entry->value);
+      entry->value = NULL;
+    }
+  } else {
+    while (numKeys-- > 0) {
+      char *k = keys[numKeys];
+      if (!k) {
+        if (entry) {
+          entry->timeInvalid = timeNow;
+        } else {
+          // Haven't found an entry yet, so the first key was null.
+          cache->timeInvalid = timeNow;
+        }
+        free(key);
+        pthread_rwlock_unlock(&cache->lock);
+        return;
       }
-      free(key);
-      return;
+      buf = uw_Sqlcache_keyCopy(buf, k);
+      size_t len = buf - key;
+      entry = uw_Sqlcache_find(cache, key, len, 0);
+      if (!entry) {
+        free(key);
+        pthread_rwlock_unlock(&cache->lock);
+        return;
+      }
     }
-    buf = uw_Sqlcache_keyCopy(buf, k);
-    size_t len = buf - key;
-    entry = uw_Sqlcache_find(cache, key, len, 0);
-    if (!entry) {
-      free(key);
-      return;
-    }
+    free(key);
+    // All the keys were non-null and the relevant entry is present, so we delete it.
+    uw_Sqlcache_delete(cache, entry);
   }
-  free(key);
-  // All the keys were non-null and the relevant entry is present, so we delete it.
-  uw_Sqlcache_delete(cache, entry);
   pthread_rwlock_unlock(&cache->lock);
 }
 
