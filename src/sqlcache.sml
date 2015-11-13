@@ -913,7 +913,7 @@ val conflictMaps = ConflictMaps.conflictMaps
 (* Program Instrumentation Utilities *)
 (*************************************)
 
-val {check, store, flush, ...} = getCache ()
+val {check, store, flush, lock, ...} = getCache ()
 
 val dummyTyp = (TRecord [], dummyLoc)
 
@@ -1431,7 +1431,7 @@ fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, ...} : state
 (* Locking *)
 (***********)
 
-(* TODO: do this less evil-ly by not relying on specific FFI names, please? *)
+(* TODO: do this less evilly by not relying on specific FFI names, please? *)
 fun locksNeeded file =
     transitiveAnalysis
         (fn ((_, name, _, e, _), state) =>
@@ -1439,14 +1439,14 @@ fun locksNeeded file =
                 {typ = #2,
                  exp = fn (EFfiApp ("Sqlcache", x, _), state as {store, flush}) =>
                           (case Int.fromString (String.extract (x, 5, NONE)) of
-                               NONE => raise Match
+                               NONE => state
                              | SOME index =>
-                               if String.isPrefix "store" x
-                               then {store = IIMM.insert (store, name, index), flush = flush}
-                               else if String.isPrefix "flush" x
+                               if String.isPrefix "flush" x
                                then {store = store, flush = IIMM.insert (flush, name, index)}
+                               else if String.isPrefix "store" x
+                               then {store = IIMM.insert (store, name, index), flush = flush}
                                else state)
-                        | _ => state}
+                        | (_, state) => state}
                 state
                 e)
         {store = IIMM.empty, flush = IIMM.empty}
@@ -1459,13 +1459,36 @@ fun exports (decls, _) =
                IS.empty
                decls
 
-(* fun addLocking file = *)
-(*     let *)
-(*         val whichLocks = locksNeeded file *)
-(*         val needsLocks = exports file *)
-(*     in *)
+fun wrapLocks (locks, (exp', loc)) =
+    case exp' of
+        EAbs (s, t1, t2, exp) => (EAbs (s, t1, t2, wrapLocks (locks, exp)), loc)
+      | _ => (List.foldr (fn (l, e') => sequence [lock l, e']) exp' locks, loc)
 
-(*     end *)
+fun addLocking file =
+    let
+        val {store, flush} = locksNeeded file
+        fun locks n =
+            let
+                val wlocks = IIMM.findSet (flush, n)
+                val rlocks = IIMM.findSet (store, n)
+                val ls = map (fn i => (i, true)) (IS.listItems wlocks)
+                         @ map (fn i => (i, false)) (IS.listItems (IS.difference (rlocks, wlocks)))
+            in
+                ListMergeSort.sort (fn ((i, _), (j, _)) => i > j) ls
+            end
+        val expts = exports file
+        fun doVal (v as (x, n, t, exp, s)) =
+            if IS.member (expts, n)
+            then (x, n, t, wrapLocks ((locks n), exp), s)
+            else v
+        val doDecl =
+         fn (DVal v, loc) => (DVal (doVal v), loc)
+          | (DValRec vs, loc) => (DValRec (map doVal vs), loc)
+          | decl => decl
+    in
+        mapFst (map doDecl) file
+    end
+
 
 (************************)
 (* Compiler Entry Point *)
@@ -1494,7 +1517,7 @@ fun insertAfterDatatypes ((decls, sideInfo), newDecls) =
         (datatypes @ newDecls @ others, sideInfo)
     end
 
-val go' = addFlushing o addCaching o simplifySql o inlineSql
+val go' = addLocking o addFlushing o addCaching o simplifySql o inlineSql
 
 fun go file =
     let

@@ -69,7 +69,9 @@ fun setupQuery {index, params} =
         Print.box
             [string ("static uw_Sqlcache_Cache cacheStruct" ^ i ^ " = {"),
              newline,
-             string "  .lock = PTHREAD_RWLOCK_INITIALIZER,",
+             string "  .lockIn = PTHREAD_RWLOCK_INITIALIZER,",
+             newline,
+             string "  .lockOut = PTHREAD_RWLOCK_INITIALIZER,",
              newline,
              string "  .table = NULL,",
              newline,
@@ -80,6 +82,22 @@ fun setupQuery {index, params} =
              string "  .timeNow = 0};",
              newline,
              string ("static uw_Sqlcache_Cache *cache" ^ i ^ " = &cacheStruct" ^ i ^ ";"),
+             newline,
+             newline,
+
+             string ("static void uw_Sqlcache_rlock" ^ i ^ "(uw_context ctx) {"),
+             newline,
+             string ("  uw_Sqlcache_rlock(ctx, cache" ^ i ^ ");"),
+             newline,
+             string "}",
+             newline,
+             newline,
+
+             string ("static void uw_Sqlcache_wlock" ^ i ^ "(uw_context ctx) {"),
+             newline,
+             string ("  uw_Sqlcache_wlock(ctx, cache" ^ i ^ ");"),
+             newline,
+             string "}",
              newline,
              newline,
 

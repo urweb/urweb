@@ -406,6 +406,8 @@ void uw_Basis_writec(struct uw_context *, char);
 
 // Sqlcache.
 
+void *uw_Sqlcache_rlock(struct uw_context *, uw_Sqlcache_Cache *);
+void *uw_Sqlcache_wlock(struct uw_context *, uw_Sqlcache_Cache *);
 uw_Sqlcache_Value *uw_Sqlcache_check(struct uw_context *, uw_Sqlcache_Cache *, char **);
 void *uw_Sqlcache_store(struct uw_context *, uw_Sqlcache_Cache *, char **, uw_Sqlcache_Value *);
 void *uw_Sqlcache_flush(struct uw_context *, uw_Sqlcache_Cache *, char **);

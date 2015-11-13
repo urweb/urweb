@@ -366,6 +366,9 @@ void uw_global_init() {
 
   uw_global_custom();
   uw_init_crypto();
+
+  // Fast non-cryptographic strength randomness for Sqlcache.
+  srandom(clock());
 }
 
 void uw_app_init(uw_app *app) {
@@ -430,6 +433,11 @@ typedef struct uw_Sqlcache_Update {
   uw_Sqlcache_Value *value;
   struct uw_Sqlcache_Update *next;
 } uw_Sqlcache_Update;
+
+typedef struct uw_Sqlcache_Unlock {
+  pthread_rwlock_t *lock;
+  struct uw_Sqlcache_Unlock *next;
+} uw_Sqlcache_Unlock;
 
 struct uw_context {
   uw_app *app;
@@ -500,6 +508,7 @@ struct uw_context {
   int recordingOffset;
   uw_Sqlcache_Update *cacheUpdate;
   uw_Sqlcache_Update *cacheUpdateTail;
+  uw_Sqlcache_Unlock *cacheUnlock;
 
   int remoteSock;
 };
@@ -4556,7 +4565,7 @@ typedef struct uw_Sqlcache_Entry {
   UT_hash_handle hh;
 } uw_Sqlcache_Entry;
 
-void uw_Sqlcache_freeValue(uw_Sqlcache_Value *value) {
+static void uw_Sqlcache_freeValue(uw_Sqlcache_Value *value) {
   if (value) {
     free(value->result);
     free(value->output);
@@ -4564,7 +4573,7 @@ void uw_Sqlcache_freeValue(uw_Sqlcache_Value *value) {
   }
 }
 
-void uw_Sqlcache_freeEntry(uw_Sqlcache_Entry* entry) {
+static void uw_Sqlcache_freeEntry(uw_Sqlcache_Entry* entry) {
   if (entry) {
     free(entry->key);
     uw_Sqlcache_freeValue(entry->value);
@@ -4573,14 +4582,14 @@ void uw_Sqlcache_freeEntry(uw_Sqlcache_Entry* entry) {
 }
 
 // TODO: pick a number.
-unsigned int uw_Sqlcache_maxSize = 1234567890;
+static unsigned int uw_Sqlcache_maxSize = 1234567890;
 
-void uw_Sqlcache_delete(uw_Sqlcache_Cache *cache, uw_Sqlcache_Entry *entry) {
+static void uw_Sqlcache_delete(uw_Sqlcache_Cache *cache, uw_Sqlcache_Entry *entry) {
   HASH_DEL(cache->table, entry);
   uw_Sqlcache_freeEntry(entry);
 }
 
-uw_Sqlcache_Entry *uw_Sqlcache_find(uw_Sqlcache_Cache *cache, char *key, size_t len, int bump) {
+static uw_Sqlcache_Entry *uw_Sqlcache_find(uw_Sqlcache_Cache *cache, char *key, size_t len, int bump) {
   uw_Sqlcache_Entry *entry = NULL;
   HASH_FIND(hh, cache->table, key, len, entry);
   if (entry && bump) {
@@ -4592,7 +4601,7 @@ uw_Sqlcache_Entry *uw_Sqlcache_find(uw_Sqlcache_Cache *cache, char *key, size_t 
   return entry;
 }
 
-void uw_Sqlcache_add(uw_Sqlcache_Cache *cache, uw_Sqlcache_Entry *entry, size_t len) {
+static void uw_Sqlcache_add(uw_Sqlcache_Cache *cache, uw_Sqlcache_Entry *entry, size_t len) {
   HASH_ADD_KEYPTR(hh, cache->table, entry->key, len, entry);
   if (HASH_COUNT(cache->table) > uw_Sqlcache_maxSize) {
     // Deletes the first element of the cache.
@@ -4600,17 +4609,17 @@ void uw_Sqlcache_add(uw_Sqlcache_Cache *cache, uw_Sqlcache_Entry *entry, size_t 
   }
 }
 
-unsigned long uw_Sqlcache_getTimeNow(uw_Sqlcache_Cache *cache) {
+static unsigned long uw_Sqlcache_getTimeNow(uw_Sqlcache_Cache *cache) {
   return ++cache->timeNow;
 }
 
-unsigned long uw_Sqlcache_timeMax(unsigned long x, unsigned long y) {
+static unsigned long uw_Sqlcache_timeMax(unsigned long x, unsigned long y) {
   return x > y ? x : y;
 }
 
-char uw_Sqlcache_keySep = '_';
+static char uw_Sqlcache_keySep = '_';
 
-char *uw_Sqlcache_allocKeyBuffer(char **keys, size_t numKeys) {
+static char *uw_Sqlcache_allocKeyBuffer(char **keys, size_t numKeys) {
   size_t len = 0;
   while (numKeys-- > 0) {
     char* k = keys[numKeys];
@@ -4627,7 +4636,7 @@ char *uw_Sqlcache_allocKeyBuffer(char **keys, size_t numKeys) {
   return buf;
 }
 
-char *uw_Sqlcache_keyCopy(char *buf, char *key) {
+static char *uw_Sqlcache_keyCopy(char *buf, char *key) {
   *buf++ = uw_Sqlcache_keySep;
   return stpcpy(buf, key);
 }
@@ -4635,7 +4644,12 @@ char *uw_Sqlcache_keyCopy(char *buf, char *key) {
 // The NUL-terminated prefix of [key] below always looks something like "_k1_k2_k3..._kn".
 
 uw_Sqlcache_Value *uw_Sqlcache_check(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys) {
-  pthread_rwlock_rdlock(&cache->lock);
+  int doBump = random() % 1024 == 0;
+  if (doBump) {
+    pthread_rwlock_wrlock(&cache->lockIn);
+  } else {
+    pthread_rwlock_rdlock(&cache->lockIn);
+  }
   size_t numKeys = cache->numKeys;
   char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
   char *buf = key;
@@ -4645,46 +4659,49 @@ uw_Sqlcache_Value *uw_Sqlcache_check(uw_context ctx, uw_Sqlcache_Cache *cache, c
     entry = cache->table;
     if (!entry) {
       free(key);
-      pthread_rwlock_unlock(&cache->lock);
+      pthread_rwlock_unlock(&cache->lockIn);
       return NULL;
     }
   } else {
     while (numKeys-- > 0) {
       buf = uw_Sqlcache_keyCopy(buf, keys[numKeys]);
       size_t len = buf - key;
-      entry = uw_Sqlcache_find(cache, key, len, 1);
+      entry = uw_Sqlcache_find(cache, key, len, doBump);
       if (!entry) {
         free(key);
-        pthread_rwlock_unlock(&cache->lock);
+        pthread_rwlock_unlock(&cache->lockIn);
         return NULL;
       }
       timeInvalid = uw_Sqlcache_timeMax(timeInvalid, entry->timeInvalid);
     }
     free(key);
   }
-  // TODO: pass back copy of value and free it in the generated code... or use uw_malloc?
   uw_Sqlcache_Value *value = entry->value;
-  pthread_rwlock_unlock(&cache->lock);
+  pthread_rwlock_unlock(&cache->lockIn);
+  // ASK: though the argument isn't trivial, this is safe, right?
+  // Returning outside the lock is safe because updates happen at commit time.
+  // Those are the only times the returned value or its strings can get freed.
+  // Handler output is a new string, so it's safe to free this at commit time.
   return value && value->timeValid > timeInvalid ? value : NULL;
 }
 
-void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcache_Value *value) {
-  pthread_rwlock_wrlock(&cache->lock);
+static void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcache_Value *value) {
+  pthread_rwlock_wrlock(&cache->lockIn);
   size_t numKeys = cache->numKeys;
-  char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
-  char *buf = key;
   time_t timeNow = uw_Sqlcache_getTimeNow(cache);
   uw_Sqlcache_Entry *entry;
   if (numKeys == 0) {
     entry = cache->table;
     if (!entry) {
       entry = malloc(sizeof(uw_Sqlcache_Entry));
-      entry->key = strdup(key);
+      entry->key = NULL;
       entry->value = NULL;
       entry->timeInvalid = 0;
       cache->table = entry;
     }
   } else {
+    char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
+    char *buf = key;
     while (numKeys-- > 0) {
       buf = uw_Sqlcache_keyCopy(buf, keys[numKeys]);
       size_t len = buf - key;
@@ -4702,23 +4719,23 @@ void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcac
   uw_Sqlcache_freeValue(entry->value);
   entry->value = value;
   entry->value->timeValid = timeNow;
-  pthread_rwlock_unlock(&cache->lock);
+  pthread_rwlock_unlock(&cache->lockIn);
 }
 
-void uw_Sqlcache_flushCommitOne(uw_Sqlcache_Cache *cache, char **keys) {
-  pthread_rwlock_wrlock(&cache->lock);
+static void uw_Sqlcache_flushCommitOne(uw_Sqlcache_Cache *cache, char **keys) {
+  pthread_rwlock_wrlock(&cache->lockIn);
   size_t numKeys = cache->numKeys;
-  char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
-  char *buf = key;
-  time_t timeNow = uw_Sqlcache_getTimeNow(cache);
-  uw_Sqlcache_Entry *entry;
   if (numKeys == 0) {
-    entry = cache->table;
+    uw_Sqlcache_Entry *entry = cache->table;
     if (entry) {
       uw_Sqlcache_freeValue(entry->value);
       entry->value = NULL;
     }
   } else {
+    char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
+    char *buf = key;
+    time_t timeNow = uw_Sqlcache_getTimeNow(cache);
+    uw_Sqlcache_Entry *entry = NULL;
     while (numKeys-- > 0) {
       char *k = keys[numKeys];
       if (!k) {
@@ -4729,15 +4746,16 @@ void uw_Sqlcache_flushCommitOne(uw_Sqlcache_Cache *cache, char **keys) {
           cache->timeInvalid = timeNow;
         }
         free(key);
-        pthread_rwlock_unlock(&cache->lock);
+        pthread_rwlock_unlock(&cache->lockIn);
         return;
       }
       buf = uw_Sqlcache_keyCopy(buf, k);
       size_t len = buf - key;
       entry = uw_Sqlcache_find(cache, key, len, 0);
       if (!entry) {
+        // Nothing in the cache to flush.
         free(key);
-        pthread_rwlock_unlock(&cache->lock);
+        pthread_rwlock_unlock(&cache->lockIn);
         return;
       }
     }
@@ -4745,10 +4763,25 @@ void uw_Sqlcache_flushCommitOne(uw_Sqlcache_Cache *cache, char **keys) {
     // All the keys were non-null and the relevant entry is present, so we delete it.
     uw_Sqlcache_delete(cache, entry);
   }
-  pthread_rwlock_unlock(&cache->lock);
+  pthread_rwlock_unlock(&cache->lockIn);
 }
 
-void uw_Sqlcache_freeUpdate(void *data, int dontCare) {
+static void uw_Sqlcache_commit(void *data) {
+  uw_context ctx = (uw_context)data;
+  uw_Sqlcache_Update *update = ctx->cacheUpdate;
+  while (update) {
+    uw_Sqlcache_Cache *cache = update->cache;
+    char **keys = update->keys;
+    if (update->value) {
+      uw_Sqlcache_storeCommitOne(cache, keys, update->value);
+    } else {
+      uw_Sqlcache_flushCommitOne(cache, keys);
+    }
+    update = update->next;
+  }
+}
+
+static void uw_Sqlcache_free(void *data, int dontCare) {
   uw_context ctx = (uw_context)data;
   uw_Sqlcache_Update *update = ctx->cacheUpdate;
   while (update) {
@@ -4765,24 +4798,38 @@ void uw_Sqlcache_freeUpdate(void *data, int dontCare) {
   }
   ctx->cacheUpdate = NULL;
   ctx->cacheUpdateTail = NULL;
-}
-
-void uw_Sqlcache_commitUpdate(void *data) {
-  uw_context ctx = (uw_context)data;
-  uw_Sqlcache_Update *update = ctx->cacheUpdate;
-  while (update) {
-    uw_Sqlcache_Cache *cache = update->cache;
-    char **keys = update->keys;
-    if (update->value) {
-      uw_Sqlcache_storeCommitOne(cache, keys, update->value);
-    } else {
-      uw_Sqlcache_flushCommitOne(cache, keys);
-    }
-    update = update->next;
+  uw_Sqlcache_Unlock *unlock = ctx->cacheUnlock;
+  while (unlock) {
+    pthread_rwlock_unlock(unlock->lock);
+    uw_Sqlcache_Unlock *nextUnlock = unlock->next;
+    free(unlock);
+    unlock = nextUnlock;
   }
+  ctx->cacheUnlock = NULL;
 }
 
-char **uw_Sqlcache_copyKeys(char **keys, size_t numKeys) {
+static void uw_Sqlcache_pushUnlock(uw_context ctx, pthread_rwlock_t *lock) {
+  if (!ctx->cacheUnlock) {
+    // Just need one registered commit for both updating and unlocking.
+    uw_register_transactional(ctx, ctx, uw_Sqlcache_commit, NULL, uw_Sqlcache_free);
+  }
+  uw_Sqlcache_Unlock *unlock = malloc(sizeof(uw_Sqlcache_Unlock));
+  unlock->lock = lock;
+  unlock->next = ctx->cacheUnlock;
+  ctx->cacheUnlock = unlock;
+}
+
+void uw_Sqlcache_rlock(uw_context ctx, uw_Sqlcache_Cache *cache) {
+  pthread_rwlock_rdlock(&cache->lockOut);
+  uw_Sqlcache_pushUnlock(ctx, &cache->lockOut);
+}
+
+void uw_Sqlcache_wlock(uw_context ctx, uw_Sqlcache_Cache *cache) {
+  pthread_rwlock_wrlock(&cache->lockOut);
+  uw_Sqlcache_pushUnlock(ctx, &cache->lockOut);
+}
+
+static char **uw_Sqlcache_copyKeys(char **keys, size_t numKeys) {
   char **copy = malloc(sizeof(char *) * numKeys);
   while (numKeys-- > 0) {
     char *k = keys[numKeys];
@@ -4798,11 +4845,9 @@ void uw_Sqlcache_store(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys, uw
   update->value = value;
   update->next = NULL;
   if (ctx->cacheUpdateTail) {
-    // An update is already registered, so just extend it.
     ctx->cacheUpdateTail->next = update;
   } else {
     ctx->cacheUpdate = update;
-    uw_register_transactional(ctx, ctx, uw_Sqlcache_commitUpdate, NULL, uw_Sqlcache_freeUpdate);
   }
   ctx->cacheUpdateTail = update;
 }
