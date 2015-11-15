@@ -1,4 +1,4 @@
-database test.db
+database host=localhost dbname=ziv
 sql test.sql
 safeGet Test/flush
 safeGet Test/flash

@@ -1,4 +1,4 @@
-structure Sqlcache :> SQLCACHE = struct
+structure Sqlcache (* DEBUG :> SQLCACHE *) = struct
 
 
 (*********************)
@@ -312,7 +312,9 @@ fun removeRedundant madeRedundantBy zs =
     end
 
 datatype atomExp =
-         QueryArg of int
+         True
+       | False
+       | QueryArg of int
        | DmlRel of int
        | Prim of Prim.t
        | Field of string * string
@@ -322,7 +324,13 @@ structure AtomExpKey : ORD_KEY = struct
     type ord_key = atomExp
 
     val compare =
-     fn (QueryArg n1, QueryArg n2) => Int.compare (n1, n2)
+     fn (True, True) => EQUAL
+      | (True, _) => LESS
+      | (_, True) => GREATER
+      | (False, False) => EQUAL
+      | (False, _) => LESS
+      | (_, False) => GREATER
+      | (QueryArg n1, QueryArg n2) => Int.compare (n1, n2)
       | (QueryArg _, _) => LESS
       | (_, QueryArg _) => GREATER
       | (DmlRel n1, DmlRel n2) => Int.compare (n1, n2)
@@ -531,7 +539,7 @@ end = struct
                                   project from a sqlified value (which is a
                                   string). *)
                                | (_, sq as SOME _, [], NONE) => wrap sq
-                               | _ => raise Match
+                               | _ => raise Fail "Sqlcache: traverseSubst"
                          end)
                      (f n)
         in
@@ -620,7 +628,7 @@ end = struct
                                AM.find (argsMap, arg)
                                <\obind\>
                                 (fn n' => SOME (ERel n')))
-              | _ => raise Match
+              | _ => raise Fail "Sqlcache: query (a)"
         in
             case (map #1 qs) of
                 (q :: qs) =>
@@ -629,16 +637,16 @@ end = struct
                     val ns = IS.listItems (varsOfQuery q)
                     val rename =
                      fn ERel n => omap ERel (indexOf (fn n' => n' = n) ns)
-                      | _ => raise Match
+                      | _ => raise Fail "Sqlcache: query (b)"
                 in
                     case omapQuery rename q of
                         SOME q => q
                       (* We should never get NONE because indexOf should never fail. *)
-                      | NONE => raise Match
+                      | NONE => raise Fail "Sqlcache: query (c)"
                 end
               (* We should never reach this case because [updateState] won't
                  put anything in the state if there are no queries. *)
-              | [] => raise Match
+              | [] => raise Fail "Sqlcache: query (d)"
         end
 
     val argOfExp =
@@ -700,8 +708,23 @@ val rec sqexpToFormula =
   | Sql.Binop (Sql.RCmp c, e1, e2) => Atom (c, e1, e2)
   | Sql.Binop (Sql.RLop l, p1, p2) => Combo (case l of Sql.And => Conj | Sql.Or => Disj,
                                              [sqexpToFormula p1, sqexpToFormula p2])
+  | e as Sql.Field f => Atom (Sql.Eq, e, Sql.SqTrue)
   (* ASK: any other sqexps that can be props? *)
-  | _ => raise Match
+  | Sql.SqConst prim =>
+    (case prim of
+         (Prim.String (Prim.Normal, s)) =>
+         if s = #trueString (Settings.currentDbms ())
+         then Combo (Conj, [])
+         else if s = #falseString (Settings.currentDbms ())
+         then Combo (Disj, [])
+         else raise Fail "Sqlcache: sqexpToFormula (SqConst a)"
+       | _ => raise Fail "Sqlcache: sqexpToFormula (SqConst b)")
+  | Sql.Computed _ => raise Fail "Sqlcache: sqexpToFormula (Computed)"
+  | Sql.SqKnown _ => raise Fail "Sqlcache: sqexpToFormula (SqKnown)"
+  | Sql.Inj _ => raise Fail "Sqlcache: sqexpToFormula (Inj)"
+  | Sql.SqFunc _ => raise Fail "Sqlcache: sqexpToFormula (SqFunc)"
+  | Sql.Unmodeled => raise Fail "Sqlcache: sqexpToFormula (Unmodeled)"
+  | Sql.Null => raise Fail "Sqlcache: sqexpToFormula (Null)"
 
 fun mapSqexpFields f =
     fn Sql.Field (t, v) => f (t, v)
@@ -799,9 +822,6 @@ structure ConflictMaps = struct
     fun equivClasses atoms : atomExp list list option =
         let
             val uf = List.foldl UF.union' UF.empty (List.mapPartial toKnownEquality atoms)
-            val ineqs = List.filter (fn (cmp, _, _) =>
-                                        cmp = Sql.Ne orelse cmp = Sql.Lt orelse cmp = Sql.Gt)
-                                    atoms
             val contradiction =
              fn (cmp, SOME ae1, SOME ae2) => (cmp = Sql.Ne orelse cmp = Sql.Lt orelse cmp = Sql.Gt)
                                              andalso UF.together (uf, ae1, ae2)
@@ -928,7 +948,7 @@ val sequence =
     in
         List.foldl (fn (e', seq) => ESeq ((seq, loc), (e', loc))) exp exps
     end
-  | _ => raise Match
+  | _ => raise Fail "Sqlcache: sequence"
 
 (* Always increments negative indices as a hack we use later. *)
 fun incRels inc =
@@ -983,7 +1003,7 @@ fun fileAllMapfoldB doExp file start =
               bind = doBind}
              MonoEnv.empty file start of
         Search.Continue x => x
-      | Search.Return _ => raise Match
+      | Search.Return _ => raise Fail "Sqlcache: fileAllMapfoldB"
 
 fun fileMap doExp file = #1 (fileAllMapfoldB (fn _ => fn e => fn _ => (doExp e, ())) file ())
 
@@ -1029,7 +1049,7 @@ val simplifySql =
                 val text = case exp' of
                                EQuery {query = text, ...} => text
                              | EDml (text, _) => text
-                             | _ => raise Match
+                             | _ => raise Fail "Sqlcache: simplifySql (a)"
                 val (newText, wrapLets, numArgs) = factorOutNontrivial text
                 val newExp' = case exp' of
                                  EQuery q => EQuery {query = newText,
@@ -1039,7 +1059,7 @@ val simplifySql =
                                                      body = #body q,
                                                      initial = #initial q}
                                | EDml (_, failureMode) => EDml (newText, failureMode)
-                               | _ => raise Match
+                               | _ => raise Fail "Sqlcache: simplifySql (b)"
             in
                 (* Increment once for each new variable just made. This is
                    where we use the negative De Bruijn indices hack. *)
@@ -1128,7 +1148,7 @@ val runSubexp : subexp * state -> exp * state =
 
 val invalInfoOfSubexp =
  fn Cachable (invalInfo, _) => invalInfo
-  | Impure _ => raise Match
+  | Impure _ => raise Fail "Sqlcache: invalInfoOfSubexp"
 
 fun cacheWrap (env, exp, typ, args, index) =
     let
@@ -1275,9 +1295,11 @@ fun cacheTree (effs : IS.set) ((env, exp as (exp', loc)), state) =
                   | NONE => mapFst Impure (mkExp state)
             end
         fun wrapBind1 f arg =
-            wrapBindN (fn [arg] => f arg | _ => raise Match) [arg]
+            wrapBindN (fn [arg] => f arg
+                        | _ => raise Fail "Sqlcache: cacheTree (a)") [arg]
         fun wrapBind2 f (arg1, arg2) =
-            wrapBindN (fn [arg1, arg2] => f (arg1, arg2) | _ => raise Match) [arg1, arg2]
+            wrapBindN (fn [arg1, arg2] => f (arg1, arg2)
+                        | _ => raise Fail "Sqlcache: cacheTree (b)") [arg1, arg2]
         fun wrapN f es = wrapBindN f (map (fn e => ((env, e), Unknowns 0)) es)
         fun wrap1 f e = wrapBind1 f ((env, e), Unknowns 0)
         fun wrap2 f (e1, e2) = wrapBind2 f (((env, e1), Unknowns 0), ((env, e2), Unknowns 0))
@@ -1306,7 +1328,7 @@ fun cacheTree (effs : IS.set) ((env, exp as (exp', loc)), state) =
                           ECase (e,
                                  (ListPair.map (fn (e, (p, _)) => (p, e)) (es, cases)),
                                  {disc = disc, result = result})
-                        | _ => raise Match)
+                        | _ => raise Fail "Sqlcache: cacheTree (c)")
                       (((env, e), Unknowns 0)
                        :: map (fn (p, e) =>
                                   ((MonoEnv.patBinds env p, e), Unknowns (MonoEnv.patBindsN p)))
@@ -1362,7 +1384,7 @@ structure Invalidations = struct
                                DmlRel n => ERel n
                              | Prim p => EPrim p
                              (* TODO: make new type containing only these two. *)
-                             | _ => raise Match,
+                             | _ => raise Fail "Sqlcache: optionAtomExpToExp",
                            loc)),
                    loc)
 
@@ -1409,13 +1431,13 @@ fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, ...} : state
                                                 (i, invalidations (invalInfo, dmlParsed))
                                               (* TODO: fail more gracefully. *)
                                               (* This probably means invalidating everything.... *)
-                                              | NONE => raise Match))
+                                              | NONE => raise Fail "Sqlcache: addFlushing (a)"))
                                   (SIMM.findList (tableToIndices, tableOfDml dmlParsed)))
                       | NONE => NONE
             in
                 case inval of
                     (* TODO: fail more gracefully. *)
-                    NONE => raise Match
+                    NONE => raise Fail "Sqlcache: addFlushing (b)"
                   | SOME invs => sequence (flushes invs @ [dmlExp])
             end
           | e' => e'
@@ -1432,29 +1454,38 @@ fun addFlushing ((file, {tableToIndices, indexToInvalInfo, ffiInfo, ...} : state
 (***********)
 
 (* TODO: do this less evilly by not relying on specific FFI names, please? *)
-fun locksNeeded file =
+fun locksNeeded (lockMap : {store : IIMM.multimap, flush : IIMM.multimap}) =
+    MonoUtil.Exp.fold
+        {typ = #2,
+         exp = fn (EFfiApp ("Sqlcache", x, _), state as {store, flush}) =>
+                  (case Int.fromString (String.extract (x, 5, NONE)) of
+                       NONE => state
+                     | SOME index =>
+                       if String.isPrefix "flush" x
+                       then {store = store, flush = IS.add (flush, index)}
+                       else if String.isPrefix "store" x
+                       then {store = IS.add (store, index), flush = flush}
+                       else state)
+         | (ENamed n, {store, flush}) =>
+           {store = IS.union (store, IIMM.findSet (#store lockMap, n)),
+            flush = IS.union (flush, IIMM.findSet (#flush lockMap, n))}
+         | (_, state) => state}
+        {store = IS.empty, flush = IS.empty}
+
+fun lockMapOfFile file =
     transitiveAnalysis
         (fn ((_, name, _, e, _), state) =>
-            MonoUtil.Exp.fold
-                {typ = #2,
-                 exp = fn (EFfiApp ("Sqlcache", x, _), state as {store, flush}) =>
-                          (case Int.fromString (String.extract (x, 5, NONE)) of
-                               NONE => state
-                             | SOME index =>
-                               if String.isPrefix "flush" x
-                               then {store = store, flush = IIMM.insert (flush, name, index)}
-                               else if String.isPrefix "store" x
-                               then {store = IIMM.insert (store, name, index), flush = flush}
-                               else state)
-                        | (_, state) => state}
-                state
-                e)
+            let
+                val locks = locksNeeded state e
+            in
+                {store = IIMM.insertSet (#store state, name, #store locks),
+                 flush = IIMM.insertSet (#flush state, name, #flush locks)}
+            end)
         {store = IIMM.empty, flush = IIMM.empty}
         file
 
 fun exports (decls, _) =
     List.foldl (fn ((DExport (_, _, n, _, _, _), _), ns) => IS.add (ns, n)
-                 | ((DTask _, _), _) => raise Fail "Sqlcache doesn't yet support tasks."
                  | (_, ns) => ns)
                IS.empty
                decls
@@ -1466,24 +1497,27 @@ fun wrapLocks (locks, (exp', loc)) =
 
 fun addLocking file =
     let
-        val {store, flush} = locksNeeded file
-        fun locks n =
+        val lockMap = lockMapOfFile file
+        fun lockList {store, flush} =
             let
-                val wlocks = IIMM.findSet (flush, n)
-                val rlocks = IIMM.findSet (store, n)
-                val ls = map (fn i => (i, true)) (IS.listItems wlocks)
-                         @ map (fn i => (i, false)) (IS.listItems (IS.difference (rlocks, wlocks)))
+                val ls = map (fn i => (i, true)) (IS.listItems flush)
+                         @ map (fn i => (i, false)) (IS.listItems (IS.difference (store, flush)))
             in
                 ListMergeSort.sort (fn ((i, _), (j, _)) => i > j) ls
             end
+        fun locksOfName n =
+            lockList {store = IIMM.findSet (#flush lockMap, n),
+                      flush =IIMM.findSet (#store lockMap, n)}
+        val locksOfExp = lockList o locksNeeded lockMap
         val expts = exports file
         fun doVal (v as (x, n, t, exp, s)) =
             if IS.member (expts, n)
-            then (x, n, t, wrapLocks ((locks n), exp), s)
+            then (x, n, t, wrapLocks ((locksOfName n), exp), s)
             else v
         val doDecl =
          fn (DVal v, loc) => (DVal (doVal v), loc)
           | (DValRec vs, loc) => (DValRec (map doVal vs), loc)
+          | (DTask (exp1, exp2), loc) => (DTask (exp1, wrapLocks (locksOfExp exp2, exp2)), loc)
           | decl => decl
     in
         mapFst (map doDecl) file
