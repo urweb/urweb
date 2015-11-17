@@ -1,1 +1,2 @@
-val main : int -> int -> transaction page
+val check : int -> transaction page
+val flush : int -> transaction page
