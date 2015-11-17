@@ -1,4 +1,4 @@
-structure Sqlcache (* DEBUG :> SQLCACHE *) = struct
+structure Sqlcache :> SQLCACHE = struct
 
 
 (*********************)

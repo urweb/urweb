@@ -4585,8 +4585,10 @@ static void uw_Sqlcache_freeEntry(uw_Sqlcache_Entry* entry) {
 static unsigned int uw_Sqlcache_maxSize = 1234567890;
 
 static void uw_Sqlcache_delete(uw_Sqlcache_Cache *cache, uw_Sqlcache_Entry *entry) {
-  HASH_DEL(cache->table, entry);
-  uw_Sqlcache_freeEntry(entry);
+  if (entry) {
+    HASH_DEL(cache->table, entry);
+    uw_Sqlcache_freeEntry(entry);
+  }
 }
 
 static uw_Sqlcache_Entry *uw_Sqlcache_find(uw_Sqlcache_Cache *cache, char *key, size_t len, int bump) {
@@ -4723,47 +4725,6 @@ static void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw
 }
 
 static void uw_Sqlcache_flushCommitOne(uw_Sqlcache_Cache *cache, char **keys) {
-  pthread_rwlock_wrlock(&cache->lockIn);
-  size_t numKeys = cache->numKeys;
-  if (numKeys == 0) {
-    uw_Sqlcache_Entry *entry = cache->table;
-    if (entry) {
-      uw_Sqlcache_freeValue(entry->value);
-      entry->value = NULL;
-    }
-  } else {
-    char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
-    char *buf = key;
-    time_t timeNow = uw_Sqlcache_getTimeNow(cache);
-    uw_Sqlcache_Entry *entry = NULL;
-    while (numKeys-- > 0) {
-      char *k = keys[numKeys];
-      if (!k) {
-        if (entry) {
-          entry->timeInvalid = timeNow;
-        } else {
-          // Haven't found an entry yet, so the first key was null.
-          cache->timeInvalid = timeNow;
-        }
-        free(key);
-        pthread_rwlock_unlock(&cache->lockIn);
-        return;
-      }
-      buf = uw_Sqlcache_keyCopy(buf, k);
-      size_t len = buf - key;
-      entry = uw_Sqlcache_find(cache, key, len, 0);
-      if (!entry) {
-        // Nothing in the cache to flush.
-        free(key);
-        pthread_rwlock_unlock(&cache->lockIn);
-        return;
-      }
-    }
-    free(key);
-    // All the keys were non-null and the relevant entry is present, so we delete it.
-    uw_Sqlcache_delete(cache, entry);
-  }
-  pthread_rwlock_unlock(&cache->lockIn);
 }
 
 static void uw_Sqlcache_commit(void *data) {
@@ -4853,6 +4814,45 @@ void uw_Sqlcache_store(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys, uw
 }
 
 void uw_Sqlcache_flush(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys) {
-  // A flush is represented in the queue as storing NULL.
-  uw_Sqlcache_store(ctx, cache, keys, NULL);
+  // A flush has to happen immediately so that subsequent stores in the same transaction fail.
+  // This is safe to do because we will always call [uw_Sqlcache_wlock] earlier.
+  // If the transaction fails, the only harm done is a few extra cache misses.
+  pthread_rwlock_wrlock(&cache->lockIn);
+  size_t numKeys = cache->numKeys;
+  if (numKeys == 0) {
+    uw_Sqlcache_Entry *entry = cache->table;
+    if (entry) {
+      uw_Sqlcache_freeValue(entry->value);
+      entry->value = NULL;
+    }
+  } else {
+    char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
+    char *buf = key;
+    time_t timeNow = uw_Sqlcache_getTimeNow(cache);
+    while (numKeys-- > 0) {
+      char *k = keys[numKeys];
+      if (!k) {
+        size_t len = buf - key;
+        if (len == 0) {
+          // The first key was null.
+          cache->timeInvalid = timeNow;
+        } else {
+          uw_Sqlcache_Entry *entry = uw_Sqlcache_find(cache, key, len, 0);
+          if (entry) {
+            entry->timeInvalid = timeNow;
+          }
+        }
+        free(key);
+        pthread_rwlock_unlock(&cache->lockIn);
+        return;
+      }
+      buf = uw_Sqlcache_keyCopy(buf, k);
+    }
+    // All the keys were non-null, so we delete the pointed-to entry.
+    size_t len = buf - key;
+    uw_Sqlcache_Entry *entry = uw_Sqlcache_find(cache, key, len, 0);
+    free(key);
+    uw_Sqlcache_delete(cache, entry);
+  }
+  pthread_rwlock_unlock(&cache->lockIn);
 }
