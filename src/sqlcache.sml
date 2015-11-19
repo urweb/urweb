@@ -93,9 +93,17 @@ val cacheRef = ref LruCache.cache
 fun setCache c = cacheRef := c
 fun getCache () = !cacheRef
 
-val alwaysConsolidateRef = ref true
-fun setAlwaysConsolidate b = alwaysConsolidateRef := b
-fun getAlwaysConsolidate () = !alwaysConsolidateRef
+datatype heuristic = Always | Never | NoPureAll | NoPureOne | NoCombo
+
+val heuristicRef = ref Always
+fun setHeuristic h = heuristicRef := (case h of
+                                          "always" => Always
+                                        | "never" => Never
+                                        | "nopureall" => NoPureAll
+                                        | "nopureone" => NoPureOne
+                                        | "nocombo" => NoCombo
+                                        | _ => raise Fail "Sqlcache: setHeuristic")
+fun getHeuristic () = !heuristicRef
 
 
 (************************)
@@ -463,7 +471,7 @@ structure InvalInfo :> sig
     val empty : t
     val singleton : Sql.query -> t
     val query : t -> Sql.query
-    val orderArgs : t * Mono.exp -> cacheArg list
+    val orderArgs : t * Mono.exp -> cacheArg list option
     val unbind : t * unbind -> t option
     val union : t * t -> t
     val updateState : t * int * state -> state
@@ -635,11 +643,20 @@ end = struct
             val argsMap = sqlArgsMap qs
             val args = map (expOfArg o #1) (AM.listItemsi argsMap)
             val invalPaths = List.foldl PS.union PS.empty (map freePaths args)
+            (* TODO: make sure these variables are okay to remove from the argument list. *)
+            val pureArgs = PS.difference (paths, invalPaths)
+            val shouldCache =
+                case getHeuristic () of
+                    Always => true
+                  | Never => (case qs of [_] => true | _ => false)
+                  | NoPureAll => (case qs of [] => false | _ => true)
+                  | NoPureOne => (case qs of [] => false | _ => PS.numItems pureArgs = 0)
+                  | NoCombo => PS.numItems pureArgs = 0 orelse AM.numItems argsMap = 0
         in
             (* Put arguments we might invalidate by first. *)
-            map AsIs args
-            (* TODO: make sure these variables are okay to remove from the argument list. *)
-            @ map (Urlify o expOfPath) (PS.listItems (PS.difference (paths, invalPaths)))
+            if shouldCache
+            then SOME (map AsIs args @ map (Urlify o expOfPath) (PS.listItems pureArgs))
+            else NONE
         end
 
     (* As a kludge, we rename the variables in the query to correspond to the
@@ -1309,47 +1326,35 @@ val worthCaching =
  fn EQuery _ => true
   | exp' => expSize (exp', dummyLoc) > sizeWorthCaching
 
-fun shouldConsolidate args =
-    let
-        val isAsIs = fn AsIs _ => true | Urlify _ => false
-    in
-        getAlwaysConsolidate ()
-        orelse not (List.exists isAsIs args andalso List.exists (not o isAsIs) args)
-    end
-
 fun cacheExp (env, exp', invalInfo, state : state) =
     case worthCaching exp' <\oguard\> (fn _ => typOfExp' env exp') of
         NONE => NONE
       | SOME (TFun _, _) => NONE
       | SOME typ =>
-        let
-            val args = InvalInfo.orderArgs (invalInfo, (exp', dummyLoc))
-        in
-            shouldConsolidate args
-            <\oguard\>
-             (fn _ =>
-                 List.foldr (fn (arg, acc) =>
-                                acc
-                                <\obind\>
-                                 (fn args' =>
-                                     (case arg of
-                                          AsIs exp => SOME exp
-                                        | Urlify exp =>
-                                          typOfExp env exp
-                                          <\obind\>
-                                           (fn typ => (MonoFooify.urlify env (exp, typ))))
-                                     <\obind\>
-                                      (fn arg' => SOME (arg' :: args'))))
-                            (SOME [])
-                            args
-                 <\obind\>
-                  (fn args' =>
-                      cacheWrap (env, (exp', dummyLoc), typ, args', #index state)
-                      <\obind\>
-                       (fn cachedExp =>
-                           SOME (cachedExp,
-                                 InvalInfo.updateState (invalInfo, length args', state)))))
-        end
+        InvalInfo.orderArgs (invalInfo, (exp', dummyLoc))
+        <\obind\>
+         (fn args =>
+             List.foldr (fn (arg, acc) =>
+                            acc
+                            <\obind\>
+                             (fn args' =>
+                                 (case arg of
+                                      AsIs exp => SOME exp
+                                    | Urlify exp =>
+                                      typOfExp env exp
+                                      <\obind\>
+                                       (fn typ => (MonoFooify.urlify env (exp, typ))))
+                                 <\obind\>
+                                  (fn arg' => SOME (arg' :: args'))))
+                        (SOME [])
+                        args
+             <\obind\>
+              (fn args' =>
+                  cacheWrap (env, (exp', dummyLoc), typ, args', #index state)
+                  <\obind\>
+                   (fn cachedExp =>
+                       SOME (cachedExp,
+                             InvalInfo.updateState (invalInfo, length args', state)))))
 
 fun cacheQuery (effs, env, q) : subexp =
     let
@@ -1684,7 +1689,9 @@ val go' = addLocking o addFlushing o addCaching o simplifySql o inlineSql
 fun go file =
     let
         (* TODO: do something nicer than [Sql] being in one of two modes. *)
-        val () = (resetFfiInfo (); Sql.sqlcacheMode := true)
+        val () = (resetFfiInfo ();
+                  Sql.sqlcacheMode := true;
+                  setHeuristic (Settings.getSqlcacheHeuristic ()))
         val file = go' file
         (* Important that this happens after [MonoFooify.urlify] calls! *)
         val fmDecls = MonoFooify.getNewFmDecls ()
