@@ -1,9 +1,7 @@
 table tab : {Id : int, Val : int, Foo : int} PRIMARY KEY Id
 
 fun cache id =
-    res <- oneOrNoRows (SELECT tab.Val
-                        FROM tab
-                        WHERE tab.Id = {[id]});
+    res <- oneOrNoRows (SELECT tab.Val FROM tab WHERE tab.Id = {[id]});
     return <xml><body>
       cache
       {case res of
@@ -11,21 +9,32 @@ fun cache id =
          | Some row => <xml>{[row.Tab.Val]}</xml>}
     </body></xml>
 
-fun sillyRecursive {Id = id : int, FooBar = fooBar} =
-    if fooBar <= 0
-    then 0
-    else 1 + sillyRecursive {Id = id, FooBar = fooBar - 1}
+(* fun cacheAlt id = *)
+(*     res <- oneOrNoRows (SELECT Q.Id *)
+(*                         FROM (SELECT Tab.Id AS Id FROM tab WHERE Tab.Id = {[id]}) *)
+(*                         AS Q); *)
+(*     return <xml><body> *)
+(*       cacheAlt *)
+(*       {case res of *)
+(*            None => <xml>?</xml> *)
+(*          | Some row => <xml>{[row.Q.Id]}</xml>} *)
+(*     </body></xml> *)
 
-fun cacheR (r : {Id : int, FooBar : int}) =
-    res <- oneOrNoRows (SELECT tab.Val
-                        FROM tab
-                        WHERE tab.Id = {[r.Id]});
-    return <xml><body>
-      cacheR {[r.FooBar]}
-      {case res of
-           None => <xml>?</xml>
-         | Some row => <xml>{[row.Tab.Val]}</xml>}
-    </body></xml>
+(* fun sillyRecursive {Id = id : int, FooBar = fooBar} = *)
+(*     if fooBar <= 0 *)
+(*     then 0 *)
+(*     else 1 + sillyRecursive {Id = id, FooBar = fooBar - 1} *)
+
+(* fun cacheR (r : {Id : int, FooBar : int}) = *)
+(*     res <- oneOrNoRows (SELECT tab.Val *)
+(*                         FROM tab *)
+(*                         WHERE tab.Id = {[r.Id]}); *)
+(*     return <xml><body> *)
+(*       cacheR {[r.FooBar]} *)
+(*       {case res of *)
+(*            None => <xml>?</xml> *)
+(*          | Some row => <xml>{[row.Tab.Val]}</xml>} *)
+(*     </body></xml> *)
 
 (* fun cache2 id v = *)
 (*     res <- oneOrNoRows (SELECT tab.Val *)
@@ -60,21 +69,21 @@ fun flush id =
       Changed {[id]}!
     </body></xml>
 
-fun flash id =
-    dml (UPDATE tab
-         SET Foo = Val
-         WHERE Id = {[id]} OR Id = {[id - 1]} OR Id = {[id + 1]});
-    return <xml><body>
-      Maybe changed {[id]}?
-    </body></xml>
+(* fun flash id = *)
+(*     dml (UPDATE tab *)
+(*          SET Foo = Val *)
+(*          WHERE Id = {[id]} OR Id = {[id - 1]} OR Id = {[id + 1]}); *)
+(*     return <xml><body> *)
+(*       Maybe changed {[id]}? *)
+(*     </body></xml> *)
 
-fun floosh id =
-    dml (UPDATE tab
-         SET Id = {[id + 1]}
-         WHERE Id = {[id]});
-    return <xml><body>
-      Shifted {[id]}!
-    </body></xml>
+(* fun floosh id = *)
+(*     dml (UPDATE tab *)
+(*          SET Id = {[id + 1]} *)
+(*          WHERE Id = {[id]} OR Id = {[id - 1]} OR Id = {[id + 1]}); *)
+(*     return <xml><body> *)
+(*       Shifted {[id]}! *)
+(*     </body></xml> *)
 
 (* val flush17 = *)
 (*     dml (UPDATE tab *)

@@ -207,9 +207,6 @@ $(SRC)/mono_shake.sml
 $(SRC)/fuse.sig
 $(SRC)/fuse.sml
 
-$(SRC)/iflow.sig
-$(SRC)/iflow.sml
-
 $(SRC)/name_js.sig
 $(SRC)/name_js.sml
 

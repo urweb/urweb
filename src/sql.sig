@@ -81,12 +81,15 @@ datatype sitem =
          SqField of string * string
        | SqExp of sqexp * string
 
-type query1 = {Select : sitem list,
-              From : (string * string) list,
-              Where : sqexp option}
+datatype jtype = Inner | Left | Right | Full
 
-datatype query =
-         Query1 of query1
+datatype fitem =
+         Table of string * string (* table AS name *)
+       | Join of jtype * fitem * fitem * sqexp
+       | Nested of query * string (* query AS name *)
+
+     and query =
+         Query1 of {Select : sitem list, From : fitem list, Where : sqexp option}
        | Union of query * query
 
 val query : query parser

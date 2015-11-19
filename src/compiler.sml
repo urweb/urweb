@@ -1372,19 +1372,21 @@ val toMono_shake = transform mono_shake "mono_shake1" o toMono_reduce
 
 val toMono_opt2 = transform mono_opt "mono_opt2" o toMono_shake
 
+(*
 val iflow = {
     func = (fn file => (if !doIflow then Iflow.check file else (); file)),
     print = MonoPrint.p_file MonoEnv.empty
 }
 
 val toIflow = transform iflow "iflow" o toMono_opt2
+*)
 
 val namejs = {
     func = NameJS.rewrite,
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toNamejs = transform namejs "namejs" o toIflow
+val toNamejs = transform namejs "namejs" o toMono_opt2
 
 val toNamejs_untangle = transform untangle "namejs_untangle" o toNamejs
 

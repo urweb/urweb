@@ -382,29 +382,25 @@ val select = log "select"
              (wrap (follow (const "SELECT ") (list sitem))
                    (fn ((), ls) => ls))
 
-val fitem = wrap (follow uw_ident
-                         (follow (const " AS ")
-                                 t_ident))
-                 (fn (t, ((), f)) => (t, f))
+datatype jtype = Inner | Left | Right | Full
 
-val from = log "from"
-           (wrap (follow (const "FROM ") (list fitem))
-                 (fn ((), ls) => ls))
+val jtype = wrap (ws (follow (opt (altL [wrap (const "LEFT") (fn () => Left),
+                                         wrap (const "RIGHT") (fn () => Right),
+                                         wrap (const "FULL") (fn () => Full)]))
+                             (const " JOIN ")))
+                 (fn (SOME jt, ()) => jt | (NONE, ()) => Inner)
+
+datatype fitem =
+         Table of string * string (* table AS name *)
+       | Join of jtype * fitem * fitem * sqexp
+       | Nested of query * string (* query AS name *)
+
+     and query =
+         Query1 of {Select : sitem list, From : fitem list, Where : sqexp option}
+       | Union of query * query
 
 val wher = wrap (follow (ws (const "WHERE ")) sqexp)
            (fn ((), ls) => ls)
-
-type query1 = {Select : sitem list,
-              From : (string * string) list,
-              Where : sqexp option}
-
-val query1 = log "query1"
-                (wrap (follow (follow select from) (opt wher))
-                      (fn ((fs, ts), wher) => {Select = fs, From = ts, Where = wher}))
-
-datatype query =
-         Query1 of query1
-       | Union of query * query
 
 val orderby = log "orderby"
               (wrap (follow (ws (const "ORDER BY "))
@@ -412,18 +408,46 @@ val orderby = log "orderby"
                                     (opt (ws (const "DESC")))))
                     ignore)
 
-fun query chs = log "query"
-                (wrap
-                     (follow
-                          (alt (wrap (follow (const "((")
-                                             (follow query
-                                                     (follow (const ") UNION (")
-                                                             (follow query (const "))")))))
-                                     (fn ((), (q1, ((), (q2, ())))) => Union (q1, q2)))
-                               (wrap query1 Query1))
-                          (opt orderby))
-                     #1)
-                chs
+fun fitem chs = altL [wrap (follow uw_ident
+                                   (follow (const " AS ")
+                                           t_ident))
+                           (fn (t, ((), f)) => Table (t, f)),
+                      wrap (follow (const "(")
+                                   (follow fitem
+                                           (follow jtype
+                                                   (follow fitem
+                                                           (follow (const " ON ")
+                                                                   (follow sqexp
+                                                                           (const ")")))))))
+                           (fn ((), (fi1, (jt, (fi2, ((), (se, ())))))) =>
+                               Join (jt, fi1, fi2, se)),
+                      wrap (follow (const "(")
+                                   (follow query
+                                           (follow (const ") AS ") t_ident)))
+                           (fn ((), (q, ((), f))) => Nested (q, f))]
+                     chs
+
+and query1 chs = log "query1"
+                     (wrap (follow (follow select from) (opt wher))
+                           (fn ((fs, ts), wher) => {Select = fs, From = ts, Where = wher}))
+                     chs
+
+and from chs = log "from"
+                   (wrap (follow (const "FROM ") (list fitem))
+                         (fn ((), ls) => ls))
+                   chs
+
+and query chs = log "query"
+                    (wrap (follow
+                               (alt (wrap (follow (const "((")
+                                                  (follow query
+                                                          (follow (const ") UNION (")
+                                                                  (follow query (const "))")))))
+                                          (fn ((), (q1, ((), (q2, ())))) => Union (q1, q2)))
+                                    (wrap query1 Query1))
+                               (opt orderby))
+                          #1)
+                    chs
 
 datatype dml =
          Insert of string * (string * sqexp) list
