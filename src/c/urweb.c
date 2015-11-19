@@ -602,6 +602,8 @@ uw_context uw_init(int id, uw_loggers *lg) {
 
   ctx->remoteSock = -1;
 
+  ctx->cacheUnlock = NULL;
+
   return ctx;
 }
 
@@ -3681,7 +3683,7 @@ failure_kind uw_initialize(uw_context ctx) {
   if (r == 0) {
     uw_ensure_transaction(ctx);
     ctx->app->initializer(ctx);
-    if (ctx->app->db_commit(ctx))
+    if (uw_commit(ctx))
       uw_error(ctx, FATAL, "Error running SQL COMMIT");
   }
 
@@ -4626,7 +4628,7 @@ static char *uw_Sqlcache_allocKeyBuffer(char **keys, size_t numKeys) {
   while (numKeys-- > 0) {
     char* k = keys[numKeys];
     if (!k) {
-      // Can only happen when flushihg, in which case we don't need anything past the null key.
+      // Can only happen when flushing, in which case we don't need anything past the null key.
       break;
     }
     // Leave room for separator.
@@ -4695,7 +4697,7 @@ static void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw
   if (numKeys == 0) {
     entry = cache->table;
     if (!entry) {
-      entry = malloc(sizeof(uw_Sqlcache_Entry));
+      entry = calloc(1, sizeof(uw_Sqlcache_Entry));
       entry->key = NULL;
       entry->value = NULL;
       entry->timeInvalid = 0;
@@ -4709,7 +4711,7 @@ static void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw
       size_t len = buf - key;
       entry = uw_Sqlcache_find(cache, key, len, 1);
       if (!entry) {
-        entry = malloc(sizeof(uw_Sqlcache_Entry));
+        entry = calloc(1, sizeof(uw_Sqlcache_Entry));
         entry->key = strdup(key);
         entry->value = NULL;
         entry->timeInvalid = 0;

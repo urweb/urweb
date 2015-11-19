@@ -111,16 +111,16 @@ fun setupQuery {index, params} =
              (* If the output is null, it means we had too much recursion, so it's a miss. *)
              string "  if (v && v->output != NULL) {",
              newline,
-             (* string ("    puts(\"SQLCACHE: hit " ^ i ^ ".\");"), *)
-             (* newline, *)
+             (*string ("    puts(\"SQLCACHE: hit " ^ i ^ ".\");"),
+             newline,*)
              string "    uw_write(ctx, v->output);",
              newline,
              string "    return v->result;",
              newline,
              string "  } else {",
              newline,
-             (* string ("    puts(\"SQLCACHE: miss " ^ i ^ ".\");"), *)
-             (* newline, *)
+             (*string ("    puts(\"SQLCACHE: miss " ^ i ^ ".\");"),
+             newline,*)
              string "    uw_recordingStart(ctx);",
              newline,
              string "    return NULL;",
@@ -136,14 +136,16 @@ fun setupQuery {index, params} =
              newline,
              string ("  char *ks[] = {" ^ revArgs ^ "};"),
              newline,
-             string ("  uw_Sqlcache_Value *v = malloc(sizeof(uw_Sqlcache_Value));"),
+             string ("  uw_Sqlcache_Value *v = calloc(1, sizeof(uw_Sqlcache_Value));"),
              newline,
              string "  v->result = strdup(s);",
              newline,
              string "  v->output = uw_recordingRead(ctx);",
              newline,
-             (* string ("  puts(\"SQLCACHE: stored " ^ i ^ ".\");"), *)
-             (* newline, *)
+             string "  v->timeValid = 0;",
+             newline,
+             (*string ("  puts(\"SQLCACHE: stored " ^ i ^ ".\");"),
+             newline,*)
              string ("  uw_Sqlcache_store(ctx, cache" ^ i ^ ", ks, v);"),
              newline,
              string "  return uw_unit_v;",
