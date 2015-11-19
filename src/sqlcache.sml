@@ -823,9 +823,12 @@ structure FlattenQuery = struct
       | Sql.Join (jt, fi1, fi2, se) =>
         concatMap (fn ((wher1, subst1)) =>
                       map (fn (wher2, subst2) =>
-                              (sqlAnd (wher1, wher2),
-                               (* There should be no name conflicts... Ziv hopes? *)
-                               unionSubst (subst1, subst2)))
+                              let
+                                  val subst = unionSubst (subst1, subst2)
+                              in
+                                  (* ON clause becomes part of the accumulated WHERE. *)
+                                  (sqlAnd (sqlAnd (wher1, wher2), applySubst subst se), subst)
+                              end)
                           (flattenFitem fi2))
                   (flattenFitem fi1)
 
@@ -1362,14 +1365,13 @@ fun cacheQuery (effs, env, q) : subexp =
         val {query = queryText, initial, body, ...} = q
         val attempt =
             (* Ziv misses Haskell's do notation.... *)
-            (safe 0 (printExp "attempt" queryText) andalso safe 0 initial andalso safe 2 body)
+            (safe 0 queryText andalso safe 0 initial andalso safe 2 body)
             <\oguard\>
              (fn _ =>
-                 Sql.parse Sql.query (printExp "safe" queryText)
+                 Sql.parse Sql.query queryText
                  <\obind\>
                   (fn queryParsed =>
                       let
-                          val _ = (printExp "parsed" queryText)
                           val invalInfo = InvalInfo.singleton queryParsed
                           fun mkExp state =
                               case cacheExp (env, EQuery q, invalInfo, state) of

@@ -384,12 +384,6 @@ val select = log "select"
 
 datatype jtype = Inner | Left | Right | Full
 
-val jtype = wrap (ws (follow (opt (altL [wrap (const "LEFT") (fn () => Left),
-                                         wrap (const "RIGHT") (fn () => Right),
-                                         wrap (const "FULL") (fn () => Full)]))
-                             (const " JOIN ")))
-                 (fn (SOME jt, ()) => jt | (NONE, ()) => Inner)
-
 datatype fitem =
          Table of string * string (* table AS name *)
        | Join of jtype * fitem * fitem * sqexp
@@ -404,9 +398,14 @@ val wher = wrap (follow (ws (const "WHERE ")) sqexp)
 
 val orderby = log "orderby"
               (wrap (follow (ws (const "ORDER BY "))
-                            (follow (list sqexp)
-                                    (opt (ws (const "DESC")))))
+                            (list (follow sqexp
+                                          (opt (ws (const "DESC"))))))
                     ignore)
+
+val jtype = altL [wrap (const "JOIN") (fn () => Inner),
+                  wrap (const "LEFT JOIN") (fn () => Left),
+                  wrap (const "RIGHT JOIN") (fn () => Right),
+                  wrap (const "FULL JOIN") (fn () => Full)]
 
 fun fitem chs = altL [wrap (follow uw_ident
                                    (follow (const " AS ")
@@ -414,7 +413,7 @@ fun fitem chs = altL [wrap (follow uw_ident
                            (fn (t, ((), f)) => Table (t, f)),
                       wrap (follow (const "(")
                                    (follow fitem
-                                           (follow jtype
+                                           (follow (ws jtype)
                                                    (follow fitem
                                                            (follow (const " ON ")
                                                                    (follow sqexp
