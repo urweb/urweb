@@ -504,8 +504,8 @@ struct uw_context {
   size_t output_buffer_size;
 
   // Sqlcache.
-  int numRecording;
-  int recordingOffset;
+  int numRecording, recordingCapacity;
+  int *recordingOffsets;
   uw_Sqlcache_Update *cacheUpdate;
   uw_Sqlcache_Update *cacheUpdateTail;
   uw_Sqlcache_Unlock *cacheUnlock;
@@ -596,7 +596,8 @@ uw_context uw_init(int id, uw_loggers *lg) {
   ctx->output_buffer_size = 1;
 
   ctx->numRecording = 0;
-  ctx->recordingOffset = 0;
+  ctx->recordingCapacity = 0;
+  ctx->recordingOffsets = malloc(0);
   ctx->cacheUpdate = NULL;
   ctx->cacheUpdateTail = NULL;
 
@@ -669,6 +670,8 @@ void uw_free(uw_context ctx) {
 
   free(ctx->output_buffer);
 
+  free(ctx->recordingOffsets);
+
   free(ctx);
 }
 
@@ -692,6 +695,7 @@ void uw_reset_keep_error_message(uw_context ctx) {
   ctx->usedSig = 0;
   ctx->needsResig = 0;
   ctx->remoteSock = -1;
+  ctx->numRecording = 0;
 }
 
 void uw_reset_keep_request(uw_context ctx) {
@@ -1739,17 +1743,16 @@ void uw_write(uw_context ctx, const char* s) {
 }
 
 void uw_recordingStart(uw_context ctx) {
-  if (ctx->numRecording++ == 0) {
-    ctx->recordingOffset = ctx->page.front - ctx->page.start;
+  if (ctx->numRecording == ctx->recordingCapacity) {
+    ++ctx->recordingCapacity;
+    ctx->recordingOffsets = realloc(ctx->recordingOffsets, sizeof(int) * ctx->recordingCapacity);
   }
+  ctx->recordingOffsets[ctx->numRecording] = ctx->page.front - ctx->page.start;
+  ++ctx->numRecording;
 }
 
 char *uw_recordingRead(uw_context ctx) {
-  // Only the outermost recorder can read unless the recording is empty.
-  char *recording = ctx->page.start + ctx->recordingOffset;
-  if (--ctx->numRecording > 0 && recording != ctx->page.front) {
-    return NULL;
-  }
+  char *recording = ctx->page.start + ctx->recordingOffsets[--ctx->numRecording];
   return strdup(recording);
 }
 
@@ -4709,6 +4712,7 @@ static void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw
     while (numKeys-- > 0) {
       buf = uw_Sqlcache_keyCopy(buf, keys[numKeys]);
       size_t len = buf - key;
+      
       entry = uw_Sqlcache_find(cache, key, len, 1);
       if (!entry) {
         entry = calloc(1, sizeof(uw_Sqlcache_Entry));
@@ -4720,7 +4724,7 @@ static void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw
     }
     free(key);
   }
-  if (entry->value && entry->value->timeValid < value->timeValid) {
+  if (!entry->value || entry->value->timeValid < value->timeValid) {
     uw_Sqlcache_freeValue(entry->value);
     entry->value = value;
     entry->value->timeValid = timeNow;

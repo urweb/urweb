@@ -65,6 +65,7 @@ fun setupQuery {index, params} =
 
         val revArgs = paramRepeatRev (fn p => "p" ^ p) ", "
 
+        val argNums = List.tabulate (params, fn i => "p" ^ Int.toString i)
     in
         Print.box
             [string ("static uw_Sqlcache_Cache cacheStruct" ^ i ^ " = {"),
@@ -119,7 +120,12 @@ fun setupQuery {index, params} =
              newline,
              string "  } else {",
              newline,
-             (*string ("    puts(\"SQLCACHE: miss " ^ i ^ ".\");"),
+             (*string ("    printf(\"SQLCACHE: miss " ^ i ^ " " ^ String.concatWith ", " (List.tabulate (params, fn _ => "%s")) ^ ".\\n\""),
+             (case argNums of
+                  [] => Print.box []
+                 | _ => Print.box [string ", ",
+                                   p_list string argNums]),
+             string ");",
              newline,*)
              string "    uw_recordingStart(ctx);",
              newline,
@@ -159,6 +165,8 @@ fun setupQuery {index, params} =
              newline,
              string ("  uw_Sqlcache_flush(ctx, cache" ^ i ^ ", ks);"),
              newline,
+             (*string ("  puts(\"SQLCACHE: flushed " ^ i ^ ".\");"),
+             newline,*)
              string "  return uw_unit_v;",
              newline,
              string "}",
