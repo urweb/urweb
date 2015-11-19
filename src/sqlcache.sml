@@ -93,11 +93,13 @@ val cacheRef = ref LruCache.cache
 fun setCache c = cacheRef := c
 fun getCache () = !cacheRef
 
-datatype heuristic = Always | Never | NoPureAll | NoPureOne | NoCombo
+datatype heuristic = SmartEq (* | SmartSub *) | Always | Never | NoPureAll | NoPureOne | NoCombo
 
 val heuristicRef = ref Always
 fun setHeuristic h = heuristicRef := (case h of
-                                          "always" => Always
+                                          "smarteq" => SmartEq
+                                        (* | "smartsub" => SmartSub *)
+                                        | "always" => Always
                                         | "never" => Never
                                         | "nopureall" => NoPureAll
                                         | "nopureone" => NoPureOne
@@ -613,13 +615,13 @@ end = struct
 
     val union = op@
 
+    fun addToSqlArgsMap ((q, subst), acc) =
+        IM.foldl (fn (arg, acc) => AM.insert (acc, arg, ())) acc subst
+
     fun sqlArgsMap (qs : t) =
         let
             val args =
-                List.foldl (fn ((q, subst), acc) =>
-                               IM.foldl (fn (arg, acc) => AM.insert (acc, arg, ())) acc subst)
-                           AM.empty
-                           qs
+                List.foldl addToSqlArgsMap AM.empty qs
             val countRef = ref (~1)
             fun count () = (countRef := !countRef + 1; !countRef)
         in
@@ -647,8 +649,31 @@ end = struct
             val pureArgs = PS.difference (paths, invalPaths)
             val shouldCache =
                 case getHeuristic () of
-                    Always => true
-                  | Never => (case qs of [_] => true | _ => false)
+                    SmartEq =>
+                    (case (qs, PS.numItems pureArgs) of
+                         ((q::qs), 0) =>
+                         let
+                             val m = addToSqlArgsMap (q, AM.empty)
+                             val ms = map (fn q => addToSqlArgsMap (q, AM.empty)) qs
+                             fun test (m, acc) =
+                                 acc
+                                 <\obind\>
+                                  (fn m' =>
+                                      let
+                                          val mm = AM.unionWith #1 (m, m')
+                                      in
+                                          AM.numItems m = AM.numItems mm
+                                          <\oguard\>
+                                           (fn _ => SOME mm)
+                                      end)
+                         in
+                             case List.foldl test (SOME m) ms of
+                                 NONE => false
+                               | SOME _ => true
+                         end
+                       | _ => false)
+                  | Always => true
+                  | Never => (case qs of [_] => PS.numItems pureArgs = 0 | _ => false)
                   | NoPureAll => (case qs of [] => false | _ => true)
                   | NoPureOne => (case qs of [] => false | _ => PS.numItems pureArgs = 0)
                   | NoCombo => PS.numItems pureArgs = 0 orelse AM.numItems argsMap = 0
