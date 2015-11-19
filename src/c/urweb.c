@@ -4720,9 +4720,11 @@ static void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw
     }
     free(key);
   }
-  uw_Sqlcache_freeValue(entry->value);
-  entry->value = value;
-  entry->value->timeValid = timeNow;
+  if (entry->value && entry->value->timeValid < value->timeValid) {
+    uw_Sqlcache_freeValue(entry->value);
+    entry->value = value;
+    entry->value->timeValid = timeNow;
+  }
   pthread_rwlock_unlock(&cache->lockIn);
 }
 
@@ -4807,6 +4809,7 @@ void uw_Sqlcache_store(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys, uw
   update->keys = uw_Sqlcache_copyKeys(keys, cache->numKeys);
   update->value = value;
   update->next = NULL;
+  value->timeValid = uw_Sqlcache_getTimeNow(cache);
   if (ctx->cacheUpdateTail) {
     ctx->cacheUpdateTail->next = update;
   } else {
