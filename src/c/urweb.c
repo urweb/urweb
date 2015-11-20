@@ -4617,7 +4617,8 @@ static void uw_Sqlcache_add(uw_Sqlcache_Cache *cache, uw_Sqlcache_Entry *entry, 
 }
 
 static unsigned long uw_Sqlcache_getTimeNow(uw_Sqlcache_Cache *cache) {
-  return ++cache->timeNow;
+  // TODO: verify that this makes time comparisons do the Right Thing.
+  return cache->timeNow++;
 }
 
 static unsigned long uw_Sqlcache_timeMax(unsigned long x, unsigned long y) {
@@ -4689,7 +4690,7 @@ uw_Sqlcache_Value *uw_Sqlcache_check(uw_context ctx, uw_Sqlcache_Cache *cache, c
   // Returning outside the lock is safe because updates happen at commit time.
   // Those are the only times the returned value or its strings can get freed.
   // Handler output is a new string, so it's safe to free this at commit time.
-  return value && value->timeValid > timeInvalid ? value : NULL;
+  return value && timeInvalid < value->timeValid ? value : NULL;
 }
 
 static void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw_Sqlcache_Value *value) {
@@ -4712,7 +4713,7 @@ static void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw
     while (numKeys-- > 0) {
       buf = uw_Sqlcache_keyCopy(buf, keys[numKeys]);
       size_t len = buf - key;
-      
+
       entry = uw_Sqlcache_find(cache, key, len, 1);
       if (!entry) {
         entry = calloc(1, sizeof(uw_Sqlcache_Entry));
@@ -4813,7 +4814,8 @@ void uw_Sqlcache_store(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys, uw
   update->keys = uw_Sqlcache_copyKeys(keys, cache->numKeys);
   update->value = value;
   update->next = NULL;
-  value->timeValid = uw_Sqlcache_getTimeNow(cache);
+  // Can't use [uw_Sqlcache_getTimeNow] because it modifies state and we don't have the lock.
+  value->timeValid = cache->timeNow;
   if (ctx->cacheUpdateTail) {
     ctx->cacheUpdateTail->next = update;
   } else {
