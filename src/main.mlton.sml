@@ -163,7 +163,7 @@ fun oneRun args =
                 (Settings.setSqlcache true;
                  doArgs rest)
               | "-heuristic" :: h :: rest =>
-                (Settings.setSqlcacheHeuristic h;
+                (Sqlcache.setHeuristic h;
                  doArgs rest)
               | "-moduleOf" :: fname :: _ =>
                 (print (Compiler.moduleOf fname ^ "\n");

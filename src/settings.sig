@@ -281,8 +281,6 @@ signature SETTINGS = sig
 
     val setSqlcache : bool -> unit
     val getSqlcache : unit -> bool
-    val setSqlcacheHeuristic : string -> unit
-    val getSqlcacheHeuristic : unit -> string
 
     val setFilePath : string -> unit
     (* Sets the directory where we look for files being added below. *)

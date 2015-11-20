@@ -93,12 +93,11 @@ val cacheRef = ref LruCache.cache
 fun setCache c = cacheRef := c
 fun getCache () = !cacheRef
 
-datatype heuristic = SmartEq (* | SmartSub *) | Always | Never | NoPureAll | NoPureOne | NoCombo
+datatype heuristic = Smart | Always | Never | NoPureAll | NoPureOne | NoCombo
 
-val heuristicRef = ref Always
+val heuristicRef = ref NoPureOne
 fun setHeuristic h = heuristicRef := (case h of
-                                          "smarteq" => SmartEq
-                                        (* | "smartsub" => SmartSub *)
+                                          "smart" => Smart
                                         | "always" => Always
                                         | "never" => Never
                                         | "nopureall" => NoPureAll
@@ -498,6 +497,7 @@ end = struct
             structure I = SK
             structure J = SK
             structure K = struct type ord_key = Mono.typ val compare = MonoUtil.Typ.compare end)))
+    structure AS = BinarySetFn(AK)
     structure AM = BinaryMapFn(AK)
 
     (* Traversal Utilities *)
@@ -615,13 +615,16 @@ end = struct
 
     val union = op@
 
-    fun addToSqlArgsMap ((q, subst), acc) =
-        IM.foldl (fn (arg, acc) => AM.insert (acc, arg, ())) acc subst
+    fun sqlArgsSet (q, subst) =
+        IM.foldl AS.add' AS.empty subst
 
     fun sqlArgsMap (qs : t) =
         let
             val args =
-                List.foldl addToSqlArgsMap AM.empty qs
+                List.foldl (fn ((q, subst), acc) =>
+                               IM.foldl (fn (arg, acc) => AM.insert (acc, arg, ())) acc subst)
+                           AM.empty
+                           qs
             val countRef = ref (~1)
             fun count () = (countRef := !countRef + 1; !countRef)
         in
@@ -649,25 +652,26 @@ end = struct
             val pureArgs = PS.difference (paths, invalPaths)
             val shouldCache =
                 case getHeuristic () of
-                    SmartEq =>
+                    Smart =>
                     (case (qs, PS.numItems pureArgs) of
                          ((q::qs), 0) =>
                          let
-                             val m = addToSqlArgsMap (q, AM.empty)
-                             val ms = map (fn q => addToSqlArgsMap (q, AM.empty)) qs
-                             fun test (m, acc) =
+                             val args = sqlArgsSet q
+                             val argss = map sqlArgsSet qs
+                             fun test (args, acc) =
                                  acc
                                  <\obind\>
-                                  (fn m' =>
+                                  (fn args' =>
                                       let
-                                          val mm = AM.unionWith #1 (m, m')
+                                          val both = AS.union (args, args')
                                       in
-                                          AM.numItems m = AM.numItems mm
+                                          (AS.numItems args = AS.numItems both
+                                           orelse AS.numItems args' = AS.numItems both)
                                           <\oguard\>
-                                           (fn _ => SOME mm)
+                                           (fn _ => SOME both)
                                       end)
                          in
-                             case List.foldl test (SOME m) ms of
+                             case List.foldl test (SOME args) argss of
                                  NONE => false
                                | SOME _ => true
                          end
@@ -1714,9 +1718,7 @@ val go' = addLocking o addFlushing o addCaching o simplifySql o inlineSql
 fun go file =
     let
         (* TODO: do something nicer than [Sql] being in one of two modes. *)
-        val () = (resetFfiInfo ();
-                  Sql.sqlcacheMode := true;
-                  setHeuristic (Settings.getSqlcacheHeuristic ()))
+        val () = (resetFfiInfo (); Sql.sqlcacheMode := true)
         val file = go' file
         (* Important that this happens after [MonoFooify.urlify] calls! *)
         val fmDecls = MonoFooify.getNewFmDecls ()

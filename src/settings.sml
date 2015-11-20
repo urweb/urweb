@@ -811,10 +811,6 @@ val sqlcache = ref false
 fun setSqlcache b = sqlcache := b
 fun getSqlcache () = !sqlcache
 
-val sqlcacheHeuristic = ref "always"
-fun setSqlcacheHeuristic h = sqlcacheHeuristic := h
-fun getSqlcacheHeuristic () = !sqlcacheHeuristic
-
 structure SM = BinaryMapFn(struct
                            type ord_key = string
                            val compare = String.compare
