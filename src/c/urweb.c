@@ -4815,7 +4815,9 @@ void uw_Sqlcache_store(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys, uw
   update->value = value;
   update->next = NULL;
   // Can't use [uw_Sqlcache_getTimeNow] because it modifies state and we don't have the lock.
+  pthread_rwlock_rdlock(&cache->lockIn);
   value->timeValid = cache->timeNow;
+  pthread_rwlock_unlock(&cache->lockIn);
   if (ctx->cacheUpdateTail) {
     ctx->cacheUpdateTail->next = update;
   } else {
