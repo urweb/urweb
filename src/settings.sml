@@ -726,11 +726,6 @@ val minHeap = ref 0
 fun setMinHeap n = if n >= 0 then minHeap := n else raise Fail "Trying to set negative minHeap"
 fun getMinHeap () = !minHeap
 
-structure SS = BinarySetFn(struct
-                           type ord_key = string
-                           val compare = String.compare
-                           end)
-
 val alwaysInline = ref SS.empty
 fun addAlwaysInline s = alwaysInline := SS.add (!alwaysInline, s)
 fun checkAlwaysInline s = SS.member (!alwaysInline, s)
@@ -907,5 +902,49 @@ fun addFile {Uri, LoadFromFilename} =
                ErrorMsg.error ("Error loading file " ^ LoadFromFilename ^ " (" ^ s ^ ")")
 
 fun listFiles () = map #2 (SM.listItems (!files))
+
+fun reset () =
+    (urlPrefixFull := "/";
+     urlPrefix := "/";
+     urlPrePrefix := "";
+     timeout := 0;
+     headers := [];
+     scripts := [];
+     clientToServer := clientToServerBase;
+     effectful := effectfulBase;
+     benign := benignBase;
+     client := clientBase;
+     server := serverBase;
+     jsFuncs := jsFuncsBase;
+     rewrites := [];
+     url := [];
+     mime := [];
+     request := [];
+     response := [];
+     env := [];
+     debug := false;
+     dbstring := NONE;
+     exe := NONE;
+     sql := NONE;
+     coreInline := 5;
+     monoInline := 5;
+     staticLinking := false;
+     deadlines := false;
+     sigFile := NONE;
+     safeGet := SS.empty;
+     onError := NONE;
+     limitsList := [];
+     minHeap := 0;
+     alwaysInline := SS.empty;
+     neverInline := SS.empty;
+     noXsrfProtection := SS.empty;
+     timeFormat := "%c";
+     mangle := true;
+     html5 := false;
+     less := false;
+     noMimeFile := false;
+     mimeTypes := NONE;
+     files := SM.empty;
+     filePath := ".")
 
 end

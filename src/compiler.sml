@@ -413,11 +413,7 @@ fun inputCommentableLine inf =
 val lastUrp = ref ""
 
 fun parseUrp' accLibs fname =
-    (if !lastUrp = fname then
-         ()
-     else
-         ModDb.reset ();
-     lastUrp := fname;
+    (lastUrp := fname;
      if not (Posix.FileSys.access (fname ^ ".urp", []) orelse Posix.FileSys.access (fname ^ "/lib.urp", []))
         andalso Posix.FileSys.access (fname ^ ".ur", []) then
          let

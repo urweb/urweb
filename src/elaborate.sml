@@ -5019,5 +5019,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
         @ (L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan)
         :: ds' @ file
     end
+    handle e => (ModDb.revert ();
+                 raise e)
 
 end

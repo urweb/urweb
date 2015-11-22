@@ -27,6 +27,10 @@
 
 signature SETTINGS = sig
 
+    (* Call this when compiling a new project, e.g. with the Ur/Web daemon or from the SML/NJ REPL.
+     * Some settings stay, but most are reset, especially files cached for the app to serve. *)
+    val reset : unit -> unit
+
     (* XXX these should be unit -> string too *)
     val configBin : string ref
     val configLib : string ref

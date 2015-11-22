@@ -279,19 +279,25 @@ val () = case CommandLine.arguments () of
                                           in
                                               case cmd of
                                                   "" =>
-                                                  let
-                                                      val success = (oneRun (rev args))
-                                                          handle ex => (print "unhandled exception:\n";
-                                                                        print (General.exnMessage ex ^ "\n");
-                                                                        OS.Process.failure)
-                                                  in
-                                                      TextIO.flushOut TextIO.stdOut;
-                                                      TextIO.flushOut TextIO.stdErr;
-                                                      send (sock, if OS.Process.isSuccess success then
-                                                                      "\001"
-                                                                  else
-                                                                      "\002")
-                                                  end
+                                                  (case args of
+                                                       ["stop", "daemon"] =>
+                                                       (((Socket.close listen;
+                                                          OS.FileSys.remove socket) handle OS.SysErr _ => ());
+                                                        OS.Process.exit OS.Process.success)
+                                                     | _ =>
+                                                       let
+                                                           val success = (oneRun (rev args))
+                                                               handle ex => (print "unhandled exception:\n";
+                                                                             print (General.exnMessage ex ^ "\n");
+                                                                             OS.Process.failure)
+                                                       in
+                                                           TextIO.flushOut TextIO.stdOut;
+                                                           TextIO.flushOut TextIO.stdErr;
+                                                           send (sock, if OS.Process.isSuccess success then
+                                                                           "\001"
+                                                                       else
+                                                                           "\002")
+                                                       end)
                                                 | _ => loop' (rest, cmd :: args)
                                           end
                                   end handle OS.SysErr _ => ()
@@ -315,6 +321,7 @@ val () = case CommandLine.arguments () of
                               Posix.IO.close oldStdout;
                               Posix.IO.close oldStderr;
 
+                              Settings.reset ();
                               MLton.GC.pack ();
                               loop ()
                           end
@@ -324,8 +331,6 @@ val () = case CommandLine.arguments () of
                       Socket.listen (listen, 1);
                       loop ()
                   end)
-           | ["daemon", "stop"] =>
-	     (OS.FileSys.remove socket handle OS.SysErr _ => OS.Process.exit OS.Process.success) 
            | args =>
              let
                  val sock = UnixSock.Strm.socket ()
