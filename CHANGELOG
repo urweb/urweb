@@ -1,4 +1,13 @@
 ========
+20151122
+========
+
+- Daemon mode now supports shared caching of libraries across projects.
+- Change behavior of SQL equality to do the intuitive thing for nullable types.
+- Basis.fromMilliseconds
+- Bug fixes and improvements to type inference and error messages
+
+========
 20151018
 ========
 
