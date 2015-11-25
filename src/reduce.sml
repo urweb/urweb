@@ -588,7 +588,7 @@ fun kindConAndExp (namedC, namedE) =
                                                                (p, body')
                                                            end) pes
 
-                                        val cc' = {disc = disc, result = c2}
+                                        val cc' = {disc = con env' disc, result = con env' c2}
                                     in
                                         (ECase (e, pes', cc'), loc)
                                     end
@@ -626,7 +626,7 @@ fun kindConAndExp (namedC, namedE) =
                                                         end) pes
 
                                         val c' = E.subConInCon (0, c) c'
-                                        val cc' = {disc = disc, result = c'}
+                                        val cc' = {disc = con env disc, result = con env c'}
                                     in
                                         (ECase (e, pes', cc'), loc)
                                     end
