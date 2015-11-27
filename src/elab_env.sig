@@ -37,6 +37,8 @@ signature ELAB_ENV = sig
 
     type env
 
+    val dump : env -> unit
+
     val empty : env
 
     exception UnboundRel of int

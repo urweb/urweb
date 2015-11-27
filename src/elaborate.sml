@@ -1359,7 +1359,9 @@
      end
 
  and unifyCons env loc c1 c2 =
-     unifyCons' env loc c1 c2
+     ((*Print.prefaces "uc" [("c1", p_con env c1),
+                           ("c2", p_con env c2)];*)
+     unifyCons' env loc c1 c2)
      handle CUnify' (env', err) => raise CUnify (c1, c2, env', err)
           | KUnify (arg as {3 = env', ...}) => raise CUnify (c1, c2, env', CKind arg)
 
@@ -3079,6 +3081,8 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
 
             fun cpart n = IM.find (!counterparts, n)
             fun cparts (n2, n1) = counterparts := IM.insert (!counterparts, n2, n1)
+            fun uncparts n2 = (counterparts := #1 (IM.remove (!counterparts, n2)))
+                              handle NotFound => ()
 
             val sub2 = U.Con.map {kind = fn k => k,
                                   con = fn c =>
@@ -3107,7 +3111,8 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                                           if E.checkENamed env n then
                                                               env
                                                           else
-                                                              E.pushCNamedAs env x n k (SOME c)
+                                                              (uncparts n;
+                                                               E.pushCNamedAs env x n k (SOME c))
                                                         | L'.SgiConAbs (x, n, k) =>
                                                           if E.checkENamed env n then
                                                               env

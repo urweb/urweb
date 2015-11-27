@@ -239,6 +239,10 @@ type env = {
      str : (string * sgn) IM.map
 }
 
+fun dump (env : env) =
+    (print "NamedC:\n";
+     IM.appi (fn (n, (x, k, co)) => print (x ^ " [" ^ Int.toString n ^ "]\n")) (#namedC env))
+
 val namedCounter = ref 0
 
 fun newNamed () =
