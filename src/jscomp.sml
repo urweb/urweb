@@ -1358,8 +1358,9 @@ fun process (file : file) =
 
         val script =
             if !foundJavaScript then
-                lines ^ urlRules ^ String.concat (rev (#script st))
-                ^ "\ntime_format = \"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\";\n"
+                String.concatWith "" ((lines ^ urlRules ^ String.concat (rev (#script st))
+                                       ^ "\ntime_format = \"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\";\n")
+                                      :: map (fn r => "\n// " ^ #Filename r ^ "\n\n" ^ #Content r ^ "\n") (Settings.listJsFiles ()))
             else
                 ""
     in

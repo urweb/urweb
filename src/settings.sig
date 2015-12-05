@@ -288,4 +288,7 @@ signature SETTINGS = sig
 
     val addFile : {Uri : string, LoadFromFilename : string} -> unit
     val listFiles : unit -> {Uri : string, ContentType : string option, LastModified : Time.time, Bytes : Word8Vector.vector} list
+
+    val addJsFile : string (* filename *) -> unit
+    val listJsFiles : unit -> {Filename : string, Content : string} list
 end

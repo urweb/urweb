@@ -875,6 +875,10 @@ fun parseUrp' accLibs fname =
                                                            url := {action = Settings.Allow, kind = Settings.Exact, pattern = uri} :: !url)
                                         | _ => ErrorMsg.error "Bad 'file' arguments")
 
+                                   | "jsFile" =>
+                                     (Settings.setFilePath thisPath;
+                                      Settings.addJsFile arg)
+                                     
                                    | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                                  read ()
                              end

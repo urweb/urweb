@@ -903,6 +903,25 @@ fun addFile {Uri, LoadFromFilename} =
 
 fun listFiles () = map #2 (SM.listItems (!files))
 
+val jsFiles = ref (SM.empty : {Filename : string, Content : string} SM.map)
+
+fun addJsFile LoadFromFilename =
+    let
+        val path = OS.Path.concat (!filePath, LoadFromFilename)
+        val inf = TextIO.openIn path
+    in
+        jsFiles := SM.insert (!jsFiles,
+                              path,
+                              {Filename = LoadFromFilename,
+                               Content = TextIO.inputAll inf});
+        TextIO.closeIn inf
+    end handle IO.Io _ =>
+               ErrorMsg.error ("Error loading file " ^ LoadFromFilename)
+             | OS.SysErr (s, _) =>
+               ErrorMsg.error ("Error loading file " ^ LoadFromFilename ^ " (" ^ s ^ ")")
+
+fun listJsFiles () = SM.listItems (!jsFiles)
+
 fun reset () =
     (urlPrefixFull := "/";
      urlPrefix := "/";
@@ -945,6 +964,7 @@ fun reset () =
      noMimeFile := false;
      mimeTypes := NONE;
      files := SM.empty;
+     jsFiles := SM.empty;
      filePath := ".")
 
 end

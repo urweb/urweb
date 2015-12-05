@@ -2944,17 +2944,10 @@ fun p_file env (ds, ps) =
                                           file = "app." ^ timestamp ^ ".js"}
 
         val allScripts =
-            let
-                val scripts =
-                    "<script type=\\\"text/javascript\\\" src=\\\""
-                    ^ app_js
-                    ^ "\\\"></script>\\n"
-            in
-                foldl (fn (x, scripts) =>
-                          scripts
-                          ^ "<script type=\\\"text/javascript\\\" src=\\\"" ^ x ^ "\\\"></script>\\n")
-                      scripts (Settings.getScripts ())
-            end
+            foldl (fn (x, scripts) =>
+                      scripts
+                      ^ "<script type=\\\"text/javascript\\\" src=\\\"" ^ x ^ "\\\"></script>\\n")
+                  "" (Settings.getScripts () @ [app_js])
 
         fun p_page (ek, s, n, ts, ran, side, dbmode, tellSig) =
             let
