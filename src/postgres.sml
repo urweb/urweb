@@ -278,7 +278,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                                      val sl = CharVector.map Char.toLower s
 
                                      val q = "SELECT COUNT(*) FROM pg_class WHERE relname = '"
-                                             ^ sl ^ "' AND relkind = 'S'"
+                                             ^ sl ^ "' AND relkind = 'S' AND pg_catalog.pg_table_is_visible(oid)"
                                  in
                                      box [string "res = PQexec(conn, \"",
                                           string q,
