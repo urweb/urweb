@@ -356,6 +356,8 @@ fastcgi.server = (
 
 There is an additional convenience method for invoking \texttt{urweb}.  If the main argument is \texttt{FOO}, and \texttt{FOO.ur} exists but \texttt{FOO.urp} doesn't, then the invocation is interpreted as if called on a \texttt{.urp} file containing \texttt{FOO} as its only main entry, with an additional \texttt{rewrite all FOO/*} directive.
 
+There are also two experimental compiler extensions enabled with flags \texttt{-iflow} and \texttt{-sqlcache}.  They are intentionally not documented further here, to indicate just how very experimental they are!
+
 \subsection{Tutorial Formatting}
 
 The Ur/Web compiler also supports rendering of nice HTML tutorials from Ur source files, when invoked like \cd{urweb -tutorial DIR}.  The directory \cd{DIR} is examined for files whose names end in \cd{.ur}.  Every such file is translated into a \cd{.html} version.
