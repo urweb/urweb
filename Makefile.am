@@ -105,12 +105,6 @@ uninstall-local-main:
 
 uninstall-local: uninstall-local-main uninstall-emacs
 
-package:
-	hg archive -t tgz -X tests "/tmp/urweb-$(VERSION).tgz"
-
-reauto:
-	./autogen.sh
-
 EXTRA_DIST = demo doc lib/js lib/ur xml \
 	src/coq src/*.sig src/*.sml src/*.mlb src/config.sml.in src/elisp src/*.cm src/sources src/*.grm src/*.lex \
 	CHANGELOG LICENSE urweb.ebuild include/urweb/*.h bin

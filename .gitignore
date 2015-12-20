@@ -1,5 +1,3 @@
-syntax: glob
-
 *~
 .cm
 src/.cm
@@ -72,9 +70,9 @@ tests/*.db
 
 syntax: regexp
 
-^Makefile$
-^src/c/Makefile$
-^libtool$
-^include/urweb/config.h$
-^include/urweb/config.h.in$
-^include/urweb/stamp-h1$
+Makefile
+src/c/Makefile
+libtool
+include/urweb/config.h
+include/urweb/config.h.in
+include/urweb/stamp-h1

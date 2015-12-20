@@ -91,7 +91,7 @@ if test [-z $SQHEADER]; then
 fi
 
 if test [$WORKING_VERSION = "1"]; then
-   VERSION="$VERSION + `hg identify || (cat .hg_archival.txt | grep 'node\:') || echo ?`"
+   VERSION="$VERSION + `git log -1 --format="%H" || (cat .hg_archival.txt | grep 'node\:') || echo ?`"
 fi
 
 # Clang does not like being passed -pthread, since it's implicit on OS X.
