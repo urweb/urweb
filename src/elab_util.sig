@@ -41,6 +41,9 @@ structure Kind : sig
     val mapB : {kind : 'context -> Elab.kind' -> Elab.kind',
                 bind : 'context * string -> 'context}
                -> 'context -> (Elab.kind -> Elab.kind)
+    val foldB : {kind : 'context * Elab.kind' * 'state -> 'state,
+                 bind : 'context * string -> 'context}
+                -> 'context -> 'state -> Elab.kind -> 'state
 end
 
 structure Con : sig

@@ -116,6 +116,12 @@ fun exists f k =
         S.Return _ => true
       | S.Continue _ => false
 
+fun foldB {kind, bind} ctx st k =
+    case mapfoldB {kind = fn ctx => fn k => fn st => S.Continue (k, kind (ctx, k, st)),
+                   bind = bind} ctx k st of
+        S.Continue (_, st) => st
+      | S.Return _ => raise Fail "ElabUtil.Kind.foldB: Impossible"
+
 end
 
 val mliftConInCon = ref (fn n : int => fn c : con => (raise Fail "You didn't set ElabUtil.mliftConInCon!") : con)
