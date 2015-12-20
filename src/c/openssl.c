@@ -79,7 +79,7 @@ void uw_init_crypto() {
 
     if (access(uw_sig_file, F_OK)) {
       random_password();
-      
+
       if ((fd = open(uw_sig_file, O_WRONLY | O_CREAT, 0700)) < 0) {
         fprintf(stderr, "Can't open signature file %s\n", uw_sig_file);
         perror("open");

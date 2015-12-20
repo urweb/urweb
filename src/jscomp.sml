@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -195,7 +195,7 @@ fun process (file : file) =
                                                           str loc "}"])],
                                             {disc = t, result = s}), loc)
                          val body = (EAbs ("x", t, s, body), loc)
-                                    
+
                          val st = {decls = ("jsify", n', (TFun (t, s), loc),
                                             body, "jsify") :: #decls st,
                                    script = #script st,
@@ -575,7 +575,7 @@ fun process (file : file) =
                                                 val e = String.translate (fn #"'" => "\\'"
                                                                            | #"\\" => "\\\\"
                                                                            | ch => String.str ch) e
-                                                
+
                                                 val sc = "urfuncs[" ^ Int.toString n ^ "] = {c:\"t\",f:'"
                                                          ^ e ^ "'};\n"
                                             in
@@ -801,7 +801,7 @@ fun process (file : file) =
                                       | _ => default ()
                             in
                                 seek (e', [x])
-                            end  
+                            end
 
                           | ECase (e', pes, _) =>
                             let
@@ -1032,7 +1032,7 @@ fun process (file : file) =
                | ERel _ => (e, st)
                | ENamed _ => (e, st)
                | ECon (_, _, NONE) => (e, st)
-               | ECon (dk, pc, SOME e) => 
+               | ECon (dk, pc, SOME e) =>
                  let
                      val (e, st) = exp outer (e, st)
                  in
@@ -1084,7 +1084,7 @@ fun process (file : file) =
                  in
                      ((EBinop (bi, s, e1, e2), loc), st)
                  end
-                 
+
                | ERecord xets =>
                  let
                      val (xets, st) = ListUtil.foldlMap (fn ((x, e, t), st) =>
@@ -1259,7 +1259,7 @@ fun process (file : file) =
                  in
                      ((ESignalSource e, loc), st)
                  end
-                 
+
                | EServerCall (e1, t, ef, fm) =>
                  let
                      val (e1, st) = exp outer (e1, st)

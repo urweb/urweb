@@ -1,0 +1,198 @@
+~/Dev/UrWeb/caching-tests
+$ urweb bench
+~/Dev/UrWeb/caching-tests
+$ ./bench.exe -q &
+[1] 24466
+~/Dev/UrWeb/caching-tests
+$ Initializing
+Initializing
+Initializing
+wrk -d 2 http://localhost:8080/Bench/ -s bench.lua -- 0.5
+Running 2s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     1.41ms  320.22us   2.86ms   68.44%
+    Req/Sec     3.32k   696.42     4.25k    78.05%
+  13526 requests in 2.10s, 4.81MB read
+Requests/sec:   6439.96
+Transfer/sec:      2.29MB
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     1.08ms  250.98us   2.64ms   66.33%
+    Req/Sec     4.34k   704.72     6.84k    81.09%
+  86850 requests in 10.10s, 30.70MB read
+Requests/sec:   8598.75
+Transfer/sec:      3.04MB
+~/Dev/UrWeb/caching-tests
+$ fg
+./bench.exe -q
+  C-c C-cExiting....
+~/Dev/UrWeb/caching-tests
+$ ./bench.exe -q -t 2 &
+[1] 24514
+~/Dev/UrWeb/caching-tests
+$ Initializing
+Initializing
+Initializing
+Initializing
+
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   370.59us   90.83us   2.14ms   71.69%
+    Req/Sec    11.34k     1.19k   16.34k    72.64%
+  226734 requests in 10.10s, 80.15MB read
+Requests/sec:  22449.54
+Transfer/sec:      7.94MB
+~/Dev/UrWeb/caching-tests
+$ fg
+./bench.exe -q -t 2
+  C-c C-cExiting....
+~/Dev/UrWeb/caching-tests
+$ urweb bench -sqlcache
+~/Dev/UrWeb/caching-tests
+$ ./bench.exe -q &
+[1] 24548
+~/Dev/UrWeb/caching-tests
+$ Initializing
+Initializing
+Initializing
+
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     0.98ms  322.48us   4.68ms   71.58%
+    Req/Sec     4.71k   706.11     7.06k    69.31%
+  94654 requests in 10.10s, 33.46MB read
+Requests/sec:   9371.66
+Transfer/sec:      3.31MB
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     0.86ms  354.48us   7.31ms   71.15%
+    Req/Sec     5.21k   740.74     7.83k    68.81%
+  104823 requests in 10.10s, 37.06MB read
+Requests/sec:  10378.81
+Transfer/sec:      3.67MB
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   703.16us  339.13us   2.82ms   68.28%
+    Req/Sec     6.10k     0.96k   10.43k    83.08%
+  121961 requests in 10.10s, 43.12MB read
+Requests/sec:  12074.21
+Transfer/sec:      4.27MB
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   637.87us  348.05us   2.81ms   68.34%
+    Req/Sec     6.63k     1.12k   10.99k    73.76%
+  133289 requests in 10.10s, 47.12MB read
+Requests/sec:  13197.03
+Transfer/sec:      4.67MB
+~/Dev/UrWeb/caching-tests
+$ fg
+./bench.exe -q
+  C-c C-cExiting....
+~/Dev/UrWeb/caching-tests
+$ ./bench.exe -q -t 2 &
+[1] 24616
+~/Dev/UrWeb/caching-tests
+$ Initializing
+Initializing
+Initializing
+Initializing
+
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     0.98ms  436.87us   8.57ms   73.73%
+    Req/Sec     4.69k     1.05k    7.41k    62.87%
+  94186 requests in 10.10s, 33.30MB read
+Requests/sec:   9325.40
+Transfer/sec:      3.30MB
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   679.74us  357.72us   7.69ms   72.78%
+    Req/Sec     6.36k     1.23k    9.83k    70.65%
+  127238 requests in 10.10s, 44.98MB read
+Requests/sec:  12598.06
+Transfer/sec:      4.45MB
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   598.29us  351.32us   3.00ms   69.43%
+    Req/Sec     6.86k     1.01k   11.33k    75.50%
+  136554 requests in 10.00s, 48.28MB read
+Requests/sec:  13655.22
+Transfer/sec:      4.83MB
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   521.06us  331.23us   3.73ms   68.90%
+    Req/Sec     7.49k     1.20k   12.64k    85.07%
+  149875 requests in 10.10s, 52.98MB read
+Requests/sec:  14839.52
+Transfer/sec:      5.25MB
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   504.89us  347.06us   5.62ms   69.33%
+    Req/Sec     7.64k     0.94k   11.95k    69.80%
+  153398 requests in 10.10s, 54.23MB read
+Requests/sec:  15189.01
+Transfer/sec:      5.37MB
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   454.99us  315.26us   2.87ms   68.79%
+    Req/Sec     8.24k     1.20k   12.83k    80.10%
+  164779 requests in 10.10s, 58.25MB read
+Requests/sec:  16314.84
+Transfer/sec:      5.77MB
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   466.26us  326.63us   2.86ms   68.52%
+    Req/Sec     8.07k     1.04k   13.56k    74.13%
+  161404 requests in 10.10s, 57.06MB read
+Requests/sec:  15981.72
+Transfer/sec:      5.65MB
+~/Dev/UrWeb/caching-tests
+$ wrk http://localhost:8080/Bench/ -s bench.lua -- 0.1 100000
+Running 10s test @ http://localhost:8080/Bench/
+  2 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   458.75us  319.02us   3.11ms   68.07%
+    Req/Sec     8.15k   768.18    11.30k    69.80%
+  163930 requests in 10.10s, 57.95MB read
+Requests/sec:  16231.27
+Transfer/sec:      5.74MB

@@ -283,6 +283,9 @@ signature SETTINGS = sig
     val setLessSafeFfi : bool -> unit
     val getLessSafeFfi : unit -> bool
 
+    val setSqlcache : bool -> unit
+    val getSqlcache : unit -> bool
+
     val setFilePath : string -> unit
     (* Sets the directory where we look for files being added below. *)
 

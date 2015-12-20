@@ -78,6 +78,10 @@ int uw_next_entry(struct uw_context *);
 
 void uw_write(struct uw_context *, const char*);
 
+// For caching.
+void uw_recordingStart(struct uw_context *);
+char *uw_recordingRead(struct uw_context *);
+
 uw_Basis_source uw_Basis_new_client_source(struct uw_context *, uw_Basis_string);
 uw_unit uw_Basis_set_client_source(struct uw_context *, uw_Basis_source, uw_Basis_string);
 
@@ -399,5 +403,13 @@ int uw_remoteSock(struct uw_context *);
 void uw_set_remoteSock(struct uw_context *, int sock);
 
 void uw_Basis_writec(struct uw_context *, char);
+
+// Sqlcache.
+
+void *uw_Sqlcache_rlock(struct uw_context *, uw_Sqlcache_Cache *);
+void *uw_Sqlcache_wlock(struct uw_context *, uw_Sqlcache_Cache *);
+uw_Sqlcache_Value *uw_Sqlcache_check(struct uw_context *, uw_Sqlcache_Cache *, char **);
+void *uw_Sqlcache_store(struct uw_context *, uw_Sqlcache_Cache *, char **, uw_Sqlcache_Value *);
+void *uw_Sqlcache_flush(struct uw_context *, uw_Sqlcache_Cache *, char **);
 
 #endif

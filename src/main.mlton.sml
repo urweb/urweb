@@ -159,6 +159,12 @@ fun oneRun args =
               | "-iflow" :: rest =>
                 (Compiler.doIflow := true;
                  doArgs rest)
+              | "-sqlcache" :: rest =>
+                (Settings.setSqlcache true;
+                 doArgs rest)
+              | "-heuristic" :: h :: rest =>
+                (Sqlcache.setHeuristic h;
+                 doArgs rest)
               | "-moduleOf" :: fname :: _ =>
                 (print (Compiler.moduleOf fname ^ "\n");
                  raise Code OS.Process.success)

@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -122,6 +122,7 @@ signature COMPILER = sig
     val pathcheck : (Mono.file, Mono.file) phase
     val sidecheck : (Mono.file, Mono.file) phase
     val sigcheck : (Mono.file, Mono.file) phase
+    val sqlcache : (Mono.file, Mono.file) phase
     val cjrize : (Mono.file, Cjr.file) phase
     val prepare : (Cjr.file, Cjr.file) phase
     val checknest : (Cjr.file, Cjr.file) phase
@@ -137,12 +138,12 @@ signature COMPILER = sig
     val toCorify : (string, Core.file) transform
     val toCore_untangle : (string, Core.file) transform
     val toShake1 : (string, Core.file) transform
-    val toEspecialize1' : (string, Core.file) transform 
+    val toEspecialize1' : (string, Core.file) transform
     val toShake1' : (string, Core.file) transform
     val toRpcify : (string, Core.file) transform
     val toCore_untangle2 : (string, Core.file) transform
     val toShake2 : (string, Core.file) transform
-    val toEspecialize1 : (string, Core.file) transform 
+    val toEspecialize1 : (string, Core.file) transform
     val toCore_untangle3 : (string, Core.file) transform
     val toShake3 : (string, Core.file) transform
     val toTag : (string, Core.file) transform
@@ -187,6 +188,7 @@ signature COMPILER = sig
     val toPathcheck : (string, Mono.file) transform
     val toSidecheck : (string, Mono.file) transform
     val toSigcheck : (string, Mono.file) transform
+    val toSqlcache : (string, Mono.file) transform
     val toCjrize : (string, Cjr.file) transform
     val toPrepare : (string, Cjr.file) transform
     val toChecknest : (string, Cjr.file) transform

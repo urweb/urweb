@@ -119,4 +119,27 @@ typedef struct {
   char *start, *front, *back;
 } uw_buffer;
 
+// Caching
+
+#include <pthread.h>
+#include "uthash.h"
+
+typedef struct uw_Sqlcache_Value {
+  char *result;
+  char *output;
+  unsigned long timeValid;
+} uw_Sqlcache_Value;
+
+typedef struct uw_Sqlcache_Entry uw_Sqlcache_Entry;
+
+typedef struct uw_Sqlcache_Cache {
+  pthread_rwlock_t lockOut;
+  pthread_rwlock_t lockIn;
+  uw_Sqlcache_Entry *table;
+  unsigned long timeInvalid;
+  unsigned long timeNow;
+  size_t numKeys;
+  UT_hash_handle hh;
+} uw_Sqlcache_Cache;
+
 #endif

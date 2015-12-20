@@ -1,4 +1,4 @@
-structure Sql = struct
+structure Sql :> SQL = struct
 
 open Mono
 
@@ -20,24 +20,30 @@ datatype exp =
        | Recd of (string * exp) list
        | Proj of exp * string
 
-datatype reln =
-         Known
-       | Sql of string
-       | PCon0 of string
-       | PCon1 of string
-       | Eq
+datatype cmp =
+         Eq
        | Ne
        | Lt
        | Le
        | Gt
        | Ge
 
+datatype reln =
+         Known
+       | Sql of string
+       | PCon0 of string
+       | PCon1 of string
+       | Cmp of cmp
+
+datatype lop =
+         And
+       | Or
+
 datatype prop =
          True
        | False
        | Unknown
-       | And of prop * prop
-       | Or of prop * prop
+       | Lop of lop * prop * prop
        | Reln of reln * exp list
        | Cond of exp * prop
 
@@ -146,6 +152,18 @@ fun keep cp chs =
         end
       | _ => NONE
 
+(* Used by primSqlcache. *)
+fun optConst s chs =
+    case chs of
+        String s' :: chs => if String.isPrefix s s' then
+                                SOME (s, if size s = size s' then
+                                              chs
+                                          else
+                                              String (String.extract (s', size s, NONE)) :: chs)
+                            else
+                                SOME ("", String s' :: chs)
+      | _ => NONE
+
 fun ws p = wrap (follow (skip (fn ch => ch = #" "))
                         (follow p (skip (fn ch => ch = #" ")))) (#1 o #2)
 
@@ -177,14 +195,14 @@ val uw_ident = wrapP ident (fn s => if String.isPrefix "uw_" s andalso size s >=
                                     else
                                         NONE)
 
-val field = wrap (follow t_ident
-                         (follow (const ".")
-                                 uw_ident))
-                 (fn (t, ((), f)) => (t, f))
+val field = wrap (follow (opt (follow t_ident (const ".")))
+                         uw_ident)
+                 (fn (SOME (t, ()), f) => (t, f)
+                   | (NONE, f) => ("T", f)) (* Should probably deal with this MySQL/SQLite case better some day. *)
 
 datatype Rel =
-         Exps of exp * exp -> prop
-       | Props of prop * prop -> prop
+         RCmp of cmp
+       | RLop of lop
 
 datatype sqexp =
          SqConst of Prim.t
@@ -200,7 +218,7 @@ datatype sqexp =
        | Unmodeled
        | Null
 
-fun cmp s r = wrap (const s) (fn () => Exps (fn (e1, e2) => Reln (r, [e1, e2])))
+fun cmp s r = wrap (const s) (fn () => RCmp r)
 
 val sqbrel = altL [cmp "=" Eq,
                    cmp "<>" Ne,
@@ -208,8 +226,8 @@ val sqbrel = altL [cmp "=" Eq,
                    cmp "<" Lt,
                    cmp ">=" Ge,
                    cmp ">" Gt,
-                   wrap (const "AND") (fn () => Props And),
-                   wrap (const "OR") (fn () => Props Or)]
+                   wrap (const "AND") (fn () => RLop And),
+                   wrap (const "OR") (fn () => RLop Or)]
 
 datatype ('a, 'b) sum = inl of 'a | inr of 'b
 
@@ -238,7 +256,7 @@ fun string chs =
             end
         else
             NONE
-      | _ => NONE                            
+      | _ => NONE
 
 val prim =
     altL [wrap (follow (wrapP (follow (keep Char.isDigit) (follow (const ".") (keep Char.isDigit)))
@@ -249,6 +267,23 @@ val prim =
                        (opt (const "::int8"))) #1,
           wrap (follow (opt (const "E")) (follow string (opt (const "::text"))))
                ((fn s => Prim.String (Prim.Normal, s)) o #1 o #2)]
+
+val primSqlcache =
+    (* Like [prim], but always uses [Prim.String]s. *)
+    let
+        fun wrapS p f = wrap p ((fn s => Prim.String (Prim.Normal, s)) o f)
+    in
+        altL [wrapS (follow (wrap (follow (keep Char.isDigit)
+                                          (follow (const ".") (keep Char.isDigit)))
+                                  (fn (x, ((), y)) => x ^ "." ^ y))
+                            (optConst "::float8"))
+                    op^,
+              wrapS (follow (keep Char.isDigit)
+                            (optConst "::int8"))
+                    op^,
+              wrapS (follow (optConst "E") (follow string (optConst "::text")))
+                    (fn (c1, (s, c2)) => c1 ^ s ^ c2)]
+end
 
 fun known' chs =
     case chs of
@@ -267,8 +302,14 @@ fun sqlify chs =
                         ((PCon (_, PConFfi {mod = "Basis", con = "False", ...}, NONE), _),
                          (EPrim (Prim.String (Prim.Normal, "FALSE")), _))], _), _) :: chs =>
         SOME (e, chs)
-                          
+
       | _ => NONE
+
+(* For sqlcache, we only care that we can do string equality on injected Mono
+   expressions, so accept any expression without modifying it. *)
+val sqlifySqlcache =
+ fn Exp e :: chs => SOME (e, chs)
+  | _ => NONE
 
 fun constK s = wrap (const s) (fn () => s)
 
@@ -278,12 +319,19 @@ val funcName = altL [constK "COUNT",
                      constK "SUM",
                      constK "AVG"]
 
+fun arithmetic pExp = follow (const "(")
+                             (follow pExp
+                                     (follow (altL (map const [" + ", " - ", " * ", " / ", " >> ", " << "]))
+                                             (follow pExp (const ")"))))
+
 val unmodeled = altL [const "COUNT(*)",
                       const "CURRENT_TIMESTAMP"]
 
+val sqlcacheMode = ref false;
+
 fun sqexp chs =
     log "sqexp"
-    (altL [wrap prim SqConst,
+    (altL [wrap (if !sqlcacheMode then primSqlcache else prim) SqConst,
            wrap (const "TRUE") (fn () => SqTrue),
            wrap (const "FALSE") (fn () => SqFalse),
            wrap (const "NULL") (fn () => Null),
@@ -291,8 +339,9 @@ fun sqexp chs =
            wrap uw_ident Computed,
            wrap known SqKnown,
            wrap func SqFunc,
+           wrap (arithmetic sqexp) (fn _ => Unmodeled),
            wrap unmodeled (fn () => Unmodeled),
-           wrap sqlify Inj,
+           wrap (if !sqlcacheMode then sqlifySqlcache else sqlify) Inj,
            wrap (follow (const "COALESCE(") (follow sqexp (follow (const ",")
                                                                   (follow (keep (fn ch => ch <> #")")) (const ")")))))
                 (fn ((), (e, _)) => e),
@@ -317,7 +366,7 @@ fun sqexp chs =
 
 and known chs = wrap (follow known' (follow (const "(") (follow sqexp (const ")"))))
                      (fn ((), ((), (e, ()))) => e) chs
-                
+
 and func chs = wrap (follow funcName (follow (const "(") (follow sqexp (const ")"))))
                     (fn (f, ((), (e, ()))) => (f, e)) chs
 
@@ -333,48 +382,71 @@ val select = log "select"
              (wrap (follow (const "SELECT ") (list sitem))
                    (fn ((), ls) => ls))
 
-val fitem = wrap (follow uw_ident
-                         (follow (const " AS ")
-                                 t_ident))
-                 (fn (t, ((), f)) => (t, f))
+datatype jtype = Inner | Left | Right | Full
 
-val from = log "from"
-           (wrap (follow (const "FROM ") (list fitem))
-                 (fn ((), ls) => ls))
+datatype fitem =
+         Table of string * string (* table AS name *)
+       | Join of jtype * fitem * fitem * sqexp
+       | Nested of query * string (* query AS name *)
+
+     and query =
+         Query1 of {Select : sitem list, From : fitem list, Where : sqexp option}
+       | Union of query * query
 
 val wher = wrap (follow (ws (const "WHERE ")) sqexp)
            (fn ((), ls) => ls)
 
-type query1 = {Select : sitem list,
-              From : (string * string) list,
-              Where : sqexp option}
-
-val query1 = log "query1"
-                (wrap (follow (follow select from) (opt wher))
-                      (fn ((fs, ts), wher) => {Select = fs, From = ts, Where = wher}))
-
-datatype query =
-         Query1 of query1
-       | Union of query * query
-
 val orderby = log "orderby"
               (wrap (follow (ws (const "ORDER BY "))
-                            (follow (list sqexp)
-                                    (opt (ws (const "DESC")))))
+                            (list (follow sqexp
+                                          (opt (ws (const "DESC"))))))
                     ignore)
 
-fun query chs = log "query"
-                (wrap
-                     (follow
-                          (alt (wrap (follow (const "((")
-                                             (follow query
-                                                     (follow (const ") UNION (")
-                                                             (follow query (const "))")))))
-                                     (fn ((), (q1, ((), (q2, ())))) => Union (q1, q2)))
-                               (wrap query1 Query1))
-                          (opt orderby))
-                     #1)
-                chs
+val jtype = altL [wrap (const "JOIN") (fn () => Inner),
+                  wrap (const "LEFT JOIN") (fn () => Left),
+                  wrap (const "RIGHT JOIN") (fn () => Right),
+                  wrap (const "FULL JOIN") (fn () => Full)]
+
+fun fitem chs = altL [wrap (follow uw_ident
+                                   (follow (const " AS ")
+                                           t_ident))
+                           (fn (t, ((), f)) => Table (t, f)),
+                      wrap (follow (const "(")
+                                   (follow fitem
+                                           (follow (ws jtype)
+                                                   (follow fitem
+                                                           (follow (const " ON ")
+                                                                   (follow sqexp
+                                                                           (const ")")))))))
+                           (fn ((), (fi1, (jt, (fi2, ((), (se, ())))))) =>
+                               Join (jt, fi1, fi2, se)),
+                      wrap (follow (const "(")
+                                   (follow query
+                                           (follow (const ") AS ") t_ident)))
+                           (fn ((), (q, ((), f))) => Nested (q, f))]
+                     chs
+
+and query1 chs = log "query1"
+                     (wrap (follow (follow select from) (opt wher))
+                           (fn ((fs, ts), wher) => {Select = fs, From = ts, Where = wher}))
+                     chs
+
+and from chs = log "from"
+                   (wrap (follow (const "FROM ") (list fitem))
+                         (fn ((), ls) => ls))
+                   chs
+
+and query chs = log "query"
+                    (wrap (follow
+                               (alt (wrap (follow (const "((")
+                                                  (follow query
+                                                          (follow (const ") UNION (")
+                                                                  (follow query (const "))")))))
+                                          (fn ((), (q1, ((), (q2, ())))) => Union (q1, q2)))
+                                    (wrap query1 Query1))
+                               (opt orderby))
+                          #1)
+                    chs
 
 datatype dml =
          Insert of string * (string * sqexp) list
@@ -396,22 +468,24 @@ val insert = log "insert"
 val delete = log "delete"
                  (wrap (follow (const "DELETE FROM ")
                                (follow uw_ident
-                                       (follow (const " AS T_T WHERE ")
-                                               sqexp)))
-                       (fn ((), (tab, ((), es))) => (tab, es)))
+                                       (follow (opt (const " AS T_T"))
+                                               (opt (follow (const " WHERE ") sqexp)))))
+                       (fn ((), (tab, (_, wher))) => (tab, case wher of
+                                                               SOME (_, es) => es
+                                                             | NONE => SqTrue)))
 
 val setting = log "setting"
-              (wrap (follow uw_ident (follow (const " = ") sqexp))
-               (fn (f, ((), e)) => (f, e)))
+                  (wrap (follow uw_ident (follow (const " = ") sqexp))
+                        (fn (f, ((), e)) => (f, e)))
 
 val update = log "update"
                  (wrap (follow (const "UPDATE ")
                                (follow uw_ident
-                                       (follow (const " AS T_T SET ")
+                                       (follow (follow (opt (const " AS T_T")) (const " SET "))
                                                (follow (list setting)
                                                        (follow (ws (const "WHERE "))
                                                                sqexp)))))
-                       (fn ((), (tab, ((), (fs, ((), e))))) =>
+                       (fn ((), (tab, (_, (fs, ((), e))))) =>
                            (tab, fs, e)))
 
 val dml = log "dml"

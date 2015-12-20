@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -115,36 +115,36 @@ fun p_reln r es =
       | PCon1 s => box [string (s ^ "("),
                         p_list p_exp es,
                         string ")"]
-      | Eq => p_bop "=" es
-      | Ne => p_bop "<>" es
-      | Lt => p_bop "<" es
-      | Le => p_bop "<=" es
-      | Gt => p_bop ">" es
-      | Ge => p_bop ">=" es
+      | Cmp Eq => p_bop "=" es
+      | Cmp Ne => p_bop "<>" es
+      | Cmp Lt => p_bop "<" es
+      | Cmp Le => p_bop "<=" es
+      | Cmp Gt => p_bop ">" es
+      | Cmp Ge => p_bop ">=" es
 
 fun p_prop p =
     case p of
         True => string "True"
       | False => string "False"
       | Unknown => string "??"
-      | And (p1, p2) => box [string "(",
-                             p_prop p1,
-                             string ")",
-                             space,
-                             string "&&",
-                             space,
-                             string "(",
-                             p_prop p2,
-                             string ")"]
-      | Or (p1, p2) => box [string "(",
-                            p_prop p1,
-                            string ")",
-                            space,
-                            string "||",
-                            space,
-                            string "(",
-                            p_prop p2,
-                            string ")"]
+      | Lop (And, p1, p2) => box [string "(",
+                                  p_prop p1,
+                                  string ")",
+                                  space,
+                                  string "&&",
+                                  space,
+                                  string "(",
+                                  p_prop p2,
+                                  string ")"]
+      | Lop (Or, p1, p2) => box [string "(",
+                                 p_prop p1,
+                                 string ")",
+                                 space,
+                                 string "||",
+                                 space,
+                                 string "(",
+                                 p_prop p2,
+                                 string ")"]
       | Reln (r, es) => p_reln r es
       | Cond (e, p) => box [string "(",
                             p_exp e,
@@ -518,7 +518,7 @@ fun representative (db : database, e) =
                                                 Variety = Nothing,
                                                 Known = ref (!(#Known (unNode r))),
                                                 Ge = ref NONE})
-                                     
+
                             val r'' = ref (Node {Id = nodeId (),
                                                  Rep = ref NONE,
                                                  Cons = #Cons (unNode r),
@@ -529,7 +529,7 @@ fun representative (db : database, e) =
                             #Rep (unNode r) := SOME r'';
                             r'
                         end
-                      | _ => raise Contradiction                             
+                      | _ => raise Contradiction
                 end
     in
         rep e
@@ -687,9 +687,9 @@ fun assert (db, a) =
                         end
                       | _ => raise Contradiction
                 end
-              | (Eq, [e1, e2]) =>
+              | (Cmp Eq, [e1, e2]) =>
                 markEq (representative (db, e1), representative (db, e2))
-              | (Ge, [e1, e2]) =>
+              | (Cmp Ge, [e1, e2]) =>
                 let
                     val r1 = representative (db, e1)
                     val r2 = representative (db, e2)
@@ -734,14 +734,14 @@ fun check (db, a) =
              (case #Variety (unNode (representative (db, e))) of
                   Dt1 (f', _) => f' = f
                 | _ => false)
-           | (Eq, [e1, e2]) =>
+           | (Cmp Eq, [e1, e2]) =>
              let
                  val r1 = representative (db, e1)
                  val r2 = representative (db, e2)
              in
                  repOf r1 = repOf r2
              end
-           | (Ge, [e1, e2]) =>
+           | (Cmp Ge, [e1, e2]) =>
              let
                  val r1 = representative (db, e1)
                  val r2 = representative (db, e2)
@@ -848,7 +848,7 @@ fun setHyps (n', hs) =
             (hyps := (n', hs, ref false);
              Cc.clear db;
              app (fn a => Cc.assert (db, a)) hs)
-    end    
+    end
 
 fun useKeys () =
     let
@@ -872,7 +872,7 @@ fun useKeys () =
                                                               let
                                                                   val r =
                                                                       Cc.check (db,
-                                                                                AReln (Eq, [Proj (r1, f),
+                                                                                AReln (Cmp Eq, [Proj (r1, f),
                                                                                             Proj (r2, f)]))
                                                               in
                                                                   (*Print.prefaces "Fs"
@@ -888,7 +888,7 @@ fun useKeys () =
                                                                   r
                                                               end)) ks then
                                      (changed := true;
-                                      Cc.assert (db, AReln (Eq, [r1, r2]));
+                                      Cc.assert (db, AReln (Cmp Eq, [r1, r2]));
                                       finder (hyps, acc))
                                  else
                                      finder (hyps, a :: acc)
@@ -1115,7 +1115,7 @@ fun havocCookie cname =
         val (_, hs, _) = !hyps
     in
         hnames := n + 1;
-        hyps := (n, List.filter (fn AReln (Eq, [_, Func (Other f, [])]) => f <> cname | _ => true) hs, ref false)
+        hyps := (n, List.filter (fn AReln (Cmp Eq, [_, Func (Other f, [])]) => f <> cname | _ => true) hs, ref false)
     end
 
 fun check a = Cc.check (db, a)
@@ -1138,7 +1138,7 @@ fun removeDups (ls : (string * string) list) =
             val ls = removeDups ls
         in
             if List.exists (fn x' => x' = x) ls then
-                ls  
+                ls
             else
                 x :: ls
         end
@@ -1171,7 +1171,7 @@ fun expIn rv env rvOf =
                   | Null => inl (Func (DtCon0 "None", []))
                   | SqNot e =>
                     inr (case expIn e of
-                             inl e => Reln (Eq, [e, Func (DtCon0 "Basis.bool.False", [])])
+                             inl e => Reln (Cmp Eq, [e, Func (DtCon0 "Basis.bool.False", [])])
                            | inr _ => Unknown)
                   | Field (v, f) => inl (Proj (rvOf v, f))
                   | Computed _ => default ()
@@ -1181,15 +1181,15 @@ fun expIn rv env rvOf =
                         val e2 = expIn e2
                     in
                         inr (case (bo, e1, e2) of
-                                 (Exps f, inl e1, inl e2) => f (e1, e2)
-                               | (Props f, v1, v2) =>
+                                 (RCmp c, inl e1, inl e2) => Reln (Cmp c, [e1, e2])
+                               | (RLop l, v1, v2) =>
                                  let
                                      fun pin v =
                                          case v of
-                                             inl e => Reln (Eq, [e, Func (DtCon0 "Basis.bool.True", [])])
+                                             inl e => Reln (Cmp Eq, [e, Func (DtCon0 "Basis.bool.True", [])])
                                            | inr p => p
                                  in
-                                     f (pin v1, pin v2)
+                                     Lop (l, pin v1, pin v2)
                                  end
                                | _ => Unknown)
                     end
@@ -1205,7 +1205,7 @@ fun expIn rv env rvOf =
                     (case expIn e of
                          inl e => inl (Func (Other f, [e]))
                        | _ => default ())
-                     
+
                   | Unmodeled => inl (Func (Other "allow", [rv ()]))
             end
     in
@@ -1219,8 +1219,8 @@ fun decomp {Save = save, Restore = restore, Add = add} =
                 True => (k () handle Cc.Contradiction => ())
               | False => ()
               | Unknown => ()
-              | And (p1, p2) => go p1 (fn () => go p2 k)
-              | Or (p1, p2) =>
+              | Lop (And, p1, p2) => go p1 (fn () => go p2 k)
+              | Lop (Or, p1, p2) =>
                 let
                     val saved = save ()
                 in
@@ -1263,7 +1263,7 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                             val new = ref NONE
                             val old = ref NONE
 
-                            val rvs = map (fn (tab, v) =>
+                            val rvs = map (fn Table (tab, v) =>
                                               let
                                                   val nv = #NextVar arg ()
                                               in
@@ -1272,7 +1272,8 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                                                     | "Old" => old := SOME (tab, nv)
                                                     | _ => ();
                                                   (v, nv)
-                                              end) (#From r)
+                                              end
+                                            | _ => raise Fail "Iflow: not ready for joins or nesteds") (#From r)
 
                             fun rvOf v =
                                 case List.find (fn (v', _) => v' = v) rvs of
@@ -1282,7 +1283,8 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                             val expIn = expIn (#NextVar arg) (#Env arg) rvOf
 
                             val saved = #Save arg ()
-                            fun addFrom () = app (fn (t, v) => #Add arg (AReln (Sql t, [rvOf v]))) (#From r)
+                            fun addFrom () = app (fn Table (t, v) => #Add arg (AReln (Sql t, [rvOf v]))
+                                                   | _ => raise Fail "Iflow: not ready for joins or nesteds") (#From r)
 
                             fun usedFields e =
                                 case e of
@@ -1351,7 +1353,7 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                                    | SOME e =>
                                      let
                                          val p = case expIn e of
-                                                     inl e => Reln (Eq, [e, Func (DtCon0 "Basis.bool.True", [])])
+                                                     inl e => Reln (Cmp Eq, [e, Func (DtCon0 "Basis.bool.True", [])])
                                                    | inr p => p
 
                                          val saved = #Save arg ()
@@ -1365,9 +1367,9 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
                             fun normal () = doWhere normal'
                         in
                             (case #Select r of
-                                 [SqExp (Binop (Exps bo, Count, SqConst (Prim.Int 0)), f)] =>
-                                 (case bo (Const (Prim.Int 1), Const (Prim.Int 2)) of
-                                      Reln (Gt, [Const (Prim.Int 1), Const (Prim.Int 2)]) =>
+                                 [SqExp (Binop (RCmp bo, Count, SqConst (Prim.Int 0)), f)] =>
+                                 (case bo of
+                                      Gt =>
                                       (case #Cont arg of
                                            SomeCol _ => ()
                                          | AllCols k =>
@@ -1469,7 +1471,7 @@ fun evalExp env (e as (_, loc)) k =
                             evalExp env e (fn e => doArgs (es, e :: acc))
                 in
                     doArgs (es, [])
-                end            
+                end
     in
         case #1 e of
             EPrim p => k (Const p)
@@ -1519,7 +1521,7 @@ fun evalExp env (e as (_, loc)) k =
                                              ([], []) => (evalExp env' (#body rf) (fn _ => ());
                                                           St.reinstate saved;
                                                           default ())
-                                                         
+
                                            | (arg :: args, mode :: modes) =>
                                              evalExp env arg (fn arg =>
                                                                  let
@@ -1663,7 +1665,7 @@ fun evalExp env (e as (_, loc)) k =
                                            Save = St.stash,
                                            Restore = St.reinstate,
                                            Cont = AllCols (fn x =>
-                                                              (St.assert [AReln (Eq, [r, x])];
+                                                              (St.assert [AReln (Cmp Eq, [r, x])];
                                                                evalExp (acc :: r :: env) b k))} q
                               end)
           | EDml (e, _) =>
@@ -1697,15 +1699,15 @@ fun evalExp env (e as (_, loc)) k =
                    | Delete (tab, e) =>
                      let
                          val old = St.nextVar ()
-                                   
+
                          val expIn = expIn (Var o St.nextVar) env
                                            (fn "T" => Var old
                                              | _ => raise Fail "Iflow.evalExp: Bad field expression in DELETE")
 
                          val p = case expIn e of
-                                     inl e => raise Fail "Iflow.evalExp: DELETE with non-boolean" 
+                                     inl e => raise Fail "Iflow.evalExp: DELETE with non-boolean"
                                    | inr p => p
-                                                          
+
                          val saved = St.stash ()
                      in
                          St.assert [AReln (Sql (tab ^ "$Old"), [Var old]),
@@ -1748,7 +1750,7 @@ fun evalExp env (e as (_, loc)) k =
                                                 (f, Proj (Var old, f)) :: fs) fs fs'
 
                          val p = case expIn e of
-                                           inl e => raise Fail "Iflow.evalExp: UPDATE with non-boolean" 
+                                           inl e => raise Fail "Iflow.evalExp: UPDATE with non-boolean"
                                          | inr p => p
                          val saved = St.stash ()
                      in
@@ -1764,7 +1766,7 @@ fun evalExp env (e as (_, loc)) k =
                                            k (Recd []))
                                     handle Cc.Contradiction => ())
                      end)
-                     
+
           | ENextval (EPrim (Prim.String (_, seq)), _) =>
             let
                 val nv = St.nextVar ()
@@ -1780,7 +1782,7 @@ fun evalExp env (e as (_, loc)) k =
                 val e = Var (St.nextVar ())
                 val e' = Func (Other ("cookie/" ^ cname), [])
             in
-                St.assert [AReln (Known, [e]), AReln (Eq, [e, e'])];
+                St.assert [AReln (Known, [e]), AReln (Cmp Eq, [e, e'])];
                 k e
             end
 
@@ -2159,7 +2161,7 @@ fun check (file : file) =
                              end
                            | _ => ())
                 end
-                                        
+
               | _ => ()
     in
         app decl (#1 file)

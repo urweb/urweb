@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -391,7 +391,7 @@ fun p_vali env (x, n, t, e, s) =
                           string "__",
                           string (Int.toString n)]
                  else
-                     string x        
+                     string x
     in
         box [xp,
              space,
@@ -541,7 +541,7 @@ fun p_decl env (dAll as (d, _) : decl) =
                           space,
                           p_policy env p]
       | DOnError _ => string "ONERROR"
-                          
+
 fun p_file env (file, _) =
     let
         val (pds, _) = ListUtil.foldlMap (fn (d, env) =>

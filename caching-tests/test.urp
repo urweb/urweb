@@ -1,0 +1,9 @@
+database host=localhost
+sql test.sql
+safeGet Test/flush
+# safeGet Test/flash
+# safeGet Test/floosh
+# safeGet Test/flush17
+minHeap 4096
+
+test

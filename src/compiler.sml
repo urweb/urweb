@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -25,7 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-structure Compiler :> COMPILER = struct 
+structure Compiler :> COMPILER = struct
 
 structure UrwebLrVals = UrwebLrValsFn(structure Token = LrParser.Token)
 structure Lex = UrwebLexFn(structure Tokens = UrwebLrVals.Tokens)
@@ -268,7 +268,7 @@ val parseUr = {
                     | _ => absyn
               end
               handle LrParser.ParseError => [],
-     print = SourcePrint.p_file}    
+     print = SourcePrint.p_file}
 
 fun p_job ({prefix, database, exe, sql, sources, debug, profile,
             timeout, ffi, link, headers, scripts,
@@ -1094,7 +1094,7 @@ val parse = {
                                               ErrorMsg.error ("Rooted module " ^ full ^ " has multiple versions.")
                                           else
                                               ();
-                                          
+
                                           makeD true "" pieces
                                           before ignore (foldl (fn (new, path) =>
                                                                    let
@@ -1449,12 +1449,22 @@ val sigcheck = {
 
 val toSigcheck = transform sigcheck "sigcheck" o toSidecheck
 
+val sqlcache = {
+    func = (fn file =>
+               if Settings.getSqlcache ()
+               then let val file = MonoInline.inlineFull file in Sqlcache.go file end
+               else file),
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toSqlcache = transform sqlcache "sqlcache" o toSigcheck
+
 val cjrize = {
     func = Cjrize.cjrize,
     print = CjrPrint.p_file CjrEnv.empty
 }
 
-val toCjrize = transform cjrize "cjrize" o toSigcheck
+val toCjrize = transform cjrize "cjrize" o toSqlcache
 
 val prepare = {
     func = Prepare.prepare,
@@ -1610,7 +1620,7 @@ fun compile job =
 
                      compileC {cname = cname, oname = oname, ename = ename, libs = libs,
                                profile = #profile job, debug = #debug job, linker = #linker job, link = #link job}
-                     
+
                      before cleanup ())
             end
             handle ex => (((cleanup ()) handle _ => ()); raise ex)

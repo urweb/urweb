@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -586,7 +586,7 @@ fun cifyDecl ((d, loc), sm) =
         let
             val (vis, sm) = ListUtil.foldlMap
                             (fn ((x, n, t, e, _), sm) =>
-                                let                                    
+                                let
                                     val (t, sm) = cifyTyp (t, sm)
 
                                     fun unravel (tAll as (t, _), eAll as (e, _)) =
@@ -601,7 +601,7 @@ fun cifyDecl ((d, loc), sm) =
                                             (ErrorMsg.errorAt loc "Function isn't explicit at code generation";
                                              ([], tAll, eAll))
                                           | _ => ([], tAll, eAll)
-                                                 
+
                                     val (args, ran, e) = unravel (t, e)
                                     val (e, sm) = cifyExp (e, sm)
                               in
@@ -610,7 +610,7 @@ fun cifyDecl ((d, loc), sm) =
                             sm vis
         in
             (SOME (L'.DFunRec vis, loc), NONE, sm)
-        end        
+        end
 
       | L.DExport (ek, s, n, ts, t, b) =>
         let

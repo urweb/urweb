@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -281,7 +281,7 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                             S.map2 (mft t,
                                     fn t' =>
                                        (ERedirect (e', t'), loc)))
-                            
+
               | EStrcat (e1, e2) =>
                 S.bind2 (mfe ctx e1,
                       fn e1' =>
@@ -334,6 +334,7 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                                                                  RelE ("acc", dummyt)))
                                                                           body,
                                                                    fn body' =>
+                                                                      (* ASK: is this the right thing to do? *)
                                                                       S.map2 (mfe ctx initial,
                                                                            fn initial' =>
                                                                               (EQuery {exps = exps',
@@ -624,7 +625,7 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                              (x, n, t', e', s)))
     in
         mfd
-    end    
+    end
 
 fun mapfold {typ = fc, exp = fe, decl = fd} =
     mapfoldB {typ = fc,
