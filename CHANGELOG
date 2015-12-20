@@ -1,4 +1,12 @@
 ========
+20151220
+========
+
+- New .urp directive: 'jsFile'
+- Merged an experimental automatic caching optimization, triggered with '-sqlcache'
+- Bug fixes
+
+========
 20151122
 ========
 
