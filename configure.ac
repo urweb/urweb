@@ -5,10 +5,10 @@ AC_USE_SYSTEM_EXTENSIONS
 # automake 1.12 requires this, but automake 1.11 doesn't recognize it
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 
+AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign no-define])
 AC_PROG_CC()
 AC_PROG_LIBTOOL()
-AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([include/urweb/config.h])
 
 AX_PTHREAD([echo >/dev/null], [echo "Your C compiler does not support POSIX threads."; exit 1])
@@ -160,7 +160,7 @@ Ur/Web configuration:
   include directory:   INCLUDE        $INCLUDE
   site-lisp directory: SITELISP       $SITELISP
   C compiler:          CC             $CC
-  Extra CC args:       CCARGS         $CCARGS  
+  Extra CC args:       CCARGS         $CCARGS
   Extra MLTON args:    MLTONARGS      $MLTONARGS
   Postgres C header:   PGHEADER       $PGHEADER
   MySQL C header:      MSHEADER       $MSHEADER
