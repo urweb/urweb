@@ -20,6 +20,6 @@ before_install:
   - if command -v apt-get &>/dev/null; then sudo apt-get install -y mlton; fi
   - if command -v brew &>/dev/null; then brew update; fi
   - if command -v brew &>/dev/null; then brew tap homebrew/boneyard; fi
-  - if command -v brew &>/dev/null; then brew install mlton; fi
+  - if command -v brew &>/dev/null; then brew install openssl mlton; fi
 
 script: ./autogen.sh && ./configure && make && make test
