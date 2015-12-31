@@ -1,3 +1,5 @@
+[![Build Status](https://api.travis-ci.org/urweb/urweb.png?branch=master)](https://travis-ci.org/urweb/urweb)
+
 # The Ur/Web Programming Language
 
 Implementation of a domain-specific functional programming language for web applications.  Please see [the Ur/Web project web site](http://www.impredicative.com/ur/) for much more information!  Here's a summary:

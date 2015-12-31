@@ -1,0 +1,27 @@
+language: c
+
+os:
+  - linux
+  - osx
+
+compiler:
+  - clang
+  - gcc
+
+# when https://github.com/travis-ci/apt-package-whitelist/issues/792 is closed, use the container-based infrastructure
+#sudo: false
+#addons:
+#  apt:
+#    packages:
+#    - mlton
+
+before_install:
+  - export CONFIGURE_ARGS=""
+  - if command -v apt-get &>/dev/null; then sudo apt-get update -qq; fi
+  - if command -v apt-get &>/dev/null; then sudo apt-get install -y mlton; fi
+  - if command -v brew &>/dev/null; then brew update; fi
+  - if command -v brew &>/dev/null; then brew tap homebrew/boneyard; fi
+  - if command -v brew &>/dev/null; then brew install openssl mlton; fi
+  - if command -v brew &>/dev/null; then export CONFIGURE_ARGS="--with-openssl=/usr/local/opt/openssl"; fi
+
+script: ./autogen.sh && ./configure $CONFIGURE_ARGS && make && make test
