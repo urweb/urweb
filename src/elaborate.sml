@@ -163,22 +163,25 @@
                    r := L'.KKnown k1All)
                   handle Subscript => err KIncompatible)
            | (L'.KTupleUnif (loc, nks1, r1 as ref (L'.KUnknown f1)), L'.KTupleUnif (_, nks2, r2 as ref (L'.KUnknown f2))) =>
-             let
-                 val nks = foldl (fn (p as (n, k1), nks) =>
-                                     case ListUtil.search (fn (n', k2) =>
-                                                              if n' = n then
-                                                                  SOME k2
-                                                              else
-                                                                  NONE) nks2 of
-                                         NONE => p :: nks
-                                       | SOME k2 => (unifyKinds' env k1 k2;
-                                                     nks)) nks2 nks1
+             if r1 = r2 then
+                 ()
+             else
+                 let
+                     val nks = foldl (fn (p as (n, k1), nks) =>
+                                         case ListUtil.search (fn (n', k2) =>
+                                                                  if n' = n then
+                                                                      SOME k2
+                                                                  else
+                                                                      NONE) nks2 of
+                                             NONE => p :: nks
+                                           | SOME k2 => (unifyKinds' env k1 k2;
+                                                         nks)) nks2 nks1
 
-                 val k = (L'.KTupleUnif (loc, nks, ref (L'.KUnknown (fn x => f1 x andalso f2 x))), loc)
-             in
-                 r1 := L'.KKnown k;
-                 r2 := L'.KKnown k
-             end
+                     val k = (L'.KTupleUnif (loc, nks, ref (L'.KUnknown (fn x => f1 x andalso f2 x))), loc)
+                 in
+                     r1 := L'.KKnown k;
+                     r2 := L'.KKnown k
+                 end
 
            | _ => err KIncompatible
      end
@@ -641,10 +644,10 @@
             | (L'.KUnif (_, _, r), _) =>
               let
                   val ku = kunif env loc
-                  val k = (L'.KTupleUnif (loc, [(n, ku)], r), loc)
+                  val k = (L'.KTupleUnif (loc, [(n, ku)], ref (L'.KUnknown (fn _ => true))), loc)
               in
                   r := L'.KKnown k;
-                  k
+                  ku
               end
             | (L'.KTupleUnif (_, nks, r), _) =>
               (case ListUtil.search (fn (n', k) => if n' = n then SOME k else NONE) nks of
@@ -652,10 +655,10 @@
                  | NONE =>
                    let
                        val ku = kunif env loc
-                       val k = (L'.KTupleUnif (loc, ((n, ku) :: nks), r), loc)
+                       val k = (L'.KTupleUnif (loc, ((n, ku) :: nks), ref (L'.KUnknown (fn _ => true))), loc)
                    in
                        r := L'.KKnown k;
-                       k
+                       ku
                    end)
             | k => raise CUnify' (env, CKindof (k, c, "tuple")))
 
