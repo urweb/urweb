@@ -130,7 +130,12 @@ typedef struct uw_Sqlcache_Value {
   unsigned long timeValid;
 } uw_Sqlcache_Value;
 
-typedef struct uw_Sqlcache_Entry uw_Sqlcache_Entry;
+typedef struct uw_Sqlcache_Entry {
+  char *key;
+  uw_Sqlcache_Value *value;
+  unsigned long timeInvalid;
+  UT_hash_handle hh;
+} uw_Sqlcache_Entry;
 
 typedef struct uw_Sqlcache_Cache {
   pthread_rwlock_t lockOut;

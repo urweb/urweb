@@ -4562,13 +4562,6 @@ void uw_set_remoteSock(uw_context ctx, int sock) {
 
 // Sqlcache
 
-typedef struct uw_Sqlcache_Entry {
-  char *key;
-  uw_Sqlcache_Value *value;
-  unsigned long timeInvalid;
-  UT_hash_handle hh;
-} uw_Sqlcache_Entry;
-
 static void uw_Sqlcache_freeValue(uw_Sqlcache_Value *value) {
   if (value) {
     free(value->result);
