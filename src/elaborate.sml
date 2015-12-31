@@ -285,6 +285,7 @@
  fun hnormKind (kAll as (k, _)) =
      case k of
          L'.KUnif (_, _, ref (L'.KKnown k)) => hnormKind k
+       | L'.KTupleUnif (_, _, ref (L'.KKnown k)) => hnormKind k
        | _ => kAll
 
  open ElabOps
@@ -1343,6 +1344,31 @@
 
            | (L'.CProj (c1, n1), _) => projSpecial1 (c1, n1, fn () => err CIncompatible)
            | (_, L'.CProj (c2, n2)) => projSpecial2 (c2, n2, fn () => err CIncompatible)
+
+           | (L'.CTuple cs, L'.CRel x) =>
+             (case hnormKind (kindof env c2All) of
+                  (L'.KTuple ks, _) =>
+                  if length cs <> length ks then
+                      err CIncompatible
+                  else
+                      let
+                          fun rightProjs (cs, n) =
+                              case cs of
+                                  c :: cs' =>
+                                  (case hnormCon env c of
+                                       (L'.CProj ((L'.CRel x', _), n'), _) =>
+                                       x' = x andalso n' = n andalso rightProjs (cs', n+1)
+                                     | _ => false)
+                                  | [] => true
+                      in
+                          if rightProjs (cs, 1) then
+                              ()
+                          else
+                              err CIncompatible
+                      end
+                | _ => err CIncompatible)
+           | (L'.CRel x, L'.CTuple cs) =>
+             unifyCons'' env loc c2All c1All
 
            | (L'.CMap (dom1, ran1), L'.CMap (dom2, ran2)) =>
              (unifyKinds env dom1 dom2;
