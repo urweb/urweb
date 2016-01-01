@@ -2356,7 +2356,7 @@ fun p_fun isRec env (fx, n, args, ran, e) =
 
 val global_initializers : Print.PD.pp_desc list ref = ref []
 
-fun p_decl env (dAll as (d, _) : decl) =
+fun p_decl env (dAll as (d, loc) : decl) =
     case d of
         DStruct (n, xts) =>
         let
@@ -2378,9 +2378,6 @@ fun p_decl env (dAll as (d, _) : decl) =
         end
       | DDatatype dts =>
         let
-            val dts = ListMergeSort.sort (fn ((dk1, _, _, _), (dk2, _, _, _)) =>
-                                             dk1 = Enum andalso dk2 <> Enum) dts
-
             fun p_one (Enum, x, n, xncs) =
                 box [string "enum",
                      space,
@@ -2604,6 +2601,22 @@ fun p_file env (ds, ps) =
                   urlifiesL := IS.empty;
                   self := NONE;
                   global_initializers := [])
+
+        (* First, pull out all of the enumerated types, to be declared first. *)
+        val (ds, enums) = ListUtil.foldlMap (fn (d, enums) =>
+                                                case #1 d of
+                                                    DDatatype dts =>
+                                                    let
+                                                        val (enum, other) = List.partition (fn (Enum, _, _, _) => true
+                                                                                                                | _ => false) dts
+                                                    in
+                                                        ((DDatatype other, #2 d),
+                                                         List.revAppend (enum, enums))
+                                                    end
+                                                  | _ => (d, enums))
+                                            [] ds
+
+        val ds = (DDatatype enums, ErrorMsg.dummySpan) :: ds
 
         val (pds, env) = ListUtil.foldlMap (fn (d, env) =>
                                                let
