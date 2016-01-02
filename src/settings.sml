@@ -686,6 +686,10 @@ val staticLinking = ref false
 fun setStaticLinking b = staticLinking := b
 fun getStaticLinking () = !staticLinking
 
+val bootLinking = ref false
+fun setBootLinking b = bootLinking := b
+fun getBootLinking () = !bootLinking
+
 val deadlines = ref false
 fun setDeadlines b = deadlines := b
 fun getDeadlines () = !deadlines
