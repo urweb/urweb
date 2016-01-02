@@ -151,6 +151,7 @@ fun oneRun args =
                  doArgs rest)
               | "-boot" :: rest =>
                 (Compiler.enableBoot ();
+                 Settings.setBootLinking true;
                  doArgs rest)
               | "-sigfile" :: name :: rest =>
                 (Settings.setSigFile (SOME name);
