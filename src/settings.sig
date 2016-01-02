@@ -238,6 +238,9 @@ signature SETTINGS = sig
     val setStaticLinking : bool -> unit
     val getStaticLinking : unit -> bool
 
+    val setBootLinking : bool -> unit
+    val getBootLinking : unit -> bool
+
     val setDeadlines : bool -> unit
     val getDeadlines : unit -> bool
 

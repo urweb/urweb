@@ -16,7 +16,7 @@
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
  * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
  * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
  * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
  * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
@@ -64,7 +64,7 @@ fun oneRun args =
         fun doArgs args =
             case args of
                 [] => ()
-              | "-version" :: rest => 
+              | "-version" :: rest =>
                   printVersion ()
               | "-numeric-version" :: rest =>
                   printNumericVersion ()
@@ -151,7 +151,7 @@ fun oneRun args =
                  doArgs rest)
               | "-boot" :: rest =>
                 (Compiler.enableBoot ();
-                 Settings.setStaticLinking true;
+                 Settings.setBootLinking true;
                  doArgs rest)
               | "-sigfile" :: name :: rest =>
                 (Settings.setSigFile (SOME name);
@@ -318,7 +318,7 @@ val () = case CommandLine.arguments () of
                               (* Redirect the daemon's output to the socket. *)
                               redirect Posix.FileSys.stdout;
                               redirect Posix.FileSys.stderr;
-                              
+
                               loop' ("", []);
                               Socket.close sock;
 
