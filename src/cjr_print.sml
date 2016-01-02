@@ -2603,18 +2603,19 @@ fun p_file env (ds, ps) =
                   global_initializers := [])
 
         (* First, pull out all of the enumerated types, to be declared first. *)
-        val (ds, enums) = ListUtil.foldlMap (fn (d, enums) =>
-                                                case #1 d of
-                                                    DDatatype dts =>
-                                                    let
-                                                        val (enum, other) = List.partition (fn (Enum, _, _, _) => true
-                                                                                                                | _ => false) dts
-                                                    in
-                                                        ((DDatatype other, #2 d),
-                                                         List.revAppend (enum, enums))
-                                                    end
-                                                  | _ => (d, enums))
-                                            [] ds
+        val (ds, enums) = ListUtil.foldlMapPartial (fn (d, enums) =>
+                                                       case #1 d of
+                                                           DDatatype dts =>
+                                                           let
+                                                               val (enum, other) = List.partition (fn (Enum, _, _, _) => true
+                                                                                                  | _ => false) dts
+                                                           in
+                                                               (SOME (DDatatype other, #2 d),
+                                                                List.revAppend (enum, enums))
+                                                           end
+                                                         | DDatatypeForward (Enum, _, _) => (NONE, enums)
+                                                         | _ => (SOME d, enums))
+                                                   [] ds
 
         val ds = (DDatatype enums, ErrorMsg.dummySpan) :: ds
 
