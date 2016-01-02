@@ -878,7 +878,7 @@ fun parseUrp' accLibs fname =
                                    | "jsFile" =>
                                      (Settings.setFilePath thisPath;
                                       Settings.addJsFile arg)
-                                     
+
                                    | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                                  read ()
                              end
@@ -1518,7 +1518,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
                       ^ " " ^ #compile proto
                       ^ " -c " ^ escapeFilename cname ^ " -o " ^ escapeFilename oname
 
-        val linker = Option.getOpt (linker, (Settings.getCCompiler ()) ^ " -Werror" ^ opt ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " " ^ Config.pthreadLibs)
+        val linker = Option.getOpt (linker, (Settings.getCCompiler ()) ^ " -Werror" ^ opt ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadLibs)
 
         val ssl = if Settings.getStaticLinking () then
                       Config.openssl ^ " -ldl -lz"
