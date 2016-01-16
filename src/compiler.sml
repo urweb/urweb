@@ -1520,7 +1520,16 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
                       ^ " " ^ #compile proto
                       ^ " -c " ^ escapeFilename cname ^ " -o " ^ escapeFilename oname
 
-        val linker = Option.getOpt (linker, (Settings.getCCompiler ()) ^ " -Werror" ^ opt ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadLibs)
+        fun concatArgs (a1, a2) =
+            if CharVector.all Char.isSpace a1 then
+                a2
+            else
+                a1 ^ " " ^ a2
+
+        val args = concatArgs (Config.ccArgs, Config.pthreadCflags)
+        val args = concatArgs (args, Config.pthreadLibs)
+
+        val linker = Option.getOpt (linker, (Settings.getCCompiler ()) ^ " -Werror" ^ opt ^ " " ^ args)
 
         val ssl = if Settings.getStaticLinking () then
                       Config.openssl ^ " -ldl -lz"
