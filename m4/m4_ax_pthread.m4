@@ -220,6 +220,8 @@ for flag in $ax_pthread_flags; do
              ;;
         esac
 
+        AC_MSG_NOTICE([LDFLAGS = $LDFLAGS])
+
         # Check for various functions.  We must include pthread.h,
         # since some functions may be macros.  (On the Sequent, we
         # need a special flag -Kthread to make this header compile.)
