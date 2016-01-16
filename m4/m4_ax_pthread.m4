@@ -158,10 +158,6 @@ case ${host_os} in
 
         ax_pthread_flags="-pthreads pthread -mt -pthread $ax_pthread_flags"
         ;;
-
-        darwin*)
-        ax_pthread_flags="-pthread $ax_pthread_flags"
-        ;;
 esac
 
 # Clang doesn't consider unrecognized options an error unless we specify
@@ -204,23 +200,10 @@ for flag in $ax_pthread_flags; do
                 ;;
         esac
 
-        save_LDFLAGS="$LDFLAGS"
         save_LIBS="$LIBS"
         save_CFLAGS="$CFLAGS"
         LIBS="$PTHREAD_LIBS $LIBS"
         CFLAGS="$CFLAGS $PTHREAD_CFLAGS $ax_pthread_extra_flags"
-
-        # This check added by Adam Chlipala on January 16, 2016.
-        # The documentation at the top of this file said that PTHREAD_CFLAGS needs to
-        # be used at link-time, too, but this test didn't seem to do so.
-        # For now, I'm patching just for the common case of '-pthread'.
-        case $flag in
-             -pthread)
-             LDFLAGS="$LDFLAGS -pthread"
-             ;;
-        esac
-
-        AC_MSG_NOTICE([LDFLAGS = $LDFLAGS])
 
         # Check for various functions.  We must include pthread.h,
         # since some functions may be macros.  (On the Sequent, we
@@ -243,7 +226,6 @@ for flag in $ax_pthread_flags; do
                 [ax_pthread_ok=yes],
                 [])
 
-        LDFLAGS="$save_LDFLAGS"
         LIBS="$save_LIBS"
         CFLAGS="$save_CFLAGS"
 
