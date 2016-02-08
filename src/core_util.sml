@@ -416,11 +416,7 @@ fun pcCompare (pc1, pc2) =
 
 fun pCompare ((p1, _), (p2, _)) =
     case (p1, p2) of
-        (PWild, PWild) => EQUAL
-      | (PWild, _) => LESS
-      | (_, PWild) => GREATER
-
-      | (PVar _, PVar _) => EQUAL
+        (PVar _, PVar _) => EQUAL
       | (PVar _, _) => LESS
       | (_, PVar _) => GREATER
 
@@ -712,8 +708,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                                           let
                                                               fun pb ((p, _), ctx) =
                                                                   case p of
-                                                                      PWild => ctx
-                                                                    | PVar (x, t) => bind (ctx, RelE (x, t))
+                                                                      PVar (x, t) => bind (ctx, RelE (x, t))
                                                                     | PPrim _ => ctx
                                                                     | PCon (_, _, _, NONE) => ctx
                                                                     | PCon (_, _, _, SOME p) => pb (p, ctx)
@@ -771,8 +766,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                          
         and mfp ctx (pAll as (p, loc)) =
             case p of
-                PWild => S.return2 pAll
-              | PVar (x, t) =>
+                PVar (x, t) =>
                 S.map2 (mfc ctx t,
                         fn t' =>
                            (PVar (x, t'), loc))

@@ -148,8 +148,7 @@ fun match (env, p : pat, e : exp) =
 
         fun match (env, p, e) =
             case (#1 p, #1 e) of
-                (PWild, _) => Yes env
-              | (PVar (x, t), _) => Yes (KnownE (multiLiftExpInExp (length env - baseline) e) :: env)
+                (PVar (x, t), _) => Yes (KnownE (multiLiftExpInExp (length env - baseline) e) :: env)
 
               | (PPrim p, EPrim p') =>
                 if Prim.equal (p, p') then
@@ -425,8 +424,7 @@ fun kindConAndExp (namedC, namedE) =
 
                 fun patBinds (p, _) =
                     case p of
-                        PWild => 0
-                      | PVar _ => 1
+                        PVar _ => 1
                       | PPrim _ => 0
                       | PCon (_, _, _, NONE) => 0
                       | PCon (_, _, _, SOME p) => patBinds p
@@ -763,8 +761,7 @@ fun kindConAndExp (namedC, namedE) =
                             let
                                 fun pat (all as (p, loc)) =
                                     case p of
-                                        PWild => all
-                                      | PVar (x, t) => (PVar (x, con env t), loc)
+                                        PVar (x, t) => (PVar (x, con env t), loc)
                                       | PPrim _ => all
                                       | PCon (dk, pc, cs, po) =>
                                         (PCon (dk, patCon pc, map (con env) cs, Option.map pat po), loc)

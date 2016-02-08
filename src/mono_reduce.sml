@@ -191,8 +191,7 @@ datatype result = Yes of (string * typ * exp) list | No | Maybe
 
 fun match (env, p : pat, e : exp) =
     case (#1 p, #1 e) of
-        (PWild, _) => Yes env
-      | (PVar (x, t), _) => Yes ((x, t, e) :: env)
+        (PVar (x, t), _) => Yes ((x, t, e) :: env)
 
       | (PPrim (Prim.String (_, s)), EStrcat ((EPrim (Prim.String (_, s')), _), _)) =>
         if String.isPrefix s' s then
@@ -300,8 +299,7 @@ val p_events = Print.p_list p_event
 
 fun patBinds (p, _) =
     case p of
-        PWild => 0
-      | PVar _ => 1
+        PVar _ => 1
       | PPrim _ => 0
       | PCon (_, _, NONE) => 0
       | PCon (_, _, SOME p) => patBinds p

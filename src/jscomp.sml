@@ -458,8 +458,7 @@ fun process (file : file) =
 
                         fun jsPat (p, _) =
                             case p of
-                                PWild => str "{c:\"w\"}"
-                              | PVar _ => str "{c:\"v\"}"
+                                PVar _ => str "{c:\"v\"}"
                               | PPrim p => strcat [str "{c:\"c\",v:",
                                                    jsPrim p,
                                                    str "}"]
@@ -1009,8 +1008,7 @@ fun process (file : file) =
 
         fun patBinds ((p, _), env) =
             case p of
-                PWild => env
-              | PVar (_, t) => t :: env
+                PVar (_, t) => t :: env
               | PPrim _ => env
               | PCon (_, _, NONE) => env
               | PCon (_, _, SOME p) => patBinds (p, env)

@@ -191,8 +191,7 @@ fun cifyPatCon (pc, sm) =
 
 fun cifyPat ((p, loc), sm) =
     case p of
-        L.PWild => ((L'.PWild, loc), sm)
-      | L.PVar (x, t) =>
+        L.PVar (x, t) =>
         let
             val (t, sm) = cifyTyp (t, sm)
         in

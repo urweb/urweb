@@ -104,8 +104,7 @@ and sgn' =
   | SgnProj of string * string list * string
 
 and pat' =
-    PWild
-  | PVar of string
+    PVar of string
   | PPrim of Prim.t
   | PCon of string list * string * pat option
   | PRecord of (string * pat) list * bool

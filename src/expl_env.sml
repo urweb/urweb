@@ -404,8 +404,7 @@ fun sgiBinds env (sgi, loc) =
 
 fun patBinds env (p, loc) =
     case p of
-        PWild => env
-      | PVar (x, t) => pushERel env x t
+        PVar (x, t) => pushERel env x t
       | PPrim _ => env
       | PCon (_, _, _, NONE) => env
       | PCon (_, _, _, SOME p) => patBinds env p

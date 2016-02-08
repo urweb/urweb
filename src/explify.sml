@@ -90,8 +90,7 @@ fun explifyPatCon pc =
 
 fun explifyPat (p, loc) =
     case p of
-        L.PWild => (L'.PWild, loc)
-      | L.PVar (x, t) => (L'.PVar (x, explifyCon t), loc)
+        L.PVar (x, t) => (L'.PVar (x, explifyCon t), loc)
       | L.PPrim p => (L'.PPrim p, loc)
       | L.PCon (dk, pc, cs, po) => (L'.PCon (dk, explifyPatCon pc, map explifyCon cs, Option.map explifyPat po), loc)
       | L.PRecord xps => (L'.PRecord (map (fn (x, p, t) => (x, explifyPat p, explifyCon t)) xps), loc)

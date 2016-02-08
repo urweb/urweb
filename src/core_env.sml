@@ -354,8 +354,7 @@ fun declBinds env (d, loc) =
 
 fun patBinds env (p, loc) =
     case p of
-        PWild => env
-      | PVar (x, t) => pushERel env x t
+        PVar (x, t) => pushERel env x t
       | PPrim _ => env
       | PCon (_, _, _, NONE) => env
       | PCon (_, _, _, SOME p) => patBinds env p
@@ -363,8 +362,7 @@ fun patBinds env (p, loc) =
 
 fun patBindsN (p, loc) =
     case p of
-        PWild => 0
-      | PVar _ => 1
+        PVar _ => 1
       | PPrim _ => 0
       | PCon (_, _, _, NONE) => 0
       | PCon (_, _, _, SOME p) => patBindsN p
@@ -372,8 +370,7 @@ fun patBindsN (p, loc) =
 
 fun patBindsL (p, loc) =
     case p of
-        PWild => []
-      | PVar (x, t) => [(x, t)]
+        PVar (x, t) => [(x, t)]
       | PPrim _ => []
       | PCon (_, _, _, NONE) => []
       | PCon (_, _, _, SOME p) => patBindsL p

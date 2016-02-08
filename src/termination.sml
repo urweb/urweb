@@ -107,8 +107,7 @@ fun declOk' env (d, loc) =
                           | _ => foldl (fn ((_, pt', _), penv) => pat penv (Rabble, pt')) penv xps
                 in
                     case (p, pt) of
-                        (_, PWild) => penv
-                      | (_, PVar _) => p :: penv
+                        (_, PVar _) => p :: penv
                       | (_, PPrim _) => penv
                       | (_, PCon (_, _, _, NONE)) => penv
                       | (Arg (i, j, _), PCon (_, pc, _, SOME pt')) => con (i, j, pc, pt')

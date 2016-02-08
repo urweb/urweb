@@ -99,8 +99,7 @@ fun renamePatCon st pc =
 
 fun renamePat st (all as (p, loc)) =
     case p of
-        PWild => all
-      | PVar (x, c) => (PVar (x, renameCon st c), loc)
+        PVar (x, c) => (PVar (x, renameCon st c), loc)
       | PPrim _ => all
       | PCon (dk, pc, cs, po) => (PCon (dk, renamePatCon st pc,
                                         map (renameCon st) cs,

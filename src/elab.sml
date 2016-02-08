@@ -97,8 +97,7 @@ datatype patCon =
        | PConProj of int * string list * string
 
 datatype pat' =
-         PWild
-       | PVar of string * con
+         PVar of string * con
        | PPrim of Prim.t
        | PCon of datatype_kind * patCon * con list * pat option
        | PRecord of (string * pat * con) list

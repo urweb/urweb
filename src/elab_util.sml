@@ -346,8 +346,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
 
         fun doVars ((p, _), ctx) =
             case p of
-                PWild => ctx
-              | PVar xt => bind (ctx, RelE xt)
+                PVar xt => bind (ctx, RelE xt)
               | PPrim _ => ctx
               | PCon (_, _, _, NONE) => ctx
               | PCon (_, _, _, SOME p) => doVars (p, ctx)
@@ -452,8 +451,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
                                                           let
                                                               fun pb ((p, _), ctx) =
                                                                   case p of
-                                                                      PWild => ctx
-                                                                    | PVar (x, t) => bind (ctx, RelE (x, t))
+                                                                      PVar (x, t) => bind (ctx, RelE (x, t))
                                                                     | PPrim _ => ctx
                                                                     | PCon (_, _, _, NONE) => ctx
                                                                     | PCon (_, _, _, SOME p) => pb (p, ctx)
@@ -517,8 +515,7 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
 
         and mfp ctx (pAll as (p, loc)) =
             case p of
-                PWild => S.return2 pAll
-              | PVar (x, t) =>
+                PVar (x, t) =>
                 S.map2 (mfc ctx t,
                         fn t' =>
                            (PVar (x, t'), loc))

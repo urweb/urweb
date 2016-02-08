@@ -78,8 +78,7 @@ datatype patCon =
                      con : string, arg : con option, kind : datatype_kind}
 
 datatype pat' =
-         PWild
-       | PVar of string * con
+         PVar of string * con
        | PPrim of Prim.t
        | PCon of datatype_kind * patCon * con list * pat option
        | PRecord of (string * pat * con) list

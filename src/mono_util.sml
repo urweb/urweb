@@ -235,8 +235,7 @@ fun mapfoldB {typ = fc, exp = fe, bind} =
                                                           let
                                                               fun pb ((p, _), ctx) =
                                                                   case p of
-                                                                      PWild => ctx
-                                                                    | PVar (x, t) => bind (ctx, RelE (x, t))
+                                                                      PVar (x, t) => bind (ctx, RelE (x, t))
                                                                     | PPrim _ => ctx
                                                                     | PCon (_, _, NONE) => ctx
                                                                     | PCon (_, _, SOME p) => pb (p, ctx)

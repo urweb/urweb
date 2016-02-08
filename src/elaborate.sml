@@ -1526,8 +1526,8 @@
 
 fun elabPat (pAll as (p, loc), (env, bound)) =
     let
-        val perror = (L'.PWild, loc)
         val terror = (L'.CError, loc)
+        val perror = (L'.PVar ("_", terror), loc)
         val pterror = (perror, terror)
         val rerror = (pterror, (env, bound))
 
@@ -1563,9 +1563,7 @@ fun elabPat (pAll as (p, loc), (env, bound)) =
                 end
     in
         case p of
-            L.PWild => (((L'.PWild, loc), cunif env (loc, (L'.KType, loc))),
-                        (env, bound))
-          | L.PVar x =>
+            L.PVar x =>
             let
                 val t = if SS.member (bound, x) then
                             (expError env (DuplicatePatternVariable (loc, x));
@@ -1642,6 +1640,8 @@ fun elabPat (pAll as (p, loc), (env, bound)) =
 (* This exhaustiveness checking follows Luc Maranget's paper "Warnings for pattern matching." *)
 fun exhaustive (env, t, ps, loc) =
     let
+        val pwild = L'.PVar ("_", t)
+
         fun fail n = raise Fail ("Elaborate.exhaustive: Impossible " ^ Int.toString n)
 
         fun patConNum pc =
@@ -1683,7 +1683,7 @@ fun exhaustive (env, t, ps, loc) =
                     val loc = #2 p1
 
                     fun wild () =
-                        SOME (map (fn _ => (L'.PWild, loc)) args @ ps)
+                        SOME (map (fn _ => (pwild, loc)) args @ ps)
                 in
                     case #1 p1 of
                         L'.PPrim _ => NONE
@@ -1704,9 +1704,8 @@ fun exhaustive (env, t, ps, loc) =
                                                                    SOME p
                                                                else
                                                                    NONE) xpts of
-                                          NONE => (L'.PWild, loc)
+                                          NONE => (pwild, loc)
                                         | SOME p => p) args @ ps)
-                      | L'.PWild => wild ()
                       | L'.PVar _ => wild ()
                 end)
             P
@@ -1716,8 +1715,7 @@ fun exhaustive (env, t, ps, loc) =
             (fn [] => fail 2
               | (p1, _) :: ps =>
                 case p1 of
-                    L'.PWild => SOME ps
-                  | L'.PVar _ => SOME ps
+                    L'.PVar _ => SOME ps
                   | L'.PPrim _ => NONE
                   | L'.PCon _ => NONE
                   | L'.PRecord _ => NONE)
@@ -1847,8 +1845,8 @@ fun exhaustive (env, t, ps, loc) =
                           | SOME ps =>
                             let
                                 val p = case cons of
-                                            [] => L'.PWild
-                                          | (0, _) :: _ => L'.PWild
+                                            [] => pwild
+                                          | (0, _) :: _ => pwild
                                           | _ =>
                                             case IS.find (fn _ => true) unused of
                                                 NONE => fail 6
@@ -1861,7 +1859,7 @@ fun exhaustive (env, t, ps, loc) =
                                                     SOME (n, []) =>
                                                     L'.PCon (L'.Default, nameOfNum (#1 t1, n), [], NONE)
                                                   | SOME (n, [_]) =>
-                                                    L'.PCon (L'.Default, nameOfNum (#1 t1, n), [], SOME (L'.PWild, loc))
+                                                    L'.PCon (L'.Default, nameOfNum (#1 t1, n), [], SOME (pwild, loc))
                                                   | _ => fail 7
                             in
                                 SOME ((p, loc) :: ps)

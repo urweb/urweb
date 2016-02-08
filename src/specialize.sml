@@ -162,8 +162,7 @@ and specCon st = U.Con.foldMap {kind = kind, con = con} st
 
 fun pat (p, st) =
     case #1 p of
-        PWild => (p, st)
-      | PVar _ => (p, st)
+        PVar _ => (p, st)
       | PPrim _ => (p, st)
       | PCon (dk, PConVar pn, args as (_ :: _), po) =>
         let

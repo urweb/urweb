@@ -1405,8 +1405,7 @@ fun doQuery (arg : 'a doQuery) (e as (_, loc)) =
 
 fun evalPat env e (pt, _) =
     case pt of
-        PWild => env
-      | PVar _ => e :: env
+        PVar _ => e :: env
       | PPrim _ => env
       | PCon (_, pc, NONE) => (St.assert [AReln (PCon0 (patCon pc), [e])]; env)
       | PCon (_, pc, SOME pt) =>
@@ -2045,8 +2044,7 @@ fun check (file : file) =
                                     let
                                         fun doPat (p, env) =
                                             case #1 p of
-                                                PWild => env
-                                              | PVar _ => v :: env
+                                                PVar _ => v :: env
                                               | PPrim _ => env
                                               | PCon (_, _, NONE) => env
                                               | PCon (_, _, SOME p) => doPat (p, env)

@@ -529,8 +529,7 @@ fun corifyPatCon st pc =
 
 fun corifyPat st (p, loc) =
     case p of
-        L.PWild => (L'.PWild, loc)
-      | L.PVar (x, t) => (L'.PVar (x, corifyCon st t), loc)
+        L.PVar (x, t) => (L'.PVar (x, corifyCon st t), loc)
       | L.PPrim p => (L'.PPrim p, loc)
       | L.PCon (dk, pc, ts, po) => (L'.PCon (dk, corifyPatCon st pc, map (corifyCon st) ts,
                                              Option.map (corifyPat st) po), loc)

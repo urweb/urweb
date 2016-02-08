@@ -256,8 +256,7 @@ fun exp ((ns, ks, ts), e as old, st : state) =
 
                             fun doVars ((p, _), ts) =
                                 case p of
-                                    PWild => ts
-                                  | PVar xt => xt :: ts
+                                    PVar xt => xt :: ts
                                   | PPrim _ => ts
                                   | PCon (_, _, _, NONE) => ts
                                   | PCon (_, _, _, SOME p) => doVars (p, ts)
