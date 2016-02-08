@@ -1565,7 +1565,7 @@ fun elabPat (pAll as (p, loc), (env, bound)) =
         case p of
             L.PVar x =>
             let
-                val t = if SS.member (bound, x) then
+                val t = if x <> "_" andalso SS.member (bound, x) then
                             (expError env (DuplicatePatternVariable (loc, x));
                              terror)
                         else

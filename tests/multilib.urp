@@ -1,0 +1,5 @@
+library library
+library library2
+rewrite all Multilib/*
+
+multilib

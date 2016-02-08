@@ -46,8 +46,7 @@ datatype patCon =
        | PConFfi of {mod : string, datatyp : string, con : string, arg : typ option}
 
 datatype pat' =
-         PWild
-       | PVar of string * typ
+         PVar of string * typ
        | PPrim of Prim.t
        | PCon of datatype_kind * patCon * pat option
        | PRecord of (string * pat * typ) list

@@ -163,9 +163,7 @@ fun p_con_named env n =
 
 fun p_pat_preamble env (p, _) =
     case p of
-        PWild => (box [],
-                  env)
-      | PVar (x, t) => (box [p_typ env t,
+        PVar (x, t) => (box [p_typ env t,
                              space,
                              string "__uwr_",
                              p_ident x,
@@ -194,8 +192,7 @@ fun p_patCon env pc =
 
 fun p_patMatch (env, disc) (p, loc) =
     case p of
-        PWild => string "1"
-      | PVar _ => string "1"
+        PVar _ => string "1"
       | PPrim (Prim.Int n) => box [string ("(" ^ disc),
                                    space,
                                    string "==",
@@ -318,9 +315,7 @@ fun p_patMatch (env, disc) (p, loc) =
 
 fun p_patBind (env, disc) (p, loc) =
     case p of
-        PWild =>
-        (box [], env)
-      | PVar (x, t) =>
+        PVar (x, t) =>
         (box [p_typ env t,
               space,
               string "__uwr_",

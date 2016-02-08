@@ -1,4 +1,4 @@
-(* Copyright (c) 2008-2012, 2014, Adam Chlipala
+(* Copyright (c) 2008-2012, 2014, 2016, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -412,6 +412,14 @@ fun inputCommentableLine inf =
 
 val lastUrp = ref ""
 
+structure SK = struct
+type ord_key = string
+val compare = String.compare
+end
+
+structure SS = BinarySetFn(SK)
+structure SM = BinaryMapFn(SK)
+
 fun parseUrp' accLibs fname =
     (lastUrp := fname;
      if not (Posix.FileSys.access (fname ^ ".urp", []) orelse Posix.FileSys.access (fname ^ "/lib.urp", []))
@@ -459,6 +467,7 @@ fun parseUrp' accLibs fname =
          let
              val pathmap = ref (!pathmap)
              val bigLibs = ref []
+             val libSet = ref SS.empty
 
              fun pu filename =
                  let
@@ -822,10 +831,19 @@ fun parseUrp' accLibs fname =
                                               fkind := {action = Settings.Deny, kind = kind, pattern = pattern} :: !fkind
                                           end
                                         | _ => ErrorMsg.error "Bad 'deny' syntax")
-                                   | "library" => if accLibs then
-                                                      libs := pu (libify (relify arg)) :: !libs
-                                                  else
-                                                      bigLibs := libify' arg :: !bigLibs
+                                   | "library" =>
+                                     if accLibs then
+                                         let
+                                             val arg = libify (relify arg)
+                                         in
+                                             if SS.member (!libSet, arg) then
+                                                 ()
+                                             else
+                                                 (libs := pu arg :: !libs;
+                                                  libSet := SS.add (!libSet, arg))
+                                         end
+                                     else
+                                         bigLibs := libify' arg :: !bigLibs
                                    | "path" =>
                                      (case String.fields (fn ch => ch = #"=") arg of
                                           [n, v] => ((pathmap := M.insert (!pathmap, n, OS.Path.mkAbsolute {path = v, relativeTo = dir}))
@@ -935,14 +953,6 @@ fun addModuleRoot (k, v) = moduleRoots :=
                            (OS.Path.mkAbsolute {path = k,
                                                 relativeTo = OS.FileSys.getDir ()},
                             v) :: !moduleRoots
-
-structure SK = struct
-type ord_key = string
-val compare = String.compare
-end
-
-structure SS = BinarySetFn(SK)
-structure SM = BinaryMapFn(SK)
 
 exception MissingFile of string
 

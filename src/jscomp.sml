@@ -458,7 +458,7 @@ fun process (file : file) =
 
                         fun jsPat (p, _) =
                             case p of
-                                PVar _ => str "{c:\"v\"}"
+                                PVar _ => str "{/*hoho*/c:\"v\"}"
                               | PPrim p => strcat [str "{c:\"c\",v:",
                                                    jsPrim p,
                                                    str "}"]
