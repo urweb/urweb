@@ -35,14 +35,15 @@ static void random_password() {
 
 // OpenSSL callbacks
 #ifdef PTHREAD_T_IS_POINTER
-# define CRYPTO_THREADID_SET CRYPTO_THREADID_set_pointer
-#else
-# define CRYPTO_THREADID_SET CRYPTO_THREADID_set_numeric
-#endif
 static void thread_id(CRYPTO_THREADID *const result) {
-  CRYPTO_THREADID_SET(result, pthread_self());
+  CRYPTO_THREADID_set_pointer(result, pthread_self());
 }
-#undef CRYPTO_THREADID_SET
+#else
+static void thread_id(CRYPTO_THREADID *const result) {
+  CRYPTO_THREADID_set_numeric(result, (unsigned long)pthread_self());
+}
+#endif
+
 static void lock_or_unlock(const int mode, const int type, const char *file,
                            const int line) {
   pthread_mutex_t *const lock = &openssl_locks[type];
