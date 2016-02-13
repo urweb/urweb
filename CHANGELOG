@@ -1,4 +1,13 @@
 ========
+20160213
+========
+
+- .urp 'library' directive: only process a given library the first time it is referenced
+- For maintenance of Ur/Web project source code, switched from Mercurial to Git
+- Added Travis integration
+- Bug fixes and improvements to type inference and compatibility
+
+========
 20151220
 ========
 
