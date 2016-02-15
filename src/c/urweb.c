@@ -3915,9 +3915,18 @@ static char *old_headers(uw_context ctx) {
   if (uw_buffer_used(&ctx->outHeaders) == 0)
     return NULL;
   else {
-    char *s = strchr(ctx->outHeaders.start, '\n');
+    char *s;
+    int is_good;
 
-    if (s == NULL || strncasecmp(s+1, "Content-type: ", 14))
+    if (strncasecmp(ctx->outHeaders.start, "Content-type: ", 14)) {
+      s = strchr(ctx->outHeaders.start, '\n');
+      is_good = strncasecmp(s+1, "Content-type: ", 14);
+    } else {
+      s = ctx->outHeaders.start;
+      is_good = 1;
+    }
+
+    if (!is_good)
       return NULL;
     else {
       s = strchr(s+15, '\n');
