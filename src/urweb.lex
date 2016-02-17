@@ -224,6 +224,7 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <STRING,CHAR> "\\\""  => (str := #"\"" :: !str; continue());
 <STRING,CHAR> "\\'"   => (str := #"'" :: !str; continue());
 <STRING,CHAR> "\\n"   => (str := #"\n" :: !str; continue());
+<STRING,CHAR> "\\r"   => (str := #"\r" :: !str; continue());
 <STRING,CHAR> "\\\\"  => (str := #"\\" :: !str; continue());
 <STRING,CHAR> "\\t"   => (str := #"\t" :: !str; continue());
 <STRING,CHAR> "\n"    => (newline yypos;
