@@ -1568,6 +1568,10 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
       strcpy(s2, "\\074");
       s2 += 4;
       break;
+    case '&':
+      strcpy(s2, "\\046");
+      s2 += 4;
+      break;
     default:
       if (isprint((int)c) || c >= 128)
         *s2++ = c;
@@ -1609,6 +1613,10 @@ uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
     strcpy(s2, "\\074");
     s2 += 4;
     break;
+  case '&':
+    strcpy(s2, "\\046");
+    s2 += 4;
+    break;
   default:
     if (isprint((int)c) || c >= 128)
       *s2++ = c;
@@ -1645,6 +1653,10 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
       break;
     case '<':
       strcpy(s2, "\\074");
+      s2 += 4;
+      break;
+    case '&':
+      strcpy(s2, "\\046");
       s2 += 4;
       break;
     default:
