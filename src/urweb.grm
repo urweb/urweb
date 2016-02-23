@@ -573,7 +573,7 @@ fun patternOut (e : exp) =
 %right JOIN INNER CROSS OUTER LEFT RIGHT FULL
 %right OR
 %right CAND
-%nonassoc EQ NE LT LE GT GE IS
+%nonassoc EQ NE LT LE GT GE IS LIKE
 %right ARROW
 
 %left REVAPP
