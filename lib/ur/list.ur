@@ -439,8 +439,8 @@ fun span [a] (f:(a -> bool)) (ls:list a) : list a * list a  =
     let
         fun span' f acc ls =
             case ls of
-                []      =>  (acc, [])
-              | x :: xs =>  if (f x) then span' f (x :: acc) xs else (acc, ls)
+                []      =>  (rev acc, [])
+              | x :: xs =>  if (f x) then span' f (x :: acc) xs else (rev acc, ls)
     in
         span' f [] ls
     end
