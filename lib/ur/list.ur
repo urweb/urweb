@@ -435,29 +435,29 @@ fun drop [a] (n : int) (xs : list a) : list a =
 fun splitAt [a] (n : int) (xs : list a) : list a * list a =
     (take n xs, drop n xs)
     
-fun span [a] (f:(a -> bool)) (ls:list a) : list a * list a  = 
+fun span [a] (f : a -> bool) (ls : list a) : list a * list a  = 
     let
-        fun span' f acc ls =
+        fun span' ls acc =
             case ls of
                 []      =>  (rev acc, [])
-              | x :: xs =>  if (f x) then span' f (x :: acc) xs else (rev acc, ls)
+              | x :: xs =>  if f x then span' xs (x :: acc) else (rev acc, ls)
     in
-        span' f [] ls
+        span' ls []
     end
     
-fun groupBy [a] (f:(a -> a -> bool)) (ls:list a) : list (list a) = 
+fun groupBy [a] (f : a -> a -> bool) (ls : list a) : list (list a) = 
     let
-        fun groupBy' f ls = 
+        fun groupBy' ls acc =
             case ls of
-                [] => [] :: []
+                [] => rev ([] :: acc)
               | x :: xs => 
-                    let
-                        val (ys, zs) = span (f x) xs
-                    in 
-                        (x :: ys) :: (groupBy' f zs)
-                    end
+                let
+                    val (ys, zs) = span (f x) xs
+                in 
+                    groupBy' zs ((x :: ys) :: acc)
+                end
     in
-        groupBy' f ls
+        groupBy' ls []
     end
 
 fun mapXiM [m ::: Type -> Type] (_ : monad m) [a] [ctx ::: {Unit}] (f : int -> a -> m (xml ctx [] [])) : t a -> m (xml ctx [] []) =
