@@ -813,7 +813,7 @@ val data_attrs : data_attr -> data_attr -> data_attr
 
 val head : unit -> tag [Data = data_attr] html head [] []
 val title : unit -> tag [Data = data_attr] head [] [] []
-val link : unit -> tag [Data = data_attr, Id = id, Rel = string, Typ = string, Href = url, Media = string] head [] [] []
+val link : unit -> tag [Data = data_attr, Id = id, Rel = string, Typ = string, Href = url, Media = string, Integrity = string, Crossorigin = string] head [] [] []
 
 datatype mouseButton = Left | Right | Middle
 
