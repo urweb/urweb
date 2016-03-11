@@ -193,7 +193,7 @@ val uw_ident = wrapP ident (fn s => if String.isPrefix "uw_" s andalso size s >=
                                         SOME (str (Char.toUpper (String.sub (s, 3)))
                                               ^ String.extract (s, 4, NONE))
                                     else
-                                        NONE)
+                                        SOME s)
 
 val field = wrap (follow (opt (follow t_ident (const ".")))
                          uw_ident)
