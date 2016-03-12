@@ -116,6 +116,8 @@ fun setupQuery {index, params} =
              newline,*)
              string "    uw_write(ctx, v->output);",
              newline,
+             string "    uw_write_script(ctx, v->scriptOutput);",
+             newline,
              string "    return v->result;",
              newline,
              string "  } else {",
@@ -147,6 +149,8 @@ fun setupQuery {index, params} =
              string "  v->result = strdup(s);",
              newline,
              string "  v->output = uw_recordingRead(ctx);",
+             newline,
+             string "  v->scriptOutput = uw_recordingReadScript(ctx);",
              newline,
              (*string ("  puts(\"SQLCACHE: stored " ^ i ^ ".\");"),
              newline,*)

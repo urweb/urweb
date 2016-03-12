@@ -505,7 +505,7 @@ struct uw_context {
 
   // Sqlcache.
   int numRecording, recordingCapacity;
-  int *recordingOffsets;
+  int *recordingOffsets, *scriptRecordingOffsets;
   uw_Sqlcache_Update *cacheUpdate;
   uw_Sqlcache_Update *cacheUpdateTail;
   uw_Sqlcache_Unlock *cacheUnlock;
@@ -597,6 +597,7 @@ uw_context uw_init(int id, uw_loggers *lg) {
   ctx->numRecording = 0;
   ctx->recordingCapacity = 0;
   ctx->recordingOffsets = malloc(0);
+  ctx->scriptRecordingOffsets = malloc(0);
   ctx->cacheUpdate = NULL;
   ctx->cacheUpdateTail = NULL;
 
@@ -670,6 +671,7 @@ void uw_free(uw_context ctx) {
   free(ctx->output_buffer);
 
   free(ctx->recordingOffsets);
+  free(ctx->scriptRecordingOffsets);
 
   free(ctx);
 }
@@ -1757,13 +1759,20 @@ void uw_recordingStart(uw_context ctx) {
   if (ctx->numRecording == ctx->recordingCapacity) {
     ++ctx->recordingCapacity;
     ctx->recordingOffsets = realloc(ctx->recordingOffsets, sizeof(int) * ctx->recordingCapacity);
+    ctx->scriptRecordingOffsets = realloc(ctx->scriptRecordingOffsets, sizeof(int) * ctx->recordingCapacity);
   }
   ctx->recordingOffsets[ctx->numRecording] = ctx->page.front - ctx->page.start;
+  ctx->scriptRecordingOffsets[ctx->numRecording] = ctx->script.front - ctx->script.start;
   ++ctx->numRecording;
 }
 
 char *uw_recordingRead(uw_context ctx) {
-  char *recording = ctx->page.start + ctx->recordingOffsets[--ctx->numRecording];
+  char *recording = ctx->page.start + ctx->recordingOffsets[ctx->numRecording-1];
+  return strdup(recording);
+}
+
+char *uw_recordingReadScript(uw_context ctx) {
+  char *recording = ctx->script.start + ctx->scriptRecordingOffsets[--ctx->numRecording];
   return strdup(recording);
 }
 
@@ -4587,6 +4596,7 @@ static void uw_Sqlcache_freeValue(uw_Sqlcache_Value *value) {
   if (value) {
     free(value->result);
     free(value->output);
+    free(value->scriptOutput);
     free(value);
   }
 }

@@ -127,6 +127,7 @@ typedef struct {
 typedef struct uw_Sqlcache_Value {
   char *result;
   char *output;
+  char *scriptOutput;
   unsigned long timeValid;
 } uw_Sqlcache_Value;
 

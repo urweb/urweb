@@ -81,6 +81,7 @@ void uw_write(struct uw_context *, const char*);
 // For caching.
 void uw_recordingStart(struct uw_context *);
 char *uw_recordingRead(struct uw_context *);
+char *uw_recordingReadScript(struct uw_context *);
 
 uw_Basis_source uw_Basis_new_client_source(struct uw_context *, uw_Basis_string);
 uw_unit uw_Basis_set_client_source(struct uw_context *, uw_Basis_source, uw_Basis_string);
@@ -221,6 +222,8 @@ void uw_write_header(struct uw_context *, uw_Basis_string);
 void uw_clear_headers(struct uw_context *);
 int uw_has_contentLength(struct uw_context *);
 void uw_Basis_clear_page(struct uw_context *);
+
+void uw_write_script(struct uw_context *, uw_Basis_string);
 
 uw_Basis_string uw_Basis_get_cookie(struct uw_context *, uw_Basis_string c);
 uw_unit uw_Basis_set_cookie(struct uw_context *, uw_Basis_string prefix, uw_Basis_string c, uw_Basis_string v, uw_Basis_time *expires, uw_Basis_bool secure);

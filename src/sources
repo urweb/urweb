@@ -186,9 +186,6 @@ $(SRC)/cache.sml
 $(SRC)/toy_cache.sml
 $(SRC)/lru_cache.sml
 
-$(SRC)/sqlcache.sig
-$(SRC)/sqlcache.sml
-
 $(SRC)/monoize.sig
 $(SRC)/monoize.sml
 
@@ -209,6 +206,9 @@ $(SRC)/fuse.sml
 
 $(SRC)/iflow.sig
 $(SRC)/iflow.sml
+
+$(SRC)/sqlcache.sig
+$(SRC)/sqlcache.sml
 
 $(SRC)/name_js.sig
 $(SRC)/name_js.sml

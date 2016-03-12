@@ -1724,8 +1724,9 @@ fun go file =
         (* Important that this happens after [MonoFooify.urlify] calls! *)
         val fmDecls = MonoFooify.getNewFmDecls ()
         val () = Sql.sqlcacheMode := false
+        val file = insertAfterDatatypes (file, rev fmDecls)
     in
-        insertAfterDatatypes (file, rev fmDecls)
+        MonoReduce.reduce file
     end
 
 end
