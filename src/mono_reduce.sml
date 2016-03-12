@@ -44,6 +44,13 @@ structure SS = BinarySetFn(struct
                             val compare = String.compare
                             end)
 
+structure SLS = BinarySetFn(struct
+                             type ord_key = string list
+                             val compare = Order.joinL String.compare
+                             end)
+
+
+
 fun simpleTypeImpure tsyms =
     U.Typ.exists (fn TFun _ => true
                    | TDatatype (n, _) => IS.member (tsyms, n)
@@ -602,28 +609,35 @@ fun reduce' (file : file) =
                                 ERecord _ => true
                               | _ => false
 
+                        fun prefixFrom i (e : exp) =
+                            case #1 e of
+                                ERel i' => if i' = i then SOME [] else NONE
+                              | EField (e', s) =>
+                                (case prefixFrom i e' of
+                                     NONE => NONE
+                                   | SOME ss => SOME (ss @ [s]))
+                              | _ => NONE
+
                         fun whichProj i (e : exp) =
                             case #1 e of
-                                EPrim _ => SOME SS.empty
-                              | ERel i' => if i' = i then NONE else SOME SS.empty
-                              | ENamed _ => SOME SS.empty
-                              | ECon (_, _, NONE) => SOME SS.empty
+                                EPrim _ => SOME SLS.empty
+                              | ERel i' => if i' = i then NONE else SOME SLS.empty
+                              | ENamed _ => SOME SLS.empty
+                              | ECon (_, _, NONE) => SOME SLS.empty
                               | ECon (_, _, SOME e') => whichProj i e'
-                              | ENone _ => SOME SS.empty
+                              | ENone _ => SOME SLS.empty
                               | ESome (_, e') => whichProj i e'
-                              | EFfi _ => SOME SS.empty
+                              | EFfi _ => SOME SLS.empty
                               | EFfiApp (_, _, es) => whichProjs i (map #1 es)
                               | EApp (e1, e2) => whichProjs i [e1, e2]
                               | EAbs (_, _, _, e) => whichProj (i + 1) e
                               | EUnop (_, e1) => whichProj i e1
                               | EBinop (_, _, e1, e2) => whichProjs i [e1, e2]
                               | ERecord xets => whichProjs i (map #2 xets)
-                              | EField ((ERel i', _), s) =>
-                                if i' = i then
-                                    SOME (SS.singleton s)
-                                else
-                                    SOME SS.empty
-                              | EField (e1, _) => whichProj i e1
+                              | EField (e1, s) =>
+                                (case prefixFrom i e1 of
+                                     NONE => SOME SLS.empty
+                                   | SOME ss => SOME (SLS.singleton (ss @ [s])))
                               | ECase (e1, pes, _) =>
                                 whichProjs' i ((0, e1)
                                                :: map (fn (p, e) => (patBinds p, e)) pes)
@@ -656,12 +670,12 @@ fun reduce' (file : file) =
 
                         and whichProjs' i es =
                             case es of
-                                [] => SOME SS.empty
+                                [] => SOME SLS.empty
                               | (n, e) :: es' =>
                                 case (whichProj (i + n) e, whichProjs' i es') of
                                     (SOME m1, SOME m2) =>
-                                    if SS.isEmpty (SS.intersection (m1, m2)) then
-                                        SOME (SS.union (m1, m2))
+                                    if SLS.isEmpty (SLS.intersection (m1, m2)) then
+                                        SOME (SLS.union (m1, m2))
                                     else
                                         NONE
                                   | _ => NONE
