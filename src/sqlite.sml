@@ -849,6 +849,7 @@ val () = addDbms {name = "sqlite",
                   falseString = "0",
                   onlyUnion = false,
                   nestedRelops = false,
-                  windowFunctions = false}
+                  windowFunctions = false,
+                  supportsIsDistinctFrom = true}
 
 end

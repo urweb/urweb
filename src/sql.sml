@@ -221,6 +221,7 @@ datatype sqexp =
 fun cmp s r = wrap (const s) (fn () => RCmp r)
 
 val sqbrel = altL [cmp "=" Eq,
+                   cmp "IS NOT DISTINCT FROM" Eq,
                    cmp "<>" Ne,
                    cmp "<=" Le,
                    cmp "<" Lt,
@@ -334,11 +335,12 @@ fun sqexp chs =
     (altL [wrap (if !sqlcacheMode then primSqlcache else prim) SqConst,
            wrap (const "TRUE") (fn () => SqTrue),
            wrap (const "FALSE") (fn () => SqFalse),
+           wrap (follow (const "NULL::") ident) (fn ((), _) => Null),
            wrap (const "NULL") (fn () => Null),
-           wrap field Field,
-           wrap uw_ident Computed,
            wrap known SqKnown,
            wrap func SqFunc,
+           wrap field Field,
+           wrap uw_ident Computed,
            wrap (arithmetic sqexp) (fn _ => Unmodeled),
            wrap unmodeled (fn () => Unmodeled),
            wrap (if !sqlcacheMode then sqlifySqlcache else sqlify) Inj,
@@ -402,6 +404,11 @@ val orderby = log "orderby"
                                           (opt (ws (const "DESC"))))))
                     ignore)
 
+val groupby = log "groupby"
+                  (wrap (follow (ws (const "GROUP BY "))
+                                (list sqexp))
+                        ignore)
+
 val jtype = altL [wrap (const "JOIN") (fn () => Inner),
                   wrap (const "LEFT JOIN") (fn () => Left),
                   wrap (const "RIGHT JOIN") (fn () => Right),
@@ -444,7 +451,7 @@ and query chs = log "query"
                                                                   (follow query (const "))")))))
                                           (fn ((), (q1, ((), (q2, ())))) => Union (q1, q2)))
                                     (wrap query1 Query1))
-                               (opt orderby))
+                               (follow (opt groupby) (opt orderby)))
                           #1)
                     chs
 

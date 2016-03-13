@@ -2326,24 +2326,31 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
                 val body = case #1 arg1 of
                                L.CApp ((L.CFfi ("Basis", "option"), _), _) =>
-                                (L'.ECase ((L'.ERel 2, loc),
-                                           [((L'.PPrim (Prim.String (Prim.Normal, "=")), loc),
-                                             strcat [str "((",
-                                                     (L'.ERel 1, loc),
-                                                     str " ",
-                                                     (L'.ERel 2, loc),
-                                                     str " ",
-                                                     (L'.ERel 0, loc),
-                                                     str ") OR ((",
-                                                     (L'.ERel 1, loc),
-                                                     str ") IS NULL AND (",
-                                                     (L'.ERel 0, loc),
-                                                     str ") IS NULL))"]),
-                                            ((L'.PVar ("_", s), loc),
-                                             default 1)],
-                                           {disc = s,
-                                            result = s}), loc)
-                             | _ => default 0
+                               (L'.ECase ((L'.ERel 2, loc),
+                                          [((L'.PPrim (Prim.String (Prim.Normal, "=")), loc),
+                                            if #supportsIsDistinctFrom (Settings.currentDbms ()) then
+                                                strcat [str "((",
+                                                        (L'.ERel 1, loc),
+                                                        str " IS NOT DISTINCT FROM ",
+                                                        (L'.ERel 0, loc),
+                                                        str "))"]
+                                            else
+                                                strcat [str "((",
+                                                        (L'.ERel 1, loc),
+                                                        str " ",
+                                                        (L'.ERel 2, loc),
+                                                        str " ",
+                                                        (L'.ERel 0, loc),
+                                                        str ") OR ((",
+                                                        (L'.ERel 1, loc),
+                                                        str ") IS NULL AND (",
+                                                        (L'.ERel 0, loc),
+                                                        str ") IS NULL))"]),
+                                           ((L'.PVar ("_", s), loc),
+                                            default 1)],
+                                          {disc = s,
+                                           result = s}), loc)
+                               | _ => default 0
             in
                 ((L'.EAbs ("c", s, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
                            (L'.EAbs ("e1", s, (L'.TFun (s, s), loc),

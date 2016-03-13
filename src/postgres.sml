@@ -1145,7 +1145,8 @@ val () = addDbms {name = "postgres",
                   falseString = "FALSE",
                   onlyUnion = false,
                   nestedRelops = true,
-                  windowFunctions = true}
+                  windowFunctions = true,
+                  supportsIsDistinctFrom = true}
 
 val () = setDbms "postgres"
 

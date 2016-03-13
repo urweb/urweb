@@ -213,7 +213,8 @@ signature SETTINGS = sig
          falseString : string,
          onlyUnion : bool,
          nestedRelops : bool,
-         windowFunctions : bool
+         windowFunctions : bool,
+         supportsIsDistinctFrom : bool
     }
 
     val addDbms : dbms -> unit
