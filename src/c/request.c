@@ -39,7 +39,12 @@ uw_context uw_request_new_context(int id, uw_app *app, uw_loggers *ls) {
   uw_logger log_error = ls->log_error;
   uw_context ctx = uw_init(id, ls);
   int retries_left = MAX_RETRIES;
-  uw_set_app(ctx, app);
+
+  if (uw_set_app(ctx, app)) {
+    log_error(logger_data, "Unable to initialize request context.  Most likely the limit on number of form inputs has been exceeded.\n");
+    uw_free(ctx);
+    return NULL;
+  }
 
   while (1) {
     failure_kind fk = uw_begin_init(ctx);
