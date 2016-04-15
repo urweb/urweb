@@ -3941,7 +3941,7 @@ static char *old_headers(uw_context ctx) {
 
     if (strncasecmp(ctx->outHeaders.start, "Content-type: ", 14)) {
       s = strchr(ctx->outHeaders.start, '\n');
-      is_good = strncasecmp(s+1, "Content-type: ", 14);
+      is_good = !strncasecmp(s+1, "Content-type: ", 14);
     } else {
       s = ctx->outHeaders.start;
       is_good = 1;
