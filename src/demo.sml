@@ -318,12 +318,13 @@ fun make' {prefix, dirname, guided} =
                                                              Posix.FileSys.ST.mtime htmlSt)
                                                  end handle OS.SysErr _ => true
 
-                                             val cmd = "emacs --eval \"(progn "
+                                             val cmd = "emacs -no-init-file --eval \"(progn "
                                                        ^ "(global-font-lock-mode t) "
                                                        ^ "(add-to-list 'load-path \\\""
                                                        ^ !Settings.configSitelisp
                                                        ^ "/\\\") "
                                                        ^ "(load \\\"urweb-mode-startup\\\") "
+                                                       ^ "(load \\\"htmlize\\\") "
                                                        ^ "(urweb-mode) "
                                                        ^ "(find-file \\\""
                                                        ^ src
