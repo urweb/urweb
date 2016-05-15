@@ -1,4 +1,12 @@
 ========
+20160515
+========
+
+- Support for HTML <meta> tags
+- Resource-integrity attributes for HTML <link>
+- Bug fixes and optimization improvements
+
+========
 20160306
 ========
 
