@@ -234,6 +234,7 @@ fun monoType env =
                   | L.CFfi ("Basis", "requestHeader") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "responseHeader") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "envVar") => (L'.TFfi ("Basis", "string"), loc)
+                  | L.CFfi ("Basis", "meta") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "data_attr_kind") => (L'.TFfi ("Basis", "string"), loc)
                   | L.CFfi ("Basis", "data_attr") => (L'.TFfi ("Basis", "string"), loc)
 

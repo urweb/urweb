@@ -239,12 +239,14 @@ uw_Basis_string uw_Basis_blessMime(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_blessRequestHeader(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_blessResponseHeader(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_blessEnvVar(struct uw_context *, uw_Basis_string);
+uw_Basis_string uw_Basis_blessMeta(struct uw_context *, uw_Basis_string);
 
 uw_Basis_string uw_Basis_checkUrl(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_checkMime(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_checkRequestHeader(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_checkResponseHeader(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_checkEnvVar(struct uw_context *, uw_Basis_string);
+uw_Basis_string uw_Basis_checkMeta(struct uw_context *, uw_Basis_string);
 
 uw_Basis_string uw_Basis_getHeader(struct uw_context *, uw_Basis_string name);
 uw_unit uw_Basis_setHeader(struct uw_context *, uw_Basis_string name, uw_Basis_string value);

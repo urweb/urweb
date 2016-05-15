@@ -133,6 +133,10 @@ signature SETTINGS = sig
     val getEnvVarRules : unit -> rule list
     val checkEnvVar : string -> bool
 
+    val setMetaRules : rule list -> unit
+    val getMetaRules : unit -> rule list
+    val checkMeta : string -> bool
+
     (* Web protocols that generated programs may speak *)
     type protocol = {
         name : string,       (* Call it this on the command line *)

@@ -3835,6 +3835,34 @@ uw_Basis_string uw_Basis_checkEnvVar(uw_context ctx, uw_Basis_string s) {
     return NULL;
 }
 
+static int meta_format(const char *s) {
+  for (; *s; ++s)
+    if (!isalpha((int)*s) && *s != '-')
+      return 0;
+
+  return 1;
+}
+
+uw_Basis_string uw_Basis_blessMeta(uw_context ctx, uw_Basis_string s) {
+  if (!meta_format(s))
+    uw_error(ctx, FATAL, "Meta name \"%s\" contains invalid character", uw_Basis_htmlifyString(ctx, s));
+
+  if (ctx->app->check_meta(s))
+    return s;
+  else
+    uw_error(ctx, FATAL, "Disallowed meta name %s", uw_Basis_htmlifyString(ctx, s));
+}
+
+uw_Basis_string uw_Basis_checkMeta(uw_context ctx, uw_Basis_string s) {
+  if (!meta_format(s))
+    return NULL;
+
+  if (ctx->app->check_meta(s))
+    return s;
+  else
+    return NULL;
+}
+
 uw_Basis_string uw_Basis_getHeader(uw_context ctx, uw_Basis_string name) {
   return uw_Basis_requestHeader(ctx, name);
 }

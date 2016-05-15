@@ -208,6 +208,10 @@ val blessEnvVar : string -> envVar
 val checkEnvVar : string -> option envVar
 val getenv : envVar -> transaction (option string)
 
+type meta
+val blessMeta : string -> meta
+val checkMeta : string -> option meta
+
 
 (** JavaScript-y gadgets *)
 
@@ -814,6 +818,7 @@ val data_attrs : data_attr -> data_attr -> data_attr
 val head : unit -> tag [Data = data_attr] html head [] []
 val title : unit -> tag [Data = data_attr] head [] [] []
 val link : unit -> tag [Data = data_attr, Id = id, Rel = string, Typ = string, Href = url, Media = string, Integrity = string, Crossorigin = string] head [] [] []
+val meta : unit -> tag [Nam = meta, Content = string, Id = id] head [] [] []
 
 datatype mouseButton = Left | Right | Middle
 

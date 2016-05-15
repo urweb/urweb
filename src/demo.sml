@@ -118,6 +118,7 @@ fun make' {prefix, dirname, guided} =
             filterRequest = #filterRequest combined @ #filterRequest urp,
             filterResponse = #filterResponse combined @ #filterResponse urp,
             filterEnv = #filterEnv combined @ #filterEnv urp,
+            filterMeta = #filterMeta combined @ #filterMeta urp,
             protocol = mergeWith #2 (#protocol combined, #protocol urp),
             dbms = mergeWith #2 (#dbms combined, #dbms urp),
             sigFile = mergeWith #2 (#sigFile combined, #sigFile urp),

@@ -59,6 +59,7 @@ type job = {
      filterRequest : Settings.rule list,
      filterResponse : Settings.rule list,
      filterEnv : Settings.rule list,
+     filterMeta : Settings.rule list,
      protocol : string option,
      dbms : string option,
      sigFile : string option,
@@ -374,6 +375,7 @@ fun institutionalizeJob (job : job) =
      Settings.setRequestHeaderRules (#filterRequest job);
      Settings.setResponseHeaderRules (#filterResponse job);
      Settings.setEnvVarRules (#filterEnv job);
+     Settings.setMetaRules (#filterMeta job);
      Option.app Settings.setProtocol (#protocol job);
      Option.app Settings.setDbms (#dbms job);
      Settings.setSafeGets (#safeGets job);
@@ -453,6 +455,7 @@ fun parseUrp' accLibs fname =
                         filterRequest = [],
                         filterResponse = [],
                         filterEnv = [],
+                        filterMeta = [],
                         protocol = NONE,
                         dbms = NONE,
                         sigFile = NONE,
@@ -574,6 +577,7 @@ fun parseUrp' accLibs fname =
                      val request = ref []
                      val response = ref []
                      val env = ref []
+                     val meta = ref []
                      val libs = ref []
                      val protocol = ref NONE
                      val dbms = ref NONE
@@ -610,6 +614,7 @@ fun parseUrp' accLibs fname =
                                  filterRequest = rev (!request),
                                  filterResponse = rev (!response),
                                  filterEnv = rev (!env),
+                                 filterMeta = rev (!meta),
                                  sources = sources,
                                  protocol = !protocol,
                                  dbms = !dbms,
@@ -667,6 +672,7 @@ fun parseUrp' accLibs fname =
                                  filterRequest = #filterRequest old @ #filterRequest new,
                                  filterResponse = #filterResponse old @ #filterResponse new,
                                  filterEnv = #filterEnv old @ #filterEnv new,
+                                 filterMeta = #filterMeta old @ #filterMeta new,
                                  sources = #sources new
                                            @ List.filter (fn s => List.all (fn s' => s' <> s) (#sources new))
                                                          (#sources old),
@@ -710,6 +716,7 @@ fun parseUrp' accLibs fname =
                            | "requestHeader" => request
                            | "responseHeader" => response
                            | "env" => env
+                           | "meta" => meta
                            | _ => (ErrorMsg.error "Bad filter kind";
                                    url)
 

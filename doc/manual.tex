@@ -139,7 +139,7 @@ For each entry \texttt{M} in the module list, the file \texttt{M.urs} is include
 
 Here is the complete list of directive forms.  ``FFI'' stands for ``foreign function interface,'' Ur's facility for interaction between Ur programs and C and JavaScript libraries.
 \begin{itemize}
-\item \texttt{[allow|deny] [url|mime|requestHeader|responseHeader|env] PATTERN} registers a rule governing which URLs, MIME types, HTTP request headers, HTTP response headers, or environment variable names are allowed to appear explicitly in this application.  The first such rule to match a name determines the verdict.  If \texttt{PATTERN} ends in \texttt{*}, it is interpreted as a prefix rule.  Otherwise, a string must match it exactly.
+\item \texttt{[allow|deny] [url|mime|requestHeader|responseHeader|env|meta] PATTERN} registers a rule governing which URLs, MIME types, HTTP request headers, HTTP response headers, environment variable names, or HTML \texttt{<meta>} names are allowed to appear explicitly in this application.  The first such rule to match a name determines the verdict.  If \texttt{PATTERN} ends in \texttt{*}, it is interpreted as a prefix rule.  Otherwise, a string must match it exactly.
 \item \texttt{alwaysInline PATH} requests that every call to the referenced function be inlined.  Section \ref{structure} explains how functions are assigned path strings.
 \item \texttt{benignEffectful Module.ident} registers an FFI function or transaction as having side effects.  The optimizer avoids removing, moving, or duplicating calls to such functions.  Every effectful FFI function must be registered, or the optimizer may make invalid transformations.  This version of the \texttt{effectful} directive registers that this function only has side effects that remain local to a single page generation.
 \item \texttt{clientOnly Module.ident} registers an FFI function or transaction that may only be run in client browsers.
@@ -1539,6 +1539,7 @@ $$\begin{array}{l}
   \mt{val} \; \mt{returnBlob} : \mt{t} ::: \mt{Type} \to \mt{blob} \to \mt{mimeType} \to \mt{transaction} \; \mt{t}
 \end{array}$$
 
+
 \subsection{SQL}
 
 Everything about SQL database access is restricted to server-side code.
@@ -2080,6 +2081,14 @@ One last useful function is for aborting any page generation, returning some XML
 $$\begin{array}{l}
   \mt{val} \; \mt{error} : \mt{t} ::: \mt{Type} \to \mt{xbody} \to \mt{t}
 \end{array}$$
+
+There is limited support for the HTML \texttt{<meta>} tag, with the following type used to control which names are allowed.
+$$\begin{array}{l}
+  \mt{type} \; \mt{meta} \\
+  \mt{val} \; \mt{blessMeta} : \mt{string} \to \mt{meta} \\
+  \mt{val} \; \mt{checkMeta} : \mt{string} \to \mt{option} \; \mt{meta}
+\end{array}$$
+Configure the policy for meta names with the \texttt{allow} and \texttt{deny} \texttt{.urp} directives.
 
 
 \subsection{Client-Side Programming}

@@ -55,6 +55,7 @@ signature COMPILER = sig
          filterRequest : Settings.rule list,
          filterResponse : Settings.rule list,
          filterEnv : Settings.rule list,
+         filterMeta : Settings.rule list,
          protocol : string option,
          dbms : string option,
          sigFile : string option,

@@ -539,6 +539,17 @@ fun exp e =
              ESome ((TFfi ("Basis", "string"), loc), (se, loc))
          else
              ENone (TFfi ("Basis", "string"), loc))
+      | EFfiApp ("Basis", "blessMeta", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
+        (if Settings.checkMeta s then
+             ()
+         else
+             ErrorMsg.errorAt loc ("Invalid string " ^ s ^ " passed to 'blessMeta'");
+         se)
+      | EFfiApp ("Basis", "checkMeta", [((se as EPrim (Prim.String (_, s)), loc), _)]) =>
+        (if Settings.checkMeta s then
+             ESome ((TFfi ("Basis", "string"), loc), (se, loc))
+         else
+             ENone (TFfi ("Basis", "string"), loc))
 
       | EFfiApp ("Basis", "checkString", [((EPrim (Prim.String (_, s)), loc), _)]) =>
         let
