@@ -388,6 +388,13 @@ uw_Basis_int uw_Basis_ceil(struct uw_context *, uw_Basis_float);
 uw_Basis_int uw_Basis_trunc(struct uw_context *, uw_Basis_float);
 uw_Basis_int uw_Basis_round(struct uw_context *, uw_Basis_float);
 
+uw_Basis_float uw_Basis_pow(struct uw_context *, uw_Basis_float, uw_Basis_float);
+uw_Basis_float uw_Basis_sqrt(struct uw_context *, uw_Basis_float);
+uw_Basis_float uw_Basis_sin(struct uw_context *, uw_Basis_float);
+uw_Basis_float uw_Basis_cos(struct uw_context *, uw_Basis_float);
+uw_Basis_float uw_Basis_log(struct uw_context *, uw_Basis_float);
+uw_Basis_float uw_Basis_exp(struct uw_context *, uw_Basis_float);
+
 uw_Basis_string uw_Basis_atom(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_css_url(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_property(struct uw_context *, uw_Basis_string);

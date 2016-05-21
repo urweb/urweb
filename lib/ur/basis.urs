@@ -153,6 +153,13 @@ val ceil : float -> int
 val trunc : float -> int
 val round : float -> int
 
+(** * Basic Math *)
+
+val sqrt : float -> float
+val sin : float -> float
+val cos : float -> float
+val log : float -> float
+val exp : float -> float
 
 (** * Time *)
 

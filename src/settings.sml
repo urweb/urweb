@@ -336,6 +336,14 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("trunc", "trunc"),
                           ("round", "round"),
 
+                          ("pow", "pow"),
+                          ("sqrt", "sqrt"),
+                          ("sin", "sin"),
+                          ("cos", "cos"),
+                          ("log", "log"),
+                          ("exp", "exp"),
+                           
+
                           ("now", "now"),
                           ("timeToString", "showTime"),
                           ("htmlifyTime", "showTimeHtml"),

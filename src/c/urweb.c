@@ -4517,6 +4517,30 @@ uw_Basis_int uw_Basis_round(uw_context ctx, uw_Basis_float n) {
   return round(n);
 }
 
+uw_Basis_float uw_Basis_pow(uw_context ctx, uw_Basis_float n, uw_Basis_float m) {
+  return pow(n,m);
+}
+
+uw_Basis_float uw_Basis_sqrt(uw_context ctx, uw_Basis_float n) {
+  return sqrt(n);
+}
+
+uw_Basis_float uw_Basis_sin(uw_context ctx, uw_Basis_float n) {
+  return sin(n);
+}
+
+uw_Basis_float uw_Basis_cos(uw_context ctx, uw_Basis_float n) {
+  return cos(n);
+}
+
+uw_Basis_float uw_Basis_log(uw_context ctx, uw_Basis_float n) {
+  return log(n);
+}
+
+uw_Basis_float uw_Basis_exp(uw_context ctx, uw_Basis_float n) {
+  return exp(n);
+}
+
 uw_Basis_string uw_Basis_atom(uw_context ctx, uw_Basis_string s) {
   char *p;
 
