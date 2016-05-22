@@ -11,4 +11,12 @@ fun main () = return <xml><body>
   {[(log 0.1)]}
   <button value="Exp of 0.1!" onclick={fn _ => alert (show (exp 0.1))}/>
   {[(exp 0.1)]}
+  <button value="asin of 0.1!" onclick={fn _ => alert (show (asin 0.1))}/>
+  {[(asin 0.1)]}
+  <button value="acos of 0.1!" onclick={fn _ => alert (show (acos 0.1))}/>
+  {[(acos 0.1)]}
+  <button value="atan of 0.1!" onclick={fn _ => alert (show (atan 0.1))}/>
+  {[(atan 0.1)]}
+  <button value="atan2 of 0.1 and -0.2!" onclick={fn _ => alert (show (atan2 0.1 -0.2))}/>
+  {[(atan2 0.1 -0.2)]}
   </body></xml>

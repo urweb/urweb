@@ -4541,6 +4541,22 @@ uw_Basis_float uw_Basis_exp(uw_context ctx, uw_Basis_float n) {
   return exp(n);
 }
 
+uw_Basis_float uw_Basis_asin(uw_context ctx, uw_Basis_float n) {
+  return asin(n);
+}
+
+uw_Basis_float uw_Basis_acos(uw_context ctx, uw_Basis_float n) {
+  return acos(n);
+}
+
+uw_Basis_float uw_Basis_atan(uw_context ctx, uw_Basis_float n) {
+  return atan(n);
+}
+
+uw_Basis_float uw_Basis_atan2(uw_context ctx, uw_Basis_float n, uw_Basis_float m) {
+  return atan2(n, m);
+}
+
 uw_Basis_string uw_Basis_atom(uw_context ctx, uw_Basis_string s) {
   char *p;
 
