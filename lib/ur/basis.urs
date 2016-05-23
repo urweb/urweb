@@ -152,6 +152,7 @@ val float : int -> float
 val ceil : float -> int
 val trunc : float -> int
 val round : float -> int
+val floor : float -> int
 
 (** * Basic Math *)
 
@@ -164,6 +165,7 @@ val asin : float -> float
 val acos : float -> float
 val atan : float -> float
 val atan2 : float -> float -> float
+val abs: float -> float
 
 (** * Time *)
 

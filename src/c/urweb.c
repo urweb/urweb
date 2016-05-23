@@ -4517,6 +4517,10 @@ uw_Basis_int uw_Basis_round(uw_context ctx, uw_Basis_float n) {
   return round(n);
 }
 
+uw_Basis_int uw_Basis_floor(uw_context ctx, uw_Basis_float n) {
+  return floor(n);
+}
+
 uw_Basis_float uw_Basis_pow(uw_context ctx, uw_Basis_float n, uw_Basis_float m) {
   return pow(n,m);
 }
@@ -4555,6 +4559,10 @@ uw_Basis_float uw_Basis_atan(uw_context ctx, uw_Basis_float n) {
 
 uw_Basis_float uw_Basis_atan2(uw_context ctx, uw_Basis_float n, uw_Basis_float m) {
   return atan2(n, m);
+}
+
+uw_Basis_float uw_Basis_abs(uw_context ctx, uw_Basis_float n) {
+  return fabs(n);
 }
 
 uw_Basis_string uw_Basis_atom(uw_context ctx, uw_Basis_string s) {
