@@ -4761,7 +4761,7 @@ uw_Sqlcache_Value *uw_Sqlcache_check(uw_context ctx, uw_Sqlcache_Cache *cache, c
   char *key = uw_Sqlcache_allocKeyBuffer(keys, numKeys);
   char *buf = key;
   time_t timeInvalid = cache->timeInvalid;
-  uw_Sqlcache_Entry *entry;
+  uw_Sqlcache_Entry *entry = NULL;
   if (numKeys == 0) {
     entry = cache->table;
     if (!entry) {
@@ -4796,7 +4796,7 @@ static void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw
   pthread_rwlock_wrlock(&cache->lockIn);
   size_t numKeys = cache->numKeys;
   time_t timeNow = uw_Sqlcache_getTimeNow(cache);
-  uw_Sqlcache_Entry *entry;
+  uw_Sqlcache_Entry *entry = NULL;
   if (numKeys == 0) {
     entry = cache->table;
     if (!entry) {
