@@ -246,7 +246,7 @@ fun oneRun args =
 
 fun send (sock, s) =
     let
-        val n = Socket.sendVec (sock, Word8VectorSlice.full (Vector.map (Word8.fromInt o ord) s))
+        val n = Socket.sendVec (sock, Word8VectorSlice.full (MLton.Word8Vector.fromPoly (Vector.map (Word8.fromInt o ord) (MLton.CharVector.toPoly s))))
     in
         if n >= size s then
             ()
@@ -272,7 +272,7 @@ val () = case CommandLine.arguments () of
                                       val s = if CharVector.exists (fn ch => ch = #"\n") buf then
                                                   ""
                                               else
-                                                  Vector.map (chr o Word8.toInt) (Socket.recvVec (sock, 1024))
+                                                  MLton.CharVector.fromPoly (Vector.map (chr o Word8.toInt) (MLton.Word8Vector.toPoly (Socket.recvVec (sock, 1024))))
                                       val s = buf ^ s
                                       val (befor, after) = Substring.splitl (fn ch => ch <> #"\n") (Substring.full s)
                                   in
@@ -345,12 +345,12 @@ val () = case CommandLine.arguments () of
                      let
                          val v = Socket.recvVec (sock, 1024)
                      in
-                         if Vector.length v = 0 then
+                         if Word8Vector.length v = 0 then
                              OS.Process.failure
                          else
                              let
-                                 val s = Vector.map (chr o Word8.toInt) v
-                                 val last = Vector.sub (v, Vector.length v - 1)
+                                 val s = MLton.CharVector.fromPoly (Vector.map (chr o Word8.toInt) (MLton.Word8Vector.toPoly v))
+                                 val last = Word8Vector.sub (v, Word8Vector.length v - 1)
                                  val (rc, s) = if last = Word8.fromInt 1 then
                                                    (SOME OS.Process.success, String.substring (s, 0, size s - 1))
                                                else if last = Word8.fromInt 2 then
