@@ -70,7 +70,7 @@ memmem(const void *b1, size_t len1, const void *b2, size_t len2)
         char *eos   = sp + len1 - len2;
 
         /* Sanity check */
-        if(!(b1 && b2 && len1 && len2))
+        if(!(b1 != NULL && b2 != NULL && len1 != 0 && len2 != 0))
                 return NULL;
 
         while (sp <= eos) {
