@@ -38,6 +38,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+// Function renamed by Adam Chlipala in 2016.
+
 #include <sys/cdefs.h>
 #if defined(LIBC_SCCS) && !defined(lint)
 __RCSID("$NetBSD$");
@@ -53,13 +55,17 @@ __RCSID("$NetBSD$");
 #endif
 
 /*
- * memmem() returns the location of the first occurence of data
+ * urweb_memmem() returns the location of the first occurence of data
  * pattern b2 of size len2 in memory block b1 of size len1 or
  * NULL if none is found.
  */
 void *
-memmem(const void *b1, size_t len1, const void *b2, size_t len2)
+urweb_memmem(const void *b1, size_t len1, const void *b2, size_t len2)
 {
+        /* Sanity check */
+        if(!(b1 != NULL && b2 != NULL && len1 != 0 && len2 != 0))
+                return NULL;
+
         /* Initialize search pointer */
         char *sp = (char *) b1;
 
@@ -68,10 +74,6 @@ memmem(const void *b1, size_t len1, const void *b2, size_t len2)
 
         /* Intialize end of search address space pointer */
         char *eos   = sp + len1 - len2;
-
-        /* Sanity check */
-        if(!(b1 != NULL && b2 != NULL && len1 != 0 && len2 != 0))
-                return NULL;
 
         while (sp <= eos) {
                 if (*sp == *pp)

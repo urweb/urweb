@@ -16,7 +16,7 @@
 
 #define MAX_RETRIES 5
 
-void *memmem(const void *b1, size_t len1, const void *b2, size_t len2);
+void *urweb_memmem(const void *b1, size_t len1, const void *b2, size_t len2);
 
 static int try_rollback(uw_context ctx, int will_retry, void *logger_data, uw_logger log_error) {
   int r = uw_rollback(ctx, will_retry);
@@ -418,7 +418,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         }
       }
 
-      part = memmem(after_sub_headers, body + body_len - after_sub_headers, boundary, boundary_len);
+      part = urweb_memmem(after_sub_headers, body + body_len - after_sub_headers, boundary, boundary_len);
       if (!part) {
         log_error(logger_data, "Missing boundary after multipart payload\n");
         return FAILED;
