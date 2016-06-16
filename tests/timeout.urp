@@ -1,0 +1,7 @@
+timeout 2
+rewrite url Timeout/*
+database dbname=test
+sql timeout.sql
+safeGet main
+
+timeout
