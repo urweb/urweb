@@ -4968,3 +4968,10 @@ void uw_Sqlcache_flush(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys) {
   }
   pthread_rwlock_unlock(&cache->lockIn);
 }
+
+int strcmp_nullsafe(const char *str1, const char *str2) {
+  if (str1)
+    return strcmp(str1, str2);
+  else
+    return 1;
+}

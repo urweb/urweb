@@ -430,4 +430,6 @@ uw_Sqlcache_Value *uw_Sqlcache_check(struct uw_context *, uw_Sqlcache_Cache *, c
 void *uw_Sqlcache_store(struct uw_context *, uw_Sqlcache_Cache *, char **, uw_Sqlcache_Value *);
 void *uw_Sqlcache_flush(struct uw_context *, uw_Sqlcache_Cache *, char **);
 
+int strcmp_nullsafe(const char *, const char *);
+
 #endif
