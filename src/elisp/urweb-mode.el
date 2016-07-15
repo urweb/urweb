@@ -395,7 +395,6 @@ This mode runs `urweb-mode-hook' just before exiting.
   ;; Treat paragraph-separators in comments as paragraph-separators.
   (set (make-local-variable 'paragraph-separate)
        (concat "\\([ \t]*\\*)?\\)?\\(" paragraph-separate "\\)"))
-  (set (make-local-variable 'require-final-newline) t)
   ;; forward-sexp-function is an experimental variable in my hacked Emacs.
   (set (make-local-variable 'forward-sexp-function) 'urweb-user-forward-sexp)
   ;; For XEmacs
