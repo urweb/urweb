@@ -1,6 +1,5 @@
 #include "config.h"
 
-#include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -8,16 +7,12 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
-#include <pthread.h>
 
-#include <openssl/crypto.h>
+#include <openssl/opensslv.h>
 #include <openssl/sha.h>
 #include <openssl/rand.h>
 
 #define PASSSIZE 4
-
-// OpenSSL locks array.  See threads(3SSL).
-static pthread_mutex_t *openssl_locks;
 
 int uw_hash_blocksize = 32;
 
@@ -32,6 +27,17 @@ static void random_password() {
     exit(1);
   }
 }
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+// We're using OpenSSL <1.1, so we need to specify threading callbacks.  See
+// threads(3SSL).
+
+#include <assert.h>
+#include <pthread.h>
+
+#include <openssl/crypto.h>
+
+static pthread_mutex_t *openssl_locks;
 
 // OpenSSL callbacks
 #ifdef PTHREAD_T_IS_POINTER
@@ -60,7 +66,7 @@ static void lock_or_unlock(const int mode, const int type, const char *file,
   }
 }
 
-void uw_init_crypto() {
+static void init_openssl() {
   int i;
   // Set up OpenSSL.
   assert(openssl_locks == NULL);
@@ -74,6 +80,18 @@ void uw_init_crypto() {
   }
   CRYPTO_THREADID_set_callback(thread_id);
   CRYPTO_set_locking_callback(lock_or_unlock);
+}
+
+#else
+// We're using OpenSSL >=1.1, which is thread-safe by default.  We don't need to
+// do anything here.
+
+static void init_openssl() {}
+
+#endif  // OPENSSL_VERSION_NUMBER < 0x10100000L
+
+void uw_init_crypto() {
+  init_openssl();
   // Prepare signatures.
   if (uw_sig_file) {
     int fd;
