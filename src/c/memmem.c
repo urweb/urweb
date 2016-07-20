@@ -80,7 +80,7 @@ urweb_memmem(const void *b1, size_t len1, const void *b2, size_t len2)
                         if (memcmp(sp, pp, len2) == 0)
                                 return sp;
 
-                        sp++;
+                sp++;
         }
 
         return NULL;
