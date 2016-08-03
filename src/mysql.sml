@@ -867,7 +867,7 @@ fun queryCommon {loc, query, cols, doCols} =
               newline,
               string "uw_error(ctx, FATAL, \"",
               string (ErrorMsg.spanToString loc),
-              string ": Error reseting statement: %s\\n%s\", ",
+              string ": Error resetting statement: %s\\n%s\", ",
               query,
               string ", mysql_error(conn->conn));",
               newline],
@@ -931,7 +931,7 @@ fun queryCommon {loc, query, cols, doCols} =
 
          string "if (mysql_stmt_reset(stmt)) uw_error(ctx, FATAL, \"",
          string (ErrorMsg.spanToString loc),
-         string ": Error reseting statement: %s\\n%s\", ",
+         string ": Error resetting statement: %s\\n%s\", ",
          query,
          string ", mysql_error(conn->conn));",
          newline,
