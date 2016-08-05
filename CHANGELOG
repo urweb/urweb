@@ -1,4 +1,13 @@
 ========
+20160805
+========
+
+- Compatibility fixes for C compilers and OpenSSL
+- Starting to change SQL functions to return results in most natural order
+  - Step 1: queryL
+- Bug fixes
+
+========
 20160621
 ========
 
