@@ -2095,6 +2095,12 @@ Configure the policy for meta names with the \texttt{allow} and \texttt{deny} \t
 
 Ur/Web supports running code on web browsers, via automatic compilation to JavaScript.
 
+The concurrency model is \emph{cooperative multithreading}.  Like with, say, POSIX threads, which uses the \emph{preemptive multithreading} model, there may be multiple threads of control active at a time.  However, unlike with preemptive multithreading, the currently running thread gets to run interrupted until a well-defined \emph{context-switch} point.  Specifically, four functions defined below are the context-switch points.  They are $\mt{sleep}$, $\mt{rpc}$, $\mt{tryRpc}$, and $\mt{recv}$.  (We explain their purposes as we come to them below.)  Additional functions added via the foreign function interface might also have context-switching behavior.  In any case, it is guaranteed that a running thread ``owns the processor'' until it calls a context-switching function, at which time we may switch to running a different thread instead.
+
+This concurrency paradigm has many nice properties.  For instance, there is almost never any need for locking or other synchronization between threads.
+
+Readers used to the standard JavaScript model may recognize this style as the natural one that we obtain by imposing a thread-based perspective on top of the usual JavaScript callback-based API.  Indeed, every context-switching Ur/Web function is implemented with an underlying JavaScript call that asks for some callback to be triggered when an event happens.
+
 \subsubsection{The Basics}
 
 All of the functions in this subsection are client-side only.
@@ -2245,7 +2251,7 @@ The $\mt{channel}$ and $\mt{send}$ operations may only be executed on the server
 
 Clients and channels live only as long as the web browser page views that they are associated with.  When a user surfs away, his client and its channels will be garbage-collected, after that user is not heard from for the timeout period.  Garbage collection deletes any database row that contains a client or channel directly.  Any reference to one of these types inside an $\mt{option}$ is set to $\mt{None}$ instead.  Both kinds of handling have the flavor of weak pointers, and that is a useful way to think about clients and channels in the database.
 
-\emph{Note}: Currently, there are known concurrency issues with multi-threaded applications that employ message-passing on top of database engines that don't support true serializable transactions.  Postgres 9.1 is the only supported engine that does this properly.
+\emph{Note}: Currently, there are known concurrency issues with multi-threaded applications that employ message-passing on top of database engines that don't support true serializable transactions.  Postgres (versions 9.1 and up) is the only supported engine that does this properly.
 
 
 \section{Ur/Web Syntax Extensions}
