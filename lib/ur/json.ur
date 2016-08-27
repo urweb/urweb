@@ -203,6 +203,48 @@ fun json_list [a] (j : json a) : json (list a) =
          FromJson = fromJ}
     end
 
+fun skipOne s =
+    let
+        fun skipOne s dquote squote brace bracket =
+            if String.length s = 0 then
+                s
+            else
+                let
+                    val ch = String.sub s 0
+                    val rest = String.suffix s 1
+                in
+                    case ch of
+                        #"\"" => skipOne rest (not dquote) squote brace bracket
+                      | #"'" => skipOne rest dquote (not squote) brace bracket
+                      | #"\\" => if String.length s >= 2 then
+                                     skipOne (String.suffix s 2) dquote squote brace bracket
+                                 else
+                                     ""
+                      | #"{" => skipOne rest dquote squote (brace + 1) bracket
+                      | #"}" => if brace = 0 then
+                                    s
+                                else
+                                    skipOne rest dquote squote (brace - 1) bracket
+
+                      | #"[" => skipOne rest dquote squote brace (bracket + 1)
+                      | #"]" =>
+                        if bracket = 0 then
+                            s
+                        else
+                            skipOne rest dquote squote brace (bracket - 1)
+
+                      | #"," =>
+                        if not dquote && not squote && brace = 0 && bracket = 0 then
+                            s
+                        else
+                            skipOne rest dquote squote brace bracket
+
+                      | _ => skipOne rest dquote squote brace bracket
+                end
+    in
+        skipOne s False False 0 0
+    end
+
 fun json_record [ts ::: {Type}] (fl : folder ts) (jss : $(map json ts)) (names : $(map (fn _ => string) ts)) : json $ts =
     {ToJson = fn r => "{" ^ @foldR3 [json] [fn _ => string] [ident] [fn _ => string]
                              (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (j : json t) name v acc =>
@@ -239,7 +281,7 @@ fun json_record [ts ::: {Type}] (fl : folder ts) (jss : $(map json ts)) (names :
                                                           in
                                                               (r' ++ {nm = r.nm}, s')
                                                           end)
-                                                  (fn _ => error <xml>Unknown JSON object field name {[name]}</xml>)
+                                                  (fn r => (r, skipOne s'))
                                                   fl jss names r
 
                                    val s' = skipSpaces s'
