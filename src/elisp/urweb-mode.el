@@ -281,7 +281,7 @@ See doc for the variable `urweb-mode-info'."
   "Face name to use for SQL keywords.")
 
 (defface font-lock-cvariable-face
-  '((t (:foreground "dark blue")))
+  '((t (:inherit font-lock-type-face)))
   "Font Lock mode face used to highlight capitalized identifiers."
   :group 'font-lock-highlighting-faces)
 (defvar font-lock-cvariable-face 'font-lock-cvariable-face
