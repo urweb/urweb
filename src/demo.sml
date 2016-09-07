@@ -33,7 +33,7 @@ fun make' {prefix, dirname, guided} =
     let
         val prose = OS.Path.joinDirFile {dir = dirname,
                                          file = "prose"}
-        val inf = TextIO.openIn prose
+        val inf = FileIO.txtOpenIn prose
 
         val outDir = OS.Path.concat (dirname, "out")
 
@@ -351,7 +351,7 @@ fun make' {prefix, dirname, guided} =
                                      SOME "urp" =>
                                      doit (fn (src, html) =>
                                               let
-                                                  val inf = TextIO.openIn src
+                                                  val inf = FileIO.txtOpenIn src
                                                   val out = TextIO.openOut html
 
                                                   fun loop () =

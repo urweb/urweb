@@ -254,7 +254,8 @@ fun send (sock, s) =
             send (sock, String.extract (s, n, NONE))
     end
 
-val () = case CommandLine.arguments () of
+val () = (Globals.setResetTime ();
+          case CommandLine.arguments () of
              ["daemon", "start"] =>
              (case Posix.Process.fork () of
                   SOME _ => ()
@@ -376,4 +377,4 @@ val () = case CommandLine.arguments () of
                  else
                      (OS.FileSys.remove socket;
                       raise OS.SysErr ("", NONE))
-             end handle OS.SysErr _ => OS.Process.exit (oneRun args)
+             end handle OS.SysErr _ => OS.Process.exit (oneRun args))
