@@ -11,8 +11,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdarg.h>
-#include <error.h>
-#include <errno.h>
 
 #include <pthread.h>
 
