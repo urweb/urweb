@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <error.h>
+#include <errno.h>
 
 #include <pthread.h>
 
@@ -328,7 +330,7 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in6 my_addr;
   struct sockaddr_in6 their_addr; // connector's address information
   socklen_t sin_size;
-  int yes = 1, uw_port = 8080, nthreads = 1, i, *names, opt;
+  int yes = 1, no = 0, uw_port = 8080, nthreads = 1, i, *names, opt;
   int recv_timeout_sec = 5;
  
   signal(SIGINT, sigint);
@@ -422,6 +424,11 @@ int main(int argc, char *argv[]) {
 
   if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0) {
     fprintf(stderr, "Listener socket option setting failed\n");
+    return 1;
+  }
+
+  if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(int)) < 0) {
+    fprintf(stderr, "Listener IPV6_V6ONLY option resetting failed\n");
     return 1;
   }
 
