@@ -844,7 +844,7 @@ fun noMime () =
 
 fun readMimeTypes () =
     let
-        val inf = TextIO.openIn "/etc/mime.types"
+        val inf = FileIO.txtOpenIn "/etc/mime.types"
 
         fun loop m =
             case TextIO.inputLine inf of
@@ -914,7 +914,7 @@ fun addFile {Uri, LoadFromFilename} =
                 ErrorMsg.error ("Two different files requested for URI " ^ Uri ^ " ( " ^ path' ^ " vs. " ^ path ^ ")")
           | NONE =>
             let
-                val inf = BinIO.openIn path
+                val inf = FileIO.binOpenIn path
             in
                 files := SM.insert (!files,
                                     Uri,
@@ -937,7 +937,7 @@ val jsFiles = ref (SM.empty : {Filename : string, Content : string} SM.map)
 fun addJsFile LoadFromFilename =
     let
         val path = OS.Path.concat (!filePath, LoadFromFilename)
-        val inf = TextIO.openIn path
+        val inf = FileIO.txtOpenIn path
     in
         jsFiles := SM.insert (!jsFiles,
                               path,
@@ -952,7 +952,8 @@ fun addJsFile LoadFromFilename =
 fun listJsFiles () = SM.listItems (!jsFiles)
 
 fun reset () =
-    (urlPrefixFull := "/";
+    (Globals.setResetTime ();
+     urlPrefixFull := "/";
      urlPrefix := "/";
      urlPrePrefix := "";
      timeout := 0;

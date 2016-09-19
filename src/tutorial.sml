@@ -38,7 +38,7 @@ fun readAll inf =
         before TextIO.closeIn inf
     end
 
-val readAllFile = readAll o TextIO.openIn
+val readAllFile = readAll o FileIO.txtOpenIn
 
 fun fixupFile (fname, title) =
     let
@@ -154,7 +154,7 @@ fun fixupFile (fname, title) =
 
 fun doUr fname =
     let
-        val inf = TextIO.openIn fname
+        val inf = FileIO.txtOpenIn fname
 
         val title = case TextIO.inputLine inf of
                         NONE => raise Fail ("No title comment at start of " ^ fname)

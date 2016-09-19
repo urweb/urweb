@@ -1,6 +1,9 @@
 $(SRC)/config.sig
 config.sml
 
+$(SRC)/globals.sig
+$(SRC)/globals.sml
+
 $(SRC)/search.sig
 $(SRC)/search.sml
 
@@ -15,6 +18,9 @@ $(SRC)/errormsg.sml
 
 $(SRC)/print.sig
 $(SRC)/print.sml
+
+$(SRC)/fileio.sig
+$(SRC)/fileio.sml
 
 $(SRC)/settings.sig
 $(SRC)/settings.sml
@@ -226,6 +232,9 @@ $(SRC)/sigcheck.sig
 $(SRC)/sigcheck.sml
 
 $(SRC)/mono_inline.sml
+
+$(SRC)/sha1.sig
+$(SRC)/sha1.sml
 
 $(SRC)/cjr.sml
 

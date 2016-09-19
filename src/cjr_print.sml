@@ -55,6 +55,8 @@ structure CM = BinaryMapFn(struct
 
 val debug = ref false
 
+val app_js = ref ""
+
 val dummyTyp = (TDatatype (Enum, 0, ref []), ErrorMsg.dummySpan)
 
 val ident = String.translate (fn #"'" => "PRIME"
@@ -2509,9 +2511,15 @@ fun p_decl env (dAll as (d, loc) : decl) =
       | DDatabase _ => box []
       | DPreparedStatements _ => box []
 
-      | DJavaScript s => box [string "static char jslib[] = \"",
-                              string (Prim.toCString s),
-                              string "\";"]
+      | DJavaScript s =>
+        let
+            val () = app_js := OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
+                                                    file = "app." ^ SHA1.bintohex (SHA1.hash s) ^ ".js"}
+        in
+            box [string "static char jslib[] = \"",
+                 string (Prim.toCString s),
+                 string "\";"]
+        end
       | DCookie s => box [string "/*",
                           space,
                           string "cookie",
@@ -2948,15 +2956,11 @@ fun p_file env (ds, ps) =
                               newline]
             end
 
-        val timestamp = LargeInt.toString (Time.toMilliseconds (Time.now ()))
-        val app_js = OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
-                                          file = "app." ^ timestamp ^ ".js"}
-
-        val allScripts =
+        fun allScripts () =
             foldl (fn (x, scripts) =>
                       scripts
                       ^ "<script type=\\\"text/javascript\\\" src=\\\"" ^ x ^ "\\\"></script>\\n")
-                  "" (Settings.getScripts () @ [app_js])
+                  "" (Settings.getScripts () @ [!app_js])
 
         fun p_page (ek, s, n, ts, ran, side, dbmode, tellSig) =
             let
@@ -3098,7 +3102,7 @@ fun p_file env (ds, ps) =
                                         val scripts =
                                             case side of
                                                 ServerOnly => ""
-                                              | _ => allScripts
+                                              | _ => allScripts ()
                                     in
                                         string scripts
                                     end,
@@ -3306,8 +3310,7 @@ fun p_file env (ds, ps) =
 
         val onError = ListUtil.search (fn (DOnError n, _) => SOME n | _ => NONE) ds
 
-        val now = Time.now ()
-        val nowD = Date.fromTimeUniv now
+        val lastMod = Date.fromTimeUniv (FileIO.mostRecentModTime ())
         val rfcFmt = "%a, %d %b %Y %H:%M:%S GMT"
 
         fun hexifyByte (b : Word8.word) : string =
@@ -3496,26 +3499,26 @@ fun p_file env (ds, ps) =
 
              string "static void uw_handle(uw_context ctx, char *request) {",
              newline,
+             string "uw_Basis_string ims = uw_Basis_requestHeader(ctx, \"If-modified-since\");",
+             newline,
+             string ("if (ims && !strcmp(ims, \"" ^ Date.fmt rfcFmt lastMod ^ "\")) {"),
+             newline,
+             box [string "uw_clear_headers(ctx);",
+                  newline,
+                  string "uw_write_header(ctx, uw_supports_direct_status ? \"HTTP/1.1 304 Not Modified\\r\\n\" : \"Status: 304 Not Modified\\r\\n\");",
+                  newline,
+                  string "return;",
+                  newline],
+             string "}",
+             newline,
+             newline,
              string "if (!strcmp(request, \"",
-             string app_js,
+             string (!app_js),
              string "\")) {",
              newline,
-             box [string "uw_Basis_string ims = uw_Basis_requestHeader(ctx, \"If-modified-since\");",
+             box [string "uw_write_header(ctx, \"Content-Type: text/javascript\\r\\n\");",
                   newline,
-                  string ("if (ims && !strcmp(ims, \"" ^ Date.fmt rfcFmt nowD ^ "\")) {"),
-                  newline,
-                  box [string "uw_clear_headers(ctx);",
-                       newline,
-                       string "uw_write_header(ctx, uw_supports_direct_status ? \"HTTP/1.1 304 Not Modified\\r\\n\" : \"Status: 304 Not Modified\\r\\n\");",
-                       newline,
-                       string "return;",
-                       newline],
-                  string "}",
-                  newline,
-                  newline,
-                  string "uw_write_header(ctx, \"Content-Type: text/javascript\\r\\n\");",
-                  newline,
-                  string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt nowD ^ "\\r\\n\");"),
+                  string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt lastMod ^ "\\r\\n\");"),
                   newline,
                   string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),
                   newline,
@@ -3538,7 +3541,7 @@ fun p_file env (ds, ps) =
                                                                    string (String.toCString ct),
                                                                    string "\\r\\n\");",
                                                                    newline]),
-                                              string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt (Date.fromTimeUniv (#LastModified r)) ^ "\\r\\n\");"),
+                                              string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt lastMod ^ "\\r\\n\");"),
                                               newline,
                                               string ("uw_write_header(ctx, \"Content-Length: " ^ Int.toString (Word8Vector.length (#Bytes r)) ^ "\\r\\n\");"),
                                               newline,
@@ -3634,7 +3637,7 @@ fun p_file env (ds, ps) =
                                 newline,
                                 if !hasJs then
                                     box [string "uw_set_script_header(ctx, \"",
-                                         string allScripts,
+                                         string (allScripts ()),
                                          string "\");",
                                          newline]
                                 else

@@ -275,7 +275,7 @@ fun p_decl env d =
 
         fun readFromFile () =
             let
-                val inf = TextIO.openIn fname
+                val inf = FileIO.txtOpenIn fname
 
                 fun loop acc =
                     case TextIO.inputLine inf of
