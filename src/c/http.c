@@ -325,19 +325,18 @@ static void sigint(int signum) {
 int main(int argc, char *argv[]) {
   // The skeleton for this function comes from Beej's sockets tutorial.
   int sockfd;  // listen on sock_fd
-  struct sockaddr_in my_addr;
-  struct sockaddr_in their_addr; // connector's address information
+  struct sockaddr_in6 my_addr;
+  struct sockaddr_in6 their_addr; // connector's address information
   socklen_t sin_size;
-  int yes = 1, uw_port = 8080, nthreads = 1, i, *names, opt;
+  int yes = 1, no = 0, uw_port = 8080, nthreads = 1, i, *names, opt;
   int recv_timeout_sec = 5;
  
   signal(SIGINT, sigint);
   signal(SIGPIPE, SIG_IGN); 
 
-  my_addr.sin_addr.s_addr = INADDR_ANY; // auto-fill with my IP
-  memset(my_addr.sin_zero, '\0', sizeof my_addr.sin_zero);
+  my_addr.sin6_addr = in6addr_any; // auto-fill with my IP
 
-  while ((opt = getopt(argc, argv, "hp:a:t:kqT:")) != -1) {
+  while ((opt = getopt(argc, argv, "hp:a:A:t:kqT:")) != -1) {
     switch (opt) {
     case '?':
       fprintf(stderr, "Unknown command-line option\n");
@@ -358,8 +357,21 @@ int main(int argc, char *argv[]) {
       break;
 
     case 'a':
-      if (!inet_pton(AF_INET, optarg, &my_addr.sin_addr)) {
-        fprintf(stderr, "Invalid IP address\n");
+      {
+        char *buf = alloca(strlen(optarg) + 8);
+        strcpy(buf, "::FFFF:");
+        strcpy(buf + 7, optarg);
+        if (!inet_pton(AF_INET6, buf, &my_addr.sin6_addr)) {
+          fprintf(stderr, "Invalid IPv4 address\n");
+          help(argv[0]);
+          return 1;
+        }
+      }
+      break;
+
+    case 'A':
+      if (!inet_pton(AF_INET6, optarg, &my_addr.sin6_addr)) {
+        fprintf(stderr, "Invalid IPv6 address\n");
         help(argv[0]);
         return 1;
       }
@@ -401,7 +413,7 @@ int main(int argc, char *argv[]) {
 
   names = calloc(nthreads, sizeof(int));
 
-  sockfd = socket(PF_INET, SOCK_STREAM, 0); // do some error checking!
+  sockfd = socket(AF_INET6, SOCK_STREAM, 0); // do some error checking!
 
   if (sockfd < 0) {
     fprintf(stderr, "Listener socket creation failed\n");
@@ -413,8 +425,13 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  my_addr.sin_family = AF_INET;         // host byte order
-  my_addr.sin_port = htons(uw_port);    // short, network byte order
+  if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(int)) < 0) {
+    fprintf(stderr, "Listener IPV6_V6ONLY option resetting failed\n");
+    return 1;
+  }
+
+  my_addr.sin6_family = AF_INET6;        // host byte order
+  my_addr.sin6_port = htons(uw_port);    // short, network byte order
 
   if (bind(sockfd, (struct sockaddr *)&my_addr, sizeof my_addr) < 0) {
     fprintf(stderr, "Listener socket bind failed\n");
