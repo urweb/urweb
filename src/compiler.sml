@@ -485,6 +485,8 @@ fun parseUrp' accLibs fname =
                      fun hasSpaceLine () =
                          case inputCommentableLine inf of
                              Content s => s = "debug" orelse s = "profile"
+                                          orelse s = "html5" orelse s = "xhtml"
+                                          orelse s = "noMangleSql" orelse s = "lessSafeFfi"
                                           orelse CharVector.exists (fn ch => ch = #" " orelse ch = #"\t") s orelse hasSpaceLine ()
                            | EndOfFile => false
                            | OnlyComment => hasSpaceLine ()
@@ -890,6 +892,7 @@ fun parseUrp' accLibs fname =
                                    | "timeFormat" => Settings.setTimeFormat arg
                                    | "noMangleSql" => Settings.setMangleSql false
                                    | "html5" => Settings.setIsHtml5 true
+                                   | "xhtml" => Settings.setIsHtml5 false
                                    | "lessSafeFfi" => Settings.setLessSafeFfi true
 
                                    | "file" =>

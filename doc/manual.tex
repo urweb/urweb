@@ -151,7 +151,7 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
 \item \texttt{exe FILENAME} sets the filename to which to write the output executable.  The default for file \texttt{P.urp} is \texttt{P.exe}.
 \item \texttt{file URI FILENAME} asks for the application executable to respond to requests for \texttt{URI} by serving a snapshot of the contents of \texttt{FILENAME} as of compile time.  That is, the file contents are baked into the executable.  System file \texttt{/etc/mime.types} is consulted (again, at compile time) to figure out the right MIME type to suggest in the HTTP response.
 \item \texttt{ffi FILENAME} reads the file \texttt{FILENAME.urs} to determine the interface to a new FFI module.  The name of the module is calculated from \texttt{FILENAME} in the same way as for normal source files.  See the files \texttt{include/urweb/urweb\_cpp.h} and \texttt{src/c/urweb.c} for examples of C headers and implementations for FFI modules.  In general, every type or value \texttt{Module.ident} becomes \texttt{uw\_Module\_ident} in C.
-\item \texttt{html5} activates work-in-progress support for generating HTML5 instead of XHTML.  For now, this option only affects the first few tokens on any page, which are always the same.
+\item \texttt{html5} asks to generate HTML5 code, which primarily affects the first few lines of the output documents, like the \texttt{DOCTYPE}.  This option is on by default.
 \item \texttt{include FILENAME} adds \texttt{FILENAME} to the list of files to be \texttt{\#include}d in C sources.  This is most useful for interfacing with new FFI modules.
 \item \texttt{jsFile FILENAME} asks to serve the contents of a file as JavaScript.  All such content is concatenated into a single file, included via a \texttt{<script>} tag on every page that needs client-side scripting.
 \item \texttt{jsFunc Module.ident=name} gives the JavaScript name of an FFI value.
@@ -192,6 +192,7 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
 \item \texttt{sql FILENAME} sets where to write an SQL file with the commands to create the expected database schema.  The default is not to create such a file.
 \item \texttt{timeFormat FMT} accepts a time format string, as processed by the POSIX C function \texttt{strftime()}.  This controls the default rendering of $\mt{time}$ values, via the $\mt{show}$ instance for $\mt{time}$.
 \item \texttt{timeout N} sets to \texttt{N} seconds the amount of time that the generated server will wait after the last contact from a client before determining that that client has exited the application.  Clients that remain active will take the timeout setting into account in determining how often to ping the server, so it only makes sense to set a high timeout to cope with browser and network delays and failures.  Higher timeouts can lead to more unnecessary client information taking up memory on the server.  The timeout goes unused by any page that doesn't involve the \texttt{recv} function, since the server only needs to store per-client information for clients that receive asynchronous messages.
+\item \texttt{xhtml} asks to generate XHTML code, which primarily affects the first few lines of the output documents, like the \texttt{DOCTYPE}.
 \end{itemize}
 
 

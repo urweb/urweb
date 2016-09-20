@@ -818,7 +818,7 @@ fun mangleSqlCatalog s =
         else
             lowercase s
 
-val html5 = ref false
+val html5 = ref true
 fun setIsHtml5 b = html5 := b
 fun getIsHtml5 () = !html5
 
