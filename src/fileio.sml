@@ -3,9 +3,14 @@ structure FileIO :> FILE_IO = struct
 val mostRecentModTimeRef = ref (Time.zeroTime)
 
 fun checkFileModTime fname =
-  let val mtime = OS.FileSys.modTime fname in
-      if Time.compare (mtime, !mostRecentModTimeRef) = GREATER andalso
-         Time.compare (mtime, Globals.getResetTime ()) = LESS
+  let
+      val mtime = OS.FileSys.modTime fname
+      val mostRecentMod = !mostRecentModTimeRef
+      val resetTime = Globals.getResetTime ()
+      fun lessThan (a, b) = LargeInt.compare (Time.toSeconds a, Time.toSeconds b) = LESS
+      infix lessThan
+  in
+      if mostRecentMod lessThan mtime andalso mtime lessThan resetTime
       then mostRecentModTimeRef := mtime
       else ()
   end
