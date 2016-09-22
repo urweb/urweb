@@ -314,7 +314,7 @@ static void *worker(void *data) {
 }
 
 static void help(char *cmd) {
-  printf("Usage: %s [-p <port>] [-a <IP address>] [-t <thread count>] [-k] [-q] [-T SEC]\nThe '-k' option turns on HTTP keepalive.\nThe '-q' option turns off some chatter on stdout.\nThe '-T' option sets socket recv timeout (0 disables timeout, default is 5 sec).\n", cmd);
+  printf("Usage: %s [-p <port>] [-a <IPv4 address>] [-A <IPv6 address>] [-t <thread count>] [-k] [-q] [-T SEC]\nThe '-k' option turns on HTTP keepalive.\nThe '-q' option turns off some chatter on stdout.\nThe '-T' option sets socket recv timeout (0 disables timeout, default is 5 sec).\n", cmd);
 }
 
 static void sigint(int signum) {
