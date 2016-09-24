@@ -126,6 +126,10 @@ val mapUX : tf :: Type -> ctx :: {Unit}
             -> (nm :: Name -> rest :: {Unit} -> [[nm] ~ rest] =>
                 tf -> xml ctx [] [])
             -> r ::: {Unit} -> folder r -> $(mapU tf r) -> xml ctx [] []
+val mapUX_rev : tf :: Type -> ctx :: {Unit}
+                -> (nm :: Name -> rest :: {Unit} -> [[nm] ~ rest] =>
+                    tf -> xml ctx [] [])
+                -> r ::: {Unit} -> folder r -> $(mapU tf r) -> xml ctx [] []
 
 (* Generate some XML by mapping over a heterogenously-typed record *)
 val mapX : K --> tf :: (K -> Type) -> ctx :: {Unit}

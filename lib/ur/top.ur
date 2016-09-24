@@ -179,6 +179,13 @@ fun mapUX [tf :: Type] [ctx :: {Unit}]
           <xml>{f [nm] [rest] r}{acc}</xml>)
       <xml/>
 
+fun mapUX_rev [tf :: Type] [ctx :: {Unit}]
+          (f : nm :: Name -> rest :: {Unit} -> [[nm] ~ rest] => tf -> xml ctx [] []) =
+    @@foldR [fn _ => tf] [fn _ => xml ctx [] []]
+      (fn [nm :: Name] [u :: Unit] [rest :: {Unit}] [[nm] ~ rest] r acc =>
+          <xml>{acc}{f [nm] [rest] r}</xml>)
+      <xml/>
+
 fun mapX [K] [tf :: K -> Type] [ctx :: {Unit}]
             (f : nm :: Name -> t :: K -> rest :: {K}
                  -> [[nm] ~ rest] =>
