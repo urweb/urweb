@@ -37,12 +37,7 @@ fun main () =
                 val cons = Cons {Data = data, NewData = ndata, Tail = tail'}
             in
                 set tail cons;
-                set tailP tail';
-
-                head' <- get head;
-                case head' of
-                    Nil => set head cons
-                  | _ => return ()
+                set tailP tail'
             end
     in
         return <xml><body>
