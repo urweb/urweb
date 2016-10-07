@@ -38,6 +38,38 @@ structure SM = BinaryMapFn(struct
                            val compare = String.compare
                            end)
 
+structure UnionFind :> sig
+              type t
+              val empty : t
+              val equate : t * int * int -> t
+              val equal : t * int * int -> bool
+              val rep : t * int -> int
+          end = struct
+
+type t = int IM.map
+
+val empty = IM.empty
+
+fun rep (t, n) =
+    case IM.find (t, n) of
+        NONE => n
+      | SOME n' => rep (t, n')
+
+fun equate (t, n1, n2) =
+    let
+        val r1 = rep (t, n1)
+        val r2 = rep (t, n2)
+    in
+        if r1 = r2 then
+            t
+        else
+            IM.insert (t, r1, r2)
+    end
+
+fun equal (t, n1, n2) = rep (t, n1) = rep (t, n2)
+
+end
+
 fun kind (k, s) = (k, s)
 fun con (c, s) = (c, s)
 
@@ -45,7 +77,7 @@ fun both (loc, f) = (ErrorMsg.errorAt loc ("Function " ^ f ^ " needed for multip
                      TextIO.output (TextIO.stdErr,
                                     "Make sure that the signature of the containing module hides any form/RPC handlers.\n"))
 
-fun exp env (e, s) =
+fun exp uf env (e, s) =
     let
         fun tagIt (e, ek : export_kind, newAttr, (count, tags, byTag, newTags)) =
             let
@@ -74,13 +106,15 @@ fun exp env (e, s) =
                     (e, (count, tags, byTag, newTags))
                 else
                     let
+                        val f = UnionFind.rep (uf, f)
+
                         val (cn, count, tags, newTags) =
                             case IM.find (tags, f) of
                                 NONE =>
                                 (count, count + 1, IM.insert (tags, f, count),
                                  (ek, f, count) :: newTags)
                               | SOME cn => (cn, count, tags, newTags)
-                                           
+
                         val (_, _, _, s) = E.lookupENamed env f
 
                         val byTag = case SM.find (byTag, s) of
@@ -217,20 +251,20 @@ fun tag file =
     let
         val count = U.File.maxName file
 
-        fun doDecl (d as (d', loc), (env, count, tags, byTag)) =
+        fun doDecl (d as (d', loc), (env, count, tags, byTag, uf)) =
             case d' of
                 DExport (ek, n, _) =>
                 let
                     val (_, _, _, s) = E.lookupENamed env n
                 in
                     case SM.find (byTag, s) of
-                        NONE => ([d], (env, count, tags, byTag))
+                        NONE => ([d], (env, count, tags, byTag, uf))
                       | SOME (ek', n') =>
                         (if ek = ek' then
                              ()
                          else
                              both (loc, s);
-                         ([], (env, count, tags, byTag)))
+                         ([], (env, count, tags, byTag, uf)))
                 end
               | _ =>
                 let
@@ -242,7 +276,7 @@ fun tag file =
                     val (d, (count, tags, byTag, newTags)) =
                         U.Decl.foldMap {kind = kind,
                                         con = con,
-                                        exp = exp env'',
+                                        exp = exp uf env'',
                                         decl = decl}
                                        (count, tags, byTag, []) d
 
@@ -306,11 +340,15 @@ fun tag file =
                     val ds = case d of
                                  (DValRec vis, _) => [(DValRec (vis @ newVals), loc)]
                                | _ => map (fn vi => (DVal vi, loc)) newVals @ [d]
+
+                    val uf = case d' of
+                                 DVal (_, n1, _, (ENamed n2, _), _) => UnionFind.equate (uf, n1, n2)
+                                 | _ => uf
                 in
-                    (ds @ newExports, (env, count, tags, byTag))
+                    (ds @ newExports, (env, count, tags, byTag, uf))
                 end
 
-        val (file, _) = ListUtil.foldlMapConcat doDecl (CoreEnv.empty, count+1, IM.empty, SM.empty) file
+        val (file, _) = ListUtil.foldlMapConcat doDecl (CoreEnv.empty, count+1, IM.empty, SM.empty, UnionFind.empty) file
     in
         file
     end
