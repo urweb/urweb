@@ -37,7 +37,7 @@ The following files are created during the compile process:
 
 <h6>Migrate the Database</h6>
 <p>
-When we compiled the demo in the above step, a demo.sql file was created for us which contains all the information required to create a database congruent with the demo web app.  The below command will provision our sqlite database.  Also of interest is the file <tt>demo.urp</tt> which contains a <tt>database</tt> line with the PostgreSQL database that the demo web server will try to connect to if database information isn't provided as command line arguments when the webapp is compiled.
+When we compiled the demo in the above step, a demo.sql file was created for us which contains all the information required to create a database congruent with the demo web app.  The below command will provision our sqlite database.  To see an example of where a database table is defined in source code, check out <tt>demo/crud1.ur</tt>.  Also of interest is the file <tt>demo.urp</tt> which contains a <tt>database</tt> line with the PostgreSQL database that the demo web server will try to connect to if database information isn't provided as command line arguments when the webapp is compiled.
 
 <blockquote><pre>$ sqlite3 /path/to/database/file &lt;demo/demo.sql
 </blockquote></pre>
