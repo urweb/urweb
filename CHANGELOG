@@ -1,4 +1,17 @@
 ========
+20161022
+========
+
+- Add Json module to standard library
+- Make HTML5 the default and add 'xhtml' .urp directive
+- Remove 'Value' attributes for AJAX-y UI widgets, because they should use 'Source' instead
+- Change compiler to support reproducible builds, via replacement of timestamp
+  calculation with different methods or use of content hashes
+- IPv6 support in HTTP-server binaries, via '-A' command-line option
+- New Top function: mapUX_rev
+- Bug fixes and documentation improvements
+
+========
 20160805
 ========
 
