@@ -1,5 +1,7 @@
 #include "config.h"
 
+#include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -19,6 +21,8 @@
 #include "queue.h"
 
 #include "fastcgi.h"
+
+#define THREAD_LOCAL __thread
 
 extern uw_app uw_application;
 
@@ -43,6 +47,21 @@ typedef struct {
   FCGI_Record r;
   int available, used, sock;
 } FCGI_Input;
+
+// The FastCGI request ID corresponding to the request being handled by the
+// current worker thread.  (Each worker thread can only handle one request at a
+// time.)
+static THREAD_LOCAL int current_request_id;
+
+// Reads the FastCGI request ID from a FastCGI record.  The result is guaranteed
+// to be in the range [0, 2^16); this function returns an int to avoid C type
+// promotion insanity.
+static int fastcgi_request_id(const FCGI_Record* const r) {
+  const int requestid = r->requestIdB1 << 8 | r->requestIdB0;
+  assert(requestid >= 0);
+  assert(requestid <= UINT16_MAX);
+  return requestid;
+}
 
 static FCGI_Output *fastcgi_output() {
   FCGI_Output *o = malloc(sizeof(FCGI_Output));
@@ -70,7 +89,9 @@ static int fastcgi_send(FCGI_Output *o,
                         unsigned char type,
                         unsigned short contentLength) {
   o->r.type = type;
-  o->r.requestIdB1 = o->r.requestIdB0 = 0;
+  assert(current_request_id <= UINT16_MAX);
+  o->r.requestIdB1 = current_request_id >> 8;
+  o->r.requestIdB0 = current_request_id & 0x000000ff;
   o->r.contentLengthB1 = contentLength >> 8;
   o->r.contentLengthB0 = contentLength & 255;
   return uw_really_send(o->sock, &o->r, sizeof(o->r) - 65535 + contentLength);
@@ -356,6 +377,10 @@ static void *worker(void *data) {
       goto done;
     }
 
+    // Save the FastCGI request ID this worker is handling so that fastcgi_send
+    // can include it in its response.
+    current_request_id = fastcgi_request_id(r);
+
     if (r->type != FCGI_BEGIN_REQUEST) {
       write_stderr(out, "First message is not BEGIN_REQUEST\n");
       goto done;
@@ -371,6 +396,15 @@ static void *worker(void *data) {
       if (!(r = fastcgi_recv(in))) {
         write_stderr(out, "Error receiving environment variables\n");
         goto done;
+      }
+
+      if (fastcgi_request_id(r) != current_request_id) {
+        write_stderr(out,
+                     "Ignoring environment variables for request %d (current"
+                     " request has id %d)\n",
+                     fastcgi_request_id(r),
+                     current_request_id);
+        continue;
       }
 
       if (r->type != FCGI_PARAMS) {
@@ -426,6 +460,15 @@ static void *worker(void *data) {
       if (!(r = fastcgi_recv(in))) {
         write_stderr(out, "Error receiving STDIN\n");
         goto done;
+      }
+
+      if (fastcgi_request_id(r) != current_request_id) {
+        write_stderr(out,
+                     "Ignoring STDIN for request %d (current request has id"
+                     " %d)\n",
+                     fastcgi_request_id(r),
+                     current_request_id);
+        continue;
       }
 
       if (r->type != FCGI_STDIN) {
