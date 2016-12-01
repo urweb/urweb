@@ -341,6 +341,7 @@ int main(int argc, char *argv[]) {
   signal(SIGPIPE, SIG_IGN); 
 
   // default if not specified: IPv4 with my IP
+  memset(&my_addr, 0, sizeof my_addr);
   my_addr.sa.sa_family = AF_INET;
   my_addr.ipv4.sin_addr.s_addr = INADDR_ANY; // auto-fill with my IP
 
