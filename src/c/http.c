@@ -333,7 +333,7 @@ int main(int argc, char *argv[]) {
   int sockfd;  // listen on sock_fd
   union uw_sockaddr my_addr;
   union uw_sockaddr their_addr; // connector's address information
-  socklen_t sin_size;
+  socklen_t my_size = 0, sin_size;
   int yes = 1, uw_port = 8080, nthreads = 1, i, *names, opt;
   int recv_timeout_sec = 5;
  
@@ -433,11 +433,18 @@ int main(int argc, char *argv[]) {
 
   switch (my_addr.sa.sa_family)
   {
-  case AF_INET:  my_addr.ipv4.sin_port  = htons(uw_port); break;
-  case AF_INET6: my_addr.ipv6.sin6_port = htons(uw_port); break;
+  case AF_INET:
+    /*my_addr.ipv4.sin_len =*/ my_size = sizeof(my_addr.ipv4);
+    my_addr.ipv4.sin_port = htons(uw_port);
+    break;
+
+  case AF_INET6:
+    /*my_addr.ipv6.sin6_len =*/ my_size = sizeof(my_addr.ipv6);
+    my_addr.ipv6.sin6_port = htons(uw_port);
+    break;
   }
 
-  if (bind(sockfd, &my_addr.sa, sizeof my_addr) < 0) {
+  if (bind(sockfd, &my_addr.sa, my_size) < 0) {
     fprintf(stderr, "Listener socket bind failed\n");
     return 1;
   }
