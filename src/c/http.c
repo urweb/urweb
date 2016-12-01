@@ -434,12 +434,12 @@ int main(int argc, char *argv[]) {
   switch (my_addr.sa.sa_family)
   {
   case AF_INET:
-    /*my_addr.ipv4.sin_len =*/ my_size = sizeof(my_addr.ipv4);
+    my_size = sizeof(my_addr.ipv4);
     my_addr.ipv4.sin_port = htons(uw_port);
     break;
 
   case AF_INET6:
-    /*my_addr.ipv6.sin6_len =*/ my_size = sizeof(my_addr.ipv6);
+    my_size = sizeof(my_addr.ipv6);
     my_addr.ipv6.sin6_port = htons(uw_port);
     break;
   }
