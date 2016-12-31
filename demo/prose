@@ -1,8 +1,9 @@
-<p><b>Ur/Web</b> is a domain-specific language for programming web applications backed by SQL databases.  It is (strongly) statically-typed (like ML and Haskell) and purely functional (like Haskell).  <b>Ur</b> is the base language, and the web-specific features of Ur/Web (mostly) come only in the form of special rules for parsing and optimization.  The Ur core looks a lot like <a href="http://sml.sourceforge.net/">Standard ML</a>, with a few <a href="http://www.haskell.org/">Haskell</a>-isms added, and kinder, gentler versions added of many features from dependently-typed languages like the logic behind <a href="http://coq.inria.fr/">Coq</a>.  The type system is much more expressive than in ML and Haskell, such that well-typed web applications cannot "go wrong," not just in handling single HTTP requests, but across their entire lifetimes of interacting with HTTP clients.  Beyond that, Ur is unusual in using ideas from dependent typing to enable very effective metaprogramming, or programming with explicit analysis of type structure.  Many common web application components can be built by Ur/Web functions that operate on types, where it seems impossible to achieve similar code re-use in more established statically-typed languages.</p>
+<p><b>Ur/Web</b> is a domain-specific language for programming web applications backed by SQL databases.  It is (strongly) statically typed (like ML and Haskell) and purely functional (like Haskell).  <b>Ur</b> is the base language, and the web-specific features of Ur/Web (mostly) come only in the form of special rules for parsing and optimization.  The Ur core looks a lot like <a href="http://sml.sourceforge.net/">Standard ML</a>, with a few <a href="http://www.haskell.org/">Haskell</a>-isms added, and kinder, gentler versions added of many features from dependently typed languages like the logic behind <a href="http://coq.inria.fr/">Coq</a>.  The type system is much more expressive than in ML and Haskell, such that well-typed web applications cannot "go wrong," not just in handling single HTTP requests, but across their entire lifetimes of interacting with HTTP clients.  Beyond that, Ur is unusual in using ideas from dependent typing to enable very effective metaprogramming, or programming with explicit analysis of type structure.  Many common web application components can be built by Ur/Web functions that operate on types, where it seems impossible to achieve similar code re-use in more established statically typed languages.</p>
 
-<p>The page you are currently reading is a part of the demo included with the Ur/Web sources and supporting files available from <a href="https://github.com/urweb/urweb">github</a>.  The following steps will build a local instance of the demo if you're lucky (and running a debian based linux OS).  If you're not lucky, you can consult the beginning of <a href="http://www.impredicative.com/ur/manual.pdf">the manual</a> for more detailed instructions.</p>
+<p>The page you are currently reading is a part of the demo included with the Ur/Web sources and supporting files available from <a href="https://github.com/urweb/urweb">GitHub</a>.  The following steps will build a local instance of the demo if you're lucky (and running a Debian-based Linux OS, which actually tend to have Ur/Web packages built in these days).  If you're not lucky, you can consult the beginning of <a href="http://www.impredicative.com/ur/manual.pdf">the manual</a> for more detailed instructions.</p>
 
 <h6>Install System Dependencies</h6>
+
 <p>
 <blockquote><pre>sudo apt-get install build-essential \
   emacs-goodies-el \
@@ -13,69 +14,75 @@
   mlton \
   sqlite3</blockquote></pre></p>
 
-<h6>Build and install the Ur/web Framework</h6>
+<h6>Build and Install the Ur/Web Framework</h6>
+
 <p><blockquote><pre>./configure
 make
 sudo make install
 </pre></blockquote></p>
 
-<h6>Compile the demo the easy way</h6>
+<h6>Compile the Demo the Easy Way</h6>
+
 <p><blockquote><pre>$ urweb -dbms sqlite -db /path_to_db.sqlite -demo /Demo demo
 </blockquote></pre></p>
 
-<p>The <tt>-dbms sqlite</tt> flag indicates that instead of using the default database management system of postgres, we wish to use sqlite (not good for production).  The <tt>-db</tt> flag allows us to specify the path to our sqlite database on the file system.  The <tt>-demo /Demo</tt> parameter indicates that we want to build a demo application that expects its URIs to begin with <tt>/Demo</tt>.  The final argument <tt>demo</tt> gives the path to a directory housing Ur/Web source files (.ur, .urp, .urs, etc, etc).
+<p>The <tt>-dbms sqlite</tt> flag indicates that instead of using the default database management system (<a href="https://www.postgresql.org/">PostgreSQL</a>), we wish to use <a href="https://sqlite.org/">SQLite</a> (usually unsuited for production).  The <tt>-db</tt> flag allows us to specify the file-system path to our SQLite database.  The <tt>-demo /Demo</tt> parameter indicates that we want to build a demo application that expects its URIs to begin with <tt>/Demo</tt>.  The final argument <tt>demo</tt> gives the path to a directory housing Ur/Web source files (<tt>.ur</tt>, <tt>.urp</tt>, <tt>.urs</tt>, etc.).
 </p>
 
 <p>
-The following files are created during the compile process:
+The following files are created during the compilation process:
 <ul>
-<li>demo/demo.exe
-<li>demo/out/*
-<li>demo/demo.sql
+<li><tt>demo/demo.exe</tt>
+<li><tt>demo/out/*</tt>
+<li><tt>demo/demo.sql</tt>
 </ul>
 </p>
 
-<h6>Migrate the Database</h6>
+<h6>Initialize the Database</h6>
+
 <p>
-When we compiled the demo in the above step, a demo.sql file was created for us which contains all the information required to create a database congruent with the demo web app.  The below command will provision our sqlite database.  To see an example of where a database table is defined in source code, check out <tt>demo/crud1.ur</tt>.  Also of interest is the file <tt>demo.urp</tt> which contains a <tt>database</tt> line with the PostgreSQL database that the demo web server will try to connect to if database information isn't provided as command line arguments when the webapp is compiled.
+When we compiled the demo in the last step, a <tt>demo.sql</tt> file was created for us, which contains all the information required to create a database compatible with the demo web app.  The command below will provision our SQLite database.  To see an example of where a database table is defined in source code, check out <tt>demo/crud1.ur</tt>.  Also of interest is the file <tt>demo.urp</tt>, which contains a <tt>database</tt> directive with the PostgreSQL database that the demo web server will try to connect to if database information isn't provided as command-line arguments when the application is compiled.
 
 <blockquote><pre>$ sqlite3 /path/to/database/file &lt;demo/demo.sql
 </blockquote></pre>
 </p>
 
-<h6>Boot the web app</h6>
-Executing the binary generated above (<tt>demo/demo.exe</tt>) with no arguments will start a single-threaded server listening on port 8080.  Pass the flag <tt>-h</tt> to see which options are available on such freshly built binaries.
+<h6>Boot the App</h6>
+
+Executing the binary generated above (<tt>demo/demo.exe</tt>) with no arguments will start a single-threaded server listening on port 8080.  (To answer the usual first question: the <tt>.exe</tt> prefix has nothing to do with Windows and does not mean that you compiled for the wrong OS!)  Pass the flag <tt>-h</tt> to see which options are available on such freshly built binaries.
 </p>
 <p><blockquote><pre>$ demo/demo.exe
 Database connection initialized.
 Listening on port 8080....
 </blockquote></pre>
-Test out <tt>http://localhost:8080/Demo/Demo/main</tt> which should consist of links to the individual demos after booting the web app.</p>
+Test out <tt>http://localhost:8080/Demo/Demo/main</tt>, which should consist of links to the individual demos after booting the app.</p>
 </p>
 
 <h6>Serve the Static Content with a Reverse Proxy</h6>
-<p>The <tt>-demo</tt> version also generates some HTML in a subdirectory <tt>out</tt> of the demo directory (eg <tt>index.html</tt>).  It is easy to set Apache up to serve these HTML files, and to proxy out to the Ur/Web web server for dynamic page requests.  This configuration works for me, where <tt>DIR</tt> is the location of an Ur/Web source distribution.
+
+<p>The <tt>-demo</tt> version also generates some HTML in a subdirectory <tt>out</tt> of the demo directory (e.g. <tt>index.html</tt>).  It is easy to set Apache up to serve these HTML files and to proxy out to the Ur/Web web server for dynamic page requests.  This configuration works for me, where <tt>DIR</tt> is the location of an Ur/Web source distribution.  (You may also need to enable the proxy module with a command like <tt>a2enmod proxy_http</tt>.)
 
 <blockquote><pre>Alias /demo/ "DIR/demo/out/"
 
 ProxyPass /Demo/ http://localhost:8080/Demo/
 ProxyPassReverse /Demo/ http://localhost:8080/Demo/</pre></blockquote></p>
 
-
 <h6>Compile Individually</h6>
+
 <p>These project files can also be built separately.  For example, you could run
 
 <blockquote><pre>$ urweb demo/hello
 </pre></blockquote>
 
-to build the "Hello World" demo application.  Doing so will invite urweb to seak out the various <tt>demo/hello.*</tt> files and, from them, build a binary <tt>demo/demo.exe</tt>.  The URL to access the resulting webapp will be <tt>http://localhost:8080/Hello/main</tt>.
+to build the "Hello World" demo application.  Doing so will invite Ur/Web to seek out the various <tt>demo/hello.*</tt> files and, from them, build a binary <tt>demo/hello.exe</tt>.  The URL to access the resulting app will be <tt>http://localhost:8080/Hello/main</tt>.
 </p>
 
 <h6>This File</h6>
-<p>One of the files in the demo directory is named <tt>prose</tt>, a file describing the different demo pieces with HTML.  Some lines of <tt>prose</tt> have the form <tt><i>foo</i>.urp</tt>, naming particular project files (with the extension <tt>.urp</tt>) in that directory.  These makeup the different pages of the tutorial.</p>
+<p>One of the files in the demo directory is named <tt>prose</tt>, a file describing the different demo pieces with HTML.  Some lines of <tt>prose</tt> have the form <tt><i>foo</i>.urp</tt>, naming particular project files (with the extension <tt>.urp</tt>) in that directory.  These make up the different pages of the tutorial.</p>
 
-<h6>Proceeding Demo Exhibits</h6>
-<p>The rest of the demo focuses on the individual facets of the Ur/ Web framework.  Follow the links in the lefthand frame to visit the applications, commentary, and syntax-highlighted source code.  (An Emacs mode is behind the syntax highlighting.)  I recommend visiting the applications in the order listed, since that is the order in which new concepts are introduced.</p>
+<h6>Finally, the Demos!</h6>
+
+<p>The rest of the demo focuses on introducing Ur/Web programming, one feature at a time.  Follow the links in the lefthand frame to visit the applications, commentary, and syntax-highlighted source code.  (An Emacs mode is behind the syntax highlighting.)  I recommend visiting the applications in the order listed, since that is the order in which new concepts are introduced.</p>
 
 hello.urp
 
@@ -161,7 +168,7 @@ ref.urp
 
 <p>This example shows how to mix the module system with SQL to implement a kind of "abstract data type."  The functor <tt>RefFun.Make</tt> takes in a type belonging to the type class of those types that may be included in SQL.  The functor output includes an abstract type <tt>ref</tt>, along with operations for working with <tt>ref</tt>s via transactions.  In the functor implementation, we see that <tt>ref</tt> is implemented as <tt>int</tt>, treated as primary keys of a SQL table.</p>
 
-<p>The functor creates a new encapsulated SQL sequence and table on each call.  These local relations show up in the automatically-generated SQL file that should be run to prepare the database for use, but they are invisible from client code.  We could change the functor to create different SQL relations, without needing to change client code.</p>
+<p>The functor creates a new encapsulated SQL sequence and table on each call.  These local relations show up in the automatically generated SQL file that should be run to prepare the database for use, but they are invisible from client code.  We could change the functor to create different SQL relations, without needing to change client code.</p>
 
 <p>Note that, in <tt>ref.ur</tt>, the <tt>inj</tt> components of functor arguments are omitted.  Since these arguments are type class witnesses, the compiler infers them automatically based on the choices of <tt>data</tt>.</p>
 
