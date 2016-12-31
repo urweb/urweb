@@ -479,7 +479,7 @@ fun patternOut (e : exp) =
  | xml of exp
  | xmlOne of exp
  | xmlOpt of exp
- | tag of (string * exp) * exp option * exp option * exp
+ | tag of (string * exp) * exp option * exp option * exp option * exp
  | tagHead of string * exp
  | bind of pat * con option * exp
  | edecl of edecl
@@ -500,7 +500,7 @@ fun patternOut (e : exp) =
  | rpat of (string * pat) list * bool
  | ptuple of pat list
 
- | attrs of exp option * exp option * exp option * exp option * (string * string * exp) list * (con * exp) list
+ | attrs of exp option * exp option * exp option * exp option * exp option * (string * string * exp) list * (con * exp) list
  | attr of attr
  | attrv of exp
 
@@ -1610,7 +1610,7 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                                 (EPrim (Prim.String (Prim.Html, "")), pos)),
                                                           pos)
                                          in
-                                             (EApp (#4 tag, cdata), pos)
+                                             (EApp (#5 tag, cdata), pos)
                                          end)
          
        | tag GT xmlOpt END_TAG          (let
@@ -1626,6 +1626,9 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                  if et = "form" then
                                                      let
                                                          val e = (EVar (["Basis"], "form", Infer), pos)
+                                                         val e = (EApp (e, case #4 tag of
+                                                                               NONE => (EVar (["Basis"], "None", Infer), pos)
+                                                                             | SOME c => (EApp ((EVar (["Basis"], "Some", Infer), pos), c), pos)), pos)
                                                          val e = (EApp (e, case #2 tag of
                                                                                NONE => (EVar (["Basis"], "None", Infer), pos)
                                                                              | SOME (EPrim (Prim.String (_, s)), _) => (EApp ((EVar (["Basis"], "Some", Infer), pos), parseClass s pos), pos)
@@ -1643,7 +1646,7 @@ xmlOne : NOTAGS                         (EApp ((EVar (["Basis"], "cdata", Infer)
                                                      (EApp ((EVar (["Basis"], "entry", Infer), pos),
                                                             xmlOpt), pos)
                                                  else
-                                                     (EApp (#4 tag, xmlOpt), pos)
+                                                     (EApp (#5 tag, xmlOpt), pos)
                                              else
                                                  (if ErrorMsg.anyErrors () then
                                                       ()
@@ -1688,8 +1691,8 @@ tag    : tagHead attrs                  (let
                                                                            e), pos)
                                              val e = (EApp (e, eo), pos)
 
-                                             val atts = case #5 attrs of
-                                                            [] => #6 attrs
+                                             val atts = case #6 attrs of
+                                                            [] => #7 attrs
                                                           | data :: datas =>
                                                             let
                                                                 fun doOne (kind, name, value) =
@@ -1709,14 +1712,14 @@ tag    : tagHead attrs                  (let
                                                                                            (EApp (e, doOne nv), pos)
                                                                                        end) (doOne data) datas
                                                             in
-                                                                ((CName "Data", pos), datas') :: #6 attrs
+                                                                ((CName "Data", pos), datas') :: #7 attrs
                                                             end
 
                                              val e = (EApp (e, (ERecord (atts, false), pos)), pos)
                                              val e = (EApp (e, (EApp (#2 tagHead,
                                                                       (ERecord ([], false), pos)), pos)), pos)
                                          in
-                                             (tagHead, #1 attrs, #2 attrs, e)
+                                             (tagHead, #1 attrs, #2 attrs, #5 attrs, e)
                                          end)
 
 tagHead: BEGIN_TAG                      (let
@@ -1728,7 +1731,7 @@ tagHead: BEGIN_TAG                      (let
                                          end)
        | tagHead LBRACE cexp RBRACE     (#1 tagHead, (ECApp (#2 tagHead, cexp), s (tagHeadleft, RBRACEright)))
                                           
-attrs  :                                (NONE, NONE, NONE, NONE, [], [])
+attrs  :                                (NONE, NONE, NONE, NONE, NONE, [], [])
        | attr attrs                     (let
                                              val loc = s (attrleft, attrsright)
                                          in
@@ -1737,26 +1740,28 @@ attrs  :                                (NONE, NONE, NONE, NONE, [], [])
                                                  (case #1 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple classes specified for tag";
-                                                  (SOME e, #2 attrs, #3 attrs, #4 attrs, #5 attrs, #6 attrs))
+                                                  (SOME e, #2 attrs, #3 attrs, #4 attrs, #5 attrs, #6 attrs, #7 attrs))
                                                | DynClass e =>
                                                  (case #2 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple dynamic classes specified for tag";
-                                                  (#1 attrs, SOME e, #3 attrs, #4 attrs, #5 attrs, #6 attrs))
+                                                  (#1 attrs, SOME e, #3 attrs, #4 attrs, #5 attrs, #6 attrs, #7 attrs))
                                                | Style e =>
                                                  (case #3 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple styles specified for tag";
-                                                  (#1 attrs, #2 attrs, SOME e, #4 attrs, #5 attrs, #6 attrs))
+                                                  (#1 attrs, #2 attrs, SOME e, #4 attrs, #5 attrs, #6 attrs, #7 attrs))
                                                | DynStyle e =>
                                                  (case #4 attrs of
                                                       NONE => ()
                                                     | SOME _ => ErrorMsg.errorAt loc "Multiple dynamic classes specified for tag";
-                                                  (#1 attrs, #2 attrs, #3 attrs, SOME e, #5 attrs, #6 attrs))
+                                                  (#1 attrs, #2 attrs, #3 attrs, SOME e, #5 attrs, #6 attrs, #7 attrs))
                                                | Data xe =>
-                                                 (#1 attrs, #2 attrs, #3 attrs, #4 attrs, xe :: #5 attrs, #6 attrs)
+                                                 (#1 attrs, #2 attrs, #3 attrs, #4 attrs, #5 attrs, xe :: #6 attrs, #7 attrs)
                                                | Normal xe =>
-                                                 (#1 attrs, #2 attrs, #3 attrs, #4 attrs, #5 attrs, xe :: #6 attrs)
+                                                 (#1 attrs, #2 attrs, #3 attrs, #4 attrs, (case #1 (#1 xe) of
+                                                                                               CName "Id" => SOME (#2 xe)
+                                                                                             | _ => #5 attrs), #6 attrs, xe :: #7 attrs)
                                          end)
 
 attr   : SYMBOL EQ attrv                (case SYMBOL of

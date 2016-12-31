@@ -3657,9 +3657,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
 
           | L.EApp (
-            (L.EApp ((L.ECApp (
-                      (L.ECApp ((L.EFfi ("Basis", "form"), _), _), _),
-                      (L.CRecord (_, fields), _)), _),
+            (L.EApp ((L.EApp ((L.ECApp (
+                                    (L.ECApp ((L.EFfi ("Basis", "form"), _), _), _),
+                                    (L.CRecord (_, fields), _)), _),
+                              id), _),
                      class), _),
             xml) =>
             let
@@ -3793,6 +3794,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                  action
 
                 val stt = (L'.TFfi ("Basis", "string"), loc)
+                val (id, fm) = monoExp (env, st, fm) id
                 val (class, fm) = monoExp (env, st, fm) class
                 val action = (L'.EStrcat (action,
                                           (L'.ECase (class,
@@ -3806,8 +3808,17 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                       result = stt}), loc)), loc)
             in
                 ((L'.EStrcat ((L'.EStrcat (strH "<form method=\"post\"",
-                                           (L'.EStrcat (action,
-                                                        strH ">"), loc)), loc),
+                                           (L'.EStrcat ((L'.ECase (id,
+                                                                   [((L'.PNone stt, loc),
+                                                                     strH ""),
+                                                                    ((L'.PSome (stt, (L'.PVar ("id", stt), loc)), loc),
+                                                                     (L'.EStrcat (strH " id=\"",
+                                                                                  (L'.EStrcat ((L'.ERel 0, loc),
+                                                                                               strH "\""), loc)), loc))],
+                                                                   {disc = (L'.TOption stt, loc),
+                                                                    result = stt}), loc),
+                                                        (L'.EStrcat (action,
+                                                                     strH ">"), loc)), loc)), loc),
                               (L'.EStrcat (xml,
                                            strH "</form>"), loc)), loc),
                  fm)

@@ -947,7 +947,8 @@ val img : bodyTag ([Alt = string, Src = url, Width = int, Height = int,
 
 val form : ctx ::: {Unit} -> bind ::: {Type}
            -> [[MakeForm, Form] ~ ctx] =>
-    option css_class
+    option id
+    -> option css_class
     -> xml ([Form] ++ ctx) [] bind
     -> xml ([MakeForm] ++ ctx) [] []
 
