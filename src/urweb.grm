@@ -475,6 +475,7 @@ fun patternOut (e : exp) =
  | eterm of exp
  | etuple of exp list
  | rexp of (con * exp) list * bool
+ | rpath of con
  | xml of exp
  | xmlOne of exp
  | xmlOpt of exp
@@ -1151,15 +1152,15 @@ ctuple : capps STAR capps               ([capps1, capps2])
        | capps STAR ctuple              (capps :: ctuple)
 
 rcon   :                                ([])
-       | ident EQ cexp                  ([(ident, cexp)])
-       | ident EQ cexp COMMA rcon       ((ident, cexp) :: rcon)
+       | rpath EQ cexp                  ([(rpath, cexp)])
+       | rpath EQ cexp COMMA rcon       ((rpath, cexp) :: rcon)
 
-rconn  : ident                          ([(ident, (CUnit, s (identleft, identright)))])
-       | ident COMMA rconn              ((ident, (CUnit, s (identleft, identright))) :: rconn)
+rconn  : rpath                          ([(rpath, (CUnit, s (rpathleft, rpathright)))])
+       | rpath COMMA rconn              ((rpath, (CUnit, s (rpathleft, rpathright))) :: rconn)
 
 rcone  :                                ([])
-       | ident COLON cexp               ([(ident, cexp)])
-       | ident COLON cexp COMMA rcone   ((ident, cexp) :: rcone)
+       | rpath COLON cexp               ([(rpath, cexp)])
+       | rpath COLON cexp COMMA rcone   ((rpath, cexp) :: rcone)
 
 ident  : CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
        | INT                            (CName (Int64.toString INT), s (INTleft, INTright))
@@ -1567,8 +1568,11 @@ ptuple : pat COMMA pat                  ([pat1, pat2])
        | pat COMMA ptuple               (pat :: ptuple)
 
 rexp   : DOTDOTDOT                      ([], true)
-       | ident EQ eexp                  ([(ident, eexp)], false)
-       | ident EQ eexp COMMA rexp       ((ident, eexp) :: #1 rexp, #2 rexp)
+       | rpath EQ eexp                  ([(rpath, eexp)], false)
+       | rpath EQ eexp COMMA rexp       ((rpath, eexp) :: #1 rexp, #2 rexp)
+
+rpath  : path                           (CVar path, s (pathleft, pathright))
+       | CSYMBOL                        (CName CSYMBOL, s (CSYMBOLleft, CSYMBOLright))
 
 xml    : xmlOne xml                     (let
                                              val pos = s (xmlOneleft, xmlright)
