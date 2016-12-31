@@ -687,7 +687,7 @@ fun parseUrp' accLibs fname =
                              }
                          in
                              if accLibs then
-                                 foldr (fn (job', job) => merge (job, job')) job (!libs)
+                                 foldl (fn (job', job) => merge (job, job')) job (!libs)
                              else
                                  job
                          end
