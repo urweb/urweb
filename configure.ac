@@ -12,6 +12,7 @@ AC_PROG_LIBTOOL()
 AC_CONFIG_HEADERS([include/urweb/config.h])
 
 AX_PTHREAD([echo >/dev/null], [echo "Your C compiler does not support POSIX threads."; exit 1])
+AX_TLS([echo >/dev/null], [echo "Your C compiler does not support thread-local storage."; exit 1])
 
 AX_CHECK_OPENSSL([echo >/dev/null], [echo "You must install OpenSSL development files."; exit 1])
 
