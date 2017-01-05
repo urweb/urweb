@@ -1,4 +1,13 @@
 ========
+20170105
+========
+
+- Allow qualified variable references in record literals
+- Add 'placeholder' attribute for textareas
+- Add more explicit build instructions to main demo
+- Bug fixes
+
+========
 20161022
 ========
 
