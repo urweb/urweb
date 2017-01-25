@@ -65,6 +65,9 @@ val all : a ::: Type -> (a -> bool) -> t a -> bool
 val app : m ::: (Type -> Type) -> monad m -> a ::: Type
           -> (a -> m unit) -> t a -> m unit
 
+val appi : m ::: (Type -> Type) -> monad m -> a ::: Type
+           -> (int -> a -> m unit) -> t a -> m unit
+
 val tabulateM : m ::: (Type -> Type) -> monad m -> a ::: Type
                 -> (int -> m a) -> int -> m (t a)
 

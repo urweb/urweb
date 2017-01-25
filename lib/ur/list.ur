@@ -311,6 +311,18 @@ fun app [m] (_ : monad m) [a] f =
         app'
     end
 
+fun appi [m] (_ : monad m) [a] f =
+    let
+        fun app' i ls =
+            case ls of
+                [] => return ()
+              | x :: ls =>
+                f i x;
+                app' (i + 1) ls
+    in
+        app' 0
+    end
+
 fun mapQuery [tables ::: {{Type}}] [exps ::: {Type}] [t ::: Type]
              [tables ~ exps] (q : sql_query [] [] tables exps)
              (f : $(exps ++ map (fn fields :: {Type} => $fields) tables) -> t) =
