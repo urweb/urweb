@@ -40,6 +40,11 @@ fun mp [a] [b] f x =
         None => None
       | Some y => Some (f y)
 
+fun app [m] [a] (_ : monad m) (f : a -> m {}) x =
+    case x of
+        None => return ()
+      | Some y => f y
+
 fun bind [a] [b] f x =
     case x of
         None => None

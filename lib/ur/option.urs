@@ -9,6 +9,7 @@ val isNone : a ::: Type -> t a -> bool
 val isSome : a ::: Type -> t a -> bool
 
 val mp : a ::: Type -> b ::: Type -> (a -> b) -> t a -> t b
+val app : m ::: (Type -> Type) -> a ::: Type -> monad m -> (a -> m {}) -> t a -> m {}
 val bind : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> t b
 
 val get : a ::: Type -> a -> option a -> a
