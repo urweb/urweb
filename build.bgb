@@ -1,0 +1,3 @@
+(bg-build
+ :name  "Compiler"
+ :shell "nice -n5 make bin/urwebtc")
