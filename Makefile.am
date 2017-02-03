@@ -19,6 +19,7 @@ SUBDIRS = src/c
 
 smlnj: src/urweb.cm xml/entities.sml
 mlton: bin/urweb
+mlton-tc: bin/urwebtc
 
 clean-local:
 	rm -f bin/urweb src/urweb.mlton.* \
@@ -60,6 +61,12 @@ bin/urweb: src/compiler.mlb xml/entities.sml \
 		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml
 	mkdir -p bin
 	$(MLTON) $(MLTONARGS) -mlb-path-var 'SRC $(abs_srcdir)/src' -mlb-path-var 'BUILD $(abs_builddir)/src' -output $@ $<
+bin/urwebtc: src/compiler.mlb xml/entities.sml \
+		src/urweb.mlb $(srcdir)/src/*.sig $(srcdir)/src/*.sml src/config.sml \
+		src/urweb.mlton.lex.sml \
+		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml
+	mkdir -p bin
+	$(MLTON) $(MLTONARGS) -prefer-abs-paths true -show-def-use compiler.du -stop tc -mlb-path-var 'SRC $(abs_srcdir)/src' -mlb-path-var 'BUILD $(abs_builddir)/src' -output $@ $<
 
 xml/entities.sml: xml/parse xml/xhtml-lat1.ent xml/xhtml-special.ent xml/xhtml-symbol.ent
 	$^ > $@
