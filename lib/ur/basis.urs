@@ -1076,8 +1076,8 @@ val curl : ctext
 val ctel : ctext
 val ccolor : ctext
 
-val cnumber : cformTag ([Source = source float, Min = float, Max = float, Step = float, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
-val crange : cformTag ([Source = source float, Min = float, Max = float, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
+val cnumber : cformTag ([Source = source (option float), Min = float, Max = float, Step = float, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
+val crange : cformTag ([Source = source (option float), Min = float, Max = float, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
 val cdate : cformTag ([Source = source string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
 val cdatetime : cformTag ([Source = source string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
 val cdatetime_local : cformTag ([Source = source string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
@@ -1085,7 +1085,7 @@ val cmonth : cformTag ([Source = source string, Min = string, Max = string, Size
 val cweek : cformTag ([Source = source string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
 val ctime : cformTag ([Source = source string, Min = string, Max = string, Size = int, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
 
-val button : cformTag ([Value = string] ++ boxAttrs) []
+val button : cformTag ([Value = string, Disabled = bool] ++ boxAttrs) []
 
 val ccheckbox : cformTag ([Size = int, Source = source bool, Onchange = transaction unit] ++ boxAttrs ++ inputAttrs) []
 
