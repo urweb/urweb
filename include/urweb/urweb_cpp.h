@@ -2,11 +2,13 @@
 #define URWEB_CPP_H
 
 #include <sys/types.h>
+#include <sys/socket.h>
 
 #include "types_cpp.h"
 
 int uw_really_send(int sock, const void *buf, ssize_t len);
 int uw_really_write(int fd, const void *buf, size_t len);
+int uw_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 
 extern uw_unit uw_unit_v;
 

@@ -17,6 +17,7 @@
 #include <openssl/rand.h>
 #include <time.h>
 #include <math.h>
+#include <fcntl.h>
 
 #include <pthread.h>
 
@@ -57,6 +58,50 @@ int uw_really_write(int fd, const void *buf, size_t len) {
   return 0;
 }
 
+int uw_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
+  static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+
+  int ret;
+  int flags;
+
+  flags = fcntl(sockfd, F_GETFL, 0);
+  if(flags < 0)
+    return flags;
+  ret = fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+  if(ret < 0)
+    return ret;
+
+  assert(sockfd < FD_SETSIZE);
+  fd_set sockfds;
+  FD_ZERO(&sockfds);
+  FD_SET(sockfd, &sockfds);
+  ret = select(sockfd+1, &sockfds, NULL, NULL, NULL /* wait infinitely */);
+  if(ret < 0)
+    goto unblock;
+  if(ret == 0) {
+    ret = -1;
+    goto unblock;
+  }
+
+  pthread_mutex_lock(&m);
+  int new_fd = accept(sockfd, addr, addrlen);
+  if(new_fd > 0) {
+    ret = fcntl(new_fd, F_SETFD, FD_CLOEXEC);
+  }
+  else {
+    ret = -1;
+  }
+  pthread_mutex_unlock(&m);
+
+  if(ret < 0)
+    goto unblock;
+
+  ret = new_fd;
+
+unblock:
+  fcntl(sockfd, F_SETFL, flags);
+  return ret;
+}
 
 // Buffers
 

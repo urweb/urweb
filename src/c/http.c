@@ -9,6 +9,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdarg.h>
 
@@ -500,7 +501,7 @@ int main(int argc, char *argv[]) {
   }
 
   for (i = 0; i < nthreads; ++i) {
-    pthread_t thread;    
+    pthread_t thread;
     names[i] = i;
     if (pthread_create_big(&thread, NULL, worker, &names[i])) {
       fprintf(stderr, "Error creating worker thread #%d\n", i);
@@ -509,7 +510,7 @@ int main(int argc, char *argv[]) {
   }
 
   while (1) {
-    int new_fd = accept(sockfd, &their_addr.sa, &sin_size);
+    int new_fd = uw_accept(sockfd, &their_addr.sa, &sin_size);
 
     if (new_fd < 0) {
       qfprintf(stderr, "Socket accept failed\n");
@@ -517,7 +518,7 @@ int main(int argc, char *argv[]) {
       qprintf("Accepted connection.\n");
 
       if (keepalive) {
-        int flag = 1; 
+        int flag = 1;
         setsockopt(new_fd, IPPROTO_TCP, TCP_NODELAY, (char *) &flag, sizeof(int));
       }
 

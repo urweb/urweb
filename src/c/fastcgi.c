@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <signal.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <ctype.h>
 
@@ -566,7 +567,7 @@ int main(int argc, char *argv[]) {
   socklen_t sin_size;
   int nthreads = 1, i, *names, opt;
   char *fwsa = getenv("FCGI_WEB_SERVER_ADDRS"), *nthreads_s = getenv("URWEB_NUM_THREADS");
- 
+
   if (nthreads_s) {
     nthreads = atoi(nthreads_s);
     if (nthreads <= 0) {
@@ -627,7 +628,7 @@ int main(int argc, char *argv[]) {
   }
 
   for (i = 0; i < nthreads; ++i) {
-    pthread_t thread;    
+    pthread_t thread;
     names[i] = i;
     if (pthread_create_big(&thread, NULL, worker, &names[i])) {
       fprintf(stderr, "Error creating worker thread #%d\n", i);
@@ -636,7 +637,7 @@ int main(int argc, char *argv[]) {
   }
 
   while (1) {
-    int new_fd = accept(FCGI_LISTENSOCK_FILENO, (struct sockaddr *)&their_addr, &sin_size);
+    int new_fd = uw_accept(FCGI_LISTENSOCK_FILENO, (struct sockaddr *)&their_addr, &sin_size);
 
     if (new_fd < 0) {
       fprintf(stderr, "Socket accept failed\n");
