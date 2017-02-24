@@ -113,7 +113,7 @@ typedef struct {
   uw_logger log_error, log_debug;
 } uw_loggers;
 
-#define ERROR_BUF_LEN 1024
+#define ERROR_BUF_LEN 10240
 
 typedef struct {
   size_t max;
