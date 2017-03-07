@@ -275,6 +275,8 @@ sqlite3 path/to/database/file <app.sql
 
 \item \texttt{-explainEmbed}: Trigger more verbose error messages about inability to embed server-side values in client-side code.
 
+\item \texttt{-js FILENAME}: Ur/Web applications with client-side code link in generated JavaScript files, which, by default, are assigned random-looking names.  Use this directive to override the filename chosen for the JavaScript code.  Be forewarned that the default method uses a name based on hashing the code itself, which is done for a good reason: browsers are very eager to cache JavaScript code, and application changes may fail to propagate quickly to browsers if this filename stays the same between versions.  In such cases, it isn't just that the user sees an old version of your application.  Instead, the application runs with a mix of old and new files, leading to arbitrary bugs that Ur/Web prevents, when used properly.
+
 \item \texttt{-limit class num}: Equivalent to the \texttt{limit} directive from \texttt{.urp} files
 
 \item \texttt{-moduleOf FILENAME}: Prints the Ur/Web module name corresponding to source file \texttt{FILENAME}, exiting immediately afterward.
