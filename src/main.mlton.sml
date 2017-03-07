@@ -134,6 +134,9 @@ fun oneRun args =
               | "-output" :: s :: rest =>
                 (Settings.setExe (SOME s);
                  doArgs rest)
+              | "-js" :: s :: rest =>
+		(Settings.setOutputJsFile (SOME s);
+		 doArgs rest)
               | "-sql" :: s :: rest =>
                 (Settings.setSql (SOME s);
                  doArgs rest)

@@ -951,6 +951,10 @@ fun addJsFile LoadFromFilename =
 
 fun listJsFiles () = SM.listItems (!jsFiles)
 
+val jsOutput = ref (NONE : string option)
+fun setOutputJsFile so = jsOutput := so
+fun getOutputJsFile () = !jsOutput
+
 fun reset () =
     (Globals.setResetTime ();
      urlPrefixFull := "/";
@@ -996,6 +1000,7 @@ fun reset () =
      mimeTypes := NONE;
      files := SM.empty;
      jsFiles := SM.empty;
-     filePath := ".")
+     filePath := ".";
+     jsOutput := NONE)
 
 end

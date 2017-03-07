@@ -2513,8 +2513,12 @@ fun p_decl env (dAll as (d, loc) : decl) =
 
       | DJavaScript s =>
         let
+	    val name =
+		(case Settings.getOutputJsFile () of
+		    NONE => "app." ^ SHA1.bintohex (SHA1.hash s) ^ ".js"
+		  | SOME s => s)
             val () = app_js := OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
-                                                    file = "app." ^ SHA1.bintohex (SHA1.hash s) ^ ".js"}
+                                                    file = name}
         in
             box [string "static char jslib[] = \"",
                  string (Prim.toCString s),
