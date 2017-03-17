@@ -75,6 +75,8 @@ static void log_debug(void *data, const char *fmt, ...) {
 
 static uw_loggers ls = {NULL, log_error, log_debug};
 
+static unsigned max_buf_size = 1024 * 1024; // That's 1MB.
+
 static void *worker(void *data) {
   int me = *(int *)data;
   uw_context ctx = uw_request_new_context(me, &uw_application, &ls);
@@ -100,6 +102,12 @@ static void *worker(void *data) {
       if (back - buf == buf_size - 1) {
         char *new_buf;
         size_t new_buf_size = buf_size*2;
+        if (new_buf_size > max_buf_size) {
+          qfprintf(stderr, "HTTP input exceeds buffer-size limit of %u bytes.\n", max_buf_size);
+          close(sock);
+          sock = 0;
+          break;
+        }
         new_buf = realloc(buf, new_buf_size);
         if(!new_buf) {
           qfprintf(stderr, "Realloc failed while receiving header\n");
@@ -156,6 +164,12 @@ static void *worker(void *data) {
             if (back - buf == buf_size - 1) {
               char *new_buf;
               size_t new_buf_size = buf_size * 2;
+              if (new_buf_size > max_buf_size) {
+                qfprintf(stderr, "HTTP input exceeds buffer-size limit of %u bytes.\n", max_buf_size);
+                close(sock);
+                sock = 0;
+                break;
+              }
               new_buf = realloc(buf, new_buf_size);
               if(!new_buf) {
                 qfprintf(stderr, "Realloc failed while receiving content\n");
@@ -314,7 +328,7 @@ static void *worker(void *data) {
 }
 
 static void help(char *cmd) {
-  printf("Usage: %s [-p <port>] [-a <IPv4 address>] [-A <IPv6 address>] [-t <thread count>] [-k] [-q] [-T SEC]\nThe '-k' option turns on HTTP keepalive.\nThe '-q' option turns off some chatter on stdout.\nThe '-T' option sets socket recv timeout (0 disables timeout, default is 5 sec).\n", cmd);
+  printf("Usage: %s [-p <port>] [-a <IPv4 address>] [-A <IPv6 address>] [-t <thread count>] [-m <bytes>] [-k] [-q] [-T SEC]\nThe '-k' option turns on HTTP keepalive.\nThe '-q' option turns off some chatter on stdout.\nThe '-T' option sets socket recv timeout (0 disables timeout, default is 5 sec).\nThe '-m' sets the maximum size (in bytes) for any buffer used to hold HTTP data sent by clients.  (The default is 1 MB.)\n", cmd);
 }
 
 static void sigint(int signum) {
@@ -409,6 +423,16 @@ int main(int argc, char *argv[]) {
       quiet = 1;
       break;
 
+    case 'm':
+      opt = atoi(optarg);
+      if (opt <= 0) {
+        fprintf(stderr, "Invalid maximum buffer size\n");
+        help(argv[0]);
+        return 1;
+      }
+      max_buf_size = opt;
+      break;
+
     default:
       fprintf(stderr, "Unexpected getopt() behavior\n");
       return 1;
@@ -455,6 +479,10 @@ int main(int argc, char *argv[]) {
   }
 
   sin_size = sizeof their_addr;
+
+  qprintf("Starting the Ur/Web native HTTP server, which is intended for use\n"
+          "ONLY DURING DEVELOPMENT.  You probably want to use one of the other backends,\n"
+          "behind a production-quality HTTP server, for a real deployment.\n\n");
 
   qprintf("Listening on port %d....\n", uw_port);
 
