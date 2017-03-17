@@ -4,7 +4,7 @@
 val show_string = mkShow (fn s => "\"" ^ s ^ "\"")
 (* end *)
 
-(* This tutorial by <a href="http://adam.chlipala.net/">Adam Chlipala</a> is licensed under a <a href="http://creativecommons.org/licenses/by-nc-nd/3.0/">Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 Unported License</a>. *)
+(* This tutorial by <a href="http://adam.chlipala.net/">Adam Chlipala</a> is licensed under a <a href="http://creativecommons.org/licenses/by-nc-nd/3.0/">Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 Unported License</a>.  The code, but not the accompanying prose, is also released under the same license as Ur/Web itself. *)
 
 (* The last chapter reviewed some Ur features imported from ML and Haskell.  This chapter explores uncharted territory, introducing the features that make Ur unique. *)
 

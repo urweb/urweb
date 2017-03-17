@@ -4,7 +4,7 @@
 val show_string = mkShow (fn s => "\"" ^ s ^ "\"")
 (* end *)
 
-(* This tutorial by <a href="http://adam.chlipala.net/">Adam Chlipala</a> is licensed under a <a href="http://creativecommons.org/licenses/by-nc-nd/3.0/">Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 Unported License</a>. *)
+(* This tutorial by <a href="http://adam.chlipala.net/">Adam Chlipala</a> is licensed under a <a href="http://creativecommons.org/licenses/by-nc-nd/3.0/">Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 Unported License</a>.  The code, but not the accompanying prose, is also released under the same license as Ur/Web itself. *)
 
 (* This is a tutorial for the <a href="http://www.impredicative.com/ur/">Ur/Web</a> programming language.<br>
 <br>
