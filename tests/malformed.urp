@@ -1,0 +1,5 @@
+rewrite url Malformed/*
+
+rewrite style Malformed/*
+
+malformed

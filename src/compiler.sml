@@ -543,9 +543,16 @@ fun parseUrp' accLibs fname =
                                                acc
                                            else
                                                let
-                                                   val fname = String.implode (List.filter (fn x => not (Char.isSpace x))
-                                                                                           (String.explode line))
-                                                   val fname = relifyA fname
+                                                   fun trim s =
+                                                       let
+                                                           val s = Substring.full s
+                                                           val (_, s) = Substring.splitl Char.isSpace s
+                                                           val (s, _) = Substring.splitr Char.isSpace s
+                                                       in
+                                                           Substring.string s
+                                                       end
+
+                                                   val fname = relifyA (trim line)
                                                in
                                                    fname :: acc
                                                end
@@ -1005,6 +1012,8 @@ val parse = {
                   val defed = ref SS.empty
                   val fulls = ref SS.empty
 
+                  val caughtOneThatIsn'tAFile = ref false
+
                   fun parseOne fname =
                       let
                           val mname = nameOf fname
@@ -1129,7 +1138,16 @@ val parse = {
                       in
                           checkErrors ();
                           d
-                      end handle MissingFile fname => (ErrorMsg.error ("Missing source file: " ^ fname);
+                      end handle MissingFile fname => (if not (!caughtOneThatIsn'tAFile)
+                                                          andalso CharVector.exists Char.isSpace fname then
+                                                           (caughtOneThatIsn'tAFile := true;
+                                                            ErrorMsg.error ("In .urp files, all configuration directives must come before any blank lines.\n"
+                                                                            ^ "However, this .urp file contains at least one suspicious line in a position\n"
+                                                                            ^ "where filenames belong (after the first blank line) but containing a space\n"
+                                                                            ^ "character."))
+                                                       else
+                                                           ();
+                                                       ErrorMsg.error ("Missing source file: " ^ fname);
                                                        (Source.DSequence "", ErrorMsg.dummySpan))
 
                   val dsFfi = map parseFfi ffi
