@@ -96,6 +96,7 @@ signature ELAB_ENV = sig
 
     val pushStrNamed : env -> string -> Elab.sgn -> env * int
     val pushStrNamedAs : env -> string -> int -> Elab.sgn -> env
+    val pushStrNamedAs' : bool (* also enrich typeclass instances? *) -> env -> string -> int -> Elab.sgn -> env
     val lookupStrNamed : env -> int -> string * Elab.sgn
 
     val lookupStr : env -> string -> (int * Elab.sgn) option
@@ -122,7 +123,5 @@ signature ELAB_ENV = sig
 
     val patBinds : env -> Elab.pat -> env
     val patBindsN : Elab.pat -> int
-
-    exception Bad of Elab.con * Elab.con
 
 end

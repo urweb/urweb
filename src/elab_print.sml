@@ -678,7 +678,7 @@ and p_sgn env (sgn, _) =
                                          space,
                                          string ":",
                                          space,
-                                         p_sgn (E.pushStrNamedAs env x n sgn) sgn']
+                                         p_sgn (E.pushStrNamedAs' false env x n sgn) sgn']
       | SgnWhere (sgn, ms, x, c) => box [p_sgn env sgn,
 					 space,
 					 string "where",
@@ -695,7 +695,7 @@ and p_sgn env (sgn, _) =
             val m1x = #1 (E.lookupStrNamed env m1)
                 handle E.UnboundNamed _ => "UNBOUND_SGN_" ^ Int.toString m1
                    
-            val m1s = if !debug then
+            val m1x = if !debug then
                           m1x ^ "__" ^ Int.toString m1
                       else
                           m1x
@@ -867,7 +867,7 @@ and p_str env (str, _) =
                                  string s]
       | StrFun (x, n, sgn, sgn', str) =>
         let
-            val env' = E.pushStrNamedAs env x n sgn
+            val env' = E.pushStrNamedAs' false env x n sgn
         in
             box [string "functor",
                  space,

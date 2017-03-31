@@ -1097,13 +1097,20 @@ fun sgnS_sgn (str, (sgns, strs, cons)) sgn =
              end)
       | _ => sgn
 
-fun sgnSubSgn x =
+fun projectStr env {sgn, str, field} =
+    case #1 (hnormSgn env sgn) of
+        SgnConst sgis =>
+        (case sgnSeek (fn SgiStr (_, x, _, sgn) => if x = field then SOME sgn else NONE | _ => NONE) sgis of
+             NONE => NONE
+           | SOME (sgn, subs) => SOME (sgnSubSgn (str, subs) sgn))
+      | SgnError => SOME (SgnError, ErrorMsg.dummySpan)
+      | _ => NONE
+
+and sgnSubSgn x =
     ElabUtil.Sgn.map {kind = id,
                       con = sgnS_con x,
                       sgn_item = id,
                       sgn = sgnS_sgn x}
-
-
 
 and projectSgn env {sgn, str, field} =
     case #1 (hnormSgn env sgn) of
@@ -1123,12 +1130,23 @@ and hnormSgn env (all as (sgn, loc)) =
       | SgnProj (m, ms, x) =>
         let
             val (_, sgn) = lookupStrNamed env m
+
+            fun doProjection (m1, NONE) = NONE
+              | doProjection (m1, SOME (str, sgn)) =
+                case projectStr env {str = str,
+                                     sgn = sgn,
+                                     field = m1} of
+                    NONE => NONE
+                  | SOME sgn' => SOME ((StrProj (str, m1), loc), sgn')
         in
-            case projectSgn env {str = foldl (fn (m, str) => (StrProj (str, m), loc)) (StrVar m, loc) ms,
-                                 sgn = sgn,
-                                 field = x} of
-                NONE => raise Fail "ElabEnv.hnormSgn: projectSgn failed"
-              | SOME sgn => hnormSgn env sgn
+            case foldl doProjection (SOME ((StrVar m, loc), sgn)) ms of
+                NONE => raise Fail "ElabEnv.hnormSgn: pre-projectSgn failed"
+              | SOME (str, sgn) =>
+                case projectSgn env {str = str,
+                                     sgn = sgn,
+                                     field = x} of
+                    NONE => raise Fail "ElabEnv.hnormSgn: projectSgn failed"
+                  | SOME sgn => hnormSgn env sgn
         end
       | SgnWhere (sgn, ms, x, c) =>
 	let
@@ -1281,28 +1299,40 @@ fun enrichClasses env classes (m1, ms) sgn =
         end
       | _ => classes
 
-fun pushStrNamedAs (env : env) x n sgn =
-    {renameK = #renameK env,
-     relK = #relK env,
+and pushStrNamedAs' enrich (env : env) x n sgn =
+    let
+        val renameStr = SM.insert (#renameStr env, x, (n, sgn))
+        val str = IM.insert (#str env, n, (x, sgn))
+        fun newEnv classes =
+            {renameK = #renameK env,
+             relK = #relK env,
 
-     renameC = #renameC env,
-     relC = #relC env,
-     namedC = #namedC env,
+             renameC = #renameC env,
+             relC = #relC env,
+             namedC = #namedC env,
 
-     datatypes = #datatypes env,
-     constructors = #constructors env,
+             datatypes = #datatypes env,
+             constructors = #constructors env,
 
-     classes = enrichClasses env (#classes env) (n, []) sgn,
+             classes = classes,
 
-     renameE = #renameE env,
-     relE = #relE env,
-     namedE = #namedE env,
+             renameE = #renameE env,
+             relE = #relE env,
+             namedE = #namedE env,
 
-     renameSgn = #renameSgn env,
-     sgn = #sgn env,
+             renameSgn = #renameSgn env,
+             sgn = #sgn env,
 
-     renameStr = SM.insert (#renameStr env, x, (n, sgn)),
-     str = IM.insert (#str env, n, (x, sgn))}
+             renameStr = renameStr,
+             str = str}
+    in
+        if enrich then
+            newEnv (enrichClasses (newEnv (#classes env)) (#classes env) (n, []) sgn)
+        else
+            newEnv (#classes env)
+    end
+
+and pushStrNamedAs env = pushStrNamedAs' true env
 
 fun pushStrNamed env x sgn =
     let
@@ -1364,7 +1394,7 @@ fun sgiBinds env (sgi, loc) =
             env xncs
         end
       | SgiVal (x, n, t) => pushENamedAs env x n t
-      | SgiStr (_, x, n, sgn) => pushStrNamedAs env x n sgn
+      | SgiStr (_, x, n, sgn) => pushStrNamedAs' false env x n sgn
       | SgiSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
       | SgiConstraint _ => env
 
@@ -1374,15 +1404,6 @@ fun sgiBinds env (sgi, loc) =
 fun sgnSubCon x =
     ElabUtil.Con.map {kind = id,
                       con = sgnS_con x}
-
-fun projectStr env {sgn, str, field} =
-    case #1 (hnormSgn env sgn) of
-        SgnConst sgis =>
-        (case sgnSeek (fn SgiStr (_, x, _, sgn) => if x = field then SOME sgn else NONE | _ => NONE) sgis of
-             NONE => NONE
-           | SOME (sgn, subs) => SOME (sgnSubSgn (str, subs) sgn))
-      | SgnError => SOME (SgnError, ErrorMsg.dummySpan)
-      | _ => NONE
 
 fun chaseMpath env (n, ms) =
     let
@@ -1642,8 +1663,8 @@ fun declBinds env (d, loc) =
       | DVal (x, n, t, _) => pushENamedAs env x n t
       | DValRec vis => foldl (fn ((x, n, t, _), env) => pushENamedAs env x n t) env vis
       | DSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
-      | DStr (x, n, sgn, _) => pushStrNamedAs env x n sgn
-      | DFfiStr (x, n, sgn) => pushStrNamedAs env x n sgn
+      | DStr (x, n, sgn, _) => pushStrNamedAs' false env x n sgn
+      | DFfiStr (x, n, sgn) => pushStrNamedAs' false env x n sgn
       | DConstraint _ => env
       | DExport _ => env
       | DTable (tn, x, n, c, _, pc, _, cc) =>
