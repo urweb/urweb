@@ -1414,7 +1414,7 @@ $$\begin{array}{l}
 
 The only unusual element of this list is the $\mt{blob}$ type, which stands for binary sequences.  Simple blobs can be created from strings via $\mt{Basis.textBlob}$.  Blobs will also be generated from HTTP file uploads.
 
-Ur also supports \emph{polymorphic variants}, a dual to extensible records that has been popularized by OCaml.  A type $\mt{variant} \; r$ represents an $n$-ary sum type, with one constructor for each field of record $r$.  Each constructor $c$ takes an argument of type $r.c$; the type $\{\}$ can be used to ``simulate'' a nullary constructor.  The \cd{make} function builds a variant value, while \cd{match} implements pattern-matching, with match cases represented as records of functions.
+Ur also supports \emph{polymorphic variants}, a dual to extensible records that have been popularized by OCaml.  A type $\mt{variant} \; r$ represents an $n$-ary sum type, with one constructor for each field of record $r$.  Each constructor $c$ takes an argument of type $r.c$; the type $\{\}$ can be used to ``simulate'' a nullary constructor.  The \cd{make} function builds a variant value, while \cd{match} implements pattern-matching, with match cases represented as records of functions.
 $$\begin{array}{l}
   \mt{con} \; \mt{variant} :: \{\mt{Type}\} \to \mt{Type} \\
   \mt{val} \; \mt{make} : \mt{nm} :: \mt{Name} \to \mt{t} ::: \mt{Type} \to \mt{ts} ::: \{\mt{Type}\} \to [[\mt{nm}] \sim \mt{ts}] \Rightarrow \mt{t} \to \mt{variant} \; ([\mt{nm} = \mt{t}] \rc \mt{ts}) \\
