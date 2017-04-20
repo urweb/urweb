@@ -143,6 +143,9 @@ fun oneRun args =
               | "-static" :: rest =>
                 (Settings.setStaticLinking true;
                  doArgs rest)
+              | "-dynamic" :: rest =>
+                (Settings.setDynamicLinking true;
+                 doArgs rest)
               | "-stop" :: phase :: rest =>
                 (Compiler.setStop phase;
                  doArgs rest)

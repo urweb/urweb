@@ -1545,8 +1545,10 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
                       !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a"
                   else if Settings.getStaticLinking () then
                       " -static " ^ !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a"
-                  else
+                  else if Settings.getDynamicLinking () then
                       "-L" ^ !Settings.configLib ^ " " ^ #linkDynamic proto ^ " -lurweb"
+                  else
+                      !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a"
 
         val opt = if debug then
                       ""

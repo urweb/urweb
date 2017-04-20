@@ -706,6 +706,10 @@ val staticLinking = ref false
 fun setStaticLinking b = staticLinking := b
 fun getStaticLinking () = !staticLinking
 
+val dynamicLinking = ref false
+fun setDynamicLinking b = dynamicLinking := b
+fun getDynamicLinking () = !dynamicLinking
+
 val bootLinking = ref false
 fun setBootLinking b = bootLinking := b
 fun getBootLinking () = !bootLinking

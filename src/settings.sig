@@ -243,6 +243,9 @@ signature SETTINGS = sig
     val setStaticLinking : bool -> unit
     val getStaticLinking : unit -> bool
 
+    val setDynamicLinking : bool -> unit
+    val getDynamicLinking : unit -> bool
+
     val setBootLinking : bool -> unit
     val getBootLinking : unit -> bool
 
