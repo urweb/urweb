@@ -127,7 +127,9 @@ static FCGI_Record *fastcgi_recv(FCGI_Input *i) {
   }
 }
 
-static void on_success(uw_context ctx) { }
+static void on_success(uw_context ctx) {
+  (void)ctx;
+}
 
 static void on_failure(uw_context ctx) {
   uw_write_header(ctx, "Status: 500 Internal Server Error\r\n");
@@ -554,6 +556,7 @@ static void help(char *cmd) {
 }
 
 static void sigint(int signum) {
+  (void)signum;
   printf("Exiting....\n");
   exit(0);
 }
@@ -674,12 +677,17 @@ void *uw_init_client_data() {
 }
 
 void uw_free_client_data(void *data) {
+  (void)data;
 }
 
 void uw_copy_client_data(void *dst, void *src) {
+  (void)dst;
+  (void)src;
 }
 
 void uw_do_expunge(uw_context ctx, uw_Basis_client cli, void *data) {
+  (void)data;
+
   uw_ensure_transaction(ctx);
   uw_get_app(ctx)->expunger(ctx, cli);
 
@@ -688,6 +696,8 @@ void uw_do_expunge(uw_context ctx, uw_Basis_client cli, void *data) {
 }
 
 void uw_post_expunge(uw_context ctx, void *data) {
+  (void)ctx;
+  (void)data;
 }
 
 int uw_supports_direct_status = 0;
