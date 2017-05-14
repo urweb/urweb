@@ -123,7 +123,7 @@ test:
 	bin/urweb -boot -noEmacs -dbms sqlite -db $(TESTDB) -demo /Demo demo
 	rm -f $(TESTDB)
 	sqlite3 $(TESTDB) < demo/demo.sql
-	demo/demo.exe -a 127.0.0.1 & echo $$! > $(TESTPID)
+	demo/demo.exe -q -a 127.0.0.1 & echo $$! > $(TESTPID)
 	sleep 1
 	(curl -s 'http://localhost:8080/Demo/Hello/main' | diff tests/hello.html -) || (kill `cat $(TESTPID)`; echo "Test 'Hello' failed"; /bin/false)
 	(curl -s 'http://localhost:8080/Demo/Crud1/create?A=1&B=2&C=3&D=4' | diff tests/crud1.html -) || (kill `cat $(TESTPID)`; echo "Test 'Crud1' failed"; /bin/false)
@@ -133,7 +133,7 @@ test:
 		echo "Running IPv6 tests."; \
 		rm -f $(TESTDB); \
 		sqlite3 $(TESTDB) < demo/demo.sql; \
-		demo/demo.exe -A ::1 & echo $$! > $(TESTPID); \
+		demo/demo.exe -q -A ::1 & echo $$! > $(TESTPID); \
 		sleep 1; \
 		(curl -g -6 -s 'http://[::1]:8080/Demo/Hello/main' | diff tests/hello.html -) || (kill `cat $(TESTPID)`; echo "Test 'Hello' failed"; /bin/false); \
 		(curl -g -6 -s 'http://[::1]:8080/Demo/Crud1/create?A=1&B=2&C=3&D=4' | diff tests/crud1.html -) || (kill `cat $(TESTPID)`; echo "Test 'Crud1' failed"; /bin/false); \
