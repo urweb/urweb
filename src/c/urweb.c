@@ -180,8 +180,11 @@ static uw_Basis_int my_rand() {
     return -1;
 }
 
-static client *new_client() {
+static client *new_client(uw_context ctx) {
   client *c;
+  int pass = my_rand();
+
+  if (pass < 0) uw_error(ctx, FATAL, "Random number generation failed during client initialization");
 
   pthread_mutex_lock(&clients_mutex);
 
@@ -205,7 +208,7 @@ static client *new_client() {
 
   pthread_mutex_lock(&c->lock);
   c->mode = USED;
-  c->pass = my_rand();
+  c->pass = pass;
   c->sock = -1;
   c->last_contact = time(NULL);
   uw_buffer_reset(&c->msgs);
@@ -817,7 +820,7 @@ void uw_login(uw_context ctx) {
         uw_error(ctx, FATAL, "Wrong client password (%u, %d) in subscription request", id, pass);
     }
   } else if (ctx->needs_push) {
-    client *c = new_client();
+    client *c = new_client(ctx);
 
     if (c == NULL)
       uw_error(ctx, FATAL, "Limit exceeded on number of message-passing clients");
