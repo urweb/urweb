@@ -395,7 +395,7 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("htmlifySpecialChar", "htmlifySpecialChar"),
                           ("chr", "chr")]
 val jsFuncs = ref jsFuncsBase
-val jsModule = ref NONE
+val jsModule = ref (NONE : string option)
 fun setJsModule m = jsModule := m
 fun jsFuncName f =
     case !jsModule of

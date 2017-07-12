@@ -555,7 +555,7 @@ $$\begin{array}{rrcll}
   &&& \_ & \textrm{wildcard} \\
   &&& (e) & \textrm{explicit precedence} \\
   \\
-  \textrm{Local declarations} & ed &::=& \cd{val} \; x : \tau = e & \textrm{non-recursive value} \\
+  \textrm{Local declarations} & ed &::=& \cd{val} \; p = e & \textrm{non-recursive value} \\
   &&& \cd{val} \; \cd{rec} \; (x : \tau = e \; \cd{and})^+ & \textrm{mutually recursive values} \\
 \end{array}$$
 
@@ -566,7 +566,7 @@ $$\begin{array}{rrcll}
   \textrm{Declarations} & d &::=& \mt{con} \; x :: \kappa = c & \textrm{constructor synonym} \\
   &&& \mt{datatype} \; x \; x^* = dc\mid^+ & \textrm{algebraic datatype definition} \\
   &&& \mt{datatype} \; x = \mt{datatype} \; M.x & \textrm{algebraic datatype import} \\
-  &&& \mt{val} \; x : \tau = e & \textrm{value} \\
+  &&& \mt{val} \; p = e & \textrm{value} \\
   &&& \mt{val} \; \cd{rec} \; (x : \tau = e \; \mt{and})^+ & \textrm{mutually recursive values} \\
   &&& \mt{structure} \; X : S = M & \textrm{module definition} \\
   &&& \mt{signature} \; X = S & \textrm{signature definition} \\

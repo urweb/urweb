@@ -2489,6 +2489,15 @@ fun queryOf () = (L'.CModProj (!basis_r, [], "sql_query"), ErrorMsg.dummySpan)
 fun cookieOf () = (L'.CModProj (!basis_r, [], "http_cookie"), ErrorMsg.dummySpan)
 fun styleOf () = (L'.CModProj (!basis_r, [], "css_class"), ErrorMsg.dummySpan)
 
+fun patVarsOf (p : L.pat) =
+    case #1 p of
+        L.PVar x => [x]
+      | L.PPrim _ => []
+      | L.PCon (_, _, NONE) => []
+      | L.PCon (_, _, SOME p) => patVarsOf p
+      | L.PRecord (xps, _) => ListUtil.mapConcat (fn (_, p) => patVarsOf p) xps
+      | L.PAnnot (p', _) => patVarsOf p'
+
 fun dopenConstraints (loc, env, denv) {str, strs} =
     case E.lookupStr env str of
         NONE => (strError env (UnboundStr (loc, str));
@@ -3807,7 +3816,8 @@ and wildifyStr env (str, sgn) =
                      foldl (fn ((d, _), nd) =>
                                case d of
                                    L.DCon (x, _, _) => ndelCon (nd, x)
-                                 | L.DVal (x, _, _) => ndelVal (nd, x)
+                                 | L.DVal (p, _) =>
+                                   foldl (fn (x, nd) => ndelVal (nd, x)) nd (patVarsOf p)
                                  | L.DOpen _ => nempty
                                  | L.DStr (x, _, _, (L.StrConst ds', _), _) =>
                                    (case SM.find (nmods nd, x) of
@@ -3855,7 +3865,7 @@ and wildifyStr env (str, sgn) =
                                | xs =>
                                  let
                                      val ewild = (L.EWild, #2 str)
-                                     val ds'' = map (fn x => (L.DVal (x, NONE, ewild), #2 str)) xs
+                                     val ds'' = map (fn x => (L.DVal ((L.PVar x, #2 str), ewild), #2 str)) xs
                                  in
                                      ds'' @ ds'
                                  end
@@ -4022,22 +4032,55 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                    ([], (env, denv, [])))
                      end)
 
-              | L.DVal (x, co, e) =>
+              | L.DVal (p, e) =>
                 let
-                    val (c', _, gs1) = case co of
-                                           NONE => (cunif env (loc, ktype), ktype, [])
-                                         | SOME c => elabCon (env, denv) c
+                    val ((p', pt), (env', bound)) = elabPat (p, (env, SS.empty))
 
-                    val (e', et, gs2) = elabExp (env, denv) e
+                    val (e', et, gs1) = elabExp (env, denv) e
 
-                    val () = checkCon env e' et c'
+                    val c' = normClassConstraint env et
 
-                    val c' = normClassConstraint env c'
-                    val (env', n) = E.pushENamed env x c'
+                    fun singleVar (p : L.pat) =
+                        case #1 p of
+                            L.PVar x => SOME x
+                          | L.PAnnot (p', _) => singleVar p'
+                          | _ => NONE
                 in
-                    (*prefaces "DVal" [("x", Print.PD.string x),
-                                     ("c'", p_con env c')];*)
-                    ([(L'.DVal (x, n, c', e'), loc)], (env', denv, enD gs1 @ gs2 @ gs))
+                    unifyCons env loc et pt;
+
+                    (case exhaustive (env, et, [p'], loc) of
+                         NONE => ()
+                       | SOME p => if !mayDelay then
+                                       delayedExhaustives := (env, et, [p'], loc) :: !delayedExhaustives
+                                   else
+                                       expError env (Inexhaustive (loc, p)));
+
+                    case singleVar p of
+                        SOME x =>
+                        let
+                            val (env', n) = E.pushENamed env x et
+                        in
+                            ([(L'.DVal (x, n, c', e'), loc)], (env', denv, gs1 @ gs))
+                        end
+                      | NONE =>
+                        let
+                            val (env', n) = E.pushENamed env "$tmp" et
+                            val vars = SS.listItems bound
+                            val (decls, env') =
+                                ListUtil.foldlMap (fn (x, env') =>
+                                                      let
+                                                          val e = (L.ECase ((L.EVar ([], "$tmp", L.Infer), loc),
+                                                                            [(p, (L.EVar ([], x, L.Infer), loc))]), loc)
+                                                          val (e', t, _) = elabExp (env', denv) e
+                                                          val (env', n) = E.pushENamed env' x t
+                                                      in
+                                                          ((L'.DVal (x, n, t, e'), loc),
+                                                           env')
+                                                      end) env' vars
+                        in
+                            ((L'.DVal ("$tmp", n, c', e'), loc) :: decls,
+                             (env', denv, gs1 @ gs))
+                        end
                 end
               | L.DValRec vis =>
                 let

@@ -560,9 +560,13 @@ fun p_decl ((d, _) : decl) =
              string "datatype",
              space,
              p_list_sep (string ".") string (ms @ [x'])]
-      | DVal vi => box [string "val",
-                        space,
-                        p_vali vi]
+      | DVal (p, e) => box [string "val",
+                            space,
+                            p_pat p,
+                            space,
+                            string "=",
+                            space,
+                            p_exp e]
       | DValRec vis => box [string "val",
                             space,
                             string "rec",

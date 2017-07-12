@@ -157,7 +157,7 @@ datatype decl' =
          DCon of string * kind option * con
        | DDatatype of (string * string list * (string * con option) list) list
        | DDatatypeImp of string * string list * string
-       | DVal of string * con option * exp
+       | DVal of pat * exp
        | DValRec of (string * con option * exp) list
        | DSgn of string * sgn
        | DStr of string * sgn option * Time.time option * str * bool (* did this module come from the '-root' directive? *)
