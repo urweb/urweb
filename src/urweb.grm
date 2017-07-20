@@ -636,6 +636,10 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                                                 let
                                                     val t = Option.getOpt (copt, (CWild (KType, loc), loc))
                                                     val (e, t) = #2 eargl2 (eexp, t)
+                                                    val pat =
+                                                        case #1 t of
+                                                            CWild _ => pat
+                                                          | _ => (PAnnot (pat, t), loc)
                                                 in
                                                     [(DVal (pat, e), loc)]
                                                 end
