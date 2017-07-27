@@ -2789,7 +2789,7 @@ fun p_file env (ds, ps) =
                              string "}"]
                 end
 
-        fun getInput (x, t) =
+        fun getInput includesFile (x, t) =
             let
                 val n = case SM.find (fnums, x) of
                             NONE => raise Fail ("CjrPrint: Can't find " ^ x ^ " in fnums")
@@ -2839,7 +2839,7 @@ fun p_file env (ds, ps) =
                                                   xts,
                                        newline,
                                        p_list_sep (box []) (fn (x, t) =>
-                                                               box [getInput (x, t),
+                                                               box [getInput includesFile (x, t),
                                                                     string "result.__uwf_",
                                                                     string x,
                                                                     space,
@@ -2902,7 +2902,7 @@ fun p_file env (ds, ps) =
                                                        xts,
                                             newline,
                                             p_list_sep (box []) (fn (x, t) =>
-                                                                    box [getInput (x, t),
+                                                                    box [getInput includesFile (x, t),
                                                                          string "result->__uwf_1.__uwf_",
                                                                          string x,
                                                                          space,
@@ -2955,7 +2955,10 @@ fun p_file env (ds, ps) =
                               space,
                               string "=",
                               space,
-                              unurlify true env t,
+                              if includesFile then
+                                  string "request"
+                              else
+                                  unurlify true env t,
                               string ";",
                               newline]
             end
@@ -2975,6 +2978,7 @@ fun p_file env (ds, ps) =
                              (TRecord i, _) =>
                              let
                                  val xts = E.lookupStruct env i
+                                 val includesFile = List.exists (fn (_, t) => isFile t) xts
                              in
                                  (List.take (ts, length ts - 2),
                                   box [box (map (fn (x, t) => box [p_typ env t,
@@ -2984,7 +2988,7 @@ fun p_file env (ds, ps) =
                                                                    string ";",
                                                                    newline]) xts),
                                        newline,
-                                       box (map getInput xts),
+                                       box (map (getInput includesFile) xts),
                                        case i of
                                            0 => string "uw_unit uw_inputs;"
                                          | _ => box [string "struct __uws_",
