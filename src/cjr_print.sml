@@ -482,6 +482,11 @@ fun isFile (t : typ) =
         TFfi ("Basis", "file") => true
       | _ => false
 
+fun isString (t : typ) =
+    case #1 t of
+        TFfi ("Basis", "string") => true
+      | _ => false
+
 fun p_sql_type t = string (Settings.p_sql_ctype t)
 
 fun getPargs (e, _) =
@@ -2955,7 +2960,7 @@ fun p_file env (ds, ps) =
                               space,
                               string "=",
                               space,
-                              if includesFile then
+                              if includesFile andalso isString t then
                                   string "request"
                               else
                                   unurlify true env t,
