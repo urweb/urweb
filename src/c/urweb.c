@@ -1519,6 +1519,7 @@ uw_Basis_string uw_Basis_maybe_onunload(uw_context ctx, uw_Basis_string s) {
 }
 
 const char *uw_Basis_get_settings(uw_context ctx, uw_unit u) {
+  (void)u;
   if (ctx->client == NULL) {
     if (ctx->needs_sig) {
       char *sig = ctx->app->cookie_sig(ctx);
@@ -1847,6 +1848,7 @@ char *uw_Basis_attrifyChar(uw_context ctx, uw_Basis_char c) {
 }
 
 char *uw_Basis_attrifyCss_class(uw_context ctx, uw_Basis_css_class s) {
+  (void)ctx;
   return s;
 }
 
@@ -1973,6 +1975,7 @@ char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
 }
 
 char *uw_Basis_urlifyBool(uw_context ctx, uw_Basis_bool b) {
+  (void)ctx;
   if (b == uw_Basis_False)
     return "0";
   else
@@ -2093,6 +2096,8 @@ static char *uw_unurlify_advance(char *s) {
 }
 
 uw_Basis_int uw_Basis_unurlifyInt(uw_context ctx, char **s) {
+  (void)ctx;
+
   char *new_s = uw_unurlify_advance(*s);
   uw_Basis_int r;
 
@@ -2102,6 +2107,8 @@ uw_Basis_int uw_Basis_unurlifyInt(uw_context ctx, char **s) {
 }
 
 uw_Basis_float uw_Basis_unurlifyFloat(uw_context ctx, char **s) {
+  (void)ctx;
+
   char *new_s = uw_unurlify_advance(*s);
   uw_Basis_float r;
 
@@ -2165,6 +2172,8 @@ static uw_Basis_string uw_unurlifyString_to(int fromClient, uw_context ctx, char
 }
 
 uw_Basis_bool uw_Basis_unurlifyBool(uw_context ctx, char **s) {
+  (void)ctx;
+
   char *new_s = uw_unurlify_advance(*s);
   uw_Basis_bool r;
 
@@ -2192,6 +2201,7 @@ uw_Basis_string uw_Basis_unurlifyString(uw_context ctx, char **s) {
 }
 
 uw_Basis_unit uw_Basis_unurlifyUnit(uw_context ctx, char **s) {
+  (void)ctx;
   *s = uw_unurlify_advance(*s);
   return uw_unit_v;
 }
@@ -2345,6 +2355,7 @@ uw_unit uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
 }
 
 uw_Basis_string uw_Basis_htmlifyBool(uw_context ctx, uw_Basis_bool b) {
+  (void)ctx;
   if (b == uw_Basis_False)
     return "False";
   else
@@ -2428,10 +2439,13 @@ uw_Basis_string uw_Basis_strsuffix(uw_context ctx, uw_Basis_string s, uw_Basis_i
 }
 
 uw_Basis_int uw_Basis_strlen(uw_context ctx, uw_Basis_string s) {
+  (void)ctx;
   return strlen(s);
 }
 
 uw_Basis_bool uw_Basis_strlenGe(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
+  (void)ctx;
+
   while (n > 0) {
     if (*s == 0)
       return uw_Basis_False;
@@ -2444,10 +2458,12 @@ uw_Basis_bool uw_Basis_strlenGe(uw_context ctx, uw_Basis_string s, uw_Basis_int 
 }
 
 uw_Basis_string uw_Basis_strchr(uw_context ctx, uw_Basis_string s, uw_Basis_char ch) {
+  (void)ctx;
   return strchr(s, ch);
 }
 
 uw_Basis_int uw_Basis_strcspn(uw_context ctx, uw_Basis_string s, uw_Basis_string chs) {
+  (void)ctx;
   return strcspn(s, chs);
 }
 
@@ -2794,6 +2810,7 @@ uw_Basis_string uw_Basis_sqlifyStringN(uw_context ctx, uw_Basis_string s) {
 }
 
 char *uw_Basis_sqlifyBool(uw_context ctx, uw_Basis_bool b) {
+  (void)ctx;
   if (b == uw_Basis_False)
     return "FALSE";
   else
@@ -2914,6 +2931,7 @@ uw_Basis_string uw_Basis_charToString(uw_context ctx, uw_Basis_char ch) {
 }
 
 uw_Basis_string uw_Basis_boolToString(uw_context ctx, uw_Basis_bool b) {
+  (void)ctx;
   if (b == uw_Basis_False)
     return "False";
   else
@@ -2979,6 +2997,7 @@ uw_Basis_char *uw_Basis_stringToChar(uw_context ctx, uw_Basis_string s) {
 }
 
 uw_Basis_bool *uw_Basis_stringToBool(uw_context ctx, uw_Basis_string s) {
+  (void)ctx;
   static uw_Basis_bool true = uw_Basis_True;
   static uw_Basis_bool false = uw_Basis_False;
 
@@ -3353,6 +3372,8 @@ static delta *allocate_delta(uw_context ctx, unsigned client) {
 }
 
 uw_Basis_channel uw_Basis_new_channel(uw_context ctx, uw_unit u) {
+  (void)u;
+
   if (ctx->client == NULL)
     uw_error(ctx, FATAL, "Attempt to create channel on request not associated with a persistent connection");
 
@@ -3929,37 +3950,45 @@ int uw_streq(uw_Basis_string s1, uw_Basis_string s2) {
 }
 
 uw_Basis_string uw_Basis_sigString(uw_context ctx, uw_unit u) {
+  (void)u;
   ctx->usedSig = 1;
   return ctx->app->cookie_sig(ctx);
 }
 
 uw_Basis_string uw_Basis_fileName(uw_context ctx, uw_Basis_file f) {
+  (void)ctx;
   return f.name;
 }
 
 uw_Basis_string uw_Basis_fileMimeType(uw_context ctx, uw_Basis_file f) {
+  (void)ctx;
   return f.type;
 }
 
 uw_Basis_int uw_Basis_blobSize(uw_context ctx, uw_Basis_blob b) {
+  (void)ctx;
   return b.size;
 }
 
 uw_Basis_blob uw_Basis_textBlob(uw_context ctx, uw_Basis_string s) {
+  (void)ctx;
   uw_Basis_blob b = {strlen(s), s};
 
   return b;
 }
 
 uw_Basis_blob uw_Basis_fileData(uw_context ctx, uw_Basis_file f) {
+  (void)ctx;
   return f.data;
 }
 
 uw_Basis_string uw_Basis_postType(uw_context ctx, uw_Basis_postBody pb) {
+  (void)ctx;
   return pb.type;
 }
 
 uw_Basis_string uw_Basis_postData(uw_context ctx, uw_Basis_postBody pb) {
+  (void)ctx;
   return pb.data;
 }
 
@@ -4156,24 +4185,29 @@ uw_Basis_string uw_Basis_mstrcat(uw_context ctx, ...) {
 const uw_Basis_time uw_Basis_minTime = {};
 
 uw_Basis_time uw_Basis_now(uw_context ctx) {
+  (void)ctx;
   uw_Basis_time r = { time(NULL) };
   return r;
 }
 
 uw_Basis_time uw_Basis_addSeconds(uw_context ctx, uw_Basis_time tm, uw_Basis_int n) {
+  (void)ctx;
   tm.seconds += n;
   return tm;
 }
 
 uw_Basis_int uw_Basis_diffInSeconds(uw_context ctx, uw_Basis_time tm1, uw_Basis_time tm2) {
+  (void)ctx;
   return difftime(tm2.seconds, tm1.seconds);
 }
 
 uw_Basis_int uw_Basis_toMilliseconds(uw_context ctx, uw_Basis_time tm) {
+  (void)ctx;
   return tm.seconds * 1000 + tm.microseconds / 1000;
 }
 
 uw_Basis_time uw_Basis_fromMilliseconds(uw_context ctx, uw_Basis_int n) {
+  (void)ctx;
   uw_Basis_time tm = {n / 1000, n % 1000 * 1000};
   return tm;
 }
@@ -4183,10 +4217,12 @@ uw_Basis_int uw_Basis_diffInMilliseconds(uw_context ctx, uw_Basis_time tm1, uw_B
 }
 
 uw_Basis_int uw_Basis_toSeconds(uw_context ctx, uw_Basis_time tm) {
+  (void)ctx;
   return tm.seconds;
 }
 
 uw_Basis_time uw_Basis_fromDatetime(uw_context ctx, uw_Basis_int year, uw_Basis_int month, uw_Basis_int day, uw_Basis_int hour, uw_Basis_int minute, uw_Basis_int second) {
+  (void)ctx;
   struct tm tm = { .tm_year = year - 1900, .tm_mon = month, .tm_mday = day,
                    .tm_hour = hour, .tm_min = minute, .tm_sec = second,
                    .tm_isdst = -1 };
@@ -4195,42 +4231,49 @@ uw_Basis_time uw_Basis_fromDatetime(uw_context ctx, uw_Basis_int year, uw_Basis_
 }
 
 uw_Basis_int uw_Basis_datetimeYear(uw_context ctx, uw_Basis_time time) {
+  (void)ctx;
   struct tm tm;
   localtime_r(&time.seconds, &tm);
   return tm.tm_year + 1900;
 }
 
 uw_Basis_int uw_Basis_datetimeMonth(uw_context ctx, uw_Basis_time time) {
+  (void)ctx;
   struct tm tm;
   localtime_r(&time.seconds, &tm);
   return tm.tm_mon;
 }
 
 uw_Basis_int uw_Basis_datetimeDay(uw_context ctx, uw_Basis_time time) {
+  (void)ctx;
   struct tm tm;
   localtime_r(&time.seconds, &tm);
   return tm.tm_mday;
 }
 
 uw_Basis_int uw_Basis_datetimeHour(uw_context ctx, uw_Basis_time time) {
+  (void)ctx;
   struct tm tm;
   localtime_r(&time.seconds, &tm);
   return tm.tm_hour;
 }
 
 uw_Basis_int uw_Basis_datetimeMinute(uw_context ctx, uw_Basis_time time) {
+  (void)ctx;
   struct tm tm;
   localtime_r(&time.seconds, &tm);
   return tm.tm_min;
 }
 
 uw_Basis_int uw_Basis_datetimeSecond(uw_context ctx, uw_Basis_time time) {
+  (void)ctx;
   struct tm tm;
   localtime_r(&time.seconds, &tm);
   return tm.tm_sec;
 }
 
 uw_Basis_int uw_Basis_datetimeDayOfWeek(uw_context ctx, uw_Basis_time time) {
+  (void)ctx;
   struct tm tm;
   localtime_r(&time.seconds, &tm);
   return tm.tm_wday;
@@ -4272,66 +4315,82 @@ void uw_set_global(uw_context ctx, char *name, void *data, void (*free)(void*)) 
 }
 
 uw_Basis_bool uw_Basis_isalnum(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!isalnum((int)c);
 }
 
 uw_Basis_bool uw_Basis_isalpha(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!isalpha((int)c);
 }
 
 uw_Basis_bool uw_Basis_isblank(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!isblank((int)c);
 }
 
 uw_Basis_bool uw_Basis_iscntrl(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!iscntrl((int)c);
 }
 
 uw_Basis_bool uw_Basis_isdigit(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!isdigit((int)c);
 }
 
 uw_Basis_bool uw_Basis_isgraph(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!isgraph((int)c);
 }
 
 uw_Basis_bool uw_Basis_islower(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!islower((int)c);
 }
 
 uw_Basis_bool uw_Basis_isprint(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!isprint((int)c);
 }
 
 uw_Basis_bool uw_Basis_ispunct(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!ispunct((int)c);
 }
 
 uw_Basis_bool uw_Basis_isspace(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!isspace((int)c);
 }
 
 uw_Basis_bool uw_Basis_isupper(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!isupper((int)c);
 }
 
 uw_Basis_bool uw_Basis_isxdigit(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return !!isxdigit((int)c);
 }
 
 uw_Basis_char uw_Basis_tolower(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return tolower((int)c);
 }
 
 uw_Basis_char uw_Basis_toupper(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return toupper((int)c);
 }
 
 uw_Basis_int uw_Basis_ord(uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
   return (unsigned char)c;
 }
 
 uw_Basis_char uw_Basis_chr(uw_context ctx, uw_Basis_int n) {
+  (void)ctx;
   return n;
 }
 
@@ -4437,10 +4496,12 @@ uw_Basis_string uw_Basis_crypt(uw_context ctx, uw_Basis_string key, uw_Basis_str
 }
 
 uw_Basis_bool uw_Basis_eq_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t2) {
+  (void)ctx;
   return !!(t1.seconds == t2.seconds && t1.microseconds == t2.microseconds);
 }
 
 uw_Basis_bool uw_Basis_lt_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t2) {
+  (void)ctx;
   return !!(t1.seconds < t2.seconds || (t1.seconds == t2.seconds && t1.microseconds < t2.microseconds));
 }
 
@@ -4505,66 +4566,82 @@ uw_Basis_string uw_Basis_fresh(uw_context ctx) {
 }
 
 uw_Basis_float uw_Basis_floatFromInt(uw_context ctx, uw_Basis_int n) {
+  (void)ctx;
   return n;
 }
 
 uw_Basis_int uw_Basis_ceil(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return ceil(n);
 }
 
 uw_Basis_int uw_Basis_trunc(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return trunc(n);
 }
 
 uw_Basis_int uw_Basis_round(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return round(n);
 }
 
 uw_Basis_int uw_Basis_floor(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return floor(n);
 }
 
 uw_Basis_float uw_Basis_pow(uw_context ctx, uw_Basis_float n, uw_Basis_float m) {
+  (void)ctx;
   return pow(n,m);
 }
 
 uw_Basis_float uw_Basis_sqrt(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return sqrt(n);
 }
 
 uw_Basis_float uw_Basis_sin(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return sin(n);
 }
 
 uw_Basis_float uw_Basis_cos(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return cos(n);
 }
 
 uw_Basis_float uw_Basis_log(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return log(n);
 }
 
 uw_Basis_float uw_Basis_exp(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return exp(n);
 }
 
 uw_Basis_float uw_Basis_asin(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return asin(n);
 }
 
 uw_Basis_float uw_Basis_acos(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return acos(n);
 }
 
 uw_Basis_float uw_Basis_atan(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return atan(n);
 }
 
 uw_Basis_float uw_Basis_atan2(uw_context ctx, uw_Basis_float n, uw_Basis_float m) {
+  (void)ctx;
   return atan2(n, m);
 }
 
 uw_Basis_float uw_Basis_abs(uw_context ctx, uw_Basis_float n) {
+  (void)ctx;
   return fabs(n);
 }
 
@@ -4612,14 +4689,17 @@ uw_Basis_string uw_Basis_property(uw_context ctx, uw_Basis_string s) {
 }
 
 uw_Basis_string uw_Basis_fieldName(uw_context ctx, uw_Basis_postField f) {
+  (void)ctx;
   return f.name;
 }
 
 uw_Basis_string uw_Basis_fieldValue(uw_context ctx, uw_Basis_postField f) {
+  (void)ctx;
   return f.value;
 }
 
 uw_Basis_string uw_Basis_remainingFields(uw_context ctx, uw_Basis_postField f) {
+  (void)ctx;
   return f.remaining;
 }
 
@@ -4754,6 +4834,7 @@ static char *uw_Sqlcache_keyCopy(char *buf, char *key) {
 // The NUL-terminated prefix of [key] below always looks something like "_k1_k2_k3..._kn".
 
 uw_Sqlcache_Value *uw_Sqlcache_check(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys) {
+  (void)ctx;
   int doBump = random() % 1024 == 0;
   if (doBump) {
     pthread_rwlock_wrlock(&cache->lockIn);
@@ -4836,6 +4917,8 @@ static void uw_Sqlcache_storeCommitOne(uw_Sqlcache_Cache *cache, char **keys, uw
 }
 
 static void uw_Sqlcache_flushCommitOne(uw_Sqlcache_Cache *cache, char **keys) {
+  (void)cache;
+  (void)keys;
 }
 
 static void uw_Sqlcache_commit(void *data) {
@@ -4854,6 +4937,7 @@ static void uw_Sqlcache_commit(void *data) {
 }
 
 static void uw_Sqlcache_free(void *data, int dontCare) {
+  (void)dontCare;
   uw_context ctx = (uw_context)data;
   uw_Sqlcache_Update *update = ctx->cacheUpdate;
   while (update) {
@@ -4929,6 +5013,7 @@ void uw_Sqlcache_store(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys, uw
 }
 
 void uw_Sqlcache_flush(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys) {
+  (void)ctx;
   // A flush has to happen immediately so that subsequent stores in the same transaction fail.
   // This is safe to do because we will always call [uw_Sqlcache_wlock] earlier.
   // If the transaction fails, the only harm done is a few extra cache misses.

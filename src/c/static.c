@@ -8,6 +8,8 @@
 extern uw_app uw_application;
 
 static void log_(void *data, const char *fmt, ...) {
+  (void)data;
+
   va_list ap;
   va_start(ap, fmt);
 
@@ -17,6 +19,8 @@ static void log_(void *data, const char *fmt, ...) {
 static uw_loggers loggers = {NULL, log_, log_};
 
 static char *get_header(void *data, const char *h) {
+  (void)data;
+  (void)h;
   return NULL;
 }
 
@@ -56,15 +60,23 @@ void *uw_init_client_data() {
 }
 
 void uw_free_client_data(void *data) {
+  (void)data;
 }
 
 void uw_copy_client_data(void *dst, void *src) {
+  (void)dst;
+  (void)src;
 }
 
 void uw_do_expunge(uw_context ctx, uw_Basis_client cli, void *data) {
+  (void)ctx;
+  (void)cli;
+  (void)data;
 }
 
 void uw_post_expunge(uw_context ctx, void *data) {
+  (void)ctx;
+  (void)data;
 }
 
 int uw_supports_direct_status = 0;

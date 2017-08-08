@@ -78,6 +78,8 @@ uw_context uw_request_new_context(int id, uw_app *app, uw_loggers *ls) {
 }
 
 static void *ticker(void *data) {
+  (void)data;
+
   while (1) {
     usleep(100000);
     ++uw_time;
@@ -133,6 +135,8 @@ static unsigned long long stackSize;
 
 int pthread_create_big(pthread_t *outThread, void *foo, void *threadFunc, void *arg)
 {
+  (void)foo;
+
   if (stackSize > 0) {
     int err;
     pthread_attr_t stackSizeAttribute;
