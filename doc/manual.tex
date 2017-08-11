@@ -155,6 +155,7 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
 \item \texttt{include FILENAME} adds \texttt{FILENAME} to the list of files to be \texttt{\#include}d in C sources.  This is most useful for interfacing with new FFI modules.
 \item \texttt{jsFile FILENAME} asks to serve the contents of a file as JavaScript.  All such content is concatenated into a single file, included via a \texttt{<script>} tag on every page that needs client-side scripting.
 \item \texttt{jsFunc Module.ident=name} gives the JavaScript name of an FFI value.
+\item \texttt{jsModule Module} helps make \texttt{jsFunc} directives less verbose, by setting a module name to prefix in front of \texttt{name} arguments (so running e.g. \texttt{jsFunc MyFfi.foo=bar} actually sets up \texttt{Mod.bar} as the JavaScript name for that function, if \texttt{jsModule Mod} was run beforehand).
 \item \texttt{library FILENAME} parses \texttt{FILENAME.urp} and merges its contents with the rest of the current file's contents.  If \texttt{FILENAME.urp} doesn't exist, the compiler also tries \texttt{FILENAME/lib.urp}.
 \item \texttt{limit class num} sets a resource usage limit for generated applications.  The limit \texttt{class} will be set to the non-negative integer \texttt{num}.  The classes are:
   \begin{itemize}
@@ -554,7 +555,7 @@ $$\begin{array}{rrcll}
   &&& \_ & \textrm{wildcard} \\
   &&& (e) & \textrm{explicit precedence} \\
   \\
-  \textrm{Local declarations} & ed &::=& \cd{val} \; x : \tau = e & \textrm{non-recursive value} \\
+  \textrm{Local declarations} & ed &::=& \cd{val} \; p = e & \textrm{non-recursive value} \\
   &&& \cd{val} \; \cd{rec} \; (x : \tau = e \; \cd{and})^+ & \textrm{mutually recursive values} \\
 \end{array}$$
 
@@ -565,7 +566,7 @@ $$\begin{array}{rrcll}
   \textrm{Declarations} & d &::=& \mt{con} \; x :: \kappa = c & \textrm{constructor synonym} \\
   &&& \mt{datatype} \; x \; x^* = dc\mid^+ & \textrm{algebraic datatype definition} \\
   &&& \mt{datatype} \; x = \mt{datatype} \; M.x & \textrm{algebraic datatype import} \\
-  &&& \mt{val} \; x : \tau = e & \textrm{value} \\
+  &&& \mt{val} \; p = e & \textrm{value} \\
   &&& \mt{val} \; \cd{rec} \; (x : \tau = e \; \mt{and})^+ & \textrm{mutually recursive values} \\
   &&& \mt{structure} \; X : S = M & \textrm{module definition} \\
   &&& \mt{signature} \; X = S & \textrm{signature definition} \\

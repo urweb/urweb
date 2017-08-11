@@ -52,6 +52,7 @@ type job = {
      benignEffectful : Settings.ffi list,
      clientOnly : Settings.ffi list,
      serverOnly : Settings.ffi list,
+     jsModule : string option,
      jsFuncs : (Settings.ffi * string) list,
      rewrites : Settings.rewrite list,
      filterUrl : Settings.rule list,
@@ -273,7 +274,7 @@ val parseUr = {
 
 fun p_job ({prefix, database, exe, sql, sources, debug, profile,
             timeout, ffi, link, headers, scripts,
-            clientToServer, effectful, benignEffectful, clientOnly, serverOnly, jsFuncs, ...} : job) =
+            clientToServer, effectful, benignEffectful, clientOnly, serverOnly, jsModule, jsFuncs, ...} : job) =
     let
         open Print.PD
         open Print
@@ -312,6 +313,9 @@ fun p_job ({prefix, database, exe, sql, sources, debug, profile,
              p_ffi "BenignEffectful" benignEffectful,
              p_ffi "ClientOnly" clientOnly,
              p_ffi "ServerOnly" serverOnly,
+             case jsModule of
+                 NONE => string "No JavaScript FFI module"
+               | SOME m => string ("JavaScript FFI module: " ^ m),
              p_list_sep (box []) (fn ((m, s), s') =>
                                      box [string "JsFunc", space, string m, string ".", string s,
                                           space, string "=", space, string s', newline]) jsFuncs,
@@ -368,6 +372,7 @@ fun institutionalizeJob (job : job) =
      Settings.setBenignEffectful (#benignEffectful job);
      Settings.setClientOnly (#clientOnly job);
      Settings.setServerOnly (#serverOnly job);
+     Settings.setJsModule (#jsModule job);
      Settings.setJsFuncs (#jsFuncs job);
      Settings.setRewriteRules (#rewrites job);
      Settings.setUrlRules (#filterUrl job);
@@ -445,6 +450,7 @@ fun parseUrp' accLibs fname =
                         benignEffectful = [],
                         clientOnly = [],
                         serverOnly = [],
+                        jsModule = NONE,
                         jsFuncs = [],
                         rewrites = [{pkind = Settings.Any,
                                      kind = Settings.Prefix,
@@ -579,6 +585,7 @@ fun parseUrp' accLibs fname =
                      val benignEffectful = ref []
                      val clientOnly = ref []
                      val serverOnly = ref []
+                     val jsModule = ref NONE
                      val jsFuncs = ref []
                      val rewrites = ref []
                      val url = ref []
@@ -616,6 +623,7 @@ fun parseUrp' accLibs fname =
                                  benignEffectful = rev (!benignEffectful),
                                  clientOnly = rev (!clientOnly),
                                  serverOnly = rev (!serverOnly),
+                                 jsModule = !jsModule,
                                  jsFuncs = rev (!jsFuncs),
                                  rewrites = rev (!rewrites),
                                  filterUrl = rev (!url),
@@ -674,6 +682,7 @@ fun parseUrp' accLibs fname =
                                  benignEffectful = #benignEffectful old @ #benignEffectful new,
                                  clientOnly = #clientOnly old @ #clientOnly new,
                                  serverOnly = #serverOnly old @ #serverOnly new,
+                                 jsModule = #jsModule old,
                                  jsFuncs = #jsFuncs old @ #jsFuncs new,
                                  rewrites = #rewrites old @ #rewrites new,
                                  filterUrl = #filterUrl old @ #filterUrl new,
@@ -809,6 +818,10 @@ fun parseUrp' accLibs fname =
                                    | "benignEffectful" => benignEffectful := ffiS () :: !benignEffectful
                                    | "clientOnly" => clientOnly := ffiS () :: !clientOnly
                                    | "serverOnly" => serverOnly := ffiS () :: !serverOnly
+                                   | "jsModule" =>
+                                     (case !jsModule of
+                                          NONE => jsModule := SOME arg
+                                        | SOME _ => ())
                                    | "jsFunc" => jsFuncs := ffiM () :: !jsFuncs
                                    | "rewrite" =>
                                      let

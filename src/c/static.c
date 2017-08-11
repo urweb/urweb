@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
     fk = uw_begin(ctx, argv[1]);
 
     if (fk == SUCCESS || fk == RETURN_INDIRECTLY) {
+      uw_commit(ctx);
       uw_print(ctx, 1);
       puts("");
       return 0;

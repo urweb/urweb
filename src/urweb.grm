@@ -490,7 +490,7 @@ fun patternOut (e : exp) =
  | earga of exp * con -> exp * con
  | eargs of exp * con -> exp * con
  | eargl of exp * con -> exp * con
- | eargl2 of exp * con -> exp * con
+ | eargl2 of bool * (exp * con -> exp * con)
 
  | branch of pat * exp
  | branchs of (pat * exp) list
@@ -622,7 +622,41 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
                 (case dargs of
                      [] => [(DDatatypeImp (SYMBOL, CSYMBOL :: #1 path, #2 path), s (DATATYPEleft, pathright))]
                    | _ => raise Fail "Arguments specified for imported datatype")
-       | VAL vali                       ([(DVal vali, s (VALleft, valiright))])
+       | VAL pat eargl2 copt EQ eexp    (let
+                                            fun justVar (p : pat) =
+                                                case #1 p of
+                                                    PVar x => SOME x
+                                                  | PAnnot (p', _) => justVar p'
+                                                  | _ => NONE
+
+                                            val loc = s (VALleft, eexpright)
+                                        in
+                                            case justVar pat of
+                                                SOME x =>
+                                                let
+                                                    val t = Option.getOpt (copt, (CWild (KType, loc), loc))
+                                                    val (e, t) = #2 eargl2 (eexp, t)
+                                                    val pat =
+                                                        case #1 t of
+                                                            CWild _ => pat
+                                                          | _ => (PAnnot (pat, t), loc)
+                                                in
+                                                    [(DVal (pat, e), loc)]
+                                                end
+                                              | NONE =>
+                                                let
+                                                    val pat =
+                                                        case copt of
+                                                            SOME t => (PAnnot (pat, t), loc)
+                                                          | _ => pat
+                                                in
+                                                    (if #1 eargl2 then
+                                                         ErrorMsg.errorAt loc "Additional arguments not allowed after pattern"
+                                                     else
+                                                         ());
+                                                    [(DVal (pat, eexp), loc)]
+                                                end
+                                        end)
        | VAL REC valis                  ([(DValRec valis, s (VALleft, valisright))])
        | FUN valis                      ([(DValRec valis, s (FUNleft, valisright))])
 
@@ -695,7 +729,7 @@ vali   : SYMBOL eargl2 copt EQ eexp     (let
                                              val loc = s (SYMBOLleft, eexpright)
                                              val t = Option.getOpt (copt, (CWild (KType, loc), loc))
 
-                                             val (e, t) = eargl2 (eexp, t)
+                                             val (e, t) = #2 eargl2 (eexp, t)
                                          in
                                              (SYMBOL, SOME t, e)
                                          end)
@@ -1279,8 +1313,8 @@ eargs  : earg                           (earg)
 eargl  : eargp eargp                    (eargp1 o eargp2)
        | eargp eargl                    (eargp o eargl)
 
-eargl2 :                                (fn x => x)
-       | eargp eargl2                   (eargp o eargl2)
+eargl2 :                                (false, fn x => x)
+       | eargp eargl2                   (true, eargp o #2 eargl2)
 
 earg   : patS                           (fn (e, t) =>
                                             let

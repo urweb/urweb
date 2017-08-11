@@ -1,4 +1,16 @@
 ========
+20170720
+========
+
+- New .urp directive: 'jsModule'
+- New compiler command-line option: '-js'
+- New HTML attribute for <button>: 'disabled'
+- Allow inexhaustive patterns for lefthand sides of top-level 'val' declarations
+- New standard-library functions: 'List.appi' and 'Option.app'
+- Support for Emacs bg-build mode
+- Bug fixes and improvements to error messages
+
+========
 20170105
 ========
 

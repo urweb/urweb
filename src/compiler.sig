@@ -48,6 +48,7 @@ signature COMPILER = sig
          benignEffectful : Settings.ffi list,
          clientOnly : Settings.ffi list,
          serverOnly : Settings.ffi list,
+         jsModule : string option,
          jsFuncs : (Settings.ffi * string) list,
          rewrites : Settings.rewrite list,
          filterUrl : Settings.rule list,

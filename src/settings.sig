@@ -96,6 +96,7 @@ signature SETTINGS = sig
     val isServerOnly : ffi -> bool
 
     (* Which FFI functions may be run in JavaScript?  (JavaScript function names included) *)
+    val setJsModule : string option -> unit
     val setJsFuncs : (ffi * string) list -> unit
     val addJsFunc : ffi * string -> unit
     val jsFunc : ffi -> string option
