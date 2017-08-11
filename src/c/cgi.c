@@ -17,6 +17,8 @@ static char *uppercased;
 static size_t uppercased_len;
 
 static char *get_header(void *data, const char *h) {
+  (void)data;
+
   size_t len = strlen(h);
   char *s, *r;
   const char *saved_h = h;
@@ -41,16 +43,21 @@ static char *get_header(void *data, const char *h) {
 }
 
 static char *get_env(void *data, const char *name) {
+  (void)data;
   return getenv(name);
 }
 
-static void on_success(uw_context ctx) { }
+static void on_success(uw_context ctx) {
+  (void)ctx;
+}
 
 static void on_failure(uw_context ctx) {
   uw_write_header(ctx, "Status: 500 Internal Server Error\r\n");
 }
 
 static void log_error(void *data, const char *fmt, ...) {
+  (void)data;
+
   va_list ap;
   va_start(ap, fmt);
 
@@ -58,11 +65,16 @@ static void log_error(void *data, const char *fmt, ...) {
 }
 
 static void log_debug(void *data, const char *fmt, ...) {
+  (void)data;
+  (void)fmt;
 }
 
 static uw_loggers ls = {NULL, log_error, log_debug};
 
 int main(int argc, char *argv[]) {
+  (void)argc;
+  (void)argv;
+
   uw_context ctx = uw_request_new_context(0, &uw_application, &ls);
   uw_request_context rc = uw_new_request_context();
   request_result rr;
@@ -130,12 +142,17 @@ void *uw_init_client_data() {
 }
 
 void uw_free_client_data(void *data) {
+  (void)data;
 }
 
 void uw_copy_client_data(void *dst, void *src) {
+  (void)dst;
+  (void)src;
 }
 
 void uw_do_expunge(uw_context ctx, uw_Basis_client cli, void *data) {
+  (void)data;
+
   uw_ensure_transaction(ctx);
   uw_get_app(ctx)->expunger(ctx, cli);
 
@@ -144,6 +161,8 @@ void uw_do_expunge(uw_context ctx, uw_Basis_client cli, void *data) {
 }
 
 void uw_post_expunge(uw_context ctx, void *data) {
+  (void)ctx;
+  (void)data;
 }
 
 int uw_supports_direct_status = 0;
