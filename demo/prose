@@ -23,10 +23,10 @@ sudo make install
 
 <h6>Compile the Demo the Easy Way</h6>
 
-<p><blockquote><pre>$ urweb -dbms sqlite -db /path_to_db.sqlite -demo /Demo demo
+<p><blockquote><pre>$ urweb -dbms sqlite -db /path_to_db.sqlite -demo /Demo -noEmacs demo
 </blockquote></pre></p>
 
-<p>The <tt>-dbms sqlite</tt> flag indicates that instead of using the default database management system (<a href="https://www.postgresql.org/">PostgreSQL</a>), we wish to use <a href="https://sqlite.org/">SQLite</a> (usually unsuited for production).  The <tt>-db</tt> flag allows us to specify the file-system path to our SQLite database.  The <tt>-demo /Demo</tt> parameter indicates that we want to build a demo application that expects its URIs to begin with <tt>/Demo</tt>.  The final argument <tt>demo</tt> gives the path to a directory housing Ur/Web source files (<tt>.ur</tt>, <tt>.urp</tt>, <tt>.urs</tt>, etc.).
+<p>The <tt>-dbms sqlite</tt> flag indicates that instead of using the default database management system (<a href="https://www.postgresql.org/">PostgreSQL</a>), we wish to use <a href="https://sqlite.org/">SQLite</a> (usually unsuited for production).  The <tt>-db</tt> flag allows us to specify the file-system path to our SQLite database.  The <tt>-demo /Demo</tt> parameter indicates that we want to build a demo application that expects its URIs to begin with <tt>/Demo</tt>, while the <tt>-noEmacs</tt> parameter disables invocation of Emacs to syntax-highlight source files for HTML rendering.  The final argument <tt>demo</tt> gives the path to a directory housing Ur/Web source files (<tt>.ur</tt>, <tt>.urp</tt>, <tt>.urs</tt>, etc.).
 </p>
 
 <p>
