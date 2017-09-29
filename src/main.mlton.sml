@@ -27,15 +27,79 @@
 
 val socket = ".urweb_daemon"
 
-(* Encapsulate main invocation handler in a function, possibly to be called multiple times within a daemon. *)
-
 exception Code of OS.Process.status
+
+datatype flag_arity =
+      ZERO of (unit -> unit)
+    | ONE  of string * (string -> unit)
+    | TWO  of string * string * (string * string -> unit)
+
+fun parse_flags flag_info args =
+    let
+        fun search_pred flag0 =
+            (* Remove preceding "-". *)
+            let val flag0 = String.extract (flag0, 1, NONE)
+            in
+                fn (flag1, _, _) => flag0 = flag1
+            end
+
+        fun loop [] : string list = []
+          | loop (arg :: args) =
+             if String.isPrefix "-" arg then
+                case List.find (search_pred arg) flag_info of
+                  NONE => raise Fail ("Unknown flag "^arg^", see -help")
+                | SOME x => exec x args
+             else
+                arg :: loop args
+
+        and exec (_, ZERO f, _) args =
+                (f (); loop args)
+          | exec (_, ONE (_, f), _) (x :: args) =
+                (f x; loop args)
+          | exec (_, TWO (_, _, f), _) (x :: y :: args) =
+                (f (x, y); loop args)
+          | exec (flag, ONE _, _) [] =
+                raise Fail ("Flag "^flag^" is missing an argument, see -help")
+          | exec (flag, TWO _, _) [] =
+                raise Fail ("Flag "^flag^" is missing two arguments, see -help")
+          | exec (flag, TWO _, _) [_] =
+                raise Fail ("Flag "^flag^" is missing an argument, see -help")
+    in
+        loop args
+    end
+
+fun usage flag_info =
+    let
+        val name = CommandLine.name ()
+
+        fun print_desc NONE = print "\n"
+          | print_desc (SOME s) = (print " : "; print s; print "\n")
+
+        fun print_args (ZERO _) = ()
+          | print_args (ONE (x, _)) = print (" " ^ x)
+          | print_args (TWO (x, y, _)) = print (" " ^ x ^ " " ^ y)
+
+        fun print_flag (_, (flag, args, desc)) =
+            (print ("  -" ^ flag);
+             print_args args;
+             print_desc desc)
+    in
+        print "usage: \n";
+        print ("  " ^ name ^ " daemon [stop|start]\n");
+        print ("  " ^ name ^ " [flag ...] project-name\n");
+        print "Supported flags are:\n";
+        ListUtil.appi print_flag flag_info;
+        raise Code OS.Process.success
+    end
+
+
+
+(* Encapsulate main invocation handler in a function, possibly to be called multiple times within a daemon. *)
 
 fun oneRun args =
     let
         val timing = ref false
         val tc = ref false
-        val sources = ref ([] : string list)
         val demo = ref (NONE : (string * bool) option)
         val tutorial = ref false
         val css = ref false
@@ -52,162 +116,143 @@ fun oneRun args =
 
         val () = Compiler.beforeC := MLton.GC.pack
 
-        fun printVersion () = (print (Config.versionString ^ "\n");
-		               raise Code OS.Process.success)
-        fun printNumericVersion () = (print (Config.versionNumber ^ "\n");
-			              raise Code OS.Process.success)
-        fun printCCompiler () = (print (Settings.getCCompiler () ^ "\n");
-			         raise Code OS.Process.success)
-        fun printCInclude () = (print (Config.includ ^ "\n");
-			        raise Code OS.Process.success)
+        fun print_and_exit msg () =
+            (print msg; print "\n";
+             raise Code OS.Process.success)
 
-        fun doArgs args =
-            case args of
-                [] => ()
-              | "-version" :: rest =>
-                  printVersion ()
-              | "-numeric-version" :: rest =>
-                  printNumericVersion ()
-              | "-css" :: rest =>
-                (css := true;
-                 doArgs rest)
-              | "-print-ccompiler" :: rest =>
-                  printCCompiler ()
-              | "-print-cinclude" :: rest =>
-                  printCInclude ()
-              | "-ccompiler" :: ccomp :: rest =>
-                (Settings.setCCompiler ccomp;
-                 doArgs rest)
-              | "-demo" :: prefix :: rest =>
-                (demo := SOME (prefix, false);
-                 doArgs rest)
-              | "-guided-demo" :: prefix :: rest =>
-                (demo := SOME (prefix, true);
-                 doArgs rest)
-              | "-tutorial" :: rest =>
-                (tutorial := true;
-                 doArgs rest)
-              | "-protocol" :: name :: rest =>
-                (Settings.setProtocol name;
-                 doArgs rest)
-              | "-prefix" :: prefix :: rest =>
-                (Settings.setUrlPrefix prefix;
-                 doArgs rest)
-              | "-db" :: s :: rest =>
-                (Settings.setDbstring (SOME s);
-                 doArgs rest)
-              | "-dbms" :: name :: rest =>
-                (Settings.setDbms name;
-                 doArgs rest)
-              | "-debug" :: rest =>
-                (Settings.setDebug true;
-                 doArgs rest)
-              | "-verbose" :: rest =>
-                (Compiler.debug := true;
-                 Elaborate.verbose := true;
-                 doArgs rest)
-              | "-timing" :: rest =>
-                (timing := true;
-                 doArgs rest)
-              | "-tc" :: rest =>
-                (tc := true;
-                 doArgs rest)
-              | "-dumpTypes" :: rest =>
-                (Elaborate.dumpTypes := true;
-                 doArgs rest)
-              | "-dumpTypesOnError" :: rest =>
-                (Elaborate.dumpTypesOnError := true;
-                 doArgs rest)
-              | "-unifyMore" :: rest =>
-                (Elaborate.unifyMore := true;
-                 doArgs rest)
-              | "-dumpSource" :: rest =>
-                (Compiler.dumpSource := true;
-                 doArgs rest)
-              | "-dumpVerboseSource" :: rest =>
-                (Compiler.dumpSource := true;
-                 ElabPrint.debug := true;
-                 ExplPrint.debug := true;
-                 CorePrint.debug := true;
-                 MonoPrint.debug := true;
-                 doArgs rest)
-              | "-output" :: s :: rest =>
-                (Settings.setExe (SOME s);
-                 doArgs rest)
-              | "-js" :: s :: rest =>
-		(Settings.setOutputJsFile (SOME s);
-		 doArgs rest)
-              | "-sql" :: s :: rest =>
-                (Settings.setSql (SOME s);
-                 doArgs rest)
-              | "-static" :: rest =>
-                (Settings.setStaticLinking true;
-                 doArgs rest)
-              | "-stop" :: phase :: rest =>
-                (Compiler.setStop phase;
-                 doArgs rest)
-              | "-path" :: name :: path :: rest =>
-                (Compiler.addPath (name, path);
-                 doArgs rest)
-              | "-root" :: name :: root :: rest =>
-                (Compiler.addModuleRoot (root, name);
-                 doArgs rest)
-              | "-boot" :: rest =>
-                (Compiler.enableBoot ();
-                 Settings.setBootLinking true;
-                 doArgs rest)
-              | "-sigfile" :: name :: rest =>
-                (Settings.setSigFile (SOME name);
-                 doArgs rest)
-              | "-iflow" :: rest =>
-                (Compiler.doIflow := true;
-                 doArgs rest)
-              | "-sqlcache" :: rest =>
-                (Settings.setSqlcache true;
-                 doArgs rest)
-              | "-heuristic" :: h :: rest =>
-                (Sqlcache.setHeuristic h;
-                 doArgs rest)
-              | "-moduleOf" :: fname :: _ =>
-                (print (Compiler.moduleOf fname ^ "\n");
-                 raise Code OS.Process.success)
-              | "-noEmacs" :: rest =>
-                (Demo.noEmacs := true;
-                 doArgs rest)
-              | "-limit" :: class :: num :: rest =>
-                (case Int.fromString num of
-                     NONE => raise Fail ("Invalid limit number '" ^ num ^ "'")
-                   | SOME n =>
-                     if n < 0 then
-                         raise Fail ("Invalid limit number '" ^ num ^ "'")
-                     else
-                         Settings.addLimit (class, n);
-                 doArgs rest)
-              | "-explainEmbed" :: rest =>
-                (JsComp.explainEmbed := true;
-                 doArgs rest)
-              | arg :: rest =>
-                (if size arg > 0 andalso String.sub (arg, 0) = #"-" then
-                     raise Fail ("Unknown flag " ^ arg)
+        val printVersion = print_and_exit Config.versionString
+        val printNumericVersion = print_and_exit Config.versionNumber
+        fun printCCompiler () = print_and_exit (Settings.getCCompiler ()) ()
+        val printCInclude = print_and_exit Config.includ
+
+        fun printModuleOf fname =
+            print_and_exit (Compiler.moduleOf fname) ()
+
+        fun add_class (class, num) =
+            case Int.fromString num of
+                 NONE => raise Fail ("Invalid limit number '" ^ num ^ "'")
+               | SOME n =>
+                 if n < 0 then
+                     raise Fail ("Invalid limit number '" ^ num ^ "'")
                  else
-                     sources := arg :: !sources;
-                 doArgs rest)
+                     Settings.addLimit (class, n)
+
+        fun set_true flag = ZERO (fn () => flag := true)
+        fun call_true f = ZERO (fn () => f true)
+
+        (* This is a function, and not simply a value, because it
+         * is recursive in the help-flag. *)
+        fun flag_info () = [
+              ("help", ZERO (fn () => usage (flag_info ())),
+                    SOME "print this overview"),
+              ("version", ZERO printVersion,
+                    SOME "print version number and exit"),
+              ("numeric-version", ZERO printNumericVersion,
+                    SOME "print numeric version number and exit"),
+              ("css", set_true css,
+                    SOME "print categories of CSS properties"),
+              ("print-ccompiler", ZERO printCCompiler,
+                    SOME "print C compiler and exit"),
+              ("print-cinclude", ZERO printCInclude,
+                    SOME "print directory of C headers and exit"),
+              ("ccompiler", ONE ("<program>", Settings.setCCompiler),
+                    SOME "set the C compiler to <program>"), 
+              ("demo", ONE ("<prefix>", fn prefix =>
+                                demo := SOME (prefix, false)),
+                    NONE),
+              ("guided-demo", ONE ("<prefix>", fn prefix =>
+                                demo := SOME (prefix, true)),
+                    NONE),
+              ("tutorial", set_true tutorial,
+                    NONE),
+              ("protocol", ONE ("[http|cgi|fastcgi|static]",
+                                Settings.setProtocol),
+                    SOME "set server protocol"),
+              ("prefix", ONE ("<prefix>", Settings.setUrlPrefix),
+                    SOME "set prefix used before all URI's"),
+              ("db", ONE ("<string>", Settings.setDbstring o SOME),
+                    SOME "database connection information"),
+              ("dbms", ONE ("[sqlite|mysql|postgrsql]", Settings.setDbms),
+                    SOME "select database engine"),
+              ("debug", call_true Settings.setDebug,
+                    NONE),
+              ("verbose", ZERO (fn () =>
+                                (Compiler.debug := true;
+                                 Elaborate.verbose := true)),
+                    NONE),
+              ("timing", set_true timing,
+                    SOME "time compilation phases"),
+              ("tc", set_true tc,
+                    SOME "stop after type checking"),
+              ("dumpTypes", set_true Elaborate.dumpTypes,
+                    SOME "print kinds and types"),
+              ("dumpTypesOnError", set_true Elaborate.dumpTypesOnError,
+                    SOME "print kinds and types if there is an error"),
+              ("unifyMore", set_true Elaborate.unifyMore,
+                    SOME "continue unification before reporting type error"),
+              ("dumpSource", set_true Compiler.dumpSource,
+                    NONE),
+              ("dumpVerboseSource", ZERO (fn () =>
+                                (Compiler.dumpSource := true;
+                                 ElabPrint.debug := true;
+                                 ExplPrint.debug := true;
+                                 CorePrint.debug := true;
+                                 MonoPrint.debug := true)),
+                    NONE),
+              ("output", ONE ("<file>", Settings.setExe o SOME),
+                    SOME "output executable as <file>"),
+              ("js", ONE ("<file>", Settings.setOutputJsFile o SOME),
+                    SOME "serve javascript as <file>"),
+              ("sql", ONE ("<file>", Settings.setSql o SOME),
+                    SOME "output sql script as <file>"),
+              ("static", call_true Settings.setStaticLinking,
+                    SOME "enable static linking"),
+              ("stop", ONE ("<phase>", Compiler.setStop),
+                    SOME "stop compilation after <phase>"),
+              ("path", TWO ("<name>", "<path>", Compiler.addPath),
+                    NONE),
+              ("root", TWO ("<name>", "<path>",
+                            (fn (name, path) =>
+                                Compiler.addModuleRoot (path, name))),
+                    NONE),
+              ("boot", ZERO (fn () =>
+                            (Compiler.enableBoot ();
+                             Settings.setBootLinking true)),
+                    NONE),
+              ("sigfile", ONE ("<file>", Settings.setSigFile o SOME),
+                    NONE),
+              ("iflow", set_true Compiler.doIflow,
+                    NONE),
+              ("sqlcache", call_true Settings.setSqlcache,
+                    NONE),
+              ("heuristic", ONE ("<h>", Sqlcache.setHeuristic),
+                    NONE),
+              ("moduleOf", ONE ("<file>", printModuleOf),
+                    SOME "print module name of <file> and exit"),
+              ("noEmacs", set_true Demo.noEmacs,
+                    NONE),
+              ("limit", TWO ("<class>", "<num>", add_class),
+                    NONE),
+              ("explainEmbed", set_true JsComp.explainEmbed,
+                    SOME ("explain errors about embedding of server-side "^
+                          "values in clinent code"))
+        ]
 
         val () = case args of
                      ["daemon", "stop"] => OS.Process.exit OS.Process.success
                    | _ => ()
 
-        val () = doArgs args
+        val sources = parse_flags (flag_info ()) args
 
         val job =
-            case !sources of
+            case sources of
                 [file] => file
+              | [] =>
+                    raise Fail "No project specified, see -help"
               | files =>
-                if List.exists (fn s => s <> "-version") args then
-                    raise Fail ("Zero or multiple input files specified; only one is allowed.\nFiles: "
-                                ^ String.concatWith ", " files)
-                else
-                    printVersion ()
+                    raise Fail ("Multiple projects specified;"^
+                                " only one is allowed.\nSpecified projects: "^
+                                String.concatWith ", " files)
     in
         case (!css, !demo, !tutorial) of
             (true, _, _) =>
