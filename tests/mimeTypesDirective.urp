@@ -1,0 +1,6 @@
+mimeTypes fake_types
+file /hello.txt hello.txt
+file /hello.html hello.html
+file /hello2.txt hello.txt gadzooks/yippie
+
+mimeTypesDirective
