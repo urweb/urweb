@@ -79,7 +79,7 @@ fun usage flag_info =
           | print_args (ONE (x, _)) = print (" " ^ x)
           | print_args (TWO (x, y, _)) = print (" " ^ x ^ " " ^ y)
 
-        fun print_flag (_, (flag, args, desc)) =
+        fun print_flag (flag, args, desc) =
             (print ("  -" ^ flag);
              print_args args;
              print_desc desc)
@@ -88,7 +88,7 @@ fun usage flag_info =
         print ("  " ^ name ^ " daemon [stop|start]\n");
         print ("  " ^ name ^ " [flag ...] project-name\n");
         print "Supported flags are:\n";
-        ListUtil.appi print_flag flag_info;
+        app print_flag flag_info;
         raise Code OS.Process.success
     end
 
@@ -172,7 +172,7 @@ fun oneRun args =
                     SOME "set prefix used before all URI's"),
               ("db", ONE ("<string>", Settings.setDbstring o SOME),
                     SOME "database connection information"),
-              ("dbms", ONE ("[sqlite|mysql|postgrsql]", Settings.setDbms),
+              ("dbms", ONE ("[sqlite|mysql|postgres]", Settings.setDbms),
                     SOME "select database engine"),
               ("debug", call_true Settings.setDebug,
                     NONE),
@@ -202,7 +202,7 @@ fun oneRun args =
               ("output", ONE ("<file>", Settings.setExe o SOME),
                     SOME "output executable as <file>"),
               ("js", ONE ("<file>", Settings.setOutputJsFile o SOME),
-                    SOME "serve javascript as <file>"),
+                    SOME "serve JavaScript as <file>"),
               ("sql", ONE ("<file>", Settings.setSql o SOME),
                     SOME "output sql script as <file>"),
               ("static", call_true Settings.setStaticLinking,
@@ -235,7 +235,7 @@ fun oneRun args =
                     NONE),
               ("explainEmbed", set_true JsComp.explainEmbed,
                     SOME ("explain errors about embedding of server-side "^
-                          "values in clinent code"))
+                          "values in client code"))
         ]
 
         val () = case args of
