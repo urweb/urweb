@@ -6,6 +6,16 @@ fun writeBack v =
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Client = {[me]});
     send r.Channels.Channel v
 
+fun getInfo v =
+    me <- self;
+    r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Client < {[me]} OR channels.Client > {[me]});
+    send r.Channels.Channel v
+
+fun sendInfo v =
+    me <- self;
+    r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Client < {[me]} OR channels.Client > {[me]});
+    send r.Channels.Channel v
+
 fun action () =
     me <- self;
     ch <- channel;
@@ -17,14 +27,15 @@ fun action () =
         fun receiver () =
             v <- recv ch;
             Buffer.write buf ("(" ^ v.1 ^ ", " ^ show v.2 ^ ", " ^ show v.3 ^ ")");
-            receiver ()
+            rpc (sendInfo (v));
+            receiver()
 
         fun sender s n f =
             sleep 2000;
-            rpc (writeBack (s, n, f));
+            rpc (getInfo (s, n, f));
             sender (s ^ "!") (n + 1) (f + 1.23)
     in
-        return <xml><body onload={spawn (receiver ()); sender "" 0 0.0}>
+        return <xml><body onload={spawn (receiver ()); sender "Hello" 0 0.0}>
           <dyn signal={Buffer.render buf}/>
         </body></xml>
     end
