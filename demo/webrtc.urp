@@ -1,1 +1,5 @@
+database dbname=test
+sql webrtc.sql
+safeGet Webrtc/main
+
 webrtc
