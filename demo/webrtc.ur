@@ -76,5 +76,6 @@ fun main () = return <xml>
     <body>
         <form><submit value="One" action={clientOne}/></form>
         <form><submit value="Two" action={clientTwo}/></form>
+        <button value="Click me please" onclick={fn _ => n<- JsWebrtcJs.myFunction "Nitin Surana"; alert n}></button>
     </body>
     </xml>

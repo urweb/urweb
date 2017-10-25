@@ -1,6 +1,10 @@
 database dbname=test
 sql webrtc.sql
 safeGet Webrtc/main
+#script http://cdn.peerjs.com/0.3/peer.js
+jsFile webrtc.js
+ffi jsWebrtcJs
+jsFunc JsWebrtcJs.myFunction=myFunction
 
 buffer
 webrtc

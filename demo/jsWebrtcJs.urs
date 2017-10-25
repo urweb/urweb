@@ -1,0 +1,1 @@
+val myFunction : string -> transaction string
