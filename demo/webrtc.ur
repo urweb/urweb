@@ -1,44 +1,63 @@
-table peers : { A : client, B : channel ( string ) , C : string}
-  PRIMARY KEY A
+table channels : { Client : client, Channel : channel (string * int * float) }
+  PRIMARY KEY Client
 
-fun connectWithClient () = "Hi"
+fun getInfo v =
+    me <- self;
+    r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Client <> {[me]});
+    send r.Channels.Channel v
 
-fun main () =
-	me <- self;
-	ch <- channel;
-    dml (INSERT INTO peers (A, B, C)
-         VALUES ({[me]}, {[ch]}, {["Hi"]}));
-    rows <- queryX (SELECT * FROM peers WHERE peers.A > {[me]} OR peers.A < {[me]})
-            (fn row => <xml><tr>
-            	<td>{[row.Peers.C]}</td>
-             	<td>
-             		<button value="Connect" onclick={fn _ => rpc (connectWithClient ()); } />
-             	</td>
-            </tr></xml>);
 
-    return <xml>
-      <head>
-	    <title>Hello WebRTC!</title>
-	  </head>
-	  <body>
-	    <h1>Hello WebRTC!</h1>
-	      <table border=1>
-	        <tr> <th>Client Name</th> <th>Connect</th> <th>Message</th> </tr>  
-	        {rows}      
-	      </table>
-      </body>
+
+fun clientOne () =
+    me <- self;
+    ch <- channel;
+    dml (INSERT INTO channels (Client, Channel) VALUES ({[me]}, {[ch]}));
+
+    buf <- Buffer.create;
+
+    let
+        fun receiver () =
+            v <- recv ch;
+            Buffer.write buf ("(" ^ v.1 ^ ", " ^ show v.2 ^ ", " ^ show v.3 ^ ")");
+            receiver()
+
+    in
+     src <- source ("",1,4.0);
+     return <xml><body onload={spawn (receiver())}>
+       <h1>Client One </h1>
+       <button value="GetInfo" onclick={fn _ => rpc(getInfo ("",2,4.0))}></button>
+       <dyn signal={Buffer.render buf}/>
+     </body></xml>
+    end
+
+
+fun clientTwo () =
+    me <- self;
+    ch <- channel;
+    dml (INSERT INTO channels (Client, Channel) VALUES ({[me]}, {[ch]}));
+
+    buf <- Buffer.create;
+
+    let
+        fun receiver () =
+            v <- recv ch;
+            Buffer.write buf ("(" ^ v.1 ^ ", " ^ show v.2 ^ ", " ^ show v.3 ^ ")");
+            receiver()
+
+    in
+     src <- source ("",1,4.0);
+     return <xml><body onload={spawn (receiver())}>
+       <h1>Client Two </h1>
+       <button value="GetInfo" onclick={fn _ => rpc(getInfo ("",2,4.0))}></button>
+       <dyn signal={Buffer.render buf}/>
+     </body></xml>
+    end
+
+
+fun main () = return <xml>
+    <head>WebRTC</head>
+    <body>
+        <form><submit value="One" action={clientOne}/></form>
+        <form><submit value="Two" action={clientTwo}/></form>
+    </body>
     </xml>
-
-fun otherFun () =
-	return <xml>
-	  <head>
-	    <title>Hello WebRTC!</title>
-	  </head>
-
-	  <body>
-	    <h1>Hello WebRTC!</h1>
-	    <form>
-	    	<submit value="Begin demo" action={otherFun}/>
-	    </form>
-	  </body>
-	</xml>
