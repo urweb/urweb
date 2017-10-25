@@ -7,6 +7,7 @@ fun getInfo v =
     send r.Channels.Channel v
 
 fun sendInfo v =
+    buf <- Buffer.create;
     me <- self;
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Client <> {[me]});
     send r.Channels.Channel v
@@ -23,16 +24,21 @@ fun clientOne () =
     let
         fun receiver () =
             v <- recv ch;
-            Buffer.write buf ("(" ^ v.1 ^ ", " ^ show v.2 ^ ", " ^ show v.3 ^ ")");
-            rpc(sendInfo("Complete",2,4.0));
+            Buffer.write buf ("(Received : " ^ v.1 ^ ")");
+            Buffer.write buf ("(Sending : " ^ "I am good! Thank you for asking" ^ ")");
+            rpc(sendInfo("I am good! Thank you for asking!",2,4.0));
             receiver()
+
+        fun getFromOtherClient v =
+            Buffer.write buf ("(Sending : " ^ v.1 ^ ")");
+            rpc(getInfo v)
 
 
     in
      src <- source ("",1,4.0);
      return <xml><body onload={spawn (receiver())}>
        <h1>Client One </h1>
-       <button value="GetInfo" onclick={fn _ => rpc(getInfo ("",2,4.0))}></button>
+       <button value="GetInfo" onclick={fn _ => getFromOtherClient("How is Ur/Web Project?",1,4.1)}></button><br/>
        <dyn signal={Buffer.render buf}/>
      </body></xml>
     end
@@ -48,21 +54,25 @@ fun clientTwo () =
     let
         fun receiver () =
             v <- recv ch;
-            Buffer.write buf ("(" ^ v.1 ^ ", " ^ show v.2 ^ ", " ^ show v.3 ^ ")");
+            Buffer.write buf ("(Received :" ^ v.1 ^ ")");
             receiver()
+
+        fun getFromOtherClient v =
+            Buffer.write buf ("(Sending : " ^ v.1 ^ ")");
+            rpc(getInfo v)
 
     in
      src <- source ("",1,4.0);
      return <xml><body onload={spawn (receiver())}>
        <h1>Client Two </h1>
-       <button value="GetInfo" onclick={fn _ => rpc(getInfo ("",1,4.0))}></button>
+       <button value="GetInfo" onclick={fn _ => getFromOtherClient("Hello! How are you?",1,4.1)}></button><br/>
        <dyn signal={Buffer.render buf}/>
      </body></xml>
     end
 
 
 fun main () = return <xml>
-    <head>WebRTC</head>
+    <head><title>WebRTC</title></head>
     <body>
         <form><submit value="One" action={clientOne}/></form>
         <form><submit value="Two" action={clientTwo}/></form>
