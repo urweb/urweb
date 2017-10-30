@@ -1,15 +1,9 @@
-table channels : { Client : client, Username: string, Channel : channel (int) }
+table channels : { Client : client, Username: string, Channel : channel (string * string) }
   PRIMARY KEY Client
-
-fun getInfo v =
-    me <- self;
-    r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Client <> {[me]});
-    send r.Channels.Channel v
 
 fun connectUser v =
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.1]});
-    send r.Channels.Channel v.2
-
+    send r.Channels.Channel (v.3, v.2)
 
 fun createChannel r =
     me <- self;
@@ -21,15 +15,9 @@ fun createChannel r =
 
     let 
 
-        fun getFromOtherClient vl =  
-            v <- get vl;
-            Buffer.write buf ("(Sending : " ^ show v ^ ")");
-            set src (v+1);
-            rpc(getInfo v)
-
-        fun pingUser vl =  
-            Buffer.write buf ("(Sending : Hello " ^ show vl ^ ")");
-            rpc(connectUser (vl,3))
+        fun pingUser vl =
+            Buffer.write buf ("(Sending to " ^ show vl.1 ^ " : Ask )");
+            rpc(connectUser (vl.1,"Ask", vl.2))
 
         fun getActiveClients () =
             me <- self;
@@ -37,20 +25,20 @@ fun createChannel r =
                            (fn row => <xml><tr>
                                     <td>{[row.Channels.Username]}</td>
                                     <td>
-                                    <button value="Connect" onclick={fn _ => pingUser (row.Channels.Username)}/>
+                                    <button value="Connect" onclick={fn _ => pingUser (row.Channels.Username, r.Username)}/>
                                 </td></tr></xml>);
             return list
 
         fun receiver () =
             v <- recv ch;
-            Buffer.write buf ("(Received : " ^ show v ^ ")");
-            if v % 2 <> 0 then 
-                Buffer.write buf ("(Sending : " ^ show (v+1) ^ ")");
-                set src (v+2);
-                rpc(getInfo(v+1));
+            username <- get user;
+            Buffer.write buf ("(Received from " ^ v.1 ^" : " ^ show v.2 ^ ")");
+
+            if v.2 <> "Reply" then 
+                Buffer.write buf ("(Sending to " ^ show v.1 ^ ": Reply)");
+                rpc( connectUser (v.1 , "Reply", username) );
                 receiver()
             else
-                set src (v+1);
                 Buffer.write buf ("Completed one round trip");
             receiver()
 
