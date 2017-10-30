@@ -17,6 +17,7 @@ fun createChannel r =
     dml (INSERT INTO channels (Client, Username, Channel) VALUES ({[me]}, {[readError r.Username]}, {[ch]}));
     buf <- Buffer.create;
     src <- source 1;
+    user <- source r.Username;
 
     let 
 
@@ -59,15 +60,16 @@ fun createChannel r =
     in
         activeClients <- getActiveClients();     
         return <xml><body onload={spawn (receiver())}>
-            <h1>Hello WebRTC </h1>
-            <table>
+            <dyn signal={v <- signal user; return <xml><h1>Hello {[v]} </h1></xml>}/>
+            <h2>List of Active Clients</h2>
+            <table border=1>
                 <tr>
                     <th>Username</th>
                     <th>Action</th>
                 </tr>
                 {activeClients}
             </table>
-           <button value="Ping" onclick={fn _ => getFromOtherClient(src)}></button><br/>
+            <h3>Messaging Snapshot</h3>
            <dyn signal={Buffer.render buf}/>
         </body></xml>
     end
@@ -78,7 +80,7 @@ fun main () = return <xml>
     <body>
         <form>
             <textbox{#Username}/>
-            <submit value="One" action={createChannel}/>
+            <submit value="Create Channel" action={createChannel}/>
         </form>
         <button value="Click me please" onclick={fn _ => n<- JsWebrtcJs.myFunction "Nitin Surana"; alert n}></button>
     </body>
