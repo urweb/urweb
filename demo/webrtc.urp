@@ -1,10 +1,14 @@
 database dbname=test
 sql webrtc.sql
 safeGet Webrtc/main
-#script http://cdn.peerjs.com/0.3/peer.js
+#script http://cdn.peerjs.com/0.3/peer.js       #it is commented
+script https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js
 jsFile webrtc.js
 ffi jsWebrtcJs
+jsFunc JsWebrtcJs.getDatastore=getDatastore
 jsFunc JsWebrtcJs.myFunction=myFunction
+jsFunc JsWebrtcJs.createOffer=createOffer
+
 
 buffer
 webrtc

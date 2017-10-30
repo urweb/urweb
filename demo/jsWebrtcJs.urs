@@ -1,1 +1,3 @@
-val myFunction : string -> transaction string
+val myFunction : string -> transaction unit
+val getDatastore : string -> transaction string
+val createOffer : string -> transaction unit
