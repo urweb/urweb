@@ -5,6 +5,9 @@ safeGet Webrtc/main
 jsFile webrtc.js
 ffi jsWebrtcJs
 jsFunc JsWebrtcJs.myFunction=myFunction
+jsFunc JsWebrtcJs.getDatastore=getDatastore
+jsFunc JsWebrtcJs.clearPendingEvent=clearPendingEvent
+jsFunc JsWebrtcJs.getPendingEvent=getPendingEvent
 
 buffer
 webrtc

@@ -63,13 +63,36 @@ fun createChannel r =
     end
 
 
-fun main () = return <xml>
+fun main () =
+let
+    fun urWebFromDatastore v =
+        sleep 1000;
+        x <- JsWebrtcJs.getDatastore v;
+        if x = "undefined" then
+            urWebFromDatastore v
+        else
+            return x
+
+
+    fun eventHandler() =
+        sleep 1000;
+        x <- JsWebrtcJs.getPendingEvent();
+        if x = "undefined" then
+            eventHandler()
+        else
+            alert x;
+            JsWebrtcJs.clearPendingEvent();
+            eventHandler()
+
+in
+return <xml>
     <head><title>WebRTC</title></head>
-    <body>
+    <body onload={spawn (eventHandler())}>
         <form>
             <textbox{#Username}/>
             <submit value="Create Channel" action={createChannel}/>
         </form>
-        <button value="Click me please" onclick={fn _ => n<- JsWebrtcJs.myFunction "Nitin Surana"; alert n}></button>
+        <button value="Click me please" onclick={fn _ => n <- JsWebrtcJs.myFunction "Nitin Surana Test"; n<- urWebFromDatastore "key"; alert n}></button>
     </body>
     </xml>
+end
