@@ -1,4 +1,4 @@
-table channels : { Client : client, Channel : channel (int) }
+table channels : { Client : client, Username: string, Channel : channel (int) }
   PRIMARY KEY Client
 
 fun getInfo v =
@@ -6,11 +6,15 @@ fun getInfo v =
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Client <> {[me]});
     send r.Channels.Channel v
 
+fun connectUser v =
+    r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.1]});
+    send r.Channels.Channel v.2
 
-fun clientOne () =
+
+fun createChannel r =
     me <- self;
     ch <- channel;
-    dml (INSERT INTO channels (Client, Channel) VALUES ({[me]}, {[ch]}));
+    dml (INSERT INTO channels (Client, Username, Channel) VALUES ({[me]}, {[readError r.Username]}, {[ch]}));
     buf <- Buffer.create;
     src <- source 1;
 
@@ -22,11 +26,17 @@ fun clientOne () =
             set src (v+1);
             rpc(getInfo v)
 
+        fun pingUser vl =  
+            Buffer.write buf ("(Sending : Hello " ^ show vl ^ ")");
+            rpc(connectUser (vl,3))
+
         fun getActiveClients () =
             me <- self;
-            list <- queryX (SELECT channels.Channel FROM channels WHERE channels.Client <> {[me]})
-                           (fn r => <xml><tr><td>
-                                    <button value="Connect" onclick={fn _ => getFromOtherClient(src)}/>
+            list <- queryX (SELECT channels.Username FROM channels WHERE channels.Client <> {[me]})
+                           (fn row => <xml><tr>
+                                    <td>{[row.Channels.Username]}</td>
+                                    <td>
+                                    <button value="Connect" onclick={fn _ => pingUser (row.Channels.Username)}/>
                                 </td></tr></xml>);
             return list
 
@@ -51,7 +61,10 @@ fun clientOne () =
         return <xml><body onload={spawn (receiver())}>
             <h1>Hello WebRTC </h1>
             <table>
-                <tr><th>Active Clients List</th></tr>
+                <tr>
+                    <th>Username</th>
+                    <th>Action</th>
+                </tr>
                 {activeClients}
             </table>
            <button value="Ping" onclick={fn _ => getFromOtherClient(src)}></button><br/>
@@ -63,7 +76,10 @@ fun clientOne () =
 fun main () = return <xml>
     <head><title>WebRTC</title></head>
     <body>
-        <form><submit value="One" action={clientOne}/></form>
+        <form>
+            <textbox{#Username}/>
+            <submit value="One" action={createChannel}/>
+        </form>
         <button value="Click me please" onclick={fn _ => n<- JsWebrtcJs.myFunction "Nitin Surana"; alert n}></button>
     </body>
     </xml>
