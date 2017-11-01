@@ -115,11 +115,26 @@ let
         x <- JsWebrtcJs.getPendingEvent();
         if x = "undefined" then
             eventHandler()
+        else if x = "offer-generated" then
+            y <- JsWebrtcJs.getDatastore "offer";
+            debug "Offer";
+            debug y;
+            JsWebrtcJs.clearPendingEvent();
+            eventHandler()
+        else if x = "answer-generated" then
+            y <- JsWebrtcJs.getDatastore "answer";
+            debug "Answer";
+            debug y;
+            JsWebrtcJs.clearPendingEvent();
+            eventHandler()
         else
-            alert x;
+            debug x;
             JsWebrtcJs.clearPendingEvent();
             eventHandler()
 
+        fun createAnswer()=
+            offer <- JsWebrtcJs.getDatastore "offer";
+            JsWebrtcJs.createAnswer ("123:::" ^ offer)
 in
 return <xml>
     <head>
@@ -134,6 +149,8 @@ return <xml>
         </form>
         <br/>
         <button value="Click me please" onclick={fn _ => n <- JsWebrtcJs.myFunction "Nitin Surana Test"; n<- urWebFromDatastore "key"; alert n}></button>
+        <button value="Create Offer" onclick={fn _ => JsWebrtcJs.createOffer "123"}></button>
+        <button value="Create Answer" onclick={fn _ => createAnswer()}></button>
     </body>
     </xml>
 end

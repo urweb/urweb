@@ -1,9 +1,11 @@
+//Key-Value pair storage, both keys & values should be strings
 var __dataStore = {
     offer: "undefined",
     answer: "undefined",
     ice: "undefined"
 };
-var myPeerConnection;
+
+var peerConnections = {};
 
 function myFunction(str) {
     "use strict";
@@ -52,11 +54,8 @@ var defaultConfig = {
 
 
 function _createRTCPeerConnection() {
-    if (myPeerConnection) {
-        return myPeerConnection;
-    }
     // var myPeerConnection = new RTCPeerConnection(defaultConfig, {optional: [{RtpDataChannels: true}]});
-    myPeerConnection = new RTCPeerConnection(defaultConfig, {
+    var myPeerConnection = new RTCPeerConnection(defaultConfig, {
         mandatory: {
             OfferToReceiveAudio: true,
             OfferToReceiveVideo: true
@@ -168,10 +167,16 @@ function closeVideoCall(myPeerConnection) {
 }
 
 function createOffer(targetClientId) {
-    var pc = _createRTCPeerConnection();
-    var defer = $.Deferred();
+    var myPeerConnection = peerConnections[targetClientId];
+    if (myPeerConnection) {
+        return myPeerConnection
+    } else {
+        myPeerConnection = _createRTCPeerConnection();
+        peerConnections[targetClientId] = myPeerConnection;
+    }
 
-    var dc = window.dc = pc.createDataChannel("my data channel");//, {negotiated: true, id: 0});
+    var dc = window.dc = myPeerConnection.createDataChannel("sample data channel");
+    //, {negotiated: true, id: 0});
 
     dc.onmessage = function (event) {
         console.log("received: " + event.data);
@@ -186,43 +191,46 @@ function createOffer(targetClientId) {
         console.log("datachannel close");
     };
 
-    pc.createOffer(function (offer) {
+    myPeerConnection.createOffer(function (offer) {
         console.log('Created offer.');
 
-        pc.setLocalDescription(offer, function () {
-            var msg = {
-                type: 'OFFER',
-                payload: {
-                    sdp: offer,
-                    // type: connection.type,
-                    // label: connection.label,
-                    // connectionId: connection.id,
-                    // reliable: connection.reliable,
-                    // serialization: connection.serialization,
-                    // metadata: connection.metadata,
-                    browser: window.navigator.userAgent
-                },
-                dst: targetClientId
-            };
-            defer.resolve(msg);
-            __dataStore['offer'] = JSON.stringify(msg);
+        myPeerConnection.setLocalDescription(offer, function () {
+            // var msg = {
+            //     type: 'OFFER',
+            //     payload: {
+            //         sdp: offer,
+            //         // type: connection.type,
+            //         // label: connection.label,
+            //         // connectionId: connection.id,
+            //         // reliable: connection.reliable,
+            //         // serialization: connection.serialization,
+            //         // metadata: connection.metadata,
+            //         browser: window.navigator.userAgent
+            //     },
+            //     dst: targetClientId
+            // };
+            __dataStore['offer'] = JSON.stringify(offer);
+            __dataStore['event'] = "offer-generated";
         }, function (err) {
             console.log('Failed to setLocalDescription, ', err);
         });
     }, function (err) {
         console.log('Failed to createOffer, ', err);
     });
-
-    return defer.promise();
-};
+}
 
 
-function _handleOffer(pc, msg) {
-    var defer = $.Deferred();
+function createAnswer(str) {
+    var targetClientId = str.split(":::")[0];
+    var myPeerConnection = peerConnections[targetClientId];
+    if (!myPeerConnection) {
+        myPeerConnection = peerConnections[targetClientId] = _createRTCPeerConnection();
+    }
+    var offer = JSON.parse(str.split(":::")[1]);
 
-    var desc = new RTCSessionDescription(msg.payload.sdp);
+    var desc = new RTCSessionDescription(offer);
 
-    pc.setRemoteDescription(desc).then(function () {
+    myPeerConnection.setRemoteDescription(desc).then(function () {
         // return navigator.mediaDevices.getUserMedia(mediaConstraints);
         // })
         // .then(function (stream) {
@@ -230,16 +238,16 @@ function _handleOffer(pc, msg) {
         //     return myPeerConnection.addStream(stream);
         // })
         //     .then(function () {
-        return pc.createAnswer();
+        return myPeerConnection.createAnswer();
     }).then(function (answer) {
-        pc.setLocalDescription(answer);
-        defer.resolve(answer);
-    }).catch(function () {
-        console.log("Some error ");
+        myPeerConnection.setLocalDescription(answer);
+        __dataStore['event'] = 'answer-generated';
+        __dataStore['answer'] = JSON.stringify(answer);
+    }).catch(function (err) {
+        console.log("Unable to generate answer " + err);
     });
-    return defer.promise();
 }
 
-function _handleAnswer(pc, answer) {
-    pc.setRemoteDescription(answer);
+function consumeAnswer(answer) {
+    myPeerConnection.setRemoteDescription(answer);
 }

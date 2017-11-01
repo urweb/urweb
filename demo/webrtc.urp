@@ -9,12 +9,14 @@ jsFunc JsWebrtcJs.getDatastore=getDatastore
 jsFunc JsWebrtcJs.myFunction=myFunction
 jsFunc JsWebrtcJs.clearPendingEvent=clearPendingEvent
 jsFunc JsWebrtcJs.getPendingEvent=getPendingEvent
+jsFunc JsWebrtcJs.createOffer=createOffer
+jsFunc JsWebrtcJs.createAnswer=createAnswer
 file /webrtc.css webrtc.css
 allow url /webrtc.css
 rewrite style Webrtc/channelBox channelBox
 rewrite style Webrtc/heading heading
 rewrite style Webrtc/activeClientsTable activeClientsTable
-jsFunc JsWebrtcJs.createOffer=createOffer
+
 
 
 $/list
