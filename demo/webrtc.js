@@ -67,6 +67,13 @@ function _createRTCPeerConnection() {
     // myPeerConnection.onicegatheringstatechange = handleICEGatheringStateChangeEvent;
     myPeerConnection.onsignalingstatechange = handleSignalingStateChangeEvent;
     // myPeerConnection.onnegotiationneeded = handleNegotiationNeededEvent;
+    myPeerConnection.onicecandidate = function (event) {
+        if (event.candidate) {
+            console.log("New ICE candidate: " + event.candidate);
+            __dataStore['event'] = 'ice-candidate';
+            __dataStore['ice-candidate'] = JSON.stringify(event.candidate);
+        }
+    };
 
     myPeerConnection.ondatachannel = function (event) {
         var channel = event.channel;
@@ -81,14 +88,21 @@ function _createRTCPeerConnection() {
     return myPeerConnection;
 }
 
-function _consumeNewICECandidateMsg(myPeerConnection, msg) {
-    var candidate = new RTCIceCandidate(msg);
+function consumeIceCandidate(str) {
+    var targetClientId = str.split(":::")[0];
+    var candidate = JSON.parse(str.split(":::")[1]);
+    candidate = new RTCIceCandidate(candidate);
+    var myPeerConnection = peerConnections[targetClientId];
 
-    console.log("Adding received ICE candidate: " + JSON.stringify(candidate));
-    myPeerConnection.addIceCandidate(candidate)
-        .catch(function (err) {
-            console.log(err);
-        });
+    if (myPeerConnection) {
+        console.log("Adding received ICE candidate: " + JSON.stringify(candidate));
+        myPeerConnection.addIceCandidate(candidate)
+            .catch(function (err) {
+                console.log(err);
+            });
+    } else {
+        console.log("Peer connection not found to consumeIceCandidate");
+    }
 }
 
 // function handleNegotiationNeededEvent() {
@@ -248,6 +262,13 @@ function createAnswer(str) {
     });
 }
 
-function consumeAnswer(answer) {
-    myPeerConnection.setRemoteDescription(answer);
+function consumeAnswer(str) {
+    var targetClientId = str.split(":::")[0];
+    var answer = JSON.parse(str.split(":::")[1]);
+    var myPeerConnection = peerConnections[targetClientId];
+    if (myPeerConnection) {
+        myPeerConnection.setRemoteDescription(answer);
+    } else {
+        console.log("Peer connection not found to consumeAnswer");
+    }
 }
