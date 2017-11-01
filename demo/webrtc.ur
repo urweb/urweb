@@ -1,3 +1,5 @@
+datatype list t = Nil | Cons of t * list t
+
 table channels : { Client : client, Username: string, Channel : channel (string * string) }
   PRIMARY KEY Client
 
@@ -9,6 +11,11 @@ fun connectUser v =
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.1]});
     send r.Channels.Channel (v.3, v.2)
 
+fun allRows (uname) =
+    query (SELECT channels.Username FROM channels WHERE channels.Username <> {[uname]})
+    (fn r acc => return (Cons ((r.Channels.Username), acc)))
+    Nil
+
 fun createChannel r =
     me <- self;
     ch <- channel;
@@ -16,22 +23,13 @@ fun createChannel r =
     buf <- Buffer.create;
     src <- source 1;
     user <- source r.Username;
+    lss <- source Nil;
 
     let 
 
         fun pingUser vl =
             Buffer.write buf ("(Sending to " ^ show vl.1 ^ " : Ask )");
             rpc(connectUser (vl.1,"Ask", vl.2))
-
-        fun getActiveClients () =
-            me <- self;
-            list <- queryX (SELECT channels.Username FROM channels WHERE channels.Client <> {[me]})
-                           (fn row => <xml><tr>
-                                    <td>{[row.Channels.Username]}</td>
-                                    <td>
-                                    <button value="Connect" onclick={fn _ => pingUser (row.Channels.Username, r.Username)}/>
-                                </td></tr></xml>);
-            return list
 
         fun receiver () =
             v <- recv ch;
@@ -46,11 +44,36 @@ fun createChannel r =
                 Buffer.write buf ("Completed one round trip");
             receiver()
 
-        
-
+        fun dynTable xyz =
+            let
+                fun disp v =
+                    case v of 
+                     Nil => <xml/>
+                    | Cons ((uname), ls) => 
+                        <xml>
+                            <tr>
+                                <td>{[uname]}</td>
+                                <td>
+                                    <button value="Connect" onclick={fn _ => pingUser (uname, r.Username)}/>
+                                </td>
+                            </tr>
+                            {disp ls}
+                        </xml>
+            in
+                 <xml><dyn signal={ls <- signal xyz; return <xml>
+                 <table border=1 class={activeClientsTable}>
+                     <tr>
+                           <th>Username</th>
+                           <th>Action</th>
+                       </tr> 
+                     {disp ls}
+                </table>
+                </xml>}/></xml>
+            end
 
     in
-        activeClients <- getActiveClients();
+        clientList <- allRows(r.Username);
+        set lss clientList;
         return <xml>
             <head>
                 <title>WebRTC Channel</title>
@@ -59,13 +82,9 @@ fun createChannel r =
             <body onload={spawn (receiver())}>
                 <dyn signal={v <- signal user; return <xml><h1 class={heading}>Hello {[v]} </h1></xml>}/>
                 <h2>List of Active Clients</h2>
-                <table border=1 class={activeClientsTable}>
-                    <tr>
-                        <th>Username</th>
-                        <th>Action</th>
-                    </tr>
-                    {activeClients}
-                </table>
+                {dynTable lss}
+                <br/>
+                <button value="Update Client List"  onclick={fn _ => nl <- rpc(allRows(r.Username)); set lss nl}></button>
                 <h3>Messaging Snapshot</h3>
                <dyn signal={Buffer.render buf}/>
             </body>

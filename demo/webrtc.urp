@@ -14,5 +14,6 @@ rewrite style Webrtc/channelBox channelBox
 rewrite style Webrtc/heading heading
 rewrite style Webrtc/activeClientsTable activeClientsTable
 
+$/list
 buffer
 webrtc
