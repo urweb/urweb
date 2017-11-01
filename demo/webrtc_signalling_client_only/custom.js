@@ -103,12 +103,12 @@ function handleRemoveStreamEvent(event) {
 }
 
 function closeVideoCall(myPeerConnection) {
-    log("Closing the call");
+    console.log("Closing the call");
 
     // Close the RTCPeerConnection
 
     if (myPeerConnection) {
-        log("--> Closing the peer connection");
+        console.log("--> Closing the peer connection");
 
         // Disconnect all our event listeners; we don't want stray events
         // to interfere with the hangup while it's ongoing.
