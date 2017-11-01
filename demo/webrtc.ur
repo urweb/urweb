@@ -1,6 +1,10 @@
 table channels : { Client : client, Username: string, Channel : channel (string * string) }
   PRIMARY KEY Client
 
+style channelBox
+style heading
+style activeClientsTable
+
 fun connectUser v =
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.1]});
     send r.Channels.Channel (v.3, v.2)
@@ -46,20 +50,26 @@ fun createChannel r =
 
 
     in
-        activeClients <- getActiveClients();     
-        return <xml><body onload={spawn (receiver())}>
-            <dyn signal={v <- signal user; return <xml><h1>Hello {[v]} </h1></xml>}/>
-            <h2>List of Active Clients</h2>
-            <table border=1>
-                <tr>
-                    <th>Username</th>
-                    <th>Action</th>
-                </tr>
-                {activeClients}
-            </table>
-            <h3>Messaging Snapshot</h3>
-           <dyn signal={Buffer.render buf}/>
-        </body></xml>
+        activeClients <- getActiveClients();
+        return <xml>
+            <head>
+                <title>WebRTC Channel</title>
+                <link rel="stylesheet" type="text/css" href="/webrtc.css" />
+            </head>
+            <body onload={spawn (receiver())}>
+                <dyn signal={v <- signal user; return <xml><h1 class={heading}>Hello {[v]} </h1></xml>}/>
+                <h2>List of Active Clients</h2>
+                <table border=1 class={activeClientsTable}>
+                    <tr>
+                        <th>Username</th>
+                        <th>Action</th>
+                    </tr>
+                    {activeClients}
+                </table>
+                <h3>Messaging Snapshot</h3>
+               <dyn signal={Buffer.render buf}/>
+            </body>
+        </xml>
     end
 
 
@@ -86,12 +96,17 @@ let
 
 in
 return <xml>
-    <head><title>WebRTC</title></head>
+    <head>
+        <title>WebRTC</title>
+        <link rel="stylesheet" type="text/css" href="/webrtc.css" />
+    </head>
     <body onload={spawn (eventHandler())}>
+        <h1 class={heading}>Welcome to the WebRTC demo!</h1>
         <form>
-            <textbox{#Username}/>
+            <textbox{#Username} placeholder="Enter a name for the channel" class={channelBox}/>
             <submit value="Create Channel" action={createChannel}/>
         </form>
+        <br/>
         <button value="Click me please" onclick={fn _ => n <- JsWebrtcJs.myFunction "Nitin Surana Test"; n<- urWebFromDatastore "key"; alert n}></button>
     </body>
     </xml>
