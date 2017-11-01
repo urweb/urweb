@@ -1,17 +1,39 @@
-'use strict'
-
-var __dataStore = {};
+var __dataStore = {
+    offer: "undefined",
+    answer: "undefined",
+    ice: "undefined"
+};
+var myPeerConnection;
 
 function myFunction(str) {
     "use strict";
-    var str = 'Returning string from myFunction : ' + str;
-    setTimeout(function () {
-        __dataStore['myFunction'] = str
-    }, 1000);
+    setTimeout(() => {
+        __dataStore["key"] = 10;
+    }, 5000);
+
+    setInterval(() => {
+        __dataStore['event'] = "Event : " + new Date();
+    }, 2000);
+    return ('Returning string from myFunction : ' + str);
 }
 
 function getDatastore(key) {
+    "use strict";
     return __dataStore[key];
+}
+
+function getPendingEvent() {
+    "use strict";
+    if (__dataStore['event']) {
+        return __dataStore['event']
+    } else {
+        return "undefined";
+    }
+}
+
+function clearPendingEvent() {
+    "use strict";
+    delete __dataStore['event'];
 }
 
 var defaultConfig = {
@@ -28,7 +50,6 @@ var defaultConfig = {
     }]
 };
 
-var myPeerConnection;
 
 function _createRTCPeerConnection() {
     if (myPeerConnection) {
