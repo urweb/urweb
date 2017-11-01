@@ -24,16 +24,19 @@ fun createChannel r =
     src <- source 1;
     user <- source r.Username;
     lss <- source Nil;
+    msg <- source "No messages so far!";
 
     let 
 
         fun pingUser vl =
+            set msg "";
             Buffer.write buf ("(Sending to " ^ show vl.1 ^ " : Ask )");
             rpc(connectUser (vl.1,"Ask", vl.2))
 
         fun receiver () =
             v <- recv ch;
             username <- get user;
+            set msg "";
             Buffer.write buf ("(Received from " ^ v.1 ^" : " ^ show v.2 ^ ")");
 
             if v.2 <> "Reply" then 
@@ -80,12 +83,16 @@ fun createChannel r =
                 <link rel="stylesheet" type="text/css" href="/webrtc.css" />
             </head>
             <body onload={spawn (receiver())}>
-                <dyn signal={v <- signal user; return <xml><h1 class={heading}>Hello {[v]} </h1></xml>}/>
+                <dyn signal={v <- signal user; return <xml><h1 class={heading}>You are listening to {[v]} </h1></xml>}/>
                 <h2>List of Active Clients</h2>
+                <h4>Note : You won't see your channel. Please update client list when others get online.</h4>
                 {dynTable lss}
                 <br/>
                 <button value="Update Client List"  onclick={fn _ => nl <- rpc(allRows(r.Username)); set lss nl}></button>
-                <h3>Messaging Snapshot</h3>
+                <br/><br/><br/>
+                <div><b>Messaging Snapshot</b></div>
+                <br/>
+                <dyn signal={vi <- signal msg; return <xml><div>{[vi]}</div></xml>}/>
                <dyn signal={Buffer.render buf}/>
             </body>
         </xml>
