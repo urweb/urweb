@@ -1,6 +1,6 @@
 datatype list t = Nil | Cons of t * list t
 
-table channels : { Client : client, Username: string, Channel : channel (string * string) }
+table channels : { Client : client, Username: string, Channel : channel (string * string * string * string) }
   PRIMARY KEY Client
 
 style channelBox
@@ -9,12 +9,18 @@ style activeClientsTable
 
 fun connectUser v =
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.1]});
-    send r.Channels.Channel (v.3, v.2)
+    send r.Channels.Channel (v.3, v.2, "third", "fourth")
 
 fun allRows (uname) =
     query (SELECT channels.Username FROM channels WHERE channels.Username <> {[uname]})
     (fn r acc => return (Cons ((r.Channels.Username), acc)))
     Nil
+
+
+fun sendPayload v =
+    r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.3]});
+    send r.Channels.Channel (v.1, v.2, v.3, v.4)
+
 
 fun createChannel r =
     me <- self;
@@ -37,7 +43,7 @@ fun createChannel r =
             v <- recv ch;
             username <- get user;
             set msg "";
-            Buffer.write buf ("(Received from " ^ v.1 ^" : " ^ show v.2 ^ ")");
+            Buffer.write buf ("(Received " ^ v.1 ^ " from " ^ v.2 ^" : " ^ show v.4 ^ ")");
 
             if v.2 <> "Reply" then
                 Buffer.write buf ("(Sending to " ^ show v.1 ^ ": Reply)");
@@ -109,7 +115,6 @@ let
         else
             return x
 
-
     fun eventHandler() =
         sleep 1000;
         x <- JsWebrtcJs.getPendingEvent();
@@ -120,6 +125,7 @@ let
             debug "Offer";
             debug y;
             JsWebrtcJs.clearPendingEvent();
+            rpc(sendPayload ("offer", "123", "123", y));
             eventHandler()
         else if x = "answer-generated" then
             y <- JsWebrtcJs.getDatastore "answer";

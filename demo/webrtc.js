@@ -70,8 +70,8 @@ function _createRTCPeerConnection() {
     myPeerConnection.onicecandidate = function (event) {
         if (event.candidate) {
             console.log("New ICE candidate: " + event.candidate);
-            __dataStore['event'] = 'ice-candidate';
-            __dataStore['ice-candidate'] = JSON.stringify(event.candidate);
+            // __dataStore['event'] = 'ice-candidate';
+            // __dataStore['ice-candidate'] = JSON.stringify(event.candidate);
         }
     };
 
