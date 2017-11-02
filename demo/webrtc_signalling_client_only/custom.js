@@ -200,5 +200,6 @@ function _handleOffer(pc, msg) {
 }
 
 function _handleAnswer(pc, answer) {
+    console.log("Added answer to remote description");
     pc.setRemoteDescription(answer);
 }

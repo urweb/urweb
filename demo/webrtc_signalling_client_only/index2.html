@@ -11,7 +11,7 @@
 
 <div class="container">
     <div>
-        <p>Create Offer</p>
+        <p>Create Offer / Create Answer</p>
         <button id="createOffer">Create Offer</button>
         <textarea name="offer" id="offer" cols="30" rows="10"></textarea>
         <button id="consumeOffer">Create Answer</button>
@@ -48,7 +48,8 @@
                 //     candidate: event.candidate
                 // });
                 console.log(event.candidate);
-                $("#ice-candidate").text(JSON.stringify(event.candidate));
+                var str = $("#ice-candidate").text() + "\n\n\n\n" + JSON.stringify(event.candidate);
+                $("#ice-candidate").text(str);
             }
         };
 
@@ -73,8 +74,14 @@
         });
 
         $("#consumeIceCandidate").click(function () {
-            var obj = JSON.parse($("#ice-candidate-recv").val());
-            _consumeNewICECandidateMsg(pc, obj);
+            var str = $("#ice-candidate-recv").val();
+            var arr = str.split("\n\n\n\n");
+            arr.forEach(function (x) {
+                if (x.length) {
+                    var obj = JSON.parse(x);
+                    _consumeNewICECandidateMsg(pc, obj);
+                }
+            });
         })
     });
 </script>
