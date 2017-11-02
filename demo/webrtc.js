@@ -70,8 +70,10 @@ function _createRTCPeerConnection() {
     myPeerConnection.onicecandidate = function (event) {
         if (event.candidate) {
             console.log("New ICE candidate: " + event.candidate);
-            // __dataStore['event'] = 'ice-candidate';
-            // __dataStore['ice-candidate'] = JSON.stringify(event.candidate);
+            setTimeout(function(){ 
+                    __dataStore['event'] = 'ice-candidate';
+                    __dataStore['ice'] = JSON.stringify(event.candidate);
+            }, 3000, event);
         }
     };
 
@@ -181,6 +183,7 @@ function closeVideoCall(myPeerConnection) {
 }
 
 function createOffer(targetClientId) {
+    console.log(targetClientId);
     var myPeerConnection = peerConnections[targetClientId];
     if (myPeerConnection) {
         return myPeerConnection
@@ -207,6 +210,7 @@ function createOffer(targetClientId) {
 
     myPeerConnection.createOffer(function (offer) {
         console.log('Created offer.');
+        console.log(offer);
 
         myPeerConnection.setLocalDescription(offer, function () {
             // var msg = {

@@ -4,3 +4,5 @@ val getPendingEvent : unit -> transaction string
 val clearPendingEvent :unit -> transaction unit
 val createOffer : string -> transaction unit
 val createAnswer : string -> transaction unit
+val consumeAnswer : string -> transaction unit
+val consumeIceCandidate : string -> transaction unit

@@ -7,9 +7,7 @@ style channelBox
 style heading
 style activeClientsTable
 
-fun connectUser v =
-    r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.1]});
-    send r.Channels.Channel (v.3, v.2, "third", "fourth")
+
 
 fun allRows (uname) =
     query (SELECT channels.Username FROM channels WHERE channels.Username <> {[uname]})
@@ -19,7 +17,7 @@ fun allRows (uname) =
 
 fun sendPayload v =
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.3]});
-    send r.Channels.Channel (v.1, v.2, v.3, v.4)
+    send r.Channels.Channel v
 
 
 fun createChannel r =
@@ -31,27 +29,77 @@ fun createChannel r =
     user <- source r.Username;
     lss <- source Nil;
     msg <- source "No messages so far!";
+    targetUser <- source "";
 
     let
 
-        fun pingUser vl =
-            set msg "";
-            Buffer.write buf ("(Sending to " ^ show vl.1 ^ " : Ask )");
-            rpc(connectUser (vl.1,"Ask", vl.2))
+        fun eventHandler() =
+            sleep 1000;
+            x <- JsWebrtcJs.getPendingEvent();
+            senderUsername <- get user;
+            targetUsername <- get targetUser;
+            if x = "undefined" then
+                eventHandler()
+            else if x = "offer-generated" then
+                y <- JsWebrtcJs.getDatastore "offer";
+                debug "Offer";
+                debug y;
+                JsWebrtcJs.clearPendingEvent();
+                debug "Sender";
+                debug senderUsername;
+                debug "Target";
+                debug targetUsername;
+                rpc(sendPayload ("offer", senderUsername, targetUsername, y));
+                eventHandler()
+            else if x = "answer-generated" then
+                y <- JsWebrtcJs.getDatastore "answer";
+                debug "Answer";
+                debug y;
+                JsWebrtcJs.clearPendingEvent();
+                debug "Sender";
+                debug senderUsername;
+                debug "Target";
+                debug targetUsername;
+                rpc(sendPayload ("answer", senderUsername, targetUsername, y));
+                eventHandler()
+            else
+                debug x;
+                debug "Sender";
+                debug senderUsername;
+                debug "Target";
+                debug targetUsername;
+                JsWebrtcJs.clearPendingEvent();
+                eventHandler()
+
+
+        fun handshake (sender, target) =
+            set targetUser target;
+            JsWebrtcJs.createOffer sender
+
+        fun onMsgReceive v =
+            targetUsername <- get targetUser;
+            set targetUser v.2;
+            if v.1 = "offer" then
+                Buffer.write buf ("offer");
+                JsWebrtcJs.createAnswer (v.3 ^ ":::" ^ v.4)
+            else if v.1 = "answer" then
+                Buffer.write buf ("answer");
+                JsWebrtcJs.consumeAnswer (v.3 ^ ":::" ^ v.4)
+            else if v.1 = "ice-candidate" then
+                iceCandidate <- JsWebrtcJs.getDatastore "ice-candidate";
+                Buffer.write buf ("ice-candidate");
+                JsWebrtcJs.consumeIceCandidate (v.3 ^ ":::" ^ iceCandidate)
+            else
+                Buffer.write buf ("unknown")
 
         fun receiver () =
             v <- recv ch;
             username <- get user;
             set msg "";
+            onMsgReceive(v);
             Buffer.write buf ("(Received " ^ v.1 ^ " from " ^ v.2 ^" : " ^ show v.4 ^ ")");
-
-            if v.2 <> "Reply" then
-                Buffer.write buf ("(Sending to " ^ show v.1 ^ ": Reply)");
-                rpc( connectUser (v.1 , "Reply", username) );
-                receiver()
-            else
-                Buffer.write buf ("Completed one round trip");
             receiver()
+
 
         fun dynTable xyz =
             let
@@ -63,7 +111,7 @@ fun createChannel r =
                             <tr>
                                 <td>{[uname]}</td>
                                 <td>
-                                    <button value="Connect" onclick={fn _ => pingUser (uname, r.Username)}/>
+                                    <button value="WebRTC connect" onclick={fn _ => handshake (r.Username,uname)}></button>
                                 </td>
                             </tr>
                             {disp ls}
@@ -88,14 +136,15 @@ fun createChannel r =
                 <title>WebRTC Channel</title>
                 <link rel="stylesheet" type="text/css" href="/webrtc.css" />
             </head>
-            <body onload={spawn (receiver())}>
+            <body onload={spawn (receiver()); spawn (eventHandler())}>
                 <dyn signal={v <- signal user; return <xml><h1 class={heading}>You are listening to {[v]} </h1></xml>}/>
                 <h2>List of Active Clients</h2>
                 <h4>Note : You won't see your channel. Please update client list when others get online.</h4>
                 {dynTable lss}
                 <br/>
                 <button value="Update Client List"  onclick={fn _ => nl <- rpc(allRows(r.Username)); set lss nl}></button>
-                <br/><br/><br/>
+                <br/><br/>
+                <br/>
                 <div><b>Messaging Snapshot</b></div>
                 <br/>
                 <dyn signal={vi <- signal msg; return <xml><div>{[vi]}</div></xml>}/>
@@ -138,9 +187,6 @@ let
             JsWebrtcJs.clearPendingEvent();
             eventHandler()
 
-        fun createAnswer()=
-            offer <- JsWebrtcJs.getDatastore "offer";
-            JsWebrtcJs.createAnswer ("123:::" ^ offer)
 in
 return <xml>
     <head>
@@ -156,7 +202,6 @@ return <xml>
         <br/>
         <button value="Click me please" onclick={fn _ => n <- JsWebrtcJs.myFunction "Nitin Surana Test"; n<- urWebFromDatastore "key"; alert n}></button>
         <button value="Create Offer" onclick={fn _ => JsWebrtcJs.createOffer "123"}></button>
-        <button value="Create Answer" onclick={fn _ => createAnswer()}></button>
     </body>
     </xml>
 end
