@@ -33,6 +33,14 @@ fun createChannel r =
 
     let
 
+        fun consumeIceCandidate() =
+            debug "In ice ice-candidate";
+            targetUsername <- get targetUser;
+            iceCandidate <- JsWebrtcJs.getDatastore "ice";
+            debug iceCandidate;
+            debug targetUsername;
+            JsWebrtcJs.consumeIceCandidate (targetUsername ^ ":::" ^ iceCandidate)
+
         fun eventHandler() =
             sleep 1000;
             x <- JsWebrtcJs.getPendingEvent();
@@ -68,27 +76,25 @@ fun createChannel r =
                 debug senderUsername;
                 debug "Target";
                 debug targetUsername;
+                consumeIceCandidate();
                 JsWebrtcJs.clearPendingEvent();
+                
                 eventHandler()
 
 
         fun handshake (sender, target) =
             set targetUser target;
-            JsWebrtcJs.createOffer sender
+            JsWebrtcJs.createOffer target
 
         fun onMsgReceive v =
             targetUsername <- get targetUser;
             set targetUser v.2;
             if v.1 = "offer" then
                 Buffer.write buf ("offer");
-                JsWebrtcJs.createAnswer (v.3 ^ ":::" ^ v.4)
+                JsWebrtcJs.createAnswer (v.2 ^ ":::" ^ v.4)
             else if v.1 = "answer" then
                 Buffer.write buf ("answer");
-                JsWebrtcJs.consumeAnswer (v.3 ^ ":::" ^ v.4)
-            else if v.1 = "ice-candidate" then
-                iceCandidate <- JsWebrtcJs.getDatastore "ice-candidate";
-                Buffer.write buf ("ice-candidate");
-                JsWebrtcJs.consumeIceCandidate (v.3 ^ ":::" ^ iceCandidate)
+                JsWebrtcJs.consumeAnswer (v.2 ^ ":::" ^ v.4)
             else
                 Buffer.write buf ("unknown")
 

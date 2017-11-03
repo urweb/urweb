@@ -69,10 +69,15 @@ function _createRTCPeerConnection() {
     // myPeerConnection.onnegotiationneeded = handleNegotiationNeededEvent;
     myPeerConnection.onicecandidate = function (event) {
         if (event.candidate) {
-            console.log("New ICE candidate: " + event.candidate);
+            console.log("New ICE candidate: " + JSON.stringify(event.candidate));
+            if(__dataStore['ice'] == "undefined"){
+                 __dataStore['ice'] = JSON.stringify(event.candidate);
+             }else{
+                 __dataStore['ice'] = __dataStore['ice'] + "\n\n\n\n" + JSON.stringify(event.candidate);
+             }
+           
             setTimeout(function(){ 
                     __dataStore['event'] = 'ice-candidate';
-                    __dataStore['ice'] = JSON.stringify(event.candidate);
             }, 3000, event);
         }
     };
@@ -91,20 +96,27 @@ function _createRTCPeerConnection() {
 }
 
 function consumeIceCandidate(str) {
+    console.log(str);
     var targetClientId = str.split(":::")[0];
-    var candidate = JSON.parse(str.split(":::")[1]);
-    candidate = new RTCIceCandidate(candidate);
-    var myPeerConnection = peerConnections[targetClientId];
+    var candidateStr = str.split(":::")[1];
+    var candidateArr = candidateStr.split("\n\n\n\n");
 
-    if (myPeerConnection) {
-        console.log("Adding received ICE candidate: " + JSON.stringify(candidate));
-        myPeerConnection.addIceCandidate(candidate)
-            .catch(function (err) {
-                console.log(err);
-            });
-    } else {
-        console.log("Peer connection not found to consumeIceCandidate");
-    }
+    candidateArr.forEach(function (c) {
+            if (c.length) {
+                var obj = JSON.parse(c);
+                var candidate = new RTCIceCandidate(obj);
+                var myPeerConnection = peerConnections[targetClientId];
+                if (myPeerConnection) {
+                    console.log("Adding received ICE candidate: " + JSON.stringify(candidate));
+                    myPeerConnection.addIceCandidate(candidate)
+                        .catch(function (err) {
+                            console.log(err);
+                        });
+                } else {
+                    console.log("Peer connection not found to consumeIceCandidate");
+                }
+            }
+    });
 }
 
 // function handleNegotiationNeededEvent() {
@@ -138,6 +150,7 @@ function handleSignalingStateChangeEvent(event) {
 }
 
 function handleICEConnectionStateChangeEvent(event) {
+    console.log(event);
     var myPeerConnection = event.srcElement;
     console.log("*** ICE connection state changed to " + myPeerConnection.iceConnectionState);
 
