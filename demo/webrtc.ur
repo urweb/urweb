@@ -29,17 +29,15 @@ fun createChannel r =
     user <- source r.Username;
     lss <- source Nil;
     msg <- source "No messages so far!";
-    targetUser <- source "";
 
     let
 
-        fun eventHandler() =
+        fun eventHandler(targetUsername) =
             sleep 1000;
             x <- JsWebrtcJs.getPendingEvent();
             senderUsername <- get user;
-            targetUsername <- get targetUser;
             if x = "undefined" then
-                eventHandler()
+                eventHandler(targetUsername)
             else if x = "offer-generated" then
                 y <- JsWebrtcJs.getDatastore "offer";
                 debug "Offer";
@@ -50,7 +48,7 @@ fun createChannel r =
                 debug "Target";
                 debug targetUsername;
                 rpc(sendPayload ("offer", senderUsername, targetUsername, y));
-                eventHandler()
+                eventHandler(targetUsername)
             else if x = "answer-generated" then
                 y <- JsWebrtcJs.getDatastore "answer";
                 debug "Answer";
@@ -61,7 +59,7 @@ fun createChannel r =
                 debug "Target";
                 debug targetUsername;
                 rpc(sendPayload ("answer", senderUsername, targetUsername, y));
-                eventHandler()
+                eventHandler(targetUsername)
             else if x = "ice-candidate-generated" then
                 y <- JsWebrtcJs.getDatastore "ice-candidate";
                 debug x;
@@ -71,20 +69,19 @@ fun createChannel r =
                 debug targetUsername;
                 rpc(sendPayload ("ice-candidate", senderUsername, targetUsername, y));
                 JsWebrtcJs.clearPendingEvent();            
-                eventHandler()
+                eventHandler(targetUsername)
             else
-                eventHandler()
+                eventHandler(targetUsername)
 
 
         fun handshake (sender, target) =
-            set targetUser target;
+            spawn(eventHandler(target));
             JsWebrtcJs.createOffer target
 
         fun onMsgReceive v =
-            targetUsername <- get targetUser;
-            set targetUser v.2;
             if v.1 = "offer" then
                 Buffer.write buf ("offer");
+                spawn(eventHandler(v.2));
                 JsWebrtcJs.createAnswer (v.2 ^ ":::" ^ v.4)
             else if v.1 = "answer" then
                 Buffer.write buf ("answer");
@@ -139,7 +136,7 @@ fun createChannel r =
                 <title>WebRTC Channel</title>
                 <link rel="stylesheet" type="text/css" href="/webrtc.css" />
             </head>
-            <body onload={spawn (receiver()); spawn (eventHandler())}>
+            <body onload={spawn (receiver())}>
                 <dyn signal={v <- signal user; return <xml><h1 class={heading}>You are listening to {[v]} </h1></xml>}/>
                 <h2>List of Active Clients</h2>
                 <h4>Note : You won't see your channel. Please update client list when others get online.</h4>
