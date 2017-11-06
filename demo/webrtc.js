@@ -1,8 +1,8 @@
 //Key-Value pair storage, both keys & values should be strings
 var __dataStore = {
-    offer: "undefined",
-    answer: "undefined",
-    ice: "undefined"
+    "offer": "undefined",
+    "answer": "undefined",
+    "ice-candidate": "undefined"
 };
 
 var peerConnections = {};
@@ -71,10 +71,10 @@ function _createRTCPeerConnection() {
         if (event.candidate) {
             console.log("Outgoing ICE candidate: " + event.candidate.candidate);
             console.info("New ICE candidate: " + JSON.stringify(event.candidate));
-            if(__dataStore['ice'] == "undefined"){
-                 __dataStore['ice'] = JSON.stringify(event.candidate);
+            if(__dataStore['ice-candidate'] == "undefined"){
+                 __dataStore['ice-candidate'] = JSON.stringify(event.candidate);
              }else{
-                 __dataStore['ice'] = __dataStore['ice'] + "\n\n\n\n" + JSON.stringify(event.candidate);
+                 __dataStore['ice-candidate'] = __dataStore['ice-candidate'] + "\n\n\n\n" + JSON.stringify(event.candidate);
              }
             
             
@@ -274,7 +274,7 @@ function createAnswer(str) {
         console.error("Unable to generate answer " + err);
     });
     setTimeout(function(){ 
-                    __dataStore['event'] = 'ice-candidate';
+                    __dataStore['event'] = 'ice-candidate-generated';
             }, 1000);
 }
 
@@ -290,6 +290,6 @@ function consumeAnswer(str) {
         console.error("Peer connection not found to consumeAnswer");
     }
     setTimeout(function(){ 
-                    __dataStore['event'] = 'ice-candidate';
+                    __dataStore['event'] = 'ice-candidate-generated';
             }, 1000);
 }
