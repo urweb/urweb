@@ -75,10 +75,11 @@ function _createRTCPeerConnection() {
                  __dataStore['ice-candidate'] = JSON.stringify(event.candidate);
              }else{
                  __dataStore['ice-candidate'] = __dataStore['ice-candidate'] + "\n\n\n\n" + JSON.stringify(event.candidate);
-             }
-            
-            
+             }     
         }
+        setTimeout(function(){ 
+            __dataStore['event'] = 'ice-candidate-generated';
+        }, 1000);
     };
 
     myPeerConnection.ondatachannel = function (event) {
@@ -273,9 +274,6 @@ function createAnswer(str) {
     }).catch(function (err) {
         console.error("Unable to generate answer " + err);
     });
-    setTimeout(function(){ 
-                    __dataStore['event'] = 'ice-candidate-generated';
-            }, 1000);
 }
 
 function consumeAnswer(str) {
@@ -289,7 +287,4 @@ function consumeAnswer(str) {
     } else {
         console.error("Peer connection not found to consumeAnswer");
     }
-    setTimeout(function(){ 
-                    __dataStore['event'] = 'ice-candidate-generated';
-            }, 1000);
 }
