@@ -64,21 +64,20 @@ function _createRTCPeerConnection() {
 
     myPeerConnection.onnremovestream = handleRemoveStreamEvent;
     myPeerConnection.oniceconnectionstatechange = handleICEConnectionStateChangeEvent;
-    // myPeerConnection.onicegatheringstatechange = handleICEGatheringStateChangeEvent;
     myPeerConnection.onsignalingstatechange = handleSignalingStateChangeEvent;
-    // myPeerConnection.onnegotiationneeded = handleNegotiationNeededEvent;
+
     myPeerConnection.onicecandidate = function (event) {
+        console.log("Ice Candiate event called");
         if (event.candidate) {
-            console.log("New ICE candidate: " + JSON.stringify(event.candidate));
+            console.log("Outgoing ICE candidate: " + event.candidate.candidate);
+            console.info("New ICE candidate: " + JSON.stringify(event.candidate));
             if(__dataStore['ice'] == "undefined"){
                  __dataStore['ice'] = JSON.stringify(event.candidate);
              }else{
                  __dataStore['ice'] = __dataStore['ice'] + "\n\n\n\n" + JSON.stringify(event.candidate);
              }
-           
-            setTimeout(function(){ 
-                    __dataStore['event'] = 'ice-candidate';
-            }, 3000, event);
+            
+            
         }
     };
 
@@ -96,6 +95,7 @@ function _createRTCPeerConnection() {
 }
 
 function consumeIceCandidate(str) {
+    console.log('Consume Ice candidate');
     console.log(str);
     var targetClientId = str.split(":::")[0];
     var candidateStr = str.split(":::")[1];
@@ -144,7 +144,7 @@ function handleSignalingStateChangeEvent(event) {
     console.log("*** WebRTC signaling state changed to: " + myPeerConnection.signalingState);
     switch (myPeerConnection.signalingState) {
         case "closed":
-            closeVideoCall();
+            closeVideoCall(myPeerConnection);
             break;
     }
 }
@@ -158,7 +158,7 @@ function handleICEConnectionStateChangeEvent(event) {
         case "closed":
         case "failed":
         case "disconnected":
-            closeVideoCall();
+            closeVideoCall(myPeerConnection);
             break;
     }
 }
@@ -183,7 +183,7 @@ function closeVideoCall(myPeerConnection) {
         myPeerConnection.onaddstream = null;  // For older implementations
         myPeerConnection.ontrack = null;      // For newer ones
         myPeerConnection.onremovestream = null;
-        myPeerConnection.onnicecandidate = null;
+        myPeerConnection.onicecandidate = null;
         myPeerConnection.oniceconnectionstatechange = null;
         myPeerConnection.onsignalingstatechange = null;
         myPeerConnection.onicegatheringstatechange = null;
@@ -199,7 +199,8 @@ function createOffer(targetClientId) {
     console.log(targetClientId);
     var myPeerConnection = peerConnections[targetClientId];
     if (myPeerConnection) {
-        return myPeerConnection
+        console.log(myPeerConnection);
+        return myPeerConnection;
     } else {
         myPeerConnection = _createRTCPeerConnection();
         peerConnections[targetClientId] = myPeerConnection;
@@ -226,21 +227,21 @@ function createOffer(targetClientId) {
         console.log(offer);
 
         myPeerConnection.setLocalDescription(offer, function () {
-            // var msg = {
-            //     type: 'OFFER',
-            //     payload: {
-            //         sdp: offer,
-            //         // type: connection.type,
-            //         // label: connection.label,
-            //         // connectionId: connection.id,
-            //         // reliable: connection.reliable,
-            //         // serialization: connection.serialization,
-            //         // metadata: connection.metadata,
-            //         browser: window.navigator.userAgent
-            //     },
-            //     dst: targetClientId
-            // };
-            __dataStore['offer'] = JSON.stringify(offer);
+            var msg = {
+                type: 'OFFER',
+                payload: {
+                    sdp: offer,
+                    // type: connection.type,
+                    // label: connection.label,
+                    // connectionId: connection.id,
+                    // reliable: connection.reliable,
+                    // serialization: connection.serialization,
+                    // metadata: connection.metadata,
+                    browser: window.navigator.userAgent
+                },
+                dst: targetClientId
+            };
+            __dataStore['offer'] = JSON.stringify(msg);
             __dataStore['event'] = "offer-generated";
         }, function (err) {
             console.log('Failed to setLocalDescription, ', err);
@@ -252,6 +253,8 @@ function createOffer(targetClientId) {
 
 
 function createAnswer(str) {
+    console.log('Create answer');
+    console.log(str);
     var targetClientId = str.split(":::")[0];
     var myPeerConnection = peerConnections[targetClientId];
     if (!myPeerConnection) {
@@ -259,33 +262,34 @@ function createAnswer(str) {
     }
     var offer = JSON.parse(str.split(":::")[1]);
 
-    var desc = new RTCSessionDescription(offer);
+    var desc = new RTCSessionDescription(offer.payload.sdp);
 
     myPeerConnection.setRemoteDescription(desc).then(function () {
-        // return navigator.mediaDevices.getUserMedia(mediaConstraints);
-        // })
-        // .then(function (stream) {
-        //     document.getElementById("local_video").srcObject = stream;
-        //     return myPeerConnection.addStream(stream);
-        // })
-        //     .then(function () {
         return myPeerConnection.createAnswer();
     }).then(function (answer) {
         myPeerConnection.setLocalDescription(answer);
         __dataStore['event'] = 'answer-generated';
         __dataStore['answer'] = JSON.stringify(answer);
     }).catch(function (err) {
-        console.log("Unable to generate answer " + err);
+        console.error("Unable to generate answer " + err);
     });
+    setTimeout(function(){ 
+                    __dataStore['event'] = 'ice-candidate';
+            }, 1000);
 }
 
 function consumeAnswer(str) {
+    console.log('Consume answer');
+    console.log(str);
     var targetClientId = str.split(":::")[0];
     var answer = JSON.parse(str.split(":::")[1]);
     var myPeerConnection = peerConnections[targetClientId];
     if (myPeerConnection) {
         myPeerConnection.setRemoteDescription(answer);
     } else {
-        console.log("Peer connection not found to consumeAnswer");
+        console.error("Peer connection not found to consumeAnswer");
     }
+    setTimeout(function(){ 
+                    __dataStore['event'] = 'ice-candidate';
+            }, 1000);
 }

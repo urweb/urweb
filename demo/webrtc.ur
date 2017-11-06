@@ -33,14 +33,6 @@ fun createChannel r =
 
     let
 
-        fun consumeIceCandidate() =
-            debug "In ice ice-candidate";
-            targetUsername <- get targetUser;
-            iceCandidate <- JsWebrtcJs.getDatastore "ice";
-            debug iceCandidate;
-            debug targetUsername;
-            JsWebrtcJs.consumeIceCandidate (targetUsername ^ ":::" ^ iceCandidate)
-
         fun eventHandler() =
             sleep 1000;
             x <- JsWebrtcJs.getPendingEvent();
@@ -70,15 +62,17 @@ fun createChannel r =
                 debug targetUsername;
                 rpc(sendPayload ("answer", senderUsername, targetUsername, y));
                 eventHandler()
-            else
+            else if x = "ice-candidate" then
+                y <- JsWebrtcJs.getDatastore "ice";
                 debug x;
                 debug "Sender";
                 debug senderUsername;
                 debug "Target";
                 debug targetUsername;
-                consumeIceCandidate();
-                JsWebrtcJs.clearPendingEvent();
-                
+                rpc(sendPayload ("ice", senderUsername, targetUsername, y));
+                JsWebrtcJs.clearPendingEvent();            
+                eventHandler()
+            else
                 eventHandler()
 
 
@@ -95,6 +89,9 @@ fun createChannel r =
             else if v.1 = "answer" then
                 Buffer.write buf ("answer");
                 JsWebrtcJs.consumeAnswer (v.2 ^ ":::" ^ v.4)
+            else if v.1 = "ice" then
+                Buffer.write buf ("ice");
+                JsWebrtcJs.consumeIceCandidate (v.2 ^ ":::" ^ v.4)
             else
                 Buffer.write buf ("unknown")
 
