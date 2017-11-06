@@ -42,23 +42,23 @@ fun createChannel r =
                 y <- JsWebrtcJs.getDatastore targetUsername "offer";
                 debug "Offer";
                 debug y;
-                JsWebrtcJs.clearPendingEvent targetUsername;
                 debug "Sender";
                 debug senderUsername;
                 debug "Target";
                 debug targetUsername;
                 rpc(sendPayload ("offer", senderUsername, targetUsername, y));
+                JsWebrtcJs.clearPendingEvent targetUsername x;
                 eventHandler(targetUsername)
             else if x = "answer-generated" then
                 y <- JsWebrtcJs.getDatastore targetUsername "answer";
                 debug "Answer";
                 debug y;
-                JsWebrtcJs.clearPendingEvent targetUsername;
                 debug "Sender";
                 debug senderUsername;
                 debug "Target";
                 debug targetUsername;
                 rpc(sendPayload ("answer", senderUsername, targetUsername, y));
+                JsWebrtcJs.clearPendingEvent targetUsername x;
                 eventHandler(targetUsername)
             else if x = "ice-candidate-generated" then
                 y <- JsWebrtcJs.getDatastore targetUsername "ice-candidate";
@@ -68,7 +68,7 @@ fun createChannel r =
                 debug "Target";
                 debug targetUsername;
                 rpc(sendPayload ("ice-candidate", senderUsername, targetUsername, y));
-                JsWebrtcJs.clearPendingEvent targetUsername;            
+                JsWebrtcJs.clearPendingEvent targetUsername x;            
                 eventHandler(targetUsername)
             else
                 eventHandler(targetUsername)

@@ -5,6 +5,23 @@ var peerConnections = {};
 
 var dataChannels = {};
 
+function initDataStore(targetClientId) {
+    __dataStore[targetClientId] = { 
+            "offer" : "undefined",
+            "answer" : "undefined",
+            "ice-candidate" : "undefined",
+            "event" : "undefined",
+            "canExchangeIce" : false
+    }
+}
+
+function enableIceExchange(targetClientId){
+    __dataStore[targetClientId]['canExchangeIce'] = true;
+    if(getDatastore(targetClientId, "ice-candidate") != "undefined"){
+        __dataStore[targetClientId]["event"] = "ice-candidate-generated";
+    }
+}
+
 function myFunction(str) {
     "use strict";
     return ('Returning string from myFunction : ' + str);
@@ -20,9 +37,17 @@ function getPendingEvent(targetClientId) {
     return __dataStore[targetClientId]['event'];
 }
 
-function clearPendingEvent(targetClientId) {
+function clearPendingEvent(targetClientId, eventType) {
     "use strict";
-    delete __dataStore[targetClientId]['event'];
+    __dataStore[targetClientId]['event'] = "undefined";
+    switch(eventType){
+        case "answer-generated":
+            enableIceExchange(targetClientId);
+            break;
+        case "ice-candidate-generated":
+            __dataStore[targetClientId]['ice-candidate'] = "undefined";
+            break;
+    }
 }
 
 var defaultConfig = {
@@ -62,15 +87,16 @@ function _createRTCPeerConnection(targetClientId) {
                  __dataStore[targetClientId]['ice-candidate'] = JSON.stringify(event.candidate);
              }else{
                  __dataStore[targetClientId]['ice-candidate'] = __dataStore[targetClientId]['ice-candidate'] + "\n\n\n\n" + JSON.stringify(event.candidate);
-             }     
+             }
+             if(__dataStore[targetClientId]["canExchangeIce"]){
+                __dataStore[targetClientId]['event'] = 'ice-candidate-generated';
+            }     
         }
-        setTimeout(function(){ 
-            __dataStore[targetClientId]['event'] = 'ice-candidate-generated';
-        }, 1000);
     };
 
     myPeerConnection.ondatachannel = function (event) {
         var channel = event.channel;
+        dataChannels[targetClientId] = channel;
         channel.onopen = function (event) {
             console.log("Channel Open");
             channel.send('Hi back!');
@@ -189,12 +215,7 @@ function createOffer(targetClientId) {
     } else {
         myPeerConnection = _createRTCPeerConnection(targetClientId);
         peerConnections[targetClientId] = myPeerConnection;
-        __dataStore[targetClientId] = { 
-            "offer" : "undefined",
-            "answer" : "undefined",
-            "ice-candidate" : "undefined",
-            "event" : "undefined"
-        }
+        initDataStore(targetClientId);
     }
 
     var dc = dataChannels[targetClientId] = myPeerConnection.createDataChannel("sample data channel");
@@ -241,12 +262,7 @@ function createAnswer(targetClientId, offerStr) {
     var myPeerConnection = peerConnections[targetClientId];
     if (!myPeerConnection) {
         myPeerConnection = peerConnections[targetClientId] = _createRTCPeerConnection(targetClientId);
-        __dataStore[targetClientId] = { 
-            "offer" : "undefined",
-            "answer" : "undefined",
-            "ice-candidate" : "undefined",
-            "event" : "undefined"
-        }
+        initDataStore(targetClientId);
     }
     var offer = JSON.parse(offerStr);
 
@@ -269,6 +285,7 @@ function consumeAnswer(targetClientId, answerStr) {
     var myPeerConnection = peerConnections[targetClientId];
     if (myPeerConnection) {
         myPeerConnection.setRemoteDescription(answer);
+        enableIceExchange(targetClientId);
     } else {
         console.error("Peer connection not found to consumeAnswer");
     }

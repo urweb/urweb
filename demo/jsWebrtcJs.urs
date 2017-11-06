@@ -1,7 +1,7 @@
 val myFunction : string -> transaction string
 val getDatastore : string -> string -> transaction string
 val getPendingEvent : string -> transaction string
-val clearPendingEvent : string -> transaction unit
+val clearPendingEvent : string -> string -> transaction unit
 val createOffer : string -> transaction unit
 val createAnswer : string -> string -> transaction unit
 val consumeAnswer : string -> string -> transaction unit
