@@ -34,15 +34,15 @@ fun createChannel r =
 
         fun eventHandler(targetUsername) =
             sleep 1000;
-            x <- JsWebrtcJs.getPendingEvent();
+            x <- JsWebrtcJs.getPendingEvent targetUsername;
             senderUsername <- get user;
             if x = "undefined" then
                 eventHandler(targetUsername)
             else if x = "offer-generated" then
-                y <- JsWebrtcJs.getDatastore "offer";
+                y <- JsWebrtcJs.getDatastore targetUsername "offer";
                 debug "Offer";
                 debug y;
-                JsWebrtcJs.clearPendingEvent();
+                JsWebrtcJs.clearPendingEvent targetUsername;
                 debug "Sender";
                 debug senderUsername;
                 debug "Target";
@@ -50,10 +50,10 @@ fun createChannel r =
                 rpc(sendPayload ("offer", senderUsername, targetUsername, y));
                 eventHandler(targetUsername)
             else if x = "answer-generated" then
-                y <- JsWebrtcJs.getDatastore "answer";
+                y <- JsWebrtcJs.getDatastore targetUsername "answer";
                 debug "Answer";
                 debug y;
-                JsWebrtcJs.clearPendingEvent();
+                JsWebrtcJs.clearPendingEvent targetUsername;
                 debug "Sender";
                 debug senderUsername;
                 debug "Target";
@@ -61,14 +61,14 @@ fun createChannel r =
                 rpc(sendPayload ("answer", senderUsername, targetUsername, y));
                 eventHandler(targetUsername)
             else if x = "ice-candidate-generated" then
-                y <- JsWebrtcJs.getDatastore "ice-candidate";
+                y <- JsWebrtcJs.getDatastore targetUsername "ice-candidate";
                 debug x;
                 debug "Sender";
                 debug senderUsername;
                 debug "Target";
                 debug targetUsername;
                 rpc(sendPayload ("ice-candidate", senderUsername, targetUsername, y));
-                JsWebrtcJs.clearPendingEvent();            
+                JsWebrtcJs.clearPendingEvent targetUsername;            
                 eventHandler(targetUsername)
             else
                 eventHandler(targetUsername)
@@ -82,13 +82,13 @@ fun createChannel r =
             if v.1 = "offer" then
                 Buffer.write buf ("offer");
                 spawn(eventHandler(v.2));
-                JsWebrtcJs.createAnswer (v.2 ^ ":::" ^ v.4)
+                JsWebrtcJs.createAnswer v.2 v.4
             else if v.1 = "answer" then
                 Buffer.write buf ("answer");
-                JsWebrtcJs.consumeAnswer (v.2 ^ ":::" ^ v.4)
+                JsWebrtcJs.consumeAnswer v.2 v.4
             else if v.1 = "ice-candidate" then
                 Buffer.write buf ("ice-candidate");
-                JsWebrtcJs.consumeIceCandidate (v.2 ^ ":::" ^ v.4)
+                JsWebrtcJs.consumeIceCandidate v.2 v.4
             else
                 Buffer.write buf ("unknown")
 
@@ -137,7 +137,7 @@ fun createChannel r =
                 <link rel="stylesheet" type="text/css" href="/webrtc.css" />
             </head>
             <body onload={spawn (receiver())}>
-                <dyn signal={v <- signal user; return <xml><h1 class={heading}>You are listening to {[v]} </h1></xml>}/>
+                <dyn signal={v <- signal user; return <xml><h1 class={heading}>You are {[v]} </h1></xml>}/>
                 <h2>List of Active Clients</h2>
                 <h4>Note : You won't see your channel. Please update client list when others get online.</h4>
                 {dynTable lss}
@@ -155,53 +155,16 @@ fun createChannel r =
 
 
 fun main () =
-let
-    fun urWebFromDatastore v =
-        sleep 1000;
-        x <- JsWebrtcJs.getDatastore v;
-        if x = "undefined" then
-            urWebFromDatastore v
-        else
-            return x
-
-    fun eventHandler() =
-        sleep 1000;
-        x <- JsWebrtcJs.getPendingEvent();
-        if x = "undefined" then
-            eventHandler()
-        else if x = "offer-generated" then
-            y <- JsWebrtcJs.getDatastore "offer";
-            debug "Offer";
-            debug y;
-            JsWebrtcJs.clearPendingEvent();
-            rpc(sendPayload ("offer", "123", "123", y));
-            eventHandler()
-        else if x = "answer-generated" then
-            y <- JsWebrtcJs.getDatastore "answer";
-            debug "Answer";
-            debug y;
-            JsWebrtcJs.clearPendingEvent();
-            eventHandler()
-        else
-            debug x;
-            JsWebrtcJs.clearPendingEvent();
-            eventHandler()
-
-in
-return <xml>
-    <head>
-        <title>WebRTC</title>
-        <link rel="stylesheet" type="text/css" href="/webrtc.css" />
-    </head>
-    <body onload={spawn (eventHandler())}>
-        <h1 class={heading}>Welcome to the WebRTC demo!</h1>
-        <form>
-            <textbox{#Username} placeholder="Enter a name for the channel" class={channelBox}/>
-            <submit value="Create Channel" action={createChannel}/>
-        </form>
-        <br/>
-        <button value="Click me please" onclick={fn _ => n <- JsWebrtcJs.myFunction "Nitin Surana Test"; n<- urWebFromDatastore "key"; alert n}></button>
-        <button value="Create Offer" onclick={fn _ => JsWebrtcJs.createOffer "123"}></button>
-    </body>
-    </xml>
-end
+    return <xml>
+        <head>
+            <title>WebRTC</title>
+            <link rel="stylesheet" type="text/css" href="/webrtc.css" />
+        </head>
+        <body>
+            <h1 class={heading}>Welcome to the WebRTC demo!</h1>
+            <form>
+                <textbox{#Username} placeholder="Enter a name for the channel" class={channelBox}/>
+                <submit value="Create Channel" action={createChannel}/>
+            </form>
+        </body>
+        </xml>

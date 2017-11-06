@@ -1,41 +1,28 @@
 //Key-Value pair storage, both keys & values should be strings
-var __dataStore = {
-    "offer": "undefined",
-    "answer": "undefined",
-    "ice-candidate": "undefined"
-};
+var __dataStore = {};
 
 var peerConnections = {};
 
+var dataChannels = {};
+
 function myFunction(str) {
     "use strict";
-    setTimeout(() => {
-        __dataStore["key"] = 10;
-    }, 5000);
-
-    setInterval(() => {
-        __dataStore['event'] = "Event : " + new Date();
-    }, 2000);
     return ('Returning string from myFunction : ' + str);
 }
 
-function getDatastore(key) {
+function getDatastore(targetClientId, key) {
     "use strict";
-    return __dataStore[key];
+    return __dataStore[targetClientId][key];
 }
 
-function getPendingEvent() {
+function getPendingEvent(targetClientId) {
     "use strict";
-    if (__dataStore['event']) {
-        return __dataStore['event']
-    } else {
-        return "undefined";
-    }
+    return __dataStore[targetClientId]['event'];
 }
 
-function clearPendingEvent() {
+function clearPendingEvent(targetClientId) {
     "use strict";
-    delete __dataStore['event'];
+    delete __dataStore[targetClientId]['event'];
 }
 
 var defaultConfig = {
@@ -53,7 +40,7 @@ var defaultConfig = {
 };
 
 
-function _createRTCPeerConnection() {
+function _createRTCPeerConnection(targetClientId) {
     // var myPeerConnection = new RTCPeerConnection(defaultConfig, {optional: [{RtpDataChannels: true}]});
     var myPeerConnection = new RTCPeerConnection(defaultConfig, {
         mandatory: {
@@ -71,14 +58,14 @@ function _createRTCPeerConnection() {
         if (event.candidate) {
             console.log("Outgoing ICE candidate: " + event.candidate.candidate);
             console.info("New ICE candidate: " + JSON.stringify(event.candidate));
-            if(__dataStore['ice-candidate'] == "undefined"){
-                 __dataStore['ice-candidate'] = JSON.stringify(event.candidate);
+            if(__dataStore[targetClientId]['ice-candidate'] == "undefined"){
+                 __dataStore[targetClientId]['ice-candidate'] = JSON.stringify(event.candidate);
              }else{
-                 __dataStore['ice-candidate'] = __dataStore['ice-candidate'] + "\n\n\n\n" + JSON.stringify(event.candidate);
+                 __dataStore[targetClientId]['ice-candidate'] = __dataStore[targetClientId]['ice-candidate'] + "\n\n\n\n" + JSON.stringify(event.candidate);
              }     
         }
         setTimeout(function(){ 
-            __dataStore['event'] = 'ice-candidate-generated';
+            __dataStore[targetClientId]['event'] = 'ice-candidate-generated';
         }, 1000);
     };
 
@@ -95,11 +82,8 @@ function _createRTCPeerConnection() {
     return myPeerConnection;
 }
 
-function consumeIceCandidate(str) {
+function consumeIceCandidate(targetClientId, candidateStr) {
     console.log('Consume Ice candidate');
-    console.log(str);
-    var targetClientId = str.split(":::")[0];
-    var candidateStr = str.split(":::")[1];
     var candidateArr = candidateStr.split("\n\n\n\n");
 
     candidateArr.forEach(function (c) {
@@ -203,11 +187,17 @@ function createOffer(targetClientId) {
         console.log(myPeerConnection);
         return myPeerConnection;
     } else {
-        myPeerConnection = _createRTCPeerConnection();
+        myPeerConnection = _createRTCPeerConnection(targetClientId);
         peerConnections[targetClientId] = myPeerConnection;
+        __dataStore[targetClientId] = { 
+            "offer" : "undefined",
+            "answer" : "undefined",
+            "ice-candidate" : "undefined",
+            "event" : "undefined"
+        }
     }
 
-    var dc = window.dc = myPeerConnection.createDataChannel("sample data channel");
+    var dc = dataChannels[targetClientId] = myPeerConnection.createDataChannel("sample data channel");
     //, {negotiated: true, id: 0});
 
     dc.onmessage = function (event) {
@@ -231,19 +221,12 @@ function createOffer(targetClientId) {
             var msg = {
                 type: 'OFFER',
                 payload: {
-                    sdp: offer,
-                    // type: connection.type,
-                    // label: connection.label,
-                    // connectionId: connection.id,
-                    // reliable: connection.reliable,
-                    // serialization: connection.serialization,
-                    // metadata: connection.metadata,
-                    browser: window.navigator.userAgent
+                    sdp: offer
                 },
                 dst: targetClientId
             };
-            __dataStore['offer'] = JSON.stringify(msg);
-            __dataStore['event'] = "offer-generated";
+            __dataStore[targetClientId]['offer'] = JSON.stringify(msg);
+            __dataStore[targetClientId]['event'] = "offer-generated";
         }, function (err) {
             console.log('Failed to setLocalDescription, ', err);
         });
@@ -253,15 +236,19 @@ function createOffer(targetClientId) {
 }
 
 
-function createAnswer(str) {
+function createAnswer(targetClientId, offerStr) {
     console.log('Create answer');
-    console.log(str);
-    var targetClientId = str.split(":::")[0];
     var myPeerConnection = peerConnections[targetClientId];
     if (!myPeerConnection) {
-        myPeerConnection = peerConnections[targetClientId] = _createRTCPeerConnection();
+        myPeerConnection = peerConnections[targetClientId] = _createRTCPeerConnection(targetClientId);
+        __dataStore[targetClientId] = { 
+            "offer" : "undefined",
+            "answer" : "undefined",
+            "ice-candidate" : "undefined",
+            "event" : "undefined"
+        }
     }
-    var offer = JSON.parse(str.split(":::")[1]);
+    var offer = JSON.parse(offerStr);
 
     var desc = new RTCSessionDescription(offer.payload.sdp);
 
@@ -269,18 +256,16 @@ function createAnswer(str) {
         return myPeerConnection.createAnswer();
     }).then(function (answer) {
         myPeerConnection.setLocalDescription(answer);
-        __dataStore['event'] = 'answer-generated';
-        __dataStore['answer'] = JSON.stringify(answer);
+        __dataStore[targetClientId]['event'] = 'answer-generated';
+        __dataStore[targetClientId]['answer'] = JSON.stringify(answer);
     }).catch(function (err) {
         console.error("Unable to generate answer " + err);
     });
 }
 
-function consumeAnswer(str) {
+function consumeAnswer(targetClientId, answerStr) {
     console.log('Consume answer');
-    console.log(str);
-    var targetClientId = str.split(":::")[0];
-    var answer = JSON.parse(str.split(":::")[1]);
+    var answer = JSON.parse(answerStr);
     var myPeerConnection = peerConnections[targetClientId];
     if (myPeerConnection) {
         myPeerConnection.setRemoteDescription(answer);
