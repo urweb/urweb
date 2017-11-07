@@ -11,8 +11,13 @@ function initDataStore(targetClientId) {
             "answer" : "undefined",
             "ice-candidate" : "undefined",
             "event" : "undefined",
-            "canExchangeIce" : false
+            "canExchangeIce" : false,
+            "message" : ""
     }
+}
+
+function sendWebRTCMessage(targetClientId, message){
+    dataChannels[targetClientId].send(message);
 }
 
 function enableIceExchange(targetClientId){
@@ -46,6 +51,9 @@ function clearPendingEvent(targetClientId, eventType) {
             break;
         case "ice-candidate-generated":
             __dataStore[targetClientId]['ice-candidate'] = "undefined";
+            break;
+        case "message-received":
+            __dataStore[targetClientId]['message'] = "";
             break;
     }
 }
@@ -103,6 +111,8 @@ function _createRTCPeerConnection(targetClientId) {
         };
         channel.onmessage = function (event) {
             console.log(event.data);
+            __dataStore[targetClientId]["event"] = "message-received";
+            __dataStore[targetClientId]["message"] =  event.data;
         }
     };
     return myPeerConnection;
@@ -223,6 +233,8 @@ function createOffer(targetClientId) {
 
     dc.onmessage = function (event) {
         console.log("received: " + event.data);
+        __dataStore[targetClientId]["event"] = "message-received";
+        __dataStore[targetClientId]["message"] =  event.data;
     };
 
     dc.onopen = function () {

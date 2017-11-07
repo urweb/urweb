@@ -29,6 +29,7 @@ fun createChannel r =
     user <- source r.Username;
     lss <- source Nil;
     msg <- source "No messages so far!";
+    msgVal <- source "Hi";
 
     let
 
@@ -70,6 +71,12 @@ fun createChannel r =
                 rpc(sendPayload ("ice-candidate", senderUsername, targetUsername, y));
                 JsWebrtcJs.clearPendingEvent targetUsername x;            
                 eventHandler(targetUsername)
+            else if x = "message-received" then
+                y <- JsWebrtcJs.getDatastore targetUsername "message";
+                debug y;
+                Buffer.write buf (y);              
+                JsWebrtcJs.clearPendingEvent targetUsername x; 
+                eventHandler(targetUsername) 
             else
                 eventHandler(targetUsername)
 
@@ -78,16 +85,18 @@ fun createChannel r =
             spawn(eventHandler(target));
             JsWebrtcJs.createOffer target
 
+        fun sendWebRTCMessage (targetUsername, msg) =
+            debug targetUsername;
+            debug msg;
+            JsWebrtcJs.sendWebRTCMessage targetUsername msg
+
         fun onMsgReceive v =
             if v.1 = "offer" then
-                Buffer.write buf ("offer");
                 spawn(eventHandler(v.2));
                 JsWebrtcJs.createAnswer v.2 v.4
             else if v.1 = "answer" then
-                Buffer.write buf ("answer");
                 JsWebrtcJs.consumeAnswer v.2 v.4
             else if v.1 = "ice-candidate" then
-                Buffer.write buf ("ice-candidate");
                 JsWebrtcJs.consumeIceCandidate v.2 v.4
             else
                 Buffer.write buf ("unknown")
@@ -97,33 +106,69 @@ fun createChannel r =
             username <- get user;
             set msg "";
             onMsgReceive(v);
-            Buffer.write buf ("(Received " ^ v.1 ^ " from " ^ v.2 ^" : " ^ show v.4 ^ ")");
             receiver()
 
 
         fun dynTable xyz =
             let
-                fun disp v =
+                fun dispAction v =
                     case v of
                      Nil => <xml/>
                     | Cons ((uname), ls) =>
                         <xml>
-                            <tr>
-                                <td>{[uname]}</td>
-                                <td>
-                                    <button value="WebRTC connect" onclick={fn _ => handshake (r.Username,uname)}></button>
-                                </td>
-                            </tr>
-                            {disp ls}
+                            <td>
+                                <button value="WebRTC connect" onclick={fn _ => handshake (r.Username,uname)}></button>
+                            </td>
+                            {dispAction ls}
+                        </xml>
+
+                fun dispName v =
+                    case v of
+                     Nil => <xml/>
+                    | Cons ((uname), ls) =>
+                        <xml>
+                            <td>{[uname]}</td>
+                            {dispName ls}
+                        </xml>
+
+                fun dispMsg v =
+                    case v of
+                     Nil => <xml/>
+                    | Cons ((uname), ls) =>
+                        <xml>
+                            <td>
+                                <div><dyn signal={Buffer.render buf}/></div>
+                            </td>
+                            {dispMsg ls}
+                        </xml>
+
+                fun sendMsg v =
+                    case v of
+                     Nil => <xml/>
+                    | Cons ((uname), ls) =>
+                        <xml>
+                            <td>
+                            <ctextbox source={msgVal}/>
+                            <button value="WebRTC message" onclick={fn _ => msgV <- get msgVal; sendWebRTCMessage(uname, msgV)}></button>
+                            </td>
+                            {sendMsg ls}
                         </xml>
             in
                  <xml><dyn signal={ls <- signal xyz; return <xml>
                  <table border=1 class={activeClientsTable}>
-                     <tr>
-                           <th>Username</th>
-                           <th>Action</th>
-                       </tr>
-                     {disp ls}
+                    <tr>
+                           {dispName ls}
+                    </tr>
+                    <tr>
+                           {dispAction ls}
+                    </tr>
+                    <tr>
+                           {dispMsg ls}
+                    </tr>
+                    <tr>
+                           {sendMsg ls}
+                    </tr>
+                     
                 </table>
                 </xml>}/></xml>
             end
@@ -148,7 +193,6 @@ fun createChannel r =
                 <div><b>Messaging Snapshot</b></div>
                 <br/>
                 <dyn signal={vi <- signal msg; return <xml><div>{[vi]}</div></xml>}/>
-               <dyn signal={Buffer.render buf}/>
             </body>
         </xml>
     end
