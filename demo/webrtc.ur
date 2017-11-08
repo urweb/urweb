@@ -1,5 +1,3 @@
-datatype list t = Nil | Cons of t * list t
-
 table channels : { Client : client, Username: string, Channel : channel (string * string * string * string) }
   PRIMARY KEY Client
 
@@ -12,6 +10,14 @@ style activeClientsTable
 fun allRows (uname) =
     query (SELECT channels.Username FROM channels WHERE channels.Username <> {[uname]})
     (fn r acc => return (Cons ((r.Channels.Username), acc)))
+    Nil
+
+fun channelBuffers (uname) =
+    query (SELECT channels.Username FROM channels WHERE channels.Username <> {[uname]})
+    (fn r acc => 
+            buff <-  Buffer.create; 
+            msg <- source "New message";
+            return (Cons ((r.Channels.Username , buff , msg), acc)))
     Nil
 
 
@@ -29,9 +35,20 @@ fun createChannel r =
     user <- source r.Username;
     lss <- source Nil;
     msg <- source "No messages so far!";
-    msgVal <- source "Hi";
 
     let
+
+        fun writeToBuffer (clientList, targetUsername, y) =
+                    case clientList of
+                     Nil => debug targetUsername
+                    | Cons ((uname, buff, msg), ls) =>
+                        if uname = targetUsername then
+                            debug "Here";
+                            Buffer.write buff (y)
+                        else
+                            debug "Not Here";
+                            debug targetUsername;
+                            writeToBuffer(ls, targetUsername, y)
 
         fun eventHandler(targetUsername) =
             sleep 1000;
@@ -74,7 +91,9 @@ fun createChannel r =
             else if x = "message-received" then
                 y <- JsWebrtcJs.getDatastore targetUsername "message";
                 debug y;
+                clientList <- get lss;
                 Buffer.write buf (y);              
+                writeToBuffer(clientList, targetUsername, y);              
                 JsWebrtcJs.clearPendingEvent targetUsername x; 
                 eventHandler(targetUsername) 
             else
@@ -114,7 +133,7 @@ fun createChannel r =
                 fun dispAction v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname), ls) =>
+                    | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>
                                 <button value="WebRTC connect" onclick={fn _ => handshake (r.Username,uname)}></button>
@@ -125,7 +144,7 @@ fun createChannel r =
                 fun dispName v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname), ls) =>
+                    | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>{[uname]}</td>
                             {dispName ls}
@@ -134,10 +153,10 @@ fun createChannel r =
                 fun dispMsg v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname), ls) =>
+                    | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>
-                                <div><dyn signal={Buffer.render buf}/></div>
+                                <div><dyn signal={Buffer.render buff}/></div>
                             </td>
                             {dispMsg ls}
                         </xml>
@@ -145,11 +164,11 @@ fun createChannel r =
                 fun sendMsg v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname), ls) =>
+                    | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>
-                            <ctextbox source={msgVal}/>
-                            <button value="WebRTC message" onclick={fn _ => msgV <- get msgVal; sendWebRTCMessage(uname, msgV)}></button>
+                            <ctextbox source={msg}/>
+                            <button value="WebRTC message" onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV)}></button>
                             </td>
                             {sendMsg ls}
                         </xml>
@@ -174,7 +193,7 @@ fun createChannel r =
             end
 
     in
-        clientList <- allRows(r.Username);
+        clientList <- channelBuffers(r.Username);
         set lss clientList;
         return <xml>
             <head>
@@ -187,7 +206,7 @@ fun createChannel r =
                 <h4>Note : You won't see your channel. Please update client list when others get online.</h4>
                 {dynTable lss}
                 <br/>
-                <button value="Update Client List"  onclick={fn _ => nl <- rpc(allRows(r.Username)); set lss nl}></button>
+                <button value="Update Client List"  onclick={fn _ => nl <- rpc(channelBuffers(r.Username)); set lss nl}></button>
                 <br/><br/>
                 <br/>
                 <div><b>Messaging Snapshot</b></div>
