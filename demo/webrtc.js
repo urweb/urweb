@@ -106,8 +106,9 @@ function _createRTCPeerConnection(targetClientId) {
         var channel = event.channel;
         dataChannels[targetClientId] = channel;
         channel.onopen = function (event) {
-            console.log("Channel Open");
-            channel.send('Hi back!');
+            console.log("Channel Open");       
+            __dataStore[targetClientId]["event"] = "handshake-complete";
+            //channel.send('Hi back!');
         };
         channel.onmessage = function (event) {
             console.log(event.data);
@@ -190,6 +191,10 @@ function handleRemoveStreamEvent(event) {
     closeVideoCall();
 }
 
+function disconnect(targetClientId){
+    closeVideoCall(peerConnections[targetClientId]);
+}
+
 function closeVideoCall(myPeerConnection) {
     log("Closing the call");
 
@@ -238,7 +243,8 @@ function createOffer(targetClientId) {
     };
 
     dc.onopen = function () {
-        dc.send("sending message");
+        __dataStore[targetClientId]["event"] = "handshake-complete";
+        //dc.send("sending message");
         console.log("datachannel open");
     };
 

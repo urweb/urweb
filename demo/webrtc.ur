@@ -16,15 +16,14 @@ fun channelBuffers (uname) =
     query (SELECT channels.Username FROM channels WHERE channels.Username <> {[uname]})
     (fn r acc => 
             buff <-  Buffer.create; 
-            msg <- source "New message";
-            return (Cons ((r.Channels.Username , buff , msg), acc)))
+            msg <- source "";
+            return (Cons ((r.Channels.Username , buff , False ,  msg), acc)))
     Nil
 
 
 fun sendPayload v =
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.3]});
     send r.Channels.Channel v
-
 
 fun createChannel r =
     me <- self;
@@ -38,10 +37,21 @@ fun createChannel r =
 
     let
 
+        fun updateConnectedClients (clientList, senderUsername, targetUsername, isConnectedFlag) =
+            updatedList <- List.mapM (fn (uname, buff, isConnected, msg) => 
+                    if uname = targetUsername  then
+                        return (uname, buff, isConnectedFlag, msg)
+                    else if uname = senderUsername  then
+                        return (uname, buff, isConnectedFlag, msg)
+                    else
+                        return (uname, buff, isConnected, msg)
+                    ) clientList;
+            set lss updatedList
+
         fun writeToBuffer (clientList, targetUsername, y) =
                     case clientList of
                      Nil => debug targetUsername
-                    | Cons ((uname, buff, msg), ls) =>
+                    | Cons ((uname, buff, isConnected, msg), ls) =>
                         if uname = targetUsername then
                             debug "Here";
                             Buffer.write buff (y)
@@ -54,45 +64,34 @@ fun createChannel r =
             sleep 1000;
             x <- JsWebrtcJs.getPendingEvent targetUsername;
             senderUsername <- get user;
+
             if x = "undefined" then
                 eventHandler(targetUsername)
             else if x = "offer-generated" then
                 y <- JsWebrtcJs.getDatastore targetUsername "offer";
-                debug "Offer";
-                debug y;
-                debug "Sender";
-                debug senderUsername;
-                debug "Target";
-                debug targetUsername;
                 rpc(sendPayload ("offer", senderUsername, targetUsername, y));
                 JsWebrtcJs.clearPendingEvent targetUsername x;
                 eventHandler(targetUsername)
             else if x = "answer-generated" then
                 y <- JsWebrtcJs.getDatastore targetUsername "answer";
-                debug "Answer";
-                debug y;
-                debug "Sender";
-                debug senderUsername;
-                debug "Target";
-                debug targetUsername;
                 rpc(sendPayload ("answer", senderUsername, targetUsername, y));
                 JsWebrtcJs.clearPendingEvent targetUsername x;
                 eventHandler(targetUsername)
             else if x = "ice-candidate-generated" then
                 y <- JsWebrtcJs.getDatastore targetUsername "ice-candidate";
-                debug x;
-                debug "Sender";
-                debug senderUsername;
-                debug "Target";
-                debug targetUsername;
                 rpc(sendPayload ("ice-candidate", senderUsername, targetUsername, y));
                 JsWebrtcJs.clearPendingEvent targetUsername x;            
                 eventHandler(targetUsername)
+            else if x = "handshake-complete" then
+                debug "handshake is complete";
+                clientList <- get lss;
+                newList <- updateConnectedClients(clientList, senderUsername, targetUsername, True);
+                JsWebrtcJs.clearPendingEvent targetUsername x;
+                eventHandler(targetUsername)
             else if x = "message-received" then
                 y <- JsWebrtcJs.getDatastore targetUsername "message";
-                debug y;
                 clientList <- get lss;
-                Buffer.write buf (y);              
+                Buffer.write buf (y);          
                 writeToBuffer(clientList, targetUsername, y);              
                 JsWebrtcJs.clearPendingEvent targetUsername x; 
                 eventHandler(targetUsername) 
@@ -130,13 +129,23 @@ fun createChannel r =
 
         fun dynTable xyz =
             let
+                fun dispBtn (isConnected, senderUsername, targetUsername) =
+                    case isConnected of
+                        True => <xml><button value="WebRTC disconnect" onclick={fn _ => handshake (senderUsername , targetUsername)}></button></xml>
+                        | False => <xml><button value="WebRTC connect" onclick={fn _ => handshake (senderUsername , targetUsername)}></button></xml>
+
+                fun dispMsgBtn (isConnected, uname, msg) =
+                    case isConnected of
+                        True => <xml><button value="WebRTC message" onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV)}></button></xml>
+                        | False => <xml><button value="WebRTC message" disabled onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV)}></button></xml>
+
                 fun dispAction v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname, buff, msg), ls) =>
+                    | Cons ((uname, buff, isConnected, msg), ls) =>
                         <xml>
                             <td>
-                                <button value="WebRTC connect" onclick={fn _ => handshake (r.Username,uname)}></button>
+                                {dispBtn(isConnected,r.Username,uname)}
                             </td>
                             {dispAction ls}
                         </xml>
@@ -144,7 +153,7 @@ fun createChannel r =
                 fun dispName v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname, buff, msg), ls) =>
+                    | Cons ((uname, buff, isConnected, msg), ls) =>
                         <xml>
                             <td>{[uname]}</td>
                             {dispName ls}
@@ -153,7 +162,7 @@ fun createChannel r =
                 fun dispMsg v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname, buff, msg), ls) =>
+                    | Cons ((uname, buff, isConnected, msg), ls) =>
                         <xml>
                             <td>
                                 <div><dyn signal={Buffer.render buff}/></div>
@@ -164,11 +173,11 @@ fun createChannel r =
                 fun sendMsg v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname, buff, msg), ls) =>
+                    | Cons ((uname, buff, isConnected, msg), ls) =>
                         <xml>
                             <td>
-                            <ctextbox source={msg}/>
-                            <button value="WebRTC message" onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV)}></button>
+                            <ctextbox source={msg} placeholder="Enter message to chat" />
+                            {dispMsgBtn(isConnected, uname, msg)}
                             </td>
                             {sendMsg ls}
                         </xml>
