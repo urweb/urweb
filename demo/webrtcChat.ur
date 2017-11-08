@@ -1,5 +1,5 @@
-table channels : { Client : client, Username: string, Channel : channel (string * string * string * string) }
-  PRIMARY KEY Client
+table channels : { Username: string, Channel : channel (string * string * string * string) }
+  PRIMARY KEY Username
 
 style channelBox
 style heading
@@ -26,9 +26,8 @@ fun sendPayload v =
     send r.Channels.Channel v
 
 fun createChannel r =
-    me <- self;
     ch <- channel;
-    dml (INSERT INTO channels (Client, Username, Channel) VALUES ({[me]}, {[readError r.Username]}, {[ch]}));
+    dml (INSERT INTO channels (Username, Channel) VALUES ({[readError r.Username]}, {[ch]}));
     buf <- Buffer.create;
     src <- source 1;
     user <- source r.Username;
