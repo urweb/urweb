@@ -230,6 +230,7 @@ function createOffer(targetClientId) {
     var myPeerConnection = peerConnections[targetClientId];
     if (myPeerConnection) {
         console.log(myPeerConnection);
+        __dataStore[targetClientId]["event"] = "handshake-complete";
         return myPeerConnection;
     } else {
         myPeerConnection = _createRTCPeerConnection(targetClientId);
