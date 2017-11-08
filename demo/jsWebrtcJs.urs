@@ -7,3 +7,4 @@ val createOffer : string -> transaction unit
 val createAnswer : string -> string -> transaction unit
 val consumeAnswer : string -> string -> transaction unit
 val consumeIceCandidate : string -> string -> transaction unit
+val disconnect : string -> transaction unit

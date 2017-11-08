@@ -88,6 +88,12 @@ fun createChannel r =
                 newList <- updateConnectedClients(clientList, senderUsername, targetUsername, True);
                 JsWebrtcJs.clearPendingEvent targetUsername x;
                 eventHandler(targetUsername)
+            else if x = "disconnect" then
+                debug "client disconnected";
+                clientList <- get lss;
+                newList <- updateConnectedClients(clientList, senderUsername, targetUsername, False);
+                JsWebrtcJs.clearPendingEvent targetUsername x;
+                eventHandler(targetUsername)
             else if x = "message-received" then
                 y <- JsWebrtcJs.getDatastore targetUsername "message";
                 clientList <- get lss;
@@ -102,6 +108,9 @@ fun createChannel r =
         fun handshake (sender, target) =
             spawn(eventHandler(target));
             JsWebrtcJs.createOffer target
+
+        fun disconnect (sender, target) =
+            JsWebrtcJs.disconnect target
 
         fun sendWebRTCMessage (targetUsername, msg) =
             debug targetUsername;
@@ -131,7 +140,7 @@ fun createChannel r =
             let
                 fun dispBtn (isConnected, senderUsername, targetUsername) =
                     case isConnected of
-                        True => <xml><button value="WebRTC disconnect" onclick={fn _ => handshake (senderUsername , targetUsername)}></button></xml>
+                        True => <xml><button value="WebRTC disconnect" onclick={fn _ => disconnect (senderUsername , targetUsername)}></button></xml>
                         | False => <xml><button value="WebRTC connect" onclick={fn _ => handshake (senderUsername , targetUsername)}></button></xml>
 
                 fun dispMsgBtn (isConnected, uname, msg) =

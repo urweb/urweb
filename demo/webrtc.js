@@ -115,6 +115,10 @@ function _createRTCPeerConnection(targetClientId) {
             __dataStore[targetClientId]["event"] = "message-received";
             __dataStore[targetClientId]["message"] =  event.data;
         }
+        channel.onclose = function(event){
+            console.log("datachannel close");
+            __dataStore[targetClientId]["event"] = "disconnect";
+        }
     };
     return myPeerConnection;
 }
@@ -250,6 +254,7 @@ function createOffer(targetClientId) {
 
     dc.onclose = function () {
         console.log("datachannel close");
+        __dataStore[targetClientId]["event"] = "disconnect";
     };
 
     myPeerConnection.createOffer(function (offer) {

@@ -14,6 +14,7 @@ jsFunc JsWebrtcJs.createAnswer=createAnswer
 jsFunc JsWebrtcJs.consumeAnswer=consumeAnswer
 jsFunc JsWebrtcJs.consumeIceCandidate=consumeIceCandidate
 jsFunc JsWebrtcJs.sendWebRTCMessage=sendWebRTCMessage
+jsFunc JsWebrtcJs.disconnect=disconnect
 file /webrtc.css webrtc.css
 allow url /webrtc.css
 rewrite style Webrtc/channelBox channelBox
