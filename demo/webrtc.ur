@@ -43,8 +43,6 @@ fun createChannel r =
                     debug uname;
                     if uname = targetUsername  then
                         return (uname, buff, isConnectedFlag, msg)
-                    else if uname = senderUsername  then
-                        return (uname, buff, isConnectedFlag, msg)
                     else
                         return (uname, buff, isConnected, msg)
                     ) clientList;

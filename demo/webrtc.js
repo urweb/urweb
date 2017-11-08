@@ -69,11 +69,6 @@ function enableIceExchange(targetClientId) {
     }
 }
 
-function myFunction(str) {
-    "use strict";
-    return ("Returning string from myFunction : " + str);
-}
-
 function getPendingEvent(targetClientId) {
     "use strict";
     return __dataStore[targetClientId][DS_KEYS.EVENT];

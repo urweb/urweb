@@ -1,4 +1,3 @@
-val myFunction : string -> transaction string
 val sendWebRTCMessage : string -> string -> transaction unit
 val getDatastore : string -> string -> transaction string
 val getPendingEvent : string -> transaction string
