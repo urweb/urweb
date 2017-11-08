@@ -76,17 +76,18 @@ function getPendingEvent(targetClientId) {
 
 function clearPendingEvent(targetClientId, eventType) {
     "use strict";
+    console.log("Clearing Event ", eventType, " and current latest event is ", __dataStore[targetClientId][DS_KEYS.EVENT]);
     __dataStore[targetClientId][DS_KEYS.EVENT] = CONSTANTS.UNDEFINED;
     switch (eventType) {
-    case EVENTS.ANSWER_GENRATED:
-        enableIceExchange(targetClientId);
-        break;
-    case EVENTS.ICE_CANDIDATE_GENERATED:
-        __dataStore[targetClientId][DS_KEYS.ICE_CANDIDATE] = CONSTANTS.UNDEFINED;
-        break;
-    case EVENTS.MESSAGE_RECEIVED:
-        __dataStore[targetClientId][DS_KEYS.MESSAGE] = CONSTANTS.EMPTY;
-        break;
+        case EVENTS.ANSWER_GENRATED:
+            enableIceExchange(targetClientId);
+            break;
+        case EVENTS.ICE_CANDIDATE_GENERATED:
+            __dataStore[targetClientId][DS_KEYS.ICE_CANDIDATE] = CONSTANTS.UNDEFINED;
+            break;
+        case EVENTS.MESSAGE_RECEIVED:
+            __dataStore[targetClientId][DS_KEYS.MESSAGE] = CONSTANTS.EMPTY;
+            break;
     }
 }
 
@@ -129,9 +130,9 @@ function handleSignalingStateChangeEvent(event) {
     var myPeerConnection = event.srcElement;
     console.log("*** WebRTC signaling state changed to: " + myPeerConnection.signalingState);
     switch (myPeerConnection.signalingState) {
-    case "closed":
-        closeVideoCall(myPeerConnection);
-        break;
+        case "closed":
+            closeVideoCall(myPeerConnection);
+            break;
     }
 }
 
@@ -140,7 +141,6 @@ function disconnect(targetClientId) {
     closeVideoCall(peerConnections[targetClientId]);
     delete peerConnections[targetClientId];
 }
-
 
 
 function _createRTCPeerConnection(targetClientId) {
@@ -159,12 +159,12 @@ function _createRTCPeerConnection(targetClientId) {
         console.log("*** ICE connection state changed to " + connection.iceConnectionState);
 
         switch (connection.iceConnectionState) {
-        case "closed":
-        case "failed":
-        case "disconnected":
-            closeVideoCall(connection);
-            delete peerConnections[targetClientId];
-            break;
+            case "closed":
+            case "failed":
+            case "disconnected":
+                closeVideoCall(connection);
+                delete peerConnections[targetClientId];
+                break;
         }
     };
 
