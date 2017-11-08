@@ -1,29 +1,49 @@
 //Key-Value pair storage, both keys & values should be strings
 var __dataStore = {};
-
 var peerConnections = {};
-
 var dataChannels = {};
 
+var EVENTS = {
+    "OFFER_GENERATED": "offer-generated",
+    "ANSWER_GENRATED": "answer-generated",
+    "ICE_CANDIDATE_GENERATED": "ice-candidate-generated",
+    "HANDSHAKE_COMPLETE": "handshake-complete",
+    "DISCONNECTED": "disconnect",
+    "MESSAGE_RECEIVED": "message-received"
+};
+
+var CONSTANTS = {
+    "UNDEFINED": "undefined",
+    "EMPTY": ""
+};
+
+var DS_KEYS = {
+    "OFFER": "offer",
+    "ANSWER": "answer",
+    "ICE_CANDIDATE": "ice-candidate",
+    "EVENT": "event",
+    "CAN_EXCHANGE_ICE": "canExchangeIce",
+    "MESSAGE": "message"
+};
+
 function initDataStore(targetClientId) {
-    __dataStore[targetClientId] = { 
-            "offer" : "undefined",
-            "answer" : "undefined",
-            "ice-candidate" : "undefined",
-            "event" : "undefined",
-            "canExchangeIce" : false,
-            "message" : ""
-    }
+    __dataStore[targetClientId] = {};
+    __dataStore[targetClientId][DS_KEYS.OFFER] = CONSTANTS.UNDEFINED;
+    __dataStore[targetClientId][DS_KEYS.ANSWER] = CONSTANTS.UNDEFINED;
+    __dataStore[targetClientId][DS_KEYS.ICE_CANDIDATE] = CONSTANTS.UNDEFINED;
+    __dataStore[targetClientId][DS_KEYS.EVENT] = CONSTANTS.UNDEFINED;
+    __dataStore[targetClientId][DS_KEYS.CAN_EXCHANGE_ICE] = false;
+    __dataStore[targetClientId][DS_KEYS.MESSAGE] = CONSTANTS.EMPTY;
 }
 
-function sendWebRTCMessage(targetClientId, message){
+function sendWebRTCMessage(targetClientId, message) {
     dataChannels[targetClientId].send(message);
 }
 
-function enableIceExchange(targetClientId){
-    __dataStore[targetClientId]['canExchangeIce'] = true;
-    if(getDatastore(targetClientId, "ice-candidate") != "undefined"){
-        __dataStore[targetClientId]["event"] = "ice-candidate-generated";
+function enableIceExchange(targetClientId) {
+    __dataStore[targetClientId][DS_KEYS.CAN_EXCHANGE_ICE] = true;
+    if (getDatastore(targetClientId, DS_KEYS.ICE_CANDIDATE) != CONSTANTS.UNDEFINED) {
+        __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.ICE_CANDIDATE_GENERATED;
     }
 }
 
@@ -39,21 +59,21 @@ function getDatastore(targetClientId, key) {
 
 function getPendingEvent(targetClientId) {
     "use strict";
-    return __dataStore[targetClientId]['event'];
+    return __dataStore[targetClientId][DS_KEYS.EVENT];
 }
 
 function clearPendingEvent(targetClientId, eventType) {
     "use strict";
-    __dataStore[targetClientId]['event'] = "undefined";
-    switch(eventType){
-        case "answer-generated":
+    __dataStore[targetClientId][DS_KEYS.EVENT] = CONSTANTS.UNDEFINED;
+    switch (eventType) {
+        case EVENTS.ANSWER_GENRATED:
             enableIceExchange(targetClientId);
             break;
-        case "ice-candidate-generated":
-            __dataStore[targetClientId]['ice-candidate'] = "undefined";
+        case EVENTS.ICE_CANDIDATE_GENERATED:
+            __dataStore[targetClientId][DS_KEYS.ICE_CANDIDATE] = CONSTANTS.UNDEFINED;
             break;
-        case "message-received":
-            __dataStore[targetClientId]['message'] = "";
+        case EVENTS.MESSAGE_RECEIVED:
+            __dataStore[targetClientId][DS_KEYS.MESSAGE] = CONSTANTS.EMPTY;
             break;
     }
 }
@@ -83,87 +103,76 @@ function _createRTCPeerConnection(targetClientId) {
     });
 
     myPeerConnection.onnremovestream = handleRemoveStreamEvent;
-    myPeerConnection.oniceconnectionstatechange = handleICEConnectionStateChangeEvent;
+    myPeerConnection.oniceconnectionstatechange = function(event) {
+        console.log(event);
+        var myPeerConnection = event.srcElement;
+        console.log("*** ICE connection state changed to " + myPeerConnection.iceConnectionState);
+
+        switch (myPeerConnection.iceConnectionState) {
+            case "closed":
+            case "failed":
+            case "disconnected":
+                closeVideoCall(myPeerConnection);
+                delete peerConnections[targetClientId];
+                break;
+        }
+    }
+
     myPeerConnection.onsignalingstatechange = handleSignalingStateChangeEvent;
 
-    myPeerConnection.onicecandidate = function (event) {
-        console.log("Ice Candiate event called");
+    myPeerConnection.onicecandidate = function(event) {
         if (event.candidate) {
-            console.log("Outgoing ICE candidate: " + event.candidate.candidate);
-            console.info("New ICE candidate: " + JSON.stringify(event.candidate));
-            if(__dataStore[targetClientId]['ice-candidate'] == "undefined"){
-                 __dataStore[targetClientId]['ice-candidate'] = JSON.stringify(event.candidate);
-             }else{
-                 __dataStore[targetClientId]['ice-candidate'] = __dataStore[targetClientId]['ice-candidate'] + "\n\n\n\n" + JSON.stringify(event.candidate);
-             }
-             if(__dataStore[targetClientId]["canExchangeIce"]){
-                __dataStore[targetClientId]['event'] = 'ice-candidate-generated';
-            }     
+            if (__dataStore[targetClientId][DS_KEYS.ICE_CANDIDATE] == CONSTANTS.UNDEFINED) {
+                __dataStore[targetClientId][DS_KEYS.ICE_CANDIDATE] = JSON.stringify(event.candidate);
+            } else {
+                __dataStore[targetClientId][DS_KEYS.ICE_CANDIDATE] = __dataStore[targetClientId][DS_KEYS.ICE_CANDIDATE] + "\n\n\n\n" + JSON.stringify(event.candidate);
+            }
+            if (__dataStore[targetClientId][DS_KEYS.CAN_EXCHANGE_ICE]) {
+                __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.ICE_CANDIDATE_GENERATED;
+            }
         }
     };
 
-    myPeerConnection.ondatachannel = function (event) {
+    myPeerConnection.ondatachannel = function(event) {
         var channel = event.channel;
         dataChannels[targetClientId] = channel;
-        channel.onopen = function (event) {
-            console.log("Channel Open");       
-            __dataStore[targetClientId]["event"] = "handshake-complete";
-            //channel.send('Hi back!');
+        channel.onopen = function(event) {
+            console.log("HERE", targetClientId);
+            __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.HANDSHAKE_COMPLETE;
         };
-        channel.onmessage = function (event) {
-            console.log(event.data);
-            __dataStore[targetClientId]["event"] = "message-received";
-            __dataStore[targetClientId]["message"] =  event.data;
+        channel.onmessage = function(event) {
+            __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.MESSAGE_RECEIVED;
+            __dataStore[targetClientId][DS_KEYS.MESSAGE] = event.data;
         }
-        channel.onclose = function(event){
-            console.log("datachannel close");
-            __dataStore[targetClientId]["event"] = "disconnect";
+        channel.onclose = function(event) {
+            __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.DISCONNECTED;
+            if (targetClientId in peerConnections) {
+                disconnect(targetClientId);
+            }
         }
     };
     return myPeerConnection;
 }
 
 function consumeIceCandidate(targetClientId, candidateStr) {
-    console.log('Consume Ice candidate');
     var candidateArr = candidateStr.split("\n\n\n\n");
 
-    candidateArr.forEach(function (c) {
-            if (c.length) {
-                var obj = JSON.parse(c);
-                var candidate = new RTCIceCandidate(obj);
-                var myPeerConnection = peerConnections[targetClientId];
-                if (myPeerConnection) {
-                    console.log("Adding received ICE candidate: " + JSON.stringify(candidate));
-                    myPeerConnection.addIceCandidate(candidate)
-                        .catch(function (err) {
-                            console.log(err);
-                        });
-                } else {
-                    console.log("Peer connection not found to consumeIceCandidate");
-                }
+    candidateArr.forEach(function(c) {
+        if (c.length) {
+            var obj = JSON.parse(c);
+            var candidate = new RTCIceCandidate(obj);
+            var myPeerConnection = peerConnections[targetClientId];
+            if (myPeerConnection) {
+                myPeerConnection.addIceCandidate(candidate)
+                    .catch(function(err) {
+                        console.log(err);
+                    });
+            } else {
+                console.log("Peer connection not found to consumeIceCandidate");
             }
+        }
     });
 }
-
-// function handleNegotiationNeededEvent() {
-//     console.log("*** Negotiation needed");
-//     console.log("---> Creating offer");
-//
-//     myPeerConnection.createOffer().then(function (offer) {
-//         log("---> Creating new description object to send to remote peer");
-//         return myPeerConnection.setLocalDescription(offer);
-//     })
-//         .then(function () {
-//             log("---> Sending offer to remote peer");
-//             // sendToServer({
-//             //     name: myUsername,
-//             //     target: targetUsername,
-//             //     type: "video-offer",
-//             //     sdp: myPeerConnection.localDescription
-//             // });
-//         })
-//         .catch(reportError);
-// }
 
 function handleSignalingStateChangeEvent(event) {
     var myPeerConnection = event.srcElement;
@@ -175,43 +184,30 @@ function handleSignalingStateChangeEvent(event) {
     }
 }
 
-function handleICEConnectionStateChangeEvent(event) {
-    console.log(event);
-    var myPeerConnection = event.srcElement;
-    console.log("*** ICE connection state changed to " + myPeerConnection.iceConnectionState);
-
-    switch (myPeerConnection.iceConnectionState) {
-        case "closed":
-        case "failed":
-        case "disconnected":
-            closeVideoCall(myPeerConnection);
-            break;
-    }
-}
-
 
 function handleRemoveStreamEvent(event) {
     console.log("*** Stream removed");
     closeVideoCall();
 }
 
-function disconnect(targetClientId){
+function disconnect(targetClientId) {
     closeVideoCall(peerConnections[targetClientId]);
+    delete peerConnections[targetClientId];
 }
 
 function closeVideoCall(myPeerConnection) {
-    log("Closing the call");
+    console.log("Closing the call");
 
     // Close the RTCPeerConnection
 
     if (myPeerConnection) {
-        log("--> Closing the peer connection");
+        console.log("--> Closing the peer connection");
 
         // Disconnect all our event listeners; we don't want stray events
         // to interfere with the hangup while it's ongoing.
 
-        myPeerConnection.onaddstream = null;  // For older implementations
-        myPeerConnection.ontrack = null;      // For newer ones
+        myPeerConnection.onaddstream = null; // For older implementations
+        myPeerConnection.ontrack = null; // For newer ones
         myPeerConnection.onremovestream = null;
         myPeerConnection.onicecandidate = null;
         myPeerConnection.oniceconnectionstatechange = null;
@@ -230,7 +226,7 @@ function createOffer(targetClientId) {
     var myPeerConnection = peerConnections[targetClientId];
     if (myPeerConnection) {
         console.log(myPeerConnection);
-        __dataStore[targetClientId]["event"] = "handshake-complete";
+        __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.HANDSHAKE_COMPLETE;
         return myPeerConnection;
     } else {
         myPeerConnection = _createRTCPeerConnection(targetClientId);
@@ -241,28 +237,29 @@ function createOffer(targetClientId) {
     var dc = dataChannels[targetClientId] = myPeerConnection.createDataChannel("sample data channel");
     //, {negotiated: true, id: 0});
 
-    dc.onmessage = function (event) {
+    dc.onmessage = function(event) {
         console.log("received: " + event.data);
-        __dataStore[targetClientId]["event"] = "message-received";
-        __dataStore[targetClientId]["message"] =  event.data;
+        __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.MESSAGE_RECEIVED;
+        __dataStore[targetClientId][DS_KEYS.MESSAGE] = event.data;
     };
 
-    dc.onopen = function () {
-        __dataStore[targetClientId]["event"] = "handshake-complete";
-        //dc.send("sending message");
-        console.log("datachannel open");
+    dc.onopen = function() {
+        console.log("HERE", targetClientId);
+        __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.HANDSHAKE_COMPLETE;
     };
 
-    dc.onclose = function () {
-        console.log("datachannel close");
-        __dataStore[targetClientId]["event"] = "disconnect";
+    dc.onclose = function() {
+        __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.DISCONNECTED;
+        if (targetClientId in peerConnections) {
+            disconnect(targetClientId);
+        }
     };
 
-    myPeerConnection.createOffer(function (offer) {
+    myPeerConnection.createOffer(function(offer) {
         console.log('Created offer.');
         console.log(offer);
 
-        myPeerConnection.setLocalDescription(offer, function () {
+        myPeerConnection.setLocalDescription(offer, function() {
             var msg = {
                 type: 'OFFER',
                 payload: {
@@ -270,12 +267,12 @@ function createOffer(targetClientId) {
                 },
                 dst: targetClientId
             };
-            __dataStore[targetClientId]['offer'] = JSON.stringify(msg);
-            __dataStore[targetClientId]['event'] = "offer-generated";
-        }, function (err) {
+            __dataStore[targetClientId][DS_KEYS.OFFER] = JSON.stringify(msg);
+            __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.OFFER_GENERATED;
+        }, function(err) {
             console.log('Failed to setLocalDescription, ', err);
         });
-    }, function (err) {
+    }, function(err) {
         console.log('Failed to createOffer, ', err);
     });
 }
@@ -292,13 +289,13 @@ function createAnswer(targetClientId, offerStr) {
 
     var desc = new RTCSessionDescription(offer.payload.sdp);
 
-    myPeerConnection.setRemoteDescription(desc).then(function () {
+    myPeerConnection.setRemoteDescription(desc).then(function() {
         return myPeerConnection.createAnswer();
-    }).then(function (answer) {
+    }).then(function(answer) {
         myPeerConnection.setLocalDescription(answer);
-        __dataStore[targetClientId]['event'] = 'answer-generated';
-        __dataStore[targetClientId]['answer'] = JSON.stringify(answer);
-    }).catch(function (err) {
+        __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.ANSWER_GENRATED;
+        __dataStore[targetClientId][DS_KEYS.ANSWER] = JSON.stringify(answer);
+    }).catch(function(err) {
         console.error("Unable to generate answer " + err);
     });
 }

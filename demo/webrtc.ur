@@ -38,7 +38,9 @@ fun createChannel r =
     let
 
         fun updateConnectedClients (clientList, senderUsername, targetUsername, isConnectedFlag) =
+            debug "Updating connected clients";
             updatedList <- List.mapM (fn (uname, buff, isConnected, msg) => 
+                    debug uname;
                     if uname = targetUsername  then
                         return (uname, buff, isConnectedFlag, msg)
                     else if uname = senderUsername  then
