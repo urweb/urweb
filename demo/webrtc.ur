@@ -98,7 +98,7 @@ fun createChannel r =
                 y <- JsWebrtcJs.getDatastore targetUsername "message";
                 clientList <- get lss;
                 Buffer.write buf (y);          
-                writeToBuffer(clientList, targetUsername, y);              
+                writeToBuffer(clientList, targetUsername, "RECEIVE :: " ^ y);              
                 JsWebrtcJs.clearPendingEvent targetUsername x; 
                 eventHandler(targetUsername) 
             else
@@ -113,8 +113,8 @@ fun createChannel r =
             JsWebrtcJs.disconnect target
 
         fun sendWebRTCMessage (targetUsername, msg) =
-            debug targetUsername;
-            debug msg;
+            clientList <- get lss;
+            writeToBuffer(clientList, targetUsername, "SEND :: " ^ msg);
             JsWebrtcJs.sendWebRTCMessage targetUsername msg
 
         fun onMsgReceive v =
@@ -145,7 +145,7 @@ fun createChannel r =
 
                 fun dispMsgBtn (isConnected, uname, msg) =
                     case isConnected of
-                        True => <xml><button value="WebRTC message" onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV)}></button></xml>
+                        True => <xml><button value="WebRTC message" onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg "" }></button></xml>
                         | False => <xml><button value="WebRTC message" disabled onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV)}></button></xml>
 
                 fun dispAction v =
