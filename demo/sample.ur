@@ -2,14 +2,11 @@ fun debugMe a =
         alert a
 
 structure AB = Mymaths.Make(struct
-                               type data = string
                                val callback = debugMe
                            end)
 
 fun main()=
 let
-
-
     fun callMe () =
         x <- AB.simple "test";
         debug x
