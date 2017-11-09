@@ -3,12 +3,6 @@ var __dataStore = {};
 var peerConnections = {};
 var dataChannels = {};
 
-function debugMe(a, b) {
-    "use strict";
-    console.log(a, b);
-    execF("harshi", a);
-}
-
 var EVENTS = {
     "OFFER_GENERATED": "offer-generated",
     "ANSWER_GENRATED": "answer-generated",

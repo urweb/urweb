@@ -5,6 +5,8 @@ style channelBox
 style heading
 style activeClientsTable
 
+
+
 fun allRows (uname) =
     query (SELECT users.Username FROM users WHERE users.Username <> {[uname]})
     (fn r acc => return (Cons ((r.Users.Username), acc)))
@@ -18,9 +20,12 @@ fun channelBuffers (uname) =
             return (Cons ((r.Users.Username , buff , False ,  msg), acc)))
     Nil
 
+fun debugMe (a,b) =
+        debug a;
+        debug b
 
 structure AB = Mymaths.Make(struct
-                               val callback = JsWebrtcChatJs.debugMe
+                               val callback = debugMe
                            end)
 fun createChannel r =
     user <- source r.Username;
@@ -71,9 +76,6 @@ fun createChannel r =
 
         fun handshake (sender, target) =
             AB.connect(sender, target)
-
-        fun harshi n =
-            alert n
 
         fun sendWebRTCMessage (targetUsername, msg) =
             clientList <- get lss;
