@@ -23,5 +23,5 @@ rewrite style WebrtcChat/activeClientsTable activeClientsTable
 
 $/list
 buffer
-webrtc
+mymaths
 webrtcChat

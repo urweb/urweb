@@ -1,6 +1,18 @@
 table channels : { Username: string, Channel : channel (string * string * string * string) }
   PRIMARY KEY Username
 
+functor Make(M : sig
+                 val onMsgReceiveCallback : _
+             end) = struct
+
+    val onMsgReceiveHandler  = M.onMsgReceiveCallback
+
+    fun simple nn =
+        onMsgReceiveHandler(nn);
+        return nn
+end
+
+
 
 fun sendPayload v =
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.3]});

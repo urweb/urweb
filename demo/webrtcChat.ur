@@ -20,10 +20,17 @@ fun channelBuffers (uname) =
             return (Cons ((r.Users.Username , buff , False ,  msg), acc)))
     Nil
 
+fun debugMe (a,b) =
+        debug a;
+        debug b
 
+structure AB = Mymaths.Make(struct
+                               val callback = debugMe
+                           end)
 fun createChannel r =
     user <- source r.Username;
-    srcXML <- Webrtc.init r.Username;
+    Mymaths.makeChannel(r.Username);
+    srcXML <- source <xml/>;
     dml (INSERT INTO users (Username) VALUES ({[r.Username]}));
     lss <- source Nil;
 
@@ -63,8 +70,12 @@ fun createChannel r =
             clientList <- get lss;     
             writeToBuffer(clientList, targetUsername, "RECEIVE :: " ^ y)
 
+        fun initHandShake () =
+            retXML <- AB.init r.Username;
+            set srcXML retXML
+
         fun handshake (sender, target) =
-            Webrtc.connect(sender, target, onMsgReceiveCallback)
+            AB.connect(sender, target)
 
         fun sendWebRTCMessage (targetUsername, msg) =
             clientList <- get lss;
@@ -153,7 +164,7 @@ fun createChannel r =
                 <title>WebRTC Channel</title>
                 <link rel="stylesheet" type="text/css" href="/webrtcChat.css" />
             </head>
-            <body>
+            <body onload={initHandShake()}>
                 <dyn signal={v <- signal user; return <xml><h1 class={heading}>You are {[v]} </h1></xml>}/>
                 <h2>List of Active Clients</h2>
                 <h4>Note : You won't see your channel. Please update client list when others get online.</h4>
@@ -164,7 +175,7 @@ fun createChannel r =
                 <br/><br/>
                 <div><b>Messaging Snapshot</b></div>
                 <br/>
-                <span>{srcXML}</span>
+                <span><dyn signal={v <- signal srcXML; return <xml> {v}</xml>}/></span>
             </body>
         </xml>
     end
