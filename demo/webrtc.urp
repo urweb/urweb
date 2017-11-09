@@ -1,7 +1,5 @@
 database dbname=test
-sql webrtcChat.sql
-safeGet WebrtcChat/main
-script https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js
+sql webrtc.sql
 jsFile webrtcChat.js
 ffi jsWebrtcChatJs
 jsFunc JsWebrtcChatJs.getDatastore=getDatastore
@@ -14,14 +12,6 @@ jsFunc JsWebrtcChatJs.consumeAnswer=consumeAnswer
 jsFunc JsWebrtcChatJs.consumeIceCandidate=consumeIceCandidate
 jsFunc JsWebrtcChatJs.sendWebRTCMessage=sendWebRTCMessage
 jsFunc JsWebrtcChatJs.disconnect=disconnect
-file /webrtcChat.css webrtcChat.css
-allow url /webrtcChat.css
-rewrite style WebrtcChat/channelBox channelBox
-rewrite style WebrtcChat/heading heading
-rewrite style WebrtcChat/activeClientsTable activeClientsTable
 
-
-$/list
 buffer
 webrtc
-webrtcChat

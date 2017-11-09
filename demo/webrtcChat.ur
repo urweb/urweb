@@ -1,4 +1,4 @@
-table channels : { Username: string, Channel : channel (string * string * string * string) }
+table users : { Username: string }
   PRIMARY KEY Username
 
 style channelBox
@@ -8,31 +8,24 @@ style activeClientsTable
 
 
 fun allRows (uname) =
-    query (SELECT channels.Username FROM channels WHERE channels.Username <> {[uname]})
-    (fn r acc => return (Cons ((r.Channels.Username), acc)))
+    query (SELECT users.Username FROM users WHERE users.Username <> {[uname]})
+    (fn r acc => return (Cons ((r.Users.Username), acc)))
     Nil
 
 fun channelBuffers (uname) =
-    query (SELECT channels.Username FROM channels WHERE channels.Username <> {[uname]})
+    query (SELECT users.Username FROM users WHERE users.Username <> {[uname]})
     (fn r acc => 
             buff <-  Buffer.create; 
             msg <- source "";
-            return (Cons ((r.Channels.Username , buff , False ,  msg), acc)))
+            return (Cons ((r.Users.Username , buff , False ,  msg), acc)))
     Nil
 
 
-fun sendPayload v =
-    r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.3]});
-    send r.Channels.Channel v
-
 fun createChannel r =
-    ch <- channel;
-    dml (INSERT INTO channels (Username, Channel) VALUES ({[readError r.Username]}, {[ch]}));
-    buf <- Buffer.create;
-    src <- source 1;
     user <- source r.Username;
+    srcXML <- Webrtc.init r.Username;
+    dml (INSERT INTO users (Username) VALUES ({[r.Username]}));
     lss <- source Nil;
-    msg <- source "No messages so far!";
 
     let
 
@@ -45,95 +38,34 @@ fun createChannel r =
                     else
                         return (uname, buff, isConnected, msg)
                     ) clientList;
-            set lss updatedList
+            debug "Updating connected clients"
 
         fun writeToBuffer (clientList, targetUsername, y) =
-                    case clientList of
-                     Nil => debug targetUsername
-                    | Cons ((uname, buff, isConnected, msg), ls) =>
-                        if uname = targetUsername then
-                            debug "Here";
-                            Buffer.write buff (y)
-                        else
-                            debug "Not Here";
-                            debug targetUsername;
-                            writeToBuffer(ls, targetUsername, y)
-
-        fun eventHandler(targetUsername) =
-            sleep 1000;
-            x <- JsWebrtcChatJs.getPendingEvent targetUsername;
-            senderUsername <- get user;
-
-            if x = "undefined" then
-                eventHandler(targetUsername)
-            else if x = "offer-generated" then
-                y <- JsWebrtcChatJs.getDatastore targetUsername "offer";
-                rpc(sendPayload ("offer", senderUsername, targetUsername, y));
-                JsWebrtcChatJs.clearPendingEvent targetUsername x;
-                eventHandler(targetUsername)
-            else if x = "answer-generated" then
-                y <- JsWebrtcChatJs.getDatastore targetUsername "answer";
-                rpc(sendPayload ("answer", senderUsername, targetUsername, y));
-                JsWebrtcChatJs.clearPendingEvent targetUsername x;
-                eventHandler(targetUsername)
-            else if x = "ice-candidate-generated" then
-                y <- JsWebrtcChatJs.getDatastore targetUsername "ice-candidate";
-                rpc(sendPayload ("ice-candidate", senderUsername, targetUsername, y));
-                JsWebrtcChatJs.clearPendingEvent targetUsername x;            
-                eventHandler(targetUsername)
-            else if x = "handshake-complete" then
-                debug "handshake is complete";
-                clientList <- get lss;
-                newList <- updateConnectedClients(clientList, senderUsername, targetUsername, True);
-                JsWebrtcChatJs.clearPendingEvent targetUsername x;
-                eventHandler(targetUsername)
-            else if x = "disconnect" then
-                debug "client disconnected";
-                clientList <- get lss;
-                newList <- updateConnectedClients(clientList, senderUsername, targetUsername, False);
-                JsWebrtcChatJs.clearPendingEvent targetUsername x;
-                eventHandler(targetUsername)
-            else if x = "message-received" then
-                y <- JsWebrtcChatJs.getDatastore targetUsername "message";
-                clientList <- get lss;
-                Buffer.write buf (y);          
-                writeToBuffer(clientList, targetUsername, "RECEIVE :: " ^ y);              
-                JsWebrtcChatJs.clearPendingEvent targetUsername x; 
-                eventHandler(targetUsername) 
-            else
-                eventHandler(targetUsername)
-
-
-        fun handshake (sender, target) =
-            spawn(eventHandler(target));
-            JsWebrtcChatJs.createOffer target
+            case clientList of
+             Nil => debug targetUsername
+            | Cons ((uname, buff, isConnected, msg), ls) =>
+                if uname = targetUsername then
+                    debug "Here";
+                    Buffer.write buff (y)
+                else
+                    debug "Not Here";
+                    debug targetUsername;
+                    writeToBuffer(ls, targetUsername, y)
 
         fun disconnect (sender, target) =
+            debug "Hi";
+            clientList <- get lss;
+            updateConnectedClients(clientList, sender, target, True);
+            writeToBuffer(clientList, target, "Hi");
             JsWebrtcChatJs.disconnect target
+
+        fun handshake (sender, target) =
+            Webrtc.connect(sender, target)
 
         fun sendWebRTCMessage (targetUsername, msg) =
             clientList <- get lss;
             writeToBuffer(clientList, targetUsername, "SEND :: " ^ msg);
             JsWebrtcChatJs.sendWebRTCMessage targetUsername msg
-
-        fun onMsgReceive v =
-            if v.1 = "offer" then
-                spawn(eventHandler(v.2));
-                JsWebrtcChatJs.createAnswer v.2 v.4
-            else if v.1 = "answer" then
-                JsWebrtcChatJs.consumeAnswer v.2 v.4
-            else if v.1 = "ice-candidate" then
-                JsWebrtcChatJs.consumeIceCandidate v.2 v.4
-            else
-                Buffer.write buf ("unknown")
-
-        fun receiver () =
-            v <- recv ch;
-            username <- get user;
-            set msg "";
-            onMsgReceive(v);
-            receiver()
-
 
         fun dynTable xyz =
             let
@@ -217,22 +149,21 @@ fun createChannel r =
                 <title>WebRTC Channel</title>
                 <link rel="stylesheet" type="text/css" href="/webrtcChat.css" />
             </head>
-            <body onload={spawn (receiver())}>
+            <body>
                 <dyn signal={v <- signal user; return <xml><h1 class={heading}>You are {[v]} </h1></xml>}/>
                 <h2>List of Active Clients</h2>
                 <h4>Note : You won't see your channel. Please update client list when others get online.</h4>
+                <br/>
                 {dynTable lss}
                 <br/>
                 <button value="Update Client List"  onclick={fn _ => nl <- rpc(channelBuffers(r.Username)); set lss nl}></button>
                 <br/><br/>
-                <br/>
                 <div><b>Messaging Snapshot</b></div>
                 <br/>
-                <dyn signal={vi <- signal msg; return <xml><div>{[vi]}</div></xml>}/>
+                <span>{srcXML}</span>
             </body>
         </xml>
     end
-
 
 fun main () =
     return <xml>

@@ -191,6 +191,7 @@ function _createRTCPeerConnection(targetClientId) {
             __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.HANDSHAKE_COMPLETE;
         };
         channel.onmessage = function (event) {
+            console.log("received: " + event.data);
             __dataStore[targetClientId][DS_KEYS.EVENT] = EVENTS.MESSAGE_RECEIVED;
             __dataStore[targetClientId][DS_KEYS.MESSAGE] = event.data;
         };
