@@ -1,10 +1,11 @@
 functor Make(M : sig
                  type data
-                 val callback : string
+                 val callback : _
              end) = struct
 
     val cb  = M.callback
 
     fun simple nn =
-        return (nn ^ cb)
+        cb(nn);
+        return nn
 end

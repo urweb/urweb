@@ -1,6 +1,6 @@
 functor Make(M : sig
                  type data
-                 val callback:string
+                 val callback : _
              end) : sig
 
     val simple:string -> transaction string
