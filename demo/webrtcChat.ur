@@ -59,8 +59,12 @@ fun createChannel r =
             writeToBuffer(clientList, target, "Hi");
             JsWebrtcChatJs.disconnect target
 
+        fun onMsgReceiveCallback (targetUsername, y) =
+            clientList <- get lss;     
+            writeToBuffer(clientList, targetUsername, "RECEIVE :: " ^ y)
+
         fun handshake (sender, target) =
-            Webrtc.connect(sender, target)
+            Webrtc.connect(sender, target, onMsgReceiveCallback)
 
         fun sendWebRTCMessage (targetUsername, msg) =
             clientList <- get lss;
