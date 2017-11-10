@@ -86,11 +86,6 @@ fun createChannel r =
                         True => <xml><button value="WebRTC disconnect" onclick={fn _ => disconnect (senderUsername , targetUsername)}></button></xml>
                         | False => <xml><button value="WebRTC connect" onclick={fn _ => handshake (senderUsername , targetUsername)}></button></xml>
 
-                fun dispMsgBtn (isConnected, uname, msg) =
-                    case isConnected of
-                        True => <xml><button value="WebRTC message" onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg "" }></button></xml>
-                        | False => <xml><button value="WebRTC message" onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV)}></button></xml>
-
                 fun dispAction v =
                     case v of
                      Nil => <xml/>
@@ -129,7 +124,7 @@ fun createChannel r =
                         <xml>
                             <td>
                             <ctextbox source={msg} placeholder="Enter message to chat" />
-                            {dispMsgBtn(isConnected, uname, msg)}
+                            <button value="WebRTC message" onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg ""}></button>
                             </td>
                             {sendMsg ls}
                         </xml>
