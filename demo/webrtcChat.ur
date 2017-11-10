@@ -33,6 +33,7 @@ fun createChannel r =
     srcXML <- source <xml/>;
     dml (INSERT INTO users (Username) VALUES ({[r.Username]}));
     lss <- source Nil;
+    userId <- fresh;
 
     let
 
@@ -120,7 +121,7 @@ fun createChannel r =
                     | Cons ((uname, buff, isConnected, msg), ls) =>
                         <xml>
                             <td>
-                                <div><dyn signal={Buffer.render buff}/></div>
+                                <div id={userId} data={data_attr data_kind "id" uname}><dyn signal={Buffer.render buff}/></div>
                             </td>
                             {dispMsg ls}
                         </xml>
@@ -165,6 +166,7 @@ fun createChannel r =
                 <link rel="stylesheet" type="text/css" href="/webrtcChat.css" />
             </head>
             <body onload={initHandShake()}>
+                
                 <dyn signal={v <- signal user; return <xml><h1 class={heading}>You are {[v]} </h1></xml>}/>
                 <h2>List of Active Clients</h2>
                 <h4>Note : You won't see your channel. Please update client list when others get online.</h4>
