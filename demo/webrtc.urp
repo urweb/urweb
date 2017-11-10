@@ -1,17 +1,18 @@
 database dbname=test
 sql webrtc.sql
-jsFile webrtcChat.js
-ffi jsWebrtcChatJs
-jsFunc JsWebrtcChatJs.getDatastore=getDatastore
-jsFunc JsWebrtcChatJs.myFunction=myFunction
-jsFunc JsWebrtcChatJs.clearPendingEvent=clearPendingEvent
-jsFunc JsWebrtcChatJs.getPendingEvent=getPendingEvent
-jsFunc JsWebrtcChatJs.createOffer=createOffer
-jsFunc JsWebrtcChatJs.createAnswer=createAnswer
-jsFunc JsWebrtcChatJs.consumeAnswer=consumeAnswer
-jsFunc JsWebrtcChatJs.consumeIceCandidate=consumeIceCandidate
-jsFunc JsWebrtcChatJs.sendWebRTCMessage=sendWebRTCMessage
-jsFunc JsWebrtcChatJs.disconnect=disconnect
+jsFile webrtc.js
+ffi jsWebrtcJs
+jsFunc JsWebrtcJs.getDatastore=getDatastore
+jsFunc JsWebrtcJs.myFunction=myFunction
+jsFunc JsWebrtcJs.clearPendingEvent=clearPendingEvent
+jsFunc JsWebrtcJs.getPendingEvent=getPendingEvent
+jsFunc JsWebrtcJs.createOffer=createOffer
+jsFunc JsWebrtcJs.createAnswer=createAnswer
+jsFunc JsWebrtcJs.consumeAnswer=consumeAnswer
+jsFunc JsWebrtcJs.consumeIceCandidate=consumeIceCandidate
+jsFunc JsWebrtcJs.sendWebRTCMessage=sendWebRTCMessage
+jsFunc JsWebrtcJs.disconnect=disconnect
 
+$/list
 buffer
 webrtc

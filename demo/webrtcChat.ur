@@ -1,3 +1,5 @@
+open Webrtc
+
 table users : { Username: string }
   PRIMARY KEY Username
 
@@ -21,12 +23,12 @@ fun channelBuffers (uname) =
     Nil
 
 
-structure AB = Mymaths.Make(struct
-                               val callback = JsWebrtcChatJs.onMsgReceive
+structure AB = Webrtc.Make(struct
+                               val onMsgReceiveCallback = JsWebrtcChatJs.onMsgReceive
                            end)
 fun createChannel r =
     user <- source r.Username;
-    Mymaths.makeChannel(r.Username);
+    Webrtc.makeChannel(r.Username);
     srcXML <- source <xml/>;
     dml (INSERT INTO users (Username) VALUES ({[r.Username]}));
     lss <- source Nil;
@@ -61,11 +63,7 @@ fun createChannel r =
             clientList <- get lss;
             updateConnectedClients(clientList, sender, target, True);
             writeToBuffer(clientList, target, "Hi");
-            JsWebrtcChatJs.disconnect target
-
-        fun onMsgReceiveCallback (targetUsername, y) =
-            clientList <- get lss;     
-            writeToBuffer(clientList, targetUsername, "RECEIVE :: " ^ y)
+            JsWebrtcJs.disconnect target
 
         fun initHandShake () =
             retXML <- AB.init r.Username;
@@ -77,7 +75,7 @@ fun createChannel r =
         fun sendWebRTCMessage (targetUsername, msg) =
             clientList <- get lss;
             writeToBuffer(clientList, targetUsername, "SEND :: " ^ msg);
-            JsWebrtcChatJs.sendWebRTCMessage targetUsername msg
+            JsWebrtcJs.sendWebRTCMessage targetUsername msg
 
         fun dynTable xyz =
             let
