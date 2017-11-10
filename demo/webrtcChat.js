@@ -321,3 +321,14 @@ function consumeAnswer(targetClientId, answerStr) {
         console.error("Peer connection not found to consumeAnswer");
     }
 }
+
+function onMsgReceive(targetClientId, message){
+    "use strict";
+    console.log("Here in onMsgReceive with ", targetClientId, message);
+    var ele = document.querySelector('[data-id="'+targetClientId+'"]');
+    if(ele){
+        var targetHTML = ele.innerHTML;
+        setInnerHTML(ele, targetHTML + "<p>"+message+"</p>");
+    }
+
+}

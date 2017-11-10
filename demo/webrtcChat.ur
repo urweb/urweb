@@ -20,12 +20,9 @@ fun channelBuffers (uname) =
             return (Cons ((r.Users.Username , buff , False ,  msg), acc)))
     Nil
 
-fun debugMe (a,b) =
-        debug a;
-        debug b
 
 structure AB = Mymaths.Make(struct
-                               val callback = debugMe
+                               val callback = JsWebrtcChatJs.onMsgReceive
                            end)
 fun createChannel r =
     user <- source r.Username;
@@ -33,7 +30,6 @@ fun createChannel r =
     srcXML <- source <xml/>;
     dml (INSERT INTO users (Username) VALUES ({[r.Username]}));
     lss <- source Nil;
-    userId <- fresh;
 
     let
 
@@ -93,7 +89,7 @@ fun createChannel r =
                 fun dispMsgBtn (isConnected, uname, msg) =
                     case isConnected of
                         True => <xml><button value="WebRTC message" onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg "" }></button></xml>
-                        | False => <xml><button value="WebRTC message" disabled onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV)}></button></xml>
+                        | False => <xml><button value="WebRTC message" onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV)}></button></xml>
 
                 fun dispAction v =
                     case v of
@@ -121,7 +117,7 @@ fun createChannel r =
                     | Cons ((uname, buff, isConnected, msg), ls) =>
                         <xml>
                             <td>
-                                <div id={userId} data={data_attr data_kind "id" uname}><dyn signal={Buffer.render buff}/></div>
+                                <div data={data_attr data_kind "id" uname}><dyn signal={Buffer.render buff}/></div>
                             </td>
                             {dispMsg ls}
                         </xml>

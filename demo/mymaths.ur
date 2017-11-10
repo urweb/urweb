@@ -42,7 +42,7 @@ functor Make(M : sig
 	        eventHandler(senderUsername, targetUsername)
 	    else if x = "message-received" then
 	        y <- JsWebrtcChatJs.getDatastore targetUsername "message";
-	        cb(targetUsername, y);              
+	        cb targetUsername y;              
 	        JsWebrtcChatJs.clearPendingEvent targetUsername x; 
 	        eventHandler(senderUsername, targetUsername) 
 	    else
