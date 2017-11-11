@@ -8,3 +8,14 @@ function onMsgReceive(targetClientId, message){
     }
 
 }
+
+function onMsgSend(targetClientId, message){
+    "use strict";
+    console.log("Here in onMsgSend with ", targetClientId, message);
+    var ele = document.querySelector('[data-id="'+targetClientId+'"]');
+    if(ele){
+        var targetHTML = ele.innerHTML;
+        setInnerHTML(ele, targetHTML + "<p>SEND :: "+message+"</p>");
+    }
+
+}

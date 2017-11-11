@@ -74,8 +74,9 @@ fun createChannel r =
 
         fun sendWebRTCMessage (targetUsername, msg) =
             clientList <- get lss;
-            writeToBuffer(clientList, targetUsername, "SEND :: " ^ msg);
-            JsWebrtcJs.sendWebRTCMessage targetUsername msg
+            (* writeToBuffer(clientList, targetUsername, "SEND :: " ^ msg); *)
+            JsWebrtcJs.sendWebRTCMessage targetUsername msg;
+            JsWebrtcChatJs.onMsgSend targetUsername msg
 
         fun dynTable xyz =
             let
