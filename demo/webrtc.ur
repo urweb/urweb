@@ -10,9 +10,13 @@ fun makeChannel username =
     dml (INSERT INTO channels (Username, Channel) VALUES ({[username]}, {[ch]}))
 
 functor Make(M : sig
+				 val onHandshakeCompleteCallback : _
                  val onMsgReceiveCallback : _
+                 val onDisconnectCallback : _
              end) = struct
     val onMsgReceiveHandler = M.onMsgReceiveCallback
+    val onDisconnectHandler = M.onDisconnectCallback
+    val onHandshakeCompleteHandler = M.onHandshakeCompleteCallback
 
     fun eventHandler(senderUsername, targetUsername) =
 	    sleep 1000;
@@ -43,6 +47,14 @@ functor Make(M : sig
 	    else if x = "message-received" then
 	        y <- JsWebrtcJs.getDatastore targetUsername "message";
 	        onMsgReceiveHandler targetUsername y;              
+	        JsWebrtcJs.clearPendingEvent targetUsername x; 
+	        eventHandler(senderUsername, targetUsername)
+	    else if x = "handshake-complete" then
+	        onHandshakeCompleteHandler senderUsername targetUsername;              
+	        JsWebrtcJs.clearPendingEvent targetUsername x; 
+	        eventHandler(senderUsername, targetUsername)
+	    else if x = "disconnect" then
+	        onDisconnectHandler senderUsername targetUsername;              
 	        JsWebrtcJs.clearPendingEvent targetUsername x; 
 	        eventHandler(senderUsername, targetUsername) 
 	    else
@@ -86,5 +98,12 @@ functor Make(M : sig
    		debug "----In connect end---";
 	    spawn(eventHandler(senderUsername, targetUsername));
 	    JsWebrtcJs.createOffer targetUsername
+
+	fun disconnect (senderUsername, targetUsername) =
+   		debug "----In disconnect start---";
+   		debug senderUsername;
+   		debug targetUsername;
+   		debug "----In disconnect end---";
+	    JsWebrtcJs.disconnect targetUsername
 
 end

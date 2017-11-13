@@ -17,6 +17,8 @@ jsFunc JsWebrtcJs.sendWebRTCMessage=sendWebRTCMessage
 jsFunc JsWebrtcJs.disconnect=disconnect
 jsFunc JsWebrtcChatJs.onMsgReceive=onMsgReceive
 jsFunc JsWebrtcChatJs.onMsgSend=onMsgSend
+jsFunc JsWebrtcChatJs.onDisconnect=onDisconnect
+jsFunc JsWebrtcChatJs.onHandshakeComplete=onHandshakeComplete
 file /webrtcChat.css webrtcChat.css
 allow url /webrtcChat.css
 rewrite style WebrtcChat/channelBox channelBox

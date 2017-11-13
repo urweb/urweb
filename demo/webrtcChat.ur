@@ -8,24 +8,21 @@ style heading
 style activeClientsTable
 
 
-
-fun allRows (uname) =
-    query (SELECT users.Username FROM users WHERE users.Username <> {[uname]})
-    (fn r acc => return (Cons ((r.Users.Username), acc)))
-    Nil
-
 fun channelBuffers (uname) =
     query (SELECT users.Username FROM users WHERE users.Username <> {[uname]})
     (fn r acc => 
             buff <-  Buffer.create; 
             msg <- source "";
-            return (Cons ((r.Users.Username , buff , False ,  msg), acc)))
+            return (Cons ((r.Users.Username , buff , msg), acc)))
     Nil
 
 
 structure AB = Webrtc.Make(struct
+                               val onHandshakeCompleteCallback = JsWebrtcChatJs.onHandshakeComplete
                                val onMsgReceiveCallback = JsWebrtcChatJs.onMsgReceive
+                               val onDisconnectCallback = JsWebrtcChatJs.onDisconnect
                            end)
+
 fun createChannel r =
     user <- source r.Username;
     Webrtc.makeChannel(r.Username);
@@ -35,36 +32,6 @@ fun createChannel r =
 
     let
 
-        fun updateConnectedClients (clientList, senderUsername, targetUsername, isConnectedFlag) =
-            debug "Updating connected clients";
-            updatedList <- List.mapM (fn (uname, buff, isConnected, msg) => 
-                    debug uname;
-                    if uname = targetUsername  then
-                        return (uname, buff, isConnectedFlag, msg)
-                    else
-                        return (uname, buff, isConnected, msg)
-                    ) clientList;
-            debug "Updating connected clients"
-
-        fun writeToBuffer (clientList, targetUsername, y) =
-            case clientList of
-             Nil => debug targetUsername
-            | Cons ((uname, buff, isConnected, msg), ls) =>
-                if uname = targetUsername then
-                    debug "Here";
-                    Buffer.write buff (y)
-                else
-                    debug "Not Here";
-                    debug targetUsername;
-                    writeToBuffer(ls, targetUsername, y)
-
-        fun disconnect (sender, target) =
-            debug "Hi";
-            clientList <- get lss;
-            updateConnectedClients(clientList, sender, target, True);
-            writeToBuffer(clientList, target, "Hi");
-            JsWebrtcJs.disconnect target
-
         fun initHandShake () =
             retXML <- AB.init r.Username;
             set srcXML retXML
@@ -72,26 +39,24 @@ fun createChannel r =
         fun handshake (sender, target) =
             AB.connect(sender, target)
 
+        fun disconnect (sender, target) =
+            AB.disconnect(sender, target)
+
         fun sendWebRTCMessage (targetUsername, msg) =
             clientList <- get lss;
-            (* writeToBuffer(clientList, targetUsername, "SEND :: " ^ msg); *)
             JsWebrtcJs.sendWebRTCMessage targetUsername msg;
             JsWebrtcChatJs.onMsgSend targetUsername msg
 
         fun dynTable xyz =
             let
-                fun dispBtn (isConnected, senderUsername, targetUsername) =
-                    case isConnected of
-                        True => <xml><button value="WebRTC disconnect" onclick={fn _ => disconnect (senderUsername , targetUsername)}></button></xml>
-                        | False => <xml><button value="WebRTC connect" onclick={fn _ => handshake (senderUsername , targetUsername)}></button></xml>
-
                 fun dispAction v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname, buff, isConnected, msg), ls) =>
+                    | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>
-                                {dispBtn(isConnected,r.Username,uname)}
+                                <button value="WebRTC connect" data={data_attr data_kind "connect" uname} onclick={fn _ => handshake (r.Username , uname)}></button>
+                                <button value="WebRTC disconnect" data={data_attr data_kind "disconnect" uname} style="display: none;" onclick={fn _ => disconnect (r.Username , uname)}></button>
                             </td>
                             {dispAction ls}
                         </xml>
@@ -99,7 +64,7 @@ fun createChannel r =
                 fun dispName v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname, buff, isConnected, msg), ls) =>
+                    | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>{[uname]}</td>
                             {dispName ls}
@@ -108,7 +73,7 @@ fun createChannel r =
                 fun dispMsg v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname, buff, isConnected, msg), ls) =>
+                    | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>
                                 <div data={data_attr data_kind "id" uname}><dyn signal={Buffer.render buff}/></div>
@@ -119,7 +84,7 @@ fun createChannel r =
                 fun sendMsg v =
                     case v of
                      Nil => <xml/>
-                    | Cons ((uname, buff, isConnected, msg), ls) =>
+                    | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>
                             <ctextbox source={msg} placeholder="Enter message to chat" />
