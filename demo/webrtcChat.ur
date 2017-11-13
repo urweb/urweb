@@ -74,8 +74,8 @@ fun createChannel r =
                     | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>
-                                <button value="WebRTC connect" data={data_attr data_kind "connect" uname} onclick={fn _ => handshake (r.Username , uname)}></button>
-                                <button value="WebRTC disconnect" data={data_attr data_kind "disconnect" uname} style="display: none;" onclick={fn _ => disconnect (r.Username , uname)}></button>
+                                <button class="btn btn-sm btn-primary" value="WebRTC connect" data={data_attr data_kind "connect" uname} onclick={fn _ => handshake (r.Username , uname)}></button>
+                                <button class="btn btn-sm btn-warning" value="WebRTC disconnect" data={data_attr data_kind "disconnect" uname} style="display: none;" onclick={fn _ => disconnect (r.Username , uname)}></button>
                             </td>
                             {dispAction ls}
                         </xml>
@@ -107,7 +107,7 @@ fun createChannel r =
                         <xml>
                             <td>
                             <ctextbox source={msg} placeholder="Enter message to chat" />
-                            <button value="Send message" data={data_attr data_kind "message" uname} disabled onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg ""}></button>
+                            <button class="btn btn-sm btn-primary" value="Send message" data={data_attr data_kind "message" uname} disabled onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg ""}></button>
                             </td>
                             {sendMsg ls}
                         </xml>
@@ -126,7 +126,6 @@ fun createChannel r =
                     <tr>
                            {sendMsg ls}
                     </tr>
-                     
                 </table>
                 </xml>}/></xml>
             end
