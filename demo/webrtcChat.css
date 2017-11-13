@@ -7,6 +7,150 @@
     padding: 2px;
 }
 
-.table-wrapper{
+.w100 {
+    width: 100%;
+}
+
+.table-bootstrap-wrapper {
     overflow: auto;
+}
+
+.table-bootstrap {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 20px;
+}
+
+.table-bootstrap > thead > tr > th,
+.table-bootstrap > tbody > tr > th,
+.table-bootstrap > tfoot > tr > th,
+.table-bootstrap > thead > tr > td,
+.table-bootstrap > tbody > tr > td,
+.table-bootstrap > tfoot > tr > td {
+    padding: 8px;
+    line-height: 1.42857143;
+    vertical-align: top;
+    border-top: 1px solid #ddd;
+}
+
+.table-bootstrap > thead > tr > th {
+    vertical-align: bottom;
+    border-bottom: 2px solid #ddd;
+}
+
+.table-bootstrap > caption + thead > tr:first-child > th,
+.table-bootstrap > colgroup + thead > tr:first-child > th,
+.table-bootstrap > thead:first-child > tr:first-child > th,
+.table-bootstrap > caption + thead > tr:first-child > td,
+.table-bootstrap > colgroup + thead > tr:first-child > td,
+.table-bootstrap > thead:first-child > tr:first-child > td {
+    border-top: 0;
+}
+
+.table-bootstrap > tbody + tbody {
+    border-top: 2px solid #ddd;
+}
+
+.table-bootstrap .table-bootstrap {
+    background-color: #fff;
+}
+
+table {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 20px;
+}
+
+.table-bootstrap > thead > tr > th,
+.table-bootstrap > tbody > tr > th,
+.table-bootstrap > tfoot > tr > th,
+.table-bootstrap > thead > tr > td,
+.table-bootstrap > tbody > tr > td,
+.table-bootstrap > tfoot > tr > td {
+    padding: 8px;
+    line-height: 1.42857143;
+    vertical-align: top;
+    border-top: 1px solid #ddd;
+}
+
+.table-bootstrap > thead > tr > th {
+    vertical-align: bottom;
+    border-bottom: 2px solid #ddd;
+}
+
+.table-bootstrap > caption + thead > tr:first-child > th,
+.table-bootstrap > colgroup + thead > tr:first-child > th,
+.table-bootstrap > thead:first-child > tr:first-child > th,
+.table-bootstrap > caption + thead > tr:first-child > td,
+.table-bootstrap > colgroup + thead > tr:first-child > td,
+.table-bootstrap > thead:first-child > tr:first-child > td {
+    border-top: 0;
+}
+
+.table-bootstrap > tbody + tbody {
+    border-top: 2px solid #ddd;
+}
+
+.table-bootstrap .table-bootstrap {
+    background-color: #fff;
+}
+
+.table-bootstrap > thead > tr > td.success,
+.table-bootstrap > tbody > tr > td.success,
+.table-bootstrap > tfoot > tr > td.success,
+.table-bootstrap > thead > tr > th.success,
+.table-bootstrap > tbody > tr > th.success,
+.table-bootstrap > tfoot > tr > th.success,
+.table-bootstrap > thead > tr.success > td,
+.table-bootstrap > tbody > tr.success > td,
+.table-bootstrap > tfoot > tr.success > td,
+.table-bootstrap > thead > tr.success > th,
+.table-bootstrap > tbody > tr.success > th,
+.table-bootstrap > tfoot > tr.success > th {
+    background-color: #dff0d8;
+}
+
+.table-bootstrap > thead > tr > td.info,
+.table-bootstrap > tbody > tr > td.info,
+.table-bootstrap > tfoot > tr > td.info,
+.table-bootstrap > thead > tr > th.info,
+.table-bootstrap > tbody > tr > th.info,
+.table-bootstrap > tfoot > tr > th.info,
+.table-bootstrap > thead > tr.info > td,
+.table-bootstrap > tbody > tr.info > td,
+.table-bootstrap > tfoot > tr.info > td,
+.table-bootstrap > thead > tr.info > th,
+.table-bootstrap > tbody > tr.info > th,
+.table-bootstrap > tfoot > tr.info > th {
+    background-color: #d9edf7;
+}
+
+.table-bootstrap > thead > tr > td.warning,
+.table-bootstrap > tbody > tr > td.warning,
+.table-bootstrap > tfoot > tr > td.warning,
+.table-bootstrap > thead > tr > th.warning,
+.table-bootstrap > tbody > tr > th.warning,
+.table-bootstrap > tfoot > tr > th.warning,
+.table-bootstrap > thead > tr.warning > td,
+.table-bootstrap > tbody > tr.warning > td,
+.table-bootstrap > tfoot > tr.warning > td,
+.table-bootstrap > thead > tr.warning > th,
+.table-bootstrap > tbody > tr.warning > th,
+.table-bootstrap > tfoot > tr.warning > th {
+    background-color: #fcf8e3;
+}
+
+.table-bootstrap > thead > tr > td.danger,
+.table-bootstrap > tbody > tr > td.danger,
+.table-bootstrap > tfoot > tr > td.danger,
+.table-bootstrap > thead > tr > th.danger,
+.table-bootstrap > tbody > tr > th.danger,
+.table-bootstrap > tfoot > tr > th.danger,
+.table-bootstrap > thead > tr.danger > td,
+.table-bootstrap > tbody > tr.danger > td,
+.table-bootstrap > tfoot > tr.danger > td,
+.table-bootstrap > thead > tr.danger > th,
+.table-bootstrap > tbody > tr.danger > th,
+.table-bootstrap > tfoot > tr.danger > th {
+    background-color: #f2dede;
 }

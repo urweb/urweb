@@ -13,6 +13,7 @@ style btn_success
 style btn_warning
 style form_control
 style form_inline
+style form_group
 style container
 style container_fluid
 style pull_right
@@ -25,6 +26,10 @@ style table_wrapper
 style clearfix
 style glyphicon
 style glyphicon_refresh
+style table_bootstrap
+style col_xs_8
+style col_xs_4
+style w100
 
 
 fun channelBuffers (uname) =
@@ -74,8 +79,8 @@ fun createChannel r =
                     | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>
-                                <button value="WebRTC connect" data={data_attr data_kind "connect" uname} onclick={fn _ => handshake (r.Username , uname)}></button>
-                                <button value="WebRTC disconnect" data={data_attr data_kind "disconnect" uname} style="display: none;" onclick={fn _ => disconnect (r.Username , uname)}></button>
+                                <button class="btn btn-sm btn-primary" value="WebRTC connect" data={data_attr data_kind "connect" uname} onclick={fn _ => handshake (r.Username , uname)}></button>
+                                <button class="btn btn-sm btn-warning" value="WebRTC disconnect" data={data_attr data_kind "disconnect" uname} style="display: none;" onclick={fn _ => disconnect (r.Username , uname)}></button>
                             </td>
                             {dispAction ls}
                         </xml>
@@ -106,14 +111,19 @@ fun createChannel r =
                     | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>
-                            <ctextbox source={msg} placeholder="Enter message to chat" />
-                            <button value="Send message" data={data_attr data_kind "message" uname} disabled onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg ""}></button>
+                            <div>
+                                <ctextbox source={msg} placeholder="Enter message to chat" class="form-control"/>
+                            </div>
+                            <br/>
+                            <div>
+                                <button class="btn btn-sm btn-primary w100" value="Send" data={data_attr data_kind "message" uname} disabled onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg ""}></button>
+                            </div>
                             </td>
                             {sendMsg ls}
                         </xml>
             in
                  <xml><dyn signal={ls <- signal xyz; return <xml>
-                 <table border=1 class="table-bordered table-striped table-responsive">
+                 <table border=1 class="table-bootstrap table-bordered table-striped table-responsive">
                     <tr>
                            {dispName ls}
                     </tr>
@@ -126,7 +136,6 @@ fun createChannel r =
                     <tr>
                            {sendMsg ls}
                     </tr>
-                     
                 </table>
                 </xml>}/></xml>
             end
