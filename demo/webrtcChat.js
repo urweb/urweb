@@ -27,7 +27,20 @@ function onMsgReceive(targetClientId, message){
 
 function appendToEle(ele, type, message){
     var targetHTML = ele.innerHTML;
-    setInnerHTML(ele, targetHTML + "<p>"+type.toUpperCase()+" ::: "+message+"</p>");
+    type = type.toUpperCase();
+    switch(type){
+        case "SEND":
+        case "EXECUTE":
+            //targetHTML + "<p><span class='label label-info'>"+type.toUpperCase()+" ::: "+message+"</span>&nbsp;</p>"
+            targetHTML = targetHTML + "<div class='talk-bubble tri-right btm-left lightblue'><div class='talktext'><p>"+message+"</p></div></div><div></div>";
+            break;
+        case "RECEIVE":
+        case "RESULT":
+            //targetHTML + "<p class='pull-right'><span class='label label-success'>"+type.toUpperCase()+" ::: "+message+"</span>&nbsp;</p>"
+            targetHTML = targetHTML + "<div class='pull-right talk-bubble tri-right btm-right'><div class='talktext'><p>"+message+"</p></div></div><span class='clearfix'></span><div></div>";
+            break;
+    }
+    setInnerHTML(ele, targetHTML);
 }
 
 function changeBodyClr(colorCode){
