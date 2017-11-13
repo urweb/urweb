@@ -7,7 +7,11 @@
     padding: 2px;
 }
 
-.table-bootstrap-wrapper{
+.w100 {
+    width: 100%;
+}
+
+.table-bootstrap-wrapper {
     overflow: auto;
 }
 
@@ -16,6 +20,7 @@
     max-width: 100%;
     margin-bottom: 20px;
 }
+
 .table-bootstrap > thead > tr > th,
 .table-bootstrap > tbody > tr > th,
 .table-bootstrap > tfoot > tr > th,
@@ -27,10 +32,12 @@
     vertical-align: top;
     border-top: 1px solid #ddd;
 }
+
 .table-bootstrap > thead > tr > th {
     vertical-align: bottom;
     border-bottom: 2px solid #ddd;
 }
+
 .table-bootstrap > caption + thead > tr:first-child > th,
 .table-bootstrap > colgroup + thead > tr:first-child > th,
 .table-bootstrap > thead:first-child > tr:first-child > th,
@@ -39,9 +46,11 @@
 .table-bootstrap > thead:first-child > tr:first-child > td {
     border-top: 0;
 }
+
 .table-bootstrap > tbody + tbody {
     border-top: 2px solid #ddd;
 }
+
 .table-bootstrap .table-bootstrap {
     background-color: #fff;
 }
@@ -51,6 +60,7 @@ table {
     max-width: 100%;
     margin-bottom: 20px;
 }
+
 .table-bootstrap > thead > tr > th,
 .table-bootstrap > tbody > tr > th,
 .table-bootstrap > tfoot > tr > th,
@@ -62,10 +72,12 @@ table {
     vertical-align: top;
     border-top: 1px solid #ddd;
 }
+
 .table-bootstrap > thead > tr > th {
     vertical-align: bottom;
     border-bottom: 2px solid #ddd;
 }
+
 .table-bootstrap > caption + thead > tr:first-child > th,
 .table-bootstrap > colgroup + thead > tr:first-child > th,
 .table-bootstrap > thead:first-child > tr:first-child > th,
@@ -74,13 +86,14 @@ table {
 .table-bootstrap > thead:first-child > tr:first-child > td {
     border-top: 0;
 }
+
 .table-bootstrap > tbody + tbody {
     border-top: 2px solid #ddd;
 }
+
 .table-bootstrap .table-bootstrap {
     background-color: #fff;
 }
-
 
 .table-bootstrap > thead > tr > td.success,
 .table-bootstrap > tbody > tr > td.success,
@@ -97,8 +110,6 @@ table {
     background-color: #dff0d8;
 }
 
-
-
 .table-bootstrap > thead > tr > td.info,
 .table-bootstrap > tbody > tr > td.info,
 .table-bootstrap > tfoot > tr > td.info,
@@ -114,7 +125,6 @@ table {
     background-color: #d9edf7;
 }
 
-
 .table-bootstrap > thead > tr > td.warning,
 .table-bootstrap > tbody > tr > td.warning,
 .table-bootstrap > tfoot > tr > td.warning,
@@ -129,7 +139,6 @@ table {
 .table-bootstrap > tfoot > tr.warning > th {
     background-color: #fcf8e3;
 }
-
 
 .table-bootstrap > thead > tr > td.danger,
 .table-bootstrap > tbody > tr > td.danger,

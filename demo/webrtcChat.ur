@@ -13,6 +13,7 @@ style btn_success
 style btn_warning
 style form_control
 style form_inline
+style form_group
 style container
 style container_fluid
 style pull_right
@@ -26,6 +27,9 @@ style clearfix
 style glyphicon
 style glyphicon_refresh
 style table_bootstrap
+style col_xs_8
+style col_xs_4
+style w100
 
 
 fun channelBuffers (uname) =
@@ -107,8 +111,13 @@ fun createChannel r =
                     | Cons ((uname, buff, msg), ls) =>
                         <xml>
                             <td>
-                            <ctextbox source={msg} placeholder="Enter message to chat" />
-                            <button class="btn btn-sm btn-primary" value="Send message" data={data_attr data_kind "message" uname} disabled onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg ""}></button>
+                            <div>
+                                <ctextbox source={msg} placeholder="Enter message to chat" class="form-control"/>
+                            </div>
+                            <br/>
+                            <div>
+                                <button class="btn btn-sm btn-primary w100" value="Send" data={data_attr data_kind "message" uname} disabled onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg ""}></button>
+                            </div>
                             </td>
                             {sendMsg ls}
                         </xml>
