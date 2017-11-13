@@ -5,7 +5,26 @@ table users : { Username: string }
 
 style channelBox
 style heading
-style activeClientsTable
+style btn
+style btn_default
+style btn_primary
+style btn_info
+style btn_success
+style btn_warning
+style form_control
+style form_inline
+style container
+style container_fluid
+style pull_right
+style pull_left
+style table_striped
+style table_responsive
+style table_bordered
+style btn_sm
+style table_wrapper
+style clearfix
+style glyphicon
+style glyphicon_refresh
 
 
 fun channelBuffers (uname) =
@@ -94,7 +113,7 @@ fun createChannel r =
                         </xml>
             in
                  <xml><dyn signal={ls <- signal xyz; return <xml>
-                 <table border=1 class={activeClientsTable}>
+                 <table border=1 class="table-bordered table-striped table-responsive">
                     <tr>
                            {dispName ls}
                     </tr>
@@ -118,20 +137,25 @@ fun createChannel r =
         return <xml>
             <head>
                 <title>WebRTC Channel</title>
+                <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" />
                 <link rel="stylesheet" type="text/css" href="/webrtcChat.css" />
             </head>
             <body onload={initHandShake()}>
-                
+                <div class="container">
                 <dyn signal={v <- signal user; return <xml><h1 class={heading}>You are {[v]} </h1></xml>}/>
-                <h2>List of Active Clients</h2>
-                <h4>Note : You won't see your channel. Please update client list when others get online.</h4>
+                <div class="clearfix">
+                        <h3>List of Active Clients</h3>
+                <button class="btn btn-primary btn-sm pull-right" onclick={fn _ => nl <- rpc(channelBuffers(r.Username)); set lss nl}><i class="glyphicon glyphicon-refresh"/> Refresh List</button>
+                        <h5>Note : You won't see your channel. Please refresh list to see new connected users.</h5>
+                </div>
+                <div class="clearfix"></div>
                 <br/>
-                {dynTable lss}
+                <div class="table-wrapper">
+                        {dynTable lss }
+                    </div>
                 <br/>
-                <button value="Update Client List"  onclick={fn _ => nl <- rpc(channelBuffers(r.Username)); set lss nl}></button>
                 <br/>
-                <br/>
-                <span><dyn signal={v <- signal srcXML; return <xml> {v}</xml>}/></span>
+                <span><dyn signal={v <- signal srcXML; return <xml> {v}</xml>}/></span></div>
             </body>
         </xml>
     end
@@ -140,13 +164,16 @@ fun main () =
     return <xml>
         <head>
             <title>WebRTC</title>
+            <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" />
             <link rel="stylesheet" type="text/css" href="/webrtcChat.css" />
         </head>
         <body>
-            <h1 class={heading}>Welcome to the WebRTC demo!</h1>
-            <form>
-                <textbox{#Username} placeholder="Enter a name for the channel" class={channelBox}/>
-                <submit value="Create Channel" action={createChannel}/>
-            </form>
+            <div class="container">
+                <h1 class={heading}>Welcome to the WebRTC demo!</h1>
+                <form>
+                    <textbox{#Username} placeholder="Please enter a name" class={channelBox}/>
+                    <submit value="Create Channel" action={createChannel}/>
+                </form>
+            </div>
         </body>
         </xml>

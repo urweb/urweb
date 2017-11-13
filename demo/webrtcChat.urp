@@ -21,9 +21,9 @@ jsFunc JsWebrtcChatJs.onDisconnect=onDisconnect
 jsFunc JsWebrtcChatJs.onHandshakeComplete=onHandshakeComplete
 file /webrtcChat.css webrtcChat.css
 allow url /webrtcChat.css
-rewrite style WebrtcChat/channelBox channelBox
-rewrite style WebrtcChat/heading heading
-rewrite style WebrtcChat/activeClientsTable activeClientsTable
+rewrite style WebrtcChat/* [-]
+allow url https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css
+rewrite style Bootstrap/* [-]
 
 $/list
 buffer

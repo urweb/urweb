@@ -1,12 +1,12 @@
-.heading{
-	color:#259888;
+.heading {
+    color: #259888;
 }
-.channelBox{
-	width: 200px;
+
+.channelBox {
+    width: 200px;
     padding: 2px;
 }
-.activeClientsTable{ 
-}
-.td { 
-    padding: 10px;
+
+.table-wrapper{
+    overflow: auto;
 }
