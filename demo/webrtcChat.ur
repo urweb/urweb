@@ -129,8 +129,7 @@ fun createChannel r =
                 {dynTable lss}
                 <br/>
                 <button value="Update Client List"  onclick={fn _ => nl <- rpc(channelBuffers(r.Username)); set lss nl}></button>
-                <br/><br/>
-                <div><b>Messaging Snapshot</b></div>
+                <br/>
                 <br/>
                 <span><dyn signal={v <- signal srcXML; return <xml> {v}</xml>}/></span>
             </body>
