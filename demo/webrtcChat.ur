@@ -88,7 +88,7 @@ fun createChannel r =
                         <xml>
                             <td>
                             <ctextbox source={msg} placeholder="Enter message to chat" />
-                            <button value="WebRTC message" onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg ""}></button>
+                            <button value="WebRTC message" data={data_attr data_kind "message" uname} disabled onclick={fn _ => msgV <- get msg; sendWebRTCMessage(uname, msgV); set msg ""}></button>
                             </td>
                             {sendMsg ls}
                         </xml>

@@ -19,7 +19,7 @@ functor Make(M : sig
     val onHandshakeCompleteHandler = M.onHandshakeCompleteCallback
 
     fun eventHandler(senderUsername, targetUsername) =
-	    sleep 1000;
+	    sleep 200;
 	    x <- JsWebrtcJs.getPendingEvent targetUsername;
 
 	    if x = "undefined" then
