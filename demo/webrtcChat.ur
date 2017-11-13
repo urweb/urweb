@@ -25,6 +25,7 @@ style table_wrapper
 style clearfix
 style glyphicon
 style glyphicon_refresh
+style table_bootstrap
 
 
 fun channelBuffers (uname) =
@@ -113,7 +114,7 @@ fun createChannel r =
                         </xml>
             in
                  <xml><dyn signal={ls <- signal xyz; return <xml>
-                 <table border=1 class="table-bordered table-striped table-responsive">
+                 <table border=1 class="table-bootstrap table-bordered table-striped table-responsive">
                     <tr>
                            {dispName ls}
                     </tr>
