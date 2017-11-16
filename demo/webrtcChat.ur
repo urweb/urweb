@@ -30,7 +30,7 @@ style table_bootstrap
 style col_xs_8
 style col_xs_4
 style w100
-
+style chat_online
 
 fun channelBuffers (uname) =
     query (SELECT users.Username FROM users WHERE users.Username <> {[uname]})
@@ -90,7 +90,7 @@ fun createChannel r =
                      Nil => <xml/>
                     | Cons ((uname, buff, msg), ls) =>
                         <xml>
-                            <td>{[uname]}</td>
+                            <td><span>{[uname]}</span><span data={data_attr data_kind "online" uname}></span></td>
                             {dispName ls}
                         </xml>
 
@@ -160,8 +160,8 @@ fun createChannel r =
                 <div class="clearfix"></div>
                 <br/>
                 <div class="table-wrapper">
-                        {dynTable lss }
-                    </div>
+                    {dynTable lss}
+                </div>
                 <br/>
                 <br/>
                 <span><dyn signal={v <- signal srcXML; return <xml> {v}</xml>}/></span></div>

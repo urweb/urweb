@@ -24,6 +24,8 @@ allow url /webrtcChat.css
 rewrite style WebrtcChat/* [-]
 allow url https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css
 rewrite style Bootstrap/* [-]
+script https://code.jquery.com/jquery-3.2.1.min.js
+script https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js
 
 $/list
 buffer

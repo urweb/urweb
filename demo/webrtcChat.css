@@ -422,3 +422,12 @@ table {
 .tri-right.lightblue.right-top:after{
 	border-color: lightblue transparent transparent transparent;
 }
+
+.chat-online{
+	background: #35ac19;
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-left: 5px;
+}

@@ -115,11 +115,23 @@ function onDisconnect(senderClientId, targetClientId){
     "use strict";
     console.log("Here in onDisconnect with ", senderClientId, targetClientId);
     toggleBtns(senderClientId, targetClientId, false);
-    
+    document.querySelector('[data-online="'+targetClientId+'"]').classList.remove("chat-online");
 }
 
 function onHandshakeComplete(senderClientId, targetClientId){
     "use strict";
     console.log("Here in onConnect with ", senderClientId, targetClientId);
     toggleBtns(senderClientId, targetClientId, true);
+    document.querySelector('[data-online="'+targetClientId+'"]').classList.add("chat-online");
+}
+
+function onAddNewUser(newUserName){
+    $("#online-users").find('tr').each(function(){
+         var trow = $(this);
+         if(trow.index() === 0){
+             trow.append('<td>'+newUserName+'</td>');
+         }else{
+             trow.append('<td><Yayee</td>');
+         }
+     });
 }
