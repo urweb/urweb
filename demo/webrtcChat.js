@@ -85,6 +85,7 @@ function toggleBtns(senderClientId, targetClientId, toEnable){
     var connectBtn = document.querySelector('[data-connect="'+targetClientId+'"]');
     var disconnectBtn = document.querySelector('[data-disconnect="'+targetClientId+'"]');
     var sendMessageBtn = document.querySelector('[data-message="'+targetClientId+'"]');
+    var ele = document.querySelector('[data-online="'+targetClientId+'"]');
     switch(toEnable){
         case true:
             if(connectBtn){
@@ -95,6 +96,9 @@ function toggleBtns(senderClientId, targetClientId, toEnable){
             }
             if(sendMessageBtn){
                 sendMessageBtn.disabled = false;
+            }
+            if(ele){
+                ele.classList.add("chat-online");
             }
             break;
         case false:
@@ -107,6 +111,9 @@ function toggleBtns(senderClientId, targetClientId, toEnable){
             if(sendMessageBtn){
                 sendMessageBtn.disabled = true;
             }
+            if(ele){
+                ele.classList.remove("chat-online");
+            }
             break;
     }
 }
@@ -115,17 +122,15 @@ function onDisconnect(senderClientId, targetClientId){
     "use strict";
     console.log("Here in onDisconnect with ", senderClientId, targetClientId);
     toggleBtns(senderClientId, targetClientId, false);
-    document.querySelector('[data-online="'+targetClientId+'"]').classList.remove("chat-online");
 }
 
 function onHandshakeComplete(senderClientId, targetClientId){
     "use strict";
     console.log("Here in onConnect with ", senderClientId, targetClientId);
     toggleBtns(senderClientId, targetClientId, true);
-    document.querySelector('[data-online="'+targetClientId+'"]').classList.add("chat-online");
 }
 
-function onAddNewUser(newUserName){
+/*function onAddNewUser(newUserName){
     $("#online-users").find('tr').each(function(){
          var trow = $(this);
          if(trow.index() === 0){
@@ -134,4 +139,4 @@ function onAddNewUser(newUserName){
              trow.append('<td><Yayee</td>');
          }
      });
-}
+}*/
