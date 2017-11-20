@@ -77,7 +77,7 @@ functor Make(M : sig
 	    onMsgReceive(v);
 	    receiver(ch)
 
-	fun getChannel username : transaction xbody =
+	fun createChannel username : transaction xbody =
 		ch <- channel;
 		dml (INSERT INTO channels (Username, Channel) VALUES ({[username]}, {[ch]}));
 	    return <xml>
@@ -85,7 +85,7 @@ functor Make(M : sig
 	  </xml>
 
 	fun init username =
-    	x <- rpc(getChannel username);
+    	x <- rpc(createChannel username);
     	return x
 
    	fun connect (senderUsername, targetUsername) =
