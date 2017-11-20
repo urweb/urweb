@@ -5,9 +5,6 @@ fun sendPayload v =
     r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[v.3]});
     send r.Channels.Channel v
 
-fun makeChannel username =
-	ch <- channel;
-    dml (INSERT INTO channels (Username, Channel) VALUES ({[username]}, {[ch]}))
 
 functor Make(M : sig
 				 val onHandshakeCompleteCallback : _
@@ -80,11 +77,11 @@ functor Make(M : sig
 	    onMsgReceive(v);
 	    receiver(ch)
 
-
 	fun getChannel username : transaction xbody =
-	    r <- oneRow (SELECT channels.Channel FROM channels WHERE channels.Username = {[username]});
+		ch <- channel;
+		dml (INSERT INTO channels (Username, Channel) VALUES ({[username]}, {[ch]}));
 	    return <xml>
-	    	<active code={spawn(receiver (r.Channels.Channel)); return <xml/>}/>
+	    	<active code={spawn(receiver (ch));onDisconnect (alert "Server booted me"); return <xml/>}/>
 	  </xml>
 
 	fun init username =

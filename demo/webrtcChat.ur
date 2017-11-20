@@ -49,7 +49,6 @@ structure AB = Webrtc.Make(struct
 
 fun createChannel r =
     user <- source r.Username;
-    Webrtc.makeChannel(r.Username);
     srcXML <- source <xml/>;
     dml (INSERT INTO users (Username) VALUES ({[r.Username]}));
     lss <- source Nil;

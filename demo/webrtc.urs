@@ -8,4 +8,3 @@ functor Make(M : sig
 	val connect : (string * string) -> transaction unit
 	val disconnect : (string * string) -> transaction unit
 end
-val makeChannel : string -> transaction unit
