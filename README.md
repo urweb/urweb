@@ -30,6 +30,12 @@ demo/hello.exe &
 wget http://localhost:8080/Hello/main -O -
 ```
 
+# Generate Build Files
+
+```sh
+./autogen
+```
+
 # Simple Installation
 
 The normal UNIX-style build and installation procedure works (where the `make` program needs to be GNU Make).
