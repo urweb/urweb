@@ -150,6 +150,7 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
 \item \texttt{effectful Module.ident} registers an FFI function or transaction as having side effects.  The optimizer avoids removing, moving, or duplicating calls to such functions.  This is the default behavior for \texttt{transaction}-based types.
 \item \texttt{exe FILENAME} sets the filename to which to write the output executable.  The default for file \texttt{P.urp} is \texttt{P.exe}.
 \item \texttt{file URI FILENAME} asks for the application executable to respond to requests for \texttt{URI} by serving a snapshot of the contents of \texttt{FILENAME} as of compile time.  That is, the file contents are baked into the executable.  System file \texttt{/etc/mime.types} is consulted (again, at compile time) to figure out the right MIME type to suggest in the HTTP response.
+\item \texttt{file URI FILENAME MIME-TYPE} works like the simpler form of \texttt{file}, but the proper MIME type for the file is given directly.
 \item \texttt{ffi FILENAME} reads the file \texttt{FILENAME.urs} to determine the interface to a new FFI module.  The name of the module is calculated from \texttt{FILENAME} in the same way as for normal source files.  See the files \texttt{include/urweb/urweb\_cpp.h} and \texttt{src/c/urweb.c} for examples of C headers and implementations for FFI modules.  In general, every type or value \texttt{Module.ident} becomes \texttt{uw\_Module\_ident} in C.
 \item \texttt{html5} asks to generate HTML5 code, which primarily affects the first few lines of the output documents, like the \texttt{DOCTYPE}.  This option is on by default.
 \item \texttt{include FILENAME} adds \texttt{FILENAME} to the list of files to be \texttt{\#include}d in C sources.  This is most useful for interfacing with new FFI modules.
@@ -176,6 +177,7 @@ Here is the complete list of directive forms.  ``FFI'' stands for ``foreign func
   \end{itemize}
 \item \texttt{link FILENAME} adds \texttt{FILENAME} to the list of files to be passed to the linker at the end of compilation.  This is most useful for importing extra libraries needed by new FFI modules.
 \item \texttt{linker CMD} sets \texttt{CMD} as the command line prefix to use for linking C object files.  The command line will be completed with a space-separated list of \texttt{.o} and \texttt{.a} files, \texttt{-L} and \texttt{-l} flags, and finally with a \texttt{-o} flag to set the location where the executable should be written.
+\item \texttt{mimeTypes PATH} sets the name of the file from which the MIME-type database is read, as a substitute for the usual \texttt{/etc/mime.types} on UNIX systems.
 \item \texttt{minHeap NUMBYTES} sets the initial size for thread-local heaps used in handling requests.  These heaps grow automatically as needed (up to any maximum set with \texttt{limit}), but each regrow requires restarting the request handling process.
 \item \texttt{monoInline TREESIZE} sets how many nodes the AST of a function definition may have before the optimizer stops trying hard to inline calls to that function.  (This is one of two options for one of two intermediate languages within the compiler.)
 \item \texttt{neverInline PATH} requests that no call to the referenced function be inlined.  Section \ref{structure} explains how functions are assigned path strings.
@@ -2235,7 +2237,7 @@ $$\begin{array}{l}
 
 \subsubsection{Asynchronous Message-Passing}
 
-To support asynchronous, ``server push'' delivery of messages to clients, any client that might need to receive an asynchronous message is assigned a unique ID.  These IDs may be retrieved both on the client and on the server, during execution of code related to a client.
+To support asynchronous, ``server push'' delivery of messages to clients, any client that might need to receive an asynchronous message is assigned a unique ID.  These IDs may be retrieved only on the server, during execution of code related to a client.
 
 $$\begin{array}{l}
   \mt{type} \; \mt{client} \\

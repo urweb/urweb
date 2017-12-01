@@ -62,7 +62,8 @@ signature COMPILER = sig
          sigFile : string option,
          safeGets : string list,
          onError : (string * string list * string) option,
-         minHeap : int
+         minHeap : int,
+         mimeTypes : string option
     }
     val compile : string -> bool
     val compiler : string -> unit

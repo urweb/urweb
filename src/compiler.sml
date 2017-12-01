@@ -66,7 +66,8 @@ type job = {
      sigFile : string option,
      safeGets : string list,
      onError : (string * string list * string) option,
-     minHeap : int
+     minHeap : int,
+     mimeTypes : string option
 }
 
 type ('src, 'dst) phase = {
@@ -386,7 +387,8 @@ fun institutionalizeJob (job : job) =
      Settings.setSafeGets (#safeGets job);
      Settings.setOnError (#onError job);
      Settings.setMinHeap (#minHeap job);
-     Settings.setSigFile (#sigFile job))
+     Settings.setSigFile (#sigFile job);
+     Settings.setMimeFilePath (Option.getOpt (#mimeTypes job, "/etc/mime.types")))
 
 datatype commentableLine =
          EndOfFile
@@ -467,7 +469,8 @@ fun parseUrp' accLibs fname =
                         sigFile = NONE,
                         safeGets = [],
                         onError = NONE,
-                        minHeap = 0}
+                        minHeap = 0,
+                        mimeTypes = NONE}
          in
              institutionalizeJob job;
              {Job = job, Libs = []}
@@ -601,6 +604,7 @@ fun parseUrp' accLibs fname =
                      val safeGets = ref []
                      val onError = ref NONE
                      val minHeap = ref 0
+                     val mimeTypes = ref NONE
 
                      fun finish sources =
                          let
@@ -638,7 +642,8 @@ fun parseUrp' accLibs fname =
                                  sigFile = !sigFile,
                                  safeGets = rev (!safeGets),
                                  onError = !onError,
-                                 minHeap = !minHeap
+                                 minHeap = !minHeap,
+                                 mimeTypes = !mimeTypes
                              }
 
                              fun mergeO f (old, new) =
@@ -699,7 +704,8 @@ fun parseUrp' accLibs fname =
                                  sigFile = mergeO #2 (#sigFile old, #sigFile new),
                                  safeGets = #safeGets old @ #safeGets new,
                                  onError = mergeO #2 (#onError old, #onError new),
-                                 minHeap = Int.max (#minHeap old, #minHeap new)
+                                 minHeap = Int.max (#minHeap old, #minHeap new),
+                                 mimeTypes = mergeO #2 (#mimeTypes old, #mimeTypes new)
                              }
                          in
                              if accLibs then
@@ -914,13 +920,20 @@ fun parseUrp' accLibs fname =
                                    | "html5" => Settings.setIsHtml5 true
                                    | "xhtml" => Settings.setIsHtml5 false
                                    | "lessSafeFfi" => Settings.setLessSafeFfi true
+                                   | "mimeTypes" => Settings.setMimeFilePath (relify arg)
 
                                    | "file" =>
                                      (case String.fields Char.isSpace arg of
-                                          [uri, fname] => (Settings.setFilePath thisPath;
-                                                           Settings.addFile {Uri = uri,
-                                                                             LoadFromFilename = fname};
-                                                           url := {action = Settings.Allow, kind = Settings.Exact, pattern = uri} :: !url)
+                                          uri :: fname :: rest =>
+                                          (Settings.setFilePath thisPath;
+                                           Settings.addFile {Uri = uri,
+                                                             LoadFromFilename = fname,
+                                                             MimeType = case rest of
+                                                                            [] => NONE
+                                                                          | [ty] => SOME ty
+                                                                          | _ => (ErrorMsg.error "Bad 'file' arguments";
+                                                                                  NONE)};
+                                           url := {action = Settings.Allow, kind = Settings.Exact, pattern = uri} :: !url)
                                         | _ => ErrorMsg.error "Bad 'file' arguments")
 
                                    | "jsFile" =>

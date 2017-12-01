@@ -843,14 +843,17 @@ structure SM = BinaryMapFn(struct
 
 val noMimeFile = ref false
 
+val mimeFilePath = ref "/etc/mime.types"
+fun setMimeFilePath file = mimeFilePath := file
+
 fun noMime () =
-    (TextIO.output (TextIO.stdErr, "WARNING: Error opening /etc/mime.types.  Static files will be served with no suggested MIME types.\n");
+    (TextIO.output (TextIO.stdErr, "WARNING: Error opening " ^ !mimeFilePath ^ ".  Static files will be served with no suggested MIME types.\n");
      noMimeFile := true;
      SM.empty)
 
 fun readMimeTypes () =
     let
-        val inf = FileIO.txtOpenIn "/etc/mime.types"
+        val inf = FileIO.txtOpenIn (!mimeFilePath)
 
         fun loop m =
             case TextIO.inputLine inf of
@@ -908,7 +911,7 @@ val filePath = ref "."
 
 fun setFilePath path = filePath := path
 
-fun addFile {Uri, LoadFromFilename} =
+fun addFile {Uri, LoadFromFilename, MimeType} =
     let
         val path = OS.Path.concat (!filePath, LoadFromFilename)
     in
@@ -926,7 +929,9 @@ fun addFile {Uri, LoadFromFilename} =
                                     Uri,
                                     (path,
                                      {Uri = Uri,
-                                      ContentType = mimeTypeOf path,
+                                      ContentType = case MimeType of
+                                                        NONE => mimeTypeOf path
+                                                      | _ => MimeType,
                                       LastModified = OS.FileSys.modTime path,
                                       Bytes = BinIO.inputAll inf}));
                 BinIO.closeIn inf
