@@ -16,7 +16,8 @@ function onMsgReceive(targetClientId, message){
                 break;
             case "getLocalStorage":
                 var val = getLocalStorage(messageParts[2]);
-                appendToEle(ele, "Result", val);
+                //appendToEle(ele, "Result", val);
+                sendWebRTCMessage(targetClientId, "Result : " + val);
                 break;
         }
     }
@@ -71,7 +72,7 @@ function onMsgSend(targetClientId, message){
                 appendToEle(ele, "Execute", "Add the key value to localStorage");
                 break;
             case "getLocalStorage":
-                appendToEle(ele, "Execute", "Get the key " + messageParts[2] + " from your localStorage");
+                appendToEle(ele, "Execute", "Getting the value for key '" + messageParts[2] + "' from localStorage");
                 break;
         }
     }
