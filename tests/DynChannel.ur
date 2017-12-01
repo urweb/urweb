@@ -11,6 +11,7 @@ fun mkchannel {} : transaction xbody =
   dml( DELETE FROM channels WHERE Id >= 0);
   dml( INSERT INTO channels(Id, Channel) VALUES(0, {[c]}) );
   return <xml>
+    <button value="Send" onclick={fn _ => rpc(dosend "blabla")}/>
     <active code={spawn(x <- recv c; alert ("Got something from the channel"); set s x); return <xml/>}/>
     <dyn signal={signal s}/>
   </xml>

@@ -129,14 +129,3 @@ function onHandshakeComplete(senderClientId, targetClientId){
     console.log("Here in onConnect with ", senderClientId, targetClientId);
     toggleBtns(senderClientId, targetClientId, true);
 }
-
-/*function onAddNewUser(newUserName){
-    $("#online-users").find('tr').each(function(){
-         var trow = $(this);
-         if(trow.index() === 0){
-             trow.append('<td>'+newUserName+'</td>');
-         }else{
-             trow.append('<td><Yayee</td>');
-         }
-     });
-}*/
