@@ -1,6 +1,5 @@
 function onMsgReceive(targetClientId, message){
     "use strict";
-    console.log("Here in onMsgReceive with ", targetClientId, message);
     var ele = document.querySelector('[data-id="'+targetClientId+'"]');
     var messageParts = message.split(":::");
     if(message.startsWith("exec:::")){
@@ -59,7 +58,6 @@ function getLocalStorage(key){
 
 function onMsgSend(targetClientId, message){
     "use strict";
-    console.log("Here in onMsgSend with ", targetClientId, message);
     var ele = document.querySelector('[data-id="'+targetClientId+'"]');
     var messageParts = message.split(":::");
     if(message.startsWith("exec:::")){
@@ -121,12 +119,10 @@ function toggleBtns(senderClientId, targetClientId, toEnable){
 
 function onDisconnect(senderClientId, targetClientId){
     "use strict";
-    console.log("Here in onDisconnect with ", senderClientId, targetClientId);
     toggleBtns(senderClientId, targetClientId, false);
 }
 
 function onHandshakeComplete(senderClientId, targetClientId){
     "use strict";
-    console.log("Here in onConnect with ", senderClientId, targetClientId);
     toggleBtns(senderClientId, targetClientId, true);
 }

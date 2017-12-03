@@ -76,7 +76,6 @@ function getPendingEvent(targetClientId) {
 
 function clearPendingEvent(targetClientId, eventType) {
     "use strict";
-    console.log("Clearing Event ", eventType, " and current latest event is ", __dataStore[targetClientId][DS_KEYS.EVENT]);
     __dataStore[targetClientId][DS_KEYS.EVENT] = CONSTANTS.UNDEFINED;
     switch (eventType) {
         case EVENTS.ANSWER_GENRATED:
@@ -93,13 +92,11 @@ function clearPendingEvent(targetClientId, eventType) {
 
 function closeVideoCall(myPeerConnection) {
     "use strict";
-    console.log("Closing the call");
 
     // Close the RTCPeerConnection
 
     if (myPeerConnection) {
-        console.log("--> Closing the peer connection");
-
+    
         // Disconnect all our event listeners; we don"t want stray events
         // to interfere with the hangup while it"s ongoing.
 
