@@ -3281,6 +3281,10 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                          SOME (strcat [str "addOnChange(d,exec(",
                                                        (L'.EJavaScript (L'.Script, e), loc),
                                                        str "));"])
+                                       | ("Oninput", e, _) =>
+                                         SOME (strcat [str "addOnInput(d,exec(",
+                                                       (L'.EJavaScript (L'.Script, e), loc),
+                                                       str "));"])
                                        | (x, e, (L'.TFun ((L'.TRecord [], _), _), _)) =>
                                          SOME (strcat [str ("d." ^ lowercaseFirst x ^ "=exec("),
                                                        (L'.EJavaScript (L'.Script, e), loc),
