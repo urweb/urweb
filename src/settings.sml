@@ -914,6 +914,7 @@ fun setFilePath path = filePath := path
 fun addFile {Uri, LoadFromFilename, MimeType} =
     let
         val path = OS.Path.concat (!filePath, LoadFromFilename)
+                   handle Path => LoadFromFilename
     in
         case SM.find (!files, Uri) of
             SOME (path', _) =>
