@@ -612,6 +612,13 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
         getter t
     end
 
+(* We turn 0-output queries into 1-output queries to satisfy SQL.
+ * This function adjusts our length expectations. *)
+fun bumpedLength ls =
+    case ls of
+        [] => 1
+      | _ => length ls
+
 fun queryCommon {loc, query, cols, doCols} =
     box [string "int n, i;",
          newline,
@@ -658,7 +665,7 @@ fun queryCommon {loc, query, cols, doCols} =
          newline,
 
          string "if (PQnfields(res) != ",
-         string (Int.toString (length cols)),
+         string (Int.toString (bumpedLength cols)),
          string ") {",
          newline,
          box [string "int nf = PQnfields(res);",
@@ -668,7 +675,7 @@ fun queryCommon {loc, query, cols, doCols} =
               string "uw_error(ctx, FATAL, \"",
               string (ErrorMsg.spanToString loc),
               string ": Query returned %d columns instead of ",
-              string (Int.toString (length cols)),
+              string (Int.toString (bumpedLength cols)),
               string ":\\n%s\\n%s\", nf, ",
               query,
               string ", PQerrorMessage(conn));",

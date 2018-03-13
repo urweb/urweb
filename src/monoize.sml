@@ -1792,18 +1792,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                   NONE), loc),
                                                         str "")],
                                                       {disc = b, result = s}), loc),
-                                           strcatComma (map (fn (x, t) =>
-                                                                strcat [
-                                                                (L'.EField (gf "SelectExps", x), loc),
-                                                                str (" AS " ^ Settings.mangleSql x)
-                                                            ]) sexps
-                                                        @ map (fn (x, xts) =>
-                                                                  strcatComma
-                                                                      (map (fn (x', _) =>
-                                                                               str ("T_" ^ x
-										   ^ "."
-										   ^ Settings.mangleSql x'))
-                                                                           xts)) stables),
+                                           if List.null sexps andalso List.all (List.null o #2) stables then
+                                               str "0"
+                                           else
+                                               strcatComma (map (fn (x, t) =>
+                                                                    strcat [
+                                                                        (L'.EField (gf "SelectExps", x), loc),
+                                                                        str (" AS " ^ Settings.mangleSql x)
+                                                                ]) sexps
+                                                            @ map (fn (x, xts) =>
+                                                                      strcatComma
+                                                                          (map (fn (x', _) =>
+                                                                                   str ("T_" ^ x
+										        ^ "."
+										        ^ Settings.mangleSql x'))
+                                                                               xts)) stables),
                                            (L'.ECase (gf "From",
                                                       [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
                                                         str ""),
