@@ -204,6 +204,21 @@ fun exists [a] f =
         ex
     end
 
+fun existsM [m] (_ : monad m) [a] f =
+    let
+        fun ex ls =
+            case ls of
+                [] => return False
+              | x :: ls =>
+                b <- f x;
+                if b then
+                    return True
+                else
+                    ex ls
+    in
+        ex
+    end
+
 fun foldlMap [a] [b] [c] f =
     let
         fun fold ls' st ls =
