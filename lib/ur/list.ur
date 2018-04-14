@@ -255,6 +255,21 @@ fun find [a] f =
         find'
     end
 
+fun findM [m] (_ : monad m) [a] f =
+    let
+        fun find' ls =
+            case ls of
+                [] => return None
+              | x :: ls =>
+                b <- f x;
+                if b then
+                    return (Some x)
+                else
+                    find' ls
+    in
+        find'
+    end
+
 fun search [a] [b] f =
     let
         fun search' ls =
