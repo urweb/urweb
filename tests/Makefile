@@ -19,3 +19,4 @@ simple::
 	./driver.sh entities
 	./driver.sh fact
 	./driver.sh filter
+	./driver.sh jsbspace
