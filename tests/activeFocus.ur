@@ -14,5 +14,5 @@ fun dynamic () : transaction page =
         <ctextbox/>
         <ctextbox id={i}/>
         <active code={giveFocus i; return <xml>Done</xml>}/>
-      </xml>}/>
+      </xml>}>Click</button>
     </body></xml>

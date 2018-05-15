@@ -5,6 +5,13 @@ test.o: test.c
 ###
 
 simple::
+	./driver.sh aborter2
+	./driver.sh aborter
+	./driver.sh activeBlock
+	./driver.sh activeFocus
+	./driver.sh active
+	./driver.sh agg
+	./driver.sh ahead
 	./driver.sh alert
 	./driver.sh align
 	./driver.sh appjs
@@ -13,6 +20,7 @@ simple::
 	./driver.sh attrs_escape
 	echo ./driver.sh attrs
 	./driver.sh autocomp
+	./driver.sh babySpawn
 	./driver.sh bindpat
 	./driver.sh DynChannel
 	./driver.sh jsonTest
