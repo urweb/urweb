@@ -195,6 +195,7 @@ val datetimeDayOfWeek : time -> int
 (** * Encryption *)
 
 val crypt : string -> string -> string
+(* Uses a DES-based hashing scheme which clips the secret to 8 characters. *)
 
 
 (** HTTP operations *)
