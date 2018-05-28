@@ -1,13 +1,7 @@
 import unittest
 import base
 
-# issue: initialization doesn't quite work
-
 class Suite(base.Base):
-# test case:
-# initially the source is EMPTY
-# then we pick SECOND variant and check the source
-# then we pick the FIRST variant and check the source
     def test_1(self):
         """Test case 1"""
         self.start("Cradio/main")
