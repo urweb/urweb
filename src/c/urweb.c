@@ -4490,11 +4490,6 @@ failure_kind uw_runCallback(uw_context ctx, void (*callback)(uw_context)) {
   return r;
 }
 
-uw_Basis_string uw_Basis_crypt(uw_context ctx, uw_Basis_string key, uw_Basis_string salt) {
-  char buf[14];
-  return uw_strdup(ctx, DES_fcrypt(key, salt, buf));
-}
-
 uw_Basis_bool uw_Basis_eq_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t2) {
   (void)ctx;
   return !!(t1.seconds == t2.seconds && t1.microseconds == t2.microseconds);

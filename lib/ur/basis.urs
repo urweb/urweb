@@ -192,11 +192,6 @@ val datetimeSecond : time -> int
 val datetimeDayOfWeek : time -> int
 
 
-(** * Encryption *)
-
-val crypt : string -> string -> string
-
-
 (** HTTP operations *)
 
 con http_cookie :: Type -> Type

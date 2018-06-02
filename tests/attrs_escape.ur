@@ -1,4 +1,6 @@
-val main = fn () => <html><body>
-        <font face="\"Well hey\"
-Wow">Welcome</font>
-</body></html>
+fun main () : transaction page = return <xml><body>
+<form>
+        <submit value="\"Well hey\"
+Wow"/>
+</form>
+</body></xml>

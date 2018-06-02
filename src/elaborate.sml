@@ -4046,7 +4046,8 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                           | L.PAnnot (p', _) => singleVar p'
                           | _ => NONE
                 in
-                    unifyCons env loc et pt;
+                    (unifyCons env loc et pt
+                     handle CUnify (c1, c2, env', err) => expError env (Unify (e', c1, c2, env', err)));
 
                     (case exhaustive (env, et, [p'], loc) of
                          NONE => ()

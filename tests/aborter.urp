@@ -1,4 +1,5 @@
 database dbname=aborter
 sql aborter.sql
+safeGet Aborter/main
 
 aborter

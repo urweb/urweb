@@ -659,7 +659,10 @@ fun unurlify fromClient env (t, loc) =
                                  doEm rest,
                                  string ")"]
                 in
-                    doEm xncs
+                    box [string "(request[0] == '/' ? ++request : request,",
+                         newline,
+                         doEm xncs,
+                         string ")"]
                 end
 
               | TDatatype (Option, i, xncs) =>
