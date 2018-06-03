@@ -219,7 +219,8 @@ signature SETTINGS = sig
          onlyUnion : bool,
          nestedRelops : bool,
          windowFunctions : bool,
-         supportsIsDistinctFrom : bool
+         supportsIsDistinctFrom : bool,
+         supportsSHA512 : bool
     }
 
     val addDbms : dbms -> unit
@@ -252,6 +253,9 @@ signature SETTINGS = sig
 
     val setSigFile : string option -> unit
     val getSigFile : unit -> string option
+
+    val setFileCache : string option -> unit
+    val getFileCache : unit -> string option
 
     (* Which GET-able functions should be allowed to have side effects? *)
     val setSafeGets : string list -> unit

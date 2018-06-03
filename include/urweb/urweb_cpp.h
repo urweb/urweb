@@ -430,4 +430,8 @@ void *uw_Sqlcache_flush(struct uw_context *, uw_Sqlcache_Cache *, char **);
 
 int strcmp_nullsafe(const char *, const char *);
 
+uw_unit uw_Basis_cache_file(struct uw_context *, uw_Basis_blob contents);
+uw_Basis_blob uw_Basis_check_filecache(struct uw_context *, uw_Basis_string hash);
+uw_Basis_bool uw_Basis_filecache_missed(struct uw_context *);
+
 #endif

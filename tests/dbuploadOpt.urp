@@ -1,0 +1,7 @@
+database dbname=dbuploadOpt
+sql dbuploadOpt.sql
+allow mime *
+rewrite all DbuploadOpt/*
+filecache /tmp/files
+
+dbuploadOpt

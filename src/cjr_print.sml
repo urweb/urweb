@@ -2189,6 +2189,25 @@ and p_exp' par tail env (e, loc) =
                                                        string ";"])
                                       inputs,
                           newline,
+                          case Settings.getFileCache () of
+                              NONE => box []
+                            | SOME _ =>
+                              p_list_sepi newline
+                                          (fn i => fn (_, t) =>
+                                              case t of
+                                                  Settings.Blob =>
+                                                  box [string "uw_Basis_cache_file(ctx, arg",
+                                                       string (Int.toString (i + 1)),
+                                                       string ");"]
+                                                | Settings.Nullable Settings.Blob =>
+                                                  box [string "if (arg",
+                                                       string (Int.toString (i + 1)),
+                                                       string ") uw_Basis_cache_file(ctx, arg",
+                                                       string (Int.toString (i + 1)),
+                                                       string ");"]
+                                                | _ => box [])
+                                          inputs,
+                          newline,
                           string "uw_ensure_transaction(ctx);",
                           newline,
                           newline,
@@ -3677,7 +3696,10 @@ fun p_file env (ds, ps) =
                          "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime", "uw_check_requestHeader", "uw_check_responseHeader", "uw_check_envVar", "uw_check_meta",
                          case onError of NONE => "NULL" | SOME _ => "uw_onError", "my_periodics",
                          "\"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\"",
-                         if Settings.getIsHtml5 () then "1" else "0"],
+                         if Settings.getIsHtml5 () then "1" else "0",
+                         (case Settings.getFileCache () of
+                              NONE => "NULL"
+                            | SOME s => "\"" ^ Prim.toCString s ^ "\"")],
              string "};",
              newline]
     end

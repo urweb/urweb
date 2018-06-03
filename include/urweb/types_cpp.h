@@ -105,6 +105,7 @@ typedef struct {
   uw_Basis_string time_format;
 
   int is_html5;
+  char *file_cache;
 } uw_app;
 
 typedef struct {

@@ -231,6 +231,9 @@ $(SRC)/sidecheck.sml
 $(SRC)/sigcheck.sig
 $(SRC)/sigcheck.sml
 
+$(SRC)/filecache.sig
+$(SRC)/filecache.sml
+
 $(SRC)/mono_inline.sml
 
 $(SRC)/sha1.sig

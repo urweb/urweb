@@ -13,8 +13,8 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <openssl/des.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 #include <time.h>
 #include <math.h>
 
@@ -514,6 +514,11 @@ struct uw_context {
   uw_Sqlcache_Unlock *cacheUnlock;
 
   int remoteSock;
+
+  int file_cache_missed;
+  // Set if we are recovering from a miss in the file cache in handling an SQL
+  // query that only returns hashes of files.  If so, this time around we will
+  // run queries to return actual file contents instead.
 };
 
 size_t uw_headers_max = SIZE_MAX;
@@ -607,6 +612,8 @@ uw_context uw_init(int id, uw_loggers *lg) {
   ctx->remoteSock = -1;
 
   ctx->cacheUnlock = NULL;
+
+  ctx->file_cache_missed = 0;
 
   return ctx;
 }
@@ -3643,6 +3650,8 @@ int uw_commit(uw_context ctx) {
     }
   }
 
+  ctx->file_cache_missed = 0;
+
   return 0;
 }
 
@@ -5057,4 +5066,119 @@ int strcmp_nullsafe(const char *str1, const char *str2) {
     return strcmp(str1, str2);
   else
     return 1;
+}
+
+static int is_valid_hash(uw_Basis_string hash) {
+  for (; *hash; ++hash)
+    if (!isxdigit(*hash))
+      return 0;
+
+  return 1;
+}
+
+uw_unit uw_Basis_cache_file(uw_context ctx, uw_Basis_blob contents) {
+  char *dir = ctx->app->file_cache, path[1024], tempfile[1024];
+  unsigned char *res, *hash;
+  char *hash_encoded;
+  int fd, len, i;
+  ssize_t written_so_far = 0;
+
+  if (!dir)
+    return uw_unit_v;
+
+  hash = uw_malloc(ctx, SHA512_DIGEST_LENGTH);
+  res = SHA512((unsigned char *)contents.data, contents.size, hash);
+  if (!res)
+    uw_error(ctx, FATAL, "Can't hash file contents");
+
+  hash_encoded = uw_malloc(ctx, SHA512_DIGEST_LENGTH * 2 + 1);
+  for (i = 0; i < SHA512_DIGEST_LENGTH; ++i)
+    sprintf(hash_encoded + 2 * i, "%02x", (int)hash[i]);
+  hash_encoded[SHA512_DIGEST_LENGTH * 2] = 0;
+
+  len = snprintf(tempfile, sizeof tempfile, "%s/tmpXXXXXX", dir);
+  if (len < 0 || len >= sizeof tempfile)
+    uw_error(ctx, FATAL, "Error assembling file path for cache (temporary)");
+
+  fd = mkstemp(tempfile);
+  if (fd < 0)
+    uw_error(ctx, FATAL, "Error creating temporary file for cache");
+
+  while (written_so_far < contents.size) {
+    ssize_t written_just_now = write(fd, contents.data + written_so_far, contents.size - written_so_far);
+    if (written_just_now <= 0) {
+      close(fd);
+      uw_error(ctx, FATAL, "Error writing all bytes to cached file");
+    }
+    written_so_far += written_just_now;
+  }
+
+  close(fd);
+
+  len = snprintf(path, sizeof path, "%s/%s", dir, hash_encoded);
+  if (len < 0 || len >= sizeof path)
+    uw_error(ctx, FATAL, "Error assembling file path for cache");
+
+  if (rename(tempfile, path))
+    uw_error(ctx, FATAL, "Error renaming temporary file into cache");
+
+  return uw_unit_v;
+}
+
+uw_Basis_blob uw_Basis_check_filecache(uw_context ctx, uw_Basis_string hash) {
+  char path[1024], *dir = ctx->app->file_cache, *filedata;
+  int len;
+  long size, read_so_far = 0;
+  FILE *fp;
+  uw_Basis_blob res;
+
+  // Hashes come formatted for printing by Postgres, which means they start with
+  // two extra characters.  Let's remove them.
+  if (!hash[0] || !hash[1])
+    uw_error(ctx, FATAL, "Hash to check against file cache came in not in Postgres format: %s", hash);
+  hash += 2;
+
+  if (!dir)
+    uw_error(ctx, FATAL, "Checking file cache when no directory is set");
+
+  if (!is_valid_hash(hash))
+    uw_error(ctx, FATAL, "Checking file cache with invalid hash %s", hash);
+
+  len = snprintf(path, sizeof path, "%s/%s", dir, hash);
+  if (len < 0 || len >= sizeof path)
+    uw_error(ctx, FATAL, "Error assembling file path for cache");
+
+  fp = fopen(path, "r");
+  if (!fp) {
+    ctx->file_cache_missed = 1;
+    uw_error(ctx, UNLIMITED_RETRY, "Missed in the file cache for hash %s", hash);
+  }
+  uw_push_cleanup(ctx, (void (*)(void *))fclose, fp);
+
+  if (fseek(fp, 0L, SEEK_END))
+    uw_error(ctx, FATAL, "Error seeking to end of cached file");
+
+  size = ftell(fp);
+  if (size < 0)
+    uw_error(ctx, FATAL, "Error getting size of cached file");
+
+  rewind(fp);
+  filedata = uw_malloc(ctx, size);
+
+  while (read_so_far < size) {
+    size_t just_read = fread(filedata + read_so_far, 1, size - read_so_far, fp);
+    if (just_read <= 0)
+      uw_error(ctx, FATAL, "Error reading all bytes of cached file");
+    read_so_far += just_read;
+  }
+
+  uw_pop_cleanup(ctx);
+
+  res.size = size;
+  res.data = filedata;
+  return res;
+}
+
+uw_Basis_bool uw_Basis_filecache_missed(uw_context ctx) {
+  return !!(ctx->file_cache_missed);
 }

@@ -646,7 +646,8 @@ type dbms = {
      onlyUnion : bool,
      nestedRelops : bool,
      windowFunctions: bool,
-     supportsIsDistinctFrom : bool
+     supportsIsDistinctFrom : bool,
+     supportsSHA512 : bool
 }
 
 val dbmses = ref ([] : dbms list)
@@ -679,7 +680,8 @@ val curDb = ref ({name = "",
                   onlyUnion = false,
                   nestedRelops = false,
                   windowFunctions = false,
-                  supportsIsDistinctFrom = false} : dbms)
+                  supportsIsDistinctFrom = false,
+                  supportsSHA512 = false} : dbms)
 
 fun addDbms v = dbmses := v :: !dbmses
 fun setDbms s =
@@ -723,6 +725,10 @@ fun getDeadlines () = !deadlines
 val sigFile = ref (NONE : string option)
 fun setSigFile v = sigFile := v
 fun getSigFile () = !sigFile
+
+val fileCache = ref (NONE : string option)
+fun setFileCache v = fileCache := v
+fun getFileCache () = !fileCache
 
 structure SS = BinarySetFn(struct
                            type ord_key = string

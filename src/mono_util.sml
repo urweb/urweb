@@ -107,16 +107,16 @@ fun mapfold fc =
               | TOption t =>
                 S.map2 (mft t,
                         fn t' =>
-                           (TOption t, loc))
+                           (TOption t', loc))
               | TList t =>
                 S.map2 (mft t,
                         fn t' =>
-                           (TList t, loc))
+                           (TList t', loc))
               | TSource => S.return2 cAll
               | TSignal t =>
                 S.map2 (mft t,
                         fn t' =>
-                           (TSignal t, loc))
+                           (TSignal t', loc))
     in
         mft
     end
