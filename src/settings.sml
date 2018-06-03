@@ -727,7 +727,12 @@ fun setSigFile v = sigFile := v
 fun getSigFile () = !sigFile
 
 val fileCache = ref (NONE : string option)
-fun setFileCache v = fileCache := v
+fun setFileCache v =
+    (if Option.isSome v andalso not (#supportsSHA512 (currentDbms ())) then
+         ErrorMsg.error "The selected database engine is incompatible with file caching."
+     else
+        ();
+     fileCache := v)
 fun getFileCache () = !fileCache
 
 structure SS = BinarySetFn(struct
