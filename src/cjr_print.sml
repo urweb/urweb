@@ -659,7 +659,13 @@ fun unurlify fromClient env (t, loc) =
                                  doEm rest,
                                  string ")"]
                 in
-                    box [string "(request[0] == '/' ? ++request : request,",
+                    box [string "(",
+                         string request,
+                         string "[0] == '/' ? ++",
+                         string request,
+                         string " : ",
+                         string request,
+                         string ",",
                          newline,
                          doEm xncs,
                          string ")"]
