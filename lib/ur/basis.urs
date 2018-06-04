@@ -1081,10 +1081,13 @@ val button : cformTag ([Value = string, Disabled = bool] ++ boxAttrs) []
 
 val ccheckbox : cformTag ([Size = int, Source = source bool] ++ boxAttrs ++ inputAttrs') []
 
+val cradio : cformTag ([Source = source (option string), Value = string] ++ boxAttrs ++ inputAttrs') []
+
 val cselect : cformTag ([Source = source string] ++ boxAttrs ++ inputAttrs') [Cselect]
 val coption : unit -> tag [Value = string, Selected = bool] [Cselect, Body] [] [] []
 
-val ctextarea : cformTag ([Rows = int, Cols = int, Placeholder = string, Source = source string] ++ boxAttrs ++ inputAttrs) []
+val ctextarea : cformTag ([Rows = int, Cols = int, Placeholder = string, Source = source string,
+                           Ontext = transaction unit] ++ boxAttrs ++ inputAttrs) []
 
 (*** Tables *)
 

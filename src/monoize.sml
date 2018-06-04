@@ -3070,7 +3070,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                              | _ => (attrs, NONE)
 
 
-                val dynamics = ["dyn", "ctextbox", "cpassword", "ccheckbox", "cselect", "coption", "ctextarea", "active", "script", "cemail", "csearch", "curl", "ctel", "ccolor"]
+                val dynamics = ["dyn", "ctextbox", "cpassword", "ccheckbox", "cradio", "cselect", "coption", "ctextarea", "active", "script", "cemail", "csearch", "curl", "ctel", "ccolor"]
 
                 fun isSome (e, _) =
                     case e of
@@ -3560,6 +3560,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | "ctime" => cinput ("time", "time")
 
                       | "ccheckbox" => cinput ("checkbox", "chk")
+                      | "cradio" => cinput ("radio", "crad")
+
                       | "cselect" =>
 			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
                              NONE =>

@@ -21,5 +21,5 @@ fi
 $TESTSRV -q -a 127.0.0.1 &
 echo $! >> $TESTPID
 sleep 1
-python -m unittest $1.py
+python3 -m unittest $1.py
 kill `cat $TESTPID`
