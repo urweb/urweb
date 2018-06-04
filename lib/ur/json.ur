@@ -52,6 +52,8 @@ fun escape s =
 		       | #"\t" => "\\t"
 		       | #"\"" => "\\\""
 		       | #"\'" => "\\\'"
+		       | #"\\" => "\\\\"
+		       | #"/" => "\\/"
 		       | x => String.str ch
 		    ) ^ esc (String.suffix s 1)
                 end
@@ -100,6 +102,8 @@ fun unescape s =
                                | #"t" => "\t"
                                | #"\"" => "\""
                                | #"\'" => "\'"
+			       | #"\\" => "\\"
+			       | #"/" => "/"
                                | x => error <xml>JSON unescape: Bad escape char: {[x]}</xml>)
 			    ^
 			    unesc (i+2)
