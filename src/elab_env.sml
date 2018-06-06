@@ -1663,7 +1663,7 @@ fun declBinds env (d, loc) =
       | DVal (x, n, t, _) => pushENamedAs env x n t
       | DValRec vis => foldl (fn ((x, n, t, _), env) => pushENamedAs env x n t) env vis
       | DSgn (x, n, sgn) => pushSgnNamedAs env x n sgn
-      | DStr (x, n, sgn, _) => pushStrNamedAs' false env x n sgn
+      | DStr (x, n, sgn, _) => pushStrNamedAs env x n sgn
       | DFfiStr (x, n, sgn) => pushStrNamedAs' false env x n sgn
       | DConstraint _ => env
       | DExport _ => env
