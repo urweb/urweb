@@ -59,4 +59,4 @@ and fromA r =
             pageC None
     end
 
-val main = pageA
+fun main () = pageA ()
