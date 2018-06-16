@@ -1,4 +1,19 @@
 ========
+20180616
+========
+
+- New feature to cache files stored in the database as blobs, via the
+  'filecache' .urp directive
+- New .urp directives: 'mimeTypes' and 'file' (new long form)
+- New HTML pseudo-tag: <cradio>
+- New HTML tag attributes: 'oninput', 'onscroll', 'title', 'size'
+- New standard-library functions: 'List.findM' and 'List.existsM'
+- New '-help' command-line option for compiler
+- Remove insecure function 'Basis.crypt' (which didn't seem to have any users)
+- Selenium-based automatic testing
+- Bug fixes and improvements to documentation and error messages
+
+========
 20170720
 ========
 
