@@ -45,7 +45,7 @@ and fromA r =
           </head>
           <body>
             <p>Hello {[forename]}{case surname of
-                                      None => <xml/>
+                                      None => <xml></xml>
                                     | Some s => <xml> {[s]}</xml>}</p>
             {case surname of
                  None => <xml><a link={pageA ()}>Previous</a></xml>
