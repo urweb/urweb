@@ -9,13 +9,18 @@ liburweb_static_la_SOURCES = static.c
 AM_CPPFLAGS = -I$(srcdir)/../../include/urweb $(OPENSSL_INCLUDES)
 AM_CFLAGS = -Wall -Wunused-parameter -Werror -Wno-format-security -Wno-deprecated-declarations -U_FORTIFY_SOURCE $(PTHREAD_CFLAGS)
 liburweb_la_LDFLAGS = $(AM_LDFLAGS) $(OPENSSL_LDFLAGS) \
-	-export-symbols-regex '^(client_pruner|pthread_create_big|strcmp_nullsafe|uw_.*)'
+	-export-symbols-regex '^(client_pruner|pthread_create_big|strcmp_nullsafe|uw_.*)' \
+	-version-info 1:0:0
 liburweb_la_LIBADD = $(PTHREAD_LIBS) -lm $(OPENSSL_LIBS)
 liburweb_http_la_LIBADD = liburweb.la
-liburweb_http_la_LDFLAGS = -export-symbols-regex '^(main|uw_.*)'
+liburweb_http_la_LDFLAGS = -export-symbols-regex '^(main|uw_.*)' \
+	-version-info 1:0:0
 liburweb_cgi_la_LIBADD = liburweb.la
-liburweb_cgi_la_LDFLAGS = -export-symbols-regex '^(main|uw_.*)'
+liburweb_cgi_la_LDFLAGS = -export-symbols-regex '^(main|uw_.*)' \
+	-version-info 1:0:0
 liburweb_fastcgi_la_LIBADD = liburweb.la
-liburweb_fastcgi_la_LDFLAGS = -export-symbols-regex '^(main|uw_.*)'
+liburweb_fastcgi_la_LDFLAGS = -export-symbols-regex '^(main|uw_.*)' \
+	-version-info 1:0:0
 liburweb_static_la_LIBADD = liburweb.la
-liburweb_static_la_LDFLAGS = -export-symbols-regex '^(main|uw_.*)'
+liburweb_static_la_LDFLAGS = -export-symbols-regex '^(main|uw_.*)' \
+	-version-info 1:0:0
