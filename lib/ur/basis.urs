@@ -830,7 +830,7 @@ val meta : unit -> tag [Nam = meta, Content = string, Id = id] head [] [] []
 
 datatype mouseButton = Left | Right | Middle
 
-type mouseEvent = { ScreenX : int, ScreenY : int, ClientX : int, ClientY : int,
+type mouseEvent = { ScreenX : int, ScreenY : int, ClientX : int, ClientY : int, OffsetX : int, OffsetY : int,
                     CtrlKey : bool, ShiftKey : bool, AltKey : bool, MetaKey : bool,
                     Button : mouseButton }
 
