@@ -974,7 +974,7 @@ con inputAttrs' = [Required = bool, Autofocus = bool,
 con inputAttrs = inputAttrs' ++ [Oninput = transaction unit]
 
 val hidden : formTag string [] [Data = data_attr, Id = string, Value = string]
-val textbox : formTag string [] ([Value = string, Size = int, Placeholder = string, Source = source string] ++ boxAttrs ++ inputAttrs)
+val textbox : formTag string [] ([Value = string, Size = int, Placeholder = string, Source = source string, Rows = int] ++ boxAttrs ++ inputAttrs)
 val password : formTag string [] ([Value = string, Size = int, Placeholder = string] ++ boxAttrs ++ inputAttrs)
 val textarea : formTag string [] ([Rows = int, Cols = int, Placeholder = string] ++ boxAttrs ++ inputAttrs)
 
