@@ -319,12 +319,27 @@ fun filterM [m] (_ : monad m) [a] (p : a -> m bool) =
         filterM' []
     end
 
-fun all [m] f =
+fun all [a] f =
     let
         fun all' ls =
             case ls of
                 [] => True
               | x :: ls => f x && all' ls
+    in
+        all'
+    end
+
+fun allM [m] (_ : monad m) [a] f =
+    let
+        fun all' ls =
+            case ls of
+                [] => return True
+              | x :: ls =>
+                b <- f x;
+                if b then
+                    all' ls
+                else
+                    return False
     in
         all'
     end

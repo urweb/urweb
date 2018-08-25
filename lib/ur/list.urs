@@ -66,6 +66,8 @@ val search : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> option b
 
 val all : a ::: Type -> (a -> bool) -> t a -> bool
 
+val allM : m ::: (Type -> Type) -> monad m -> a ::: Type -> (a -> m bool) -> t a -> m bool
+
 val app : m ::: (Type -> Type) -> monad m -> a ::: Type
           -> (a -> m unit) -> t a -> m unit
 
