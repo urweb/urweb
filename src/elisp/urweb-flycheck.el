@@ -48,7 +48,7 @@
   "Ur/Web checker"
   :command ("urweb" "-tc"
             (eval (file-name-sans-extension
-                   (car (flycheck-substitute-argument 'source-inplace
+                   (car (flycheck-substitute-argument 'source-original
                                                  'urweb)))))
   ;; filename:1:0: (to 1:0) syntax error found at SYMBOL
   ;; /home/artyom/projects/urweb-test/test.ur:1:0: (to 1:38) Some constructor unification variables are undetermined in declaration
