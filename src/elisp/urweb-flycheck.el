@@ -7,7 +7,7 @@
 ;;   David Christiansen <david@davidchristiansen.dk>
 ;;
 ;; Keywords: tools, languages, convenience
-;; Version: 0.1
+;; Version: 0.2
 ;; Package-Requires: ((emacs "24.1") (flycheck "0.22"))
 
 ;; This file is not part of GNU Emacs, but it is distributed under the
@@ -44,14 +44,28 @@
 
 (require 'flycheck)
 
+(defun urweb-get-flycheck-project-file ()
+  "Guess the location of the nearest urp file."
+   (let ((bn (buffer-file-name)))
+     (if bn
+         (let
+             ((x (file-name-sans-extension bn))
+              (y (file-name-directory bn)))
+           (cond
+            ;; file with .urp extension exists? take it
+            ((file-exists-p (concat x ".urp")) x)
+            ;; lib.urp exists in this directory? take it
+            ((file-exists-p (concat y "/lib.urp")) (concat y "/lib"))
+            ;; fall back to the first .urp file in this directory
+            ;; or if that fails, use the current file name
+            (t (or (car (directory-files y nil "\\.urp$")) x)))))))
+
 (flycheck-define-checker urweb
   "Ur/Web checker"
   :command ("urweb" "-tc"
-            (eval (file-name-sans-extension
-                   (car (flycheck-substitute-argument 'source-original
-                                                 'urweb)))))
+            (eval (urweb-get-flycheck-project-file)))
   ;; filename:1:0: (to 1:0) syntax error found at SYMBOL
-  ;; /home/artyom/projects/urweb-test/test.ur:1:0: (to 1:38) Some constructor unification variables are undetermined in declaration
+  ;; filename:1:0: (to 1:38) Some constructor unification variables are undetermined in declaration
   ;; (look for them as "<UNIF:...>")
   ;; Decl:
   ;; val rec
@@ -69,6 +83,9 @@
           " (to " (1+ num) ?: (1+ num) ")"
           ;; AS: indebted to David Christiansen for this rx expression!
           (message (and (* nonl) (* "\n" (not (any "/" "~")) (* nonl))))))
+  :predicate
+  (lambda ()
+    (buffer-file-name))
   :modes (urweb-mode))
 
 ;;;###autoload
