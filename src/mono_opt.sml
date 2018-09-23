@@ -126,6 +126,10 @@ val checkAtom = CharVector.all (fn ch => Char.isAlphaNum ch
                                          orelse ch = #"-"
                                          orelse ch = #"."
                                          orelse ch = #"%"
+                                         orelse ch = #","
+                                         orelse ch = #" "
+                                         orelse ch = #"("
+                                         orelse ch = #")"
                                          orelse ch = #"#")
 val checkCssUrl = CharVector.all (fn ch => Char.isAlphaNum ch
                                            orelse ch = #":"
