@@ -3953,6 +3953,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                         loc)), loc),
                  fm)
             end
+          | L.ECApp ((L.EFfi ("Basis", "unsafeSerializedToString"), _), _) =>
+            let
+                val t = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("v", t, t, (L'.ERel 0, loc)), loc),
+                 fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "unsafeSerializedFromString"), _), _) =>
+            let
+                val t = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("v", t, t, (L'.ERel 0, loc)), loc),
+                 fm)
+            end
 
           | L.EFfiApp ("Basis", "url", [(e, _)]) =>
             let
