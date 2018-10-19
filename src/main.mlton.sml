@@ -43,14 +43,25 @@ fun parse_flags flag_info args =
                 fn (flag1, _, _) => flag0 = flag1
             end
 
+        fun normalizeArg arg =
+          case arg of
+              "-h" => "-help"
+            | "--h" => "-help"
+            | "--help" => "-help"
+            | _ => arg
+                
         fun loop [] : string list = []
           | loop (arg :: args) =
-             if String.isPrefix "-" arg then
-                case List.find (search_pred arg) flag_info of
-                  NONE => raise Fail ("Unknown flag "^arg^", see -help")
-                | SOME x => exec x args
-             else
-                arg :: loop args
+            let
+                val arg = normalizeArg arg
+            in
+                if String.isPrefix "-" arg then
+                    case List.find (search_pred arg) flag_info of
+                        NONE => raise Fail ("Unknown flag "^arg^", see -help")
+                      | SOME x => exec x args
+                else
+                    arg :: loop args
+            end
 
         and exec (_, ZERO f, _) args =
                 (f (); loop args)
