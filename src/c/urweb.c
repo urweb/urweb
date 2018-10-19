@@ -737,7 +737,10 @@ void uw_close(uw_context ctx) {
 }
 
 uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
-  return ctx->get_header(ctx->get_header_data, h);
+  if (ctx->get_header)
+    return ctx->get_header(ctx->get_header_data, h);
+  else
+    return NULL;
 }
 
 void uw_set_headers(uw_context ctx, char *(*get_header)(void *, const char *), void *get_header_data) {
