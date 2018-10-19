@@ -71,62 +71,87 @@ fun check file =
               | _ => st
 
         fun sins cmap = U.Con.fold {kind = kind, con = con cmap} PS.empty
+
+        fun decl (d, (cmap, emap)) =
+          case d of
+              DCon (_, n, _, c) => (IM.insert (cmap, n, sins cmap c), emap)
+            | DDatatype dts =>
+              (foldl (fn ((_, n, _, xncs), cmap) =>
+                         IM.insert (cmap, n, foldl (fn ((_, _, co), s) =>
+                                                       case co of
+                                                           NONE => s
+                                                         | SOME c => PS.union (s, sins cmap c))
+                                                   PS.empty xncs)) cmap dts,
+               emap)
+
+            | DVal (_, n, t, _, tag) => (cmap, IM.insert (emap, n, (t, tag)))
+            | DValRec vis => (cmap,
+                              foldl (fn ((_, n, t, _, tag), emap) => IM.insert (emap, n, (t, tag)))
+                                    emap vis)
+
+            | DExport (_, n, _) =>
+              (case IM.find (emap, n) of
+                   NONE => raise Fail "MarshalCheck: Unknown export"
+                 | SOME (t, tag) =>
+                   let
+                       fun makeS (t, _) =
+                         case t of
+                             TFun (dom, ran) =>
+                             (case #1 dom of
+                                  CFfi ("Basis", "postBody") => makeS ran
+                                | CApp ((CFfi ("Basis", "option"), _), (CFfi ("Basis", "queryString"), _)) => makeS ran
+                                | _ => PS.union (sins cmap dom, makeS ran))
+                           | _ => PS.empty
+                       val s = makeS t
+                   in
+                       if PS.isEmpty s then
+                           ()
+                       else
+                           E.error ("Input to exported function '"
+                                    ^ tag ^ "' involves one or more types that are disallowed for page handler inputs: "
+                                    ^ PS.toString s);
+                       (cmap, emap)
+                   end)
+
+            | DCookie (_, _, t, tag) =>
+              let
+                  val s = sins cmap t
+              in
+                  if PS.isEmpty s then
+                      ()
+                  else
+                      E.error ("Cookie '" ^ tag ^ "' includes one or more types that are disallowed for cookies: "
+                               ^ PS.toString s);
+                  (cmap, emap)
+              end
+
+            | _ => (cmap, emap)
+
+        fun checkSins (cmap, _) t =
+          let
+              val s = sins cmap t
+          in
+              if PS.isEmpty s then
+                  ()
+              else
+                  E.error ("Not allowed to [de]serialize a value involving one or more disallowed types: " ^ PS.toString s)
+          end
+
+        fun exp (e, s) =
+          case e of
+              ECApp ((EFfi ("Basis", "serialize"), _), t) =>
+              (checkSins s t; s)
+            | ECApp ((EFfi ("Basis", "deserialize"), _), t) =>
+              (checkSins s t; s)
+            | _ => s
+
+        fun passthrough (_, s) = s
     in
-        ignore (foldl (fn ((d, _), (cmap, emap)) =>
-                          case d of
-                              DCon (_, n, _, c) => (IM.insert (cmap, n, sins cmap c), emap)
-                            | DDatatype dts =>
-                              (foldl (fn ((_, n, _, xncs), cmap) =>
-                                         IM.insert (cmap, n, foldl (fn ((_, _, co), s) =>
-                                                                       case co of
-                                                                           NONE => s
-                                                                         | SOME c => PS.union (s, sins cmap c))
-                                                                   PS.empty xncs)) cmap dts,
-                               emap)
-
-                            | DVal (_, n, t, _, tag) => (cmap, IM.insert (emap, n, (t, tag)))
-                            | DValRec vis => (cmap,
-                                              foldl (fn ((_, n, t, _, tag), emap) => IM.insert (emap, n, (t, tag)))
-                                                    emap vis)
-
-                            | DExport (_, n, _) =>
-                              (case IM.find (emap, n) of
-                                   NONE => raise Fail "MarshalCheck: Unknown export"
-                                 | SOME (t, tag) =>
-                                   let
-                                       fun makeS (t, _) =
-                                           case t of
-                                               TFun (dom, ran) =>
-                                               (case #1 dom of
-                                                    CFfi ("Basis", "postBody") => makeS ran
-                                                  | CApp ((CFfi ("Basis", "option"), _), (CFfi ("Basis", "queryString"), _)) => makeS ran
-                                                  | _ => PS.union (sins cmap dom, makeS ran))
-                                             | _ => PS.empty
-                                       val s = makeS t
-                                   in
-                                       if PS.isEmpty s then
-                                           ()
-                                       else
-                                           E.error ("Input to exported function '"
-                                                    ^ tag ^ "' involves one or more types that are disallowed for page handler inputs: "
-                                                    ^ PS.toString s);
-                                       (cmap, emap)
-                                   end)
-
-                            | DCookie (_, _, t, tag) =>
-                              let
-                                  val s = sins cmap t
-                              in
-                                  if PS.isEmpty s then
-                                      ()
-                                  else
-                                      E.error ("Cookie '" ^ tag ^ "' includes one or more types that are disallowed for cookies: "
-                                               ^ PS.toString s);
-                                  (cmap, emap)
-                              end
-
-                            | _ => (cmap, emap))
-                      (IM.empty, IM.empty) file)
+        ignore (U.File.fold {kind = passthrough,
+                             con = passthrough,
+                             exp = exp,
+                             decl = decl}
+                            (IM.empty, IM.empty) file)
     end
 
 end
