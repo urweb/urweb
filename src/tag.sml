@@ -124,7 +124,7 @@ fun exp uf env (e, s) =
                                              ()
                                          else
                                              ErrorMsg.errorAt loc 
-                                                              ("Duplicate HTTP tag "
+                                                              ("Duplicate URL prefix "
                                                                ^ s);
                                          if ek = ek' then
                                              ()
