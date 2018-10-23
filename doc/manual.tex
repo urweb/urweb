@@ -2453,7 +2453,7 @@ It is most convenient to encapsulate an FFI binding with a new \texttt{.urp} fil
 \item \texttt{clientOnly Module.ident} registers a value as being allowed only in client-side code.
 \item \texttt{clientToServer Module.ident} declares a type as OK to marshal between clients and servers.  By default, abstract FFI types are not allowed to be marshalled, since your library might be maintaining invariants that the simple serialization code doesn't check.
 \item \texttt{effectful Module.ident} registers a function that can have side effects.  This is the default for \texttt{transaction}-based types, and, actually, this directive is mostly present for legacy compatibility reasons, since it used to be required explicitly for each \texttt{transaction}al function.
-\item \texttt{ffi FILE.urs} names the file giving your library's signature.  You can include multiple such files in a single \texttt{.urp} file, and each file \texttt{mod.urp} defines an FFI module \texttt{Mod}.
+\item \texttt{ffi FILE.urs} names the file giving your library's signature.  You can include multiple such files in a single \texttt{.urp} file, and each file \texttt{mod.urs} defines an FFI module \texttt{Mod}.
 \item \texttt{include FILE} requests inclusion of a C header file.
 \item \texttt{jsFile FILE} requests inclusion of a JavaScript source file.
 \item \texttt{jsFunc Module.ident=name} gives a mapping from an Ur name for a value to a JavaScript name.
