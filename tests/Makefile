@@ -28,3 +28,5 @@ simple::
 	./driver.sh fact
 	./driver.sh filter
 	./driver.sh jsbspace
+	./driver.sh utf8
+

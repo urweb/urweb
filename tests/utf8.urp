@@ -1,0 +1,5 @@
+database dbname=utf8
+sql utf8.sql
+safeGet Utf8/test_db
+
+utf8

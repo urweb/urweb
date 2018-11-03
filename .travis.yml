@@ -18,7 +18,7 @@ compiler:
 before_install:
   - export CONFIGURE_ARGS=""
   - if command -v apt-get &>/dev/null; then sudo apt-get update -qq; fi
-  - if command -v apt-get &>/dev/null; then sudo apt-get install -y mlton; fi
+  - if command -v apt-get &>/dev/null; then sudo apt-get install -y mlton lib-icudev; fi
   - if command -v brew &>/dev/null; then brew update; fi
   - if command -v brew &>/dev/null; then brew uninstall libtool; fi
   - if command -v brew &>/dev/null; then brew install libtool; fi
