@@ -153,6 +153,16 @@ fun mapM [m ::: (Type -> Type)] (_ : monad m) [a] [b] f =
         mapM' []
     end
 
+fun mapMi [m ::: (Type -> Type)] (_ : monad m) [a] [b] f =
+    let
+        fun mapM' i acc ls =
+            case ls of
+                [] => return (rev acc)
+              | x :: ls => x' <- f i x; mapM' (i + 1) (x' :: acc) ls
+    in
+        mapM' 0 []
+    end
+
 fun mapPartialM [m ::: (Type -> Type)] (_ : monad m) [a] [b] f =
     let
         fun mapPartialM' acc ls =
