@@ -20,10 +20,8 @@ fun test_fn_sside [a ::: Type] (_ : eq a) (_ : show a) (f : unit -> a) (expected
     </xml>
 
 fun substrings () : transaction page =
-
     return <xml>
       <body>
-
 	{test_fn_both_sides (fn _ => substring "abc" 0 3) "abc" "substrings 1"}
 	{test_fn_both_sides (fn _ => substring "abc" 1 2) "bc" "substrings 2"}
 	{test_fn_both_sides (fn _ => substring "abc" 2 1) "c" "substrings 3"}
@@ -32,7 +30,6 @@ fun substrings () : transaction page =
 	{test_fn_both_sides (fn _ => substring "ábó" 2 1) "ó" "substrings 6"}
 	{test_fn_both_sides (fn _ => substring "ábó" 0 2) "áb" "substrings 7"}
 	{test_fn_both_sides (fn _ => substring "ábó" 0 1) "á" "substrings 8"}
-
 	{test_fn_both_sides (fn _ => substring "" 0 0) "" "substrings 9"}
       </body>
     </xml>
@@ -52,8 +49,7 @@ fun strlens () : transaction page = return <xml>
     {test_fn_both_sides (fn _ => strlen "カ") 1 "strlen 10"}
     {test_fn_both_sides (fn _ => strlen "وظيفية") 6 "strlen 11"}
     {test_fn_both_sides (fn _ => strlen "函數") 2 "strlen 12"}
-    {test_fn_both_sides (fn _ => strlen "Функциональное") 14 "strlen 13"}
-    
+    {test_fn_both_sides (fn _ => strlen "Функциональное") 14 "strlen 13"}    
   </body>
   </xml>
 				       
@@ -64,11 +60,9 @@ fun strlenGens () : transaction page = return <xml>
     {test_fn_both_sides (fn _ => strlenGe "aba" 4) False "strlenGe 3"}
     {test_fn_both_sides (fn _ => strlenGe "aba" 3) True "strlenGe 4"}
     {test_fn_both_sides (fn _ => strlenGe "aba" 2) True "strlenGe 5"}
-
     {test_fn_both_sides (fn _ => strlenGe "àçá" 4) False "strlenGe 6"}
     {test_fn_both_sides (fn _ => strlenGe "àçá" 3) True "strlenGe 7"}
-    {test_fn_both_sides (fn _ => strlenGe "àçá" 2) True "strlenGe 8"}
-    
+    {test_fn_both_sides (fn _ => strlenGe "àçá" 2) True "strlenGe 8"}    
   </body>
   </xml>
 
@@ -87,18 +81,14 @@ fun strcats () : transaction page =
     in
 	return <xml>
 	  <body>
-	    {test_cat_and_len 1 "" "" "" 0}
-	    
+	    {test_cat_and_len 1 "" "" "" 0}	    
 	    {test_cat_and_len 2 "aa" "bb" "aabb" 4}
 	    {test_cat_and_len 3 "" "bb" "bb" 2}
 	    {test_cat_and_len 4 "aa" "" "aa" 2}
-
 	    {test_cat_and_len 5 "àà" "áá" "ààáá" 4}
 	    {test_cat_and_len 6 "" "áá" "áá" 2}
 	    {test_cat_and_len 7 "àà" "" "àà" 2}
-
-	    {test_cat_and_len 8 "函數" "ãã" "函數ãã" 4}
-	     
+	    {test_cat_and_len 8 "函數" "ãã" "函數ãã" 4}	     
 	  </body>
 	</xml>
 end
@@ -145,7 +135,6 @@ fun strindexs () : transaction page =
 	{test_fn_both_sides (fn _ => strindex "abàç" (strsub "ç" 0)) (Some 3) "strindex 5"}	
       </body>
     </xml>
-    
 
 fun strsindexs () : transaction page =
     return <xml>
@@ -405,9 +394,8 @@ fun ord_and_chrs () : transaction page =
 	{test_fn_both_sides (fn _ => chr (ord (strsub "カ" 0))) (strsub "カ" 0) "ord => chr 9"}	
       </body>
       </xml>
-
+    
 table t : { Id : int, Text : string }
-
 
 fun test_db () : transaction page =
     let
