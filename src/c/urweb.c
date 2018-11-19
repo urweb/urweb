@@ -1606,8 +1606,9 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
   return r;
 }
 
+uw_Basis_bool uw_Basis_isprint(uw_context ctx, uw_Basis_char ch);
+
 uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
-  unsigned char c = c1;
   char *r, *s2;
 
   uw_check_heap(ctx, 7);
@@ -1615,7 +1616,7 @@ uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
   r = s2 = ctx->heap.front;
   *s2++ = '"';
 
-  switch (c) {
+  switch (c1) {
   case '"':
     strcpy(s2, "\\\"");
     s2 += 2;
@@ -1637,10 +1638,16 @@ uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
     s2 += 4;
     break;
   default:
-    if (isprint((int)c) || c >= 128)
-      *s2++ = c;
+    
+    if (uw_Basis_isprint(ctx, c1) == uw_Basis_True)
+      {
+	int offset = 0;
+	U8_APPEND_UNSAFE(s2, offset, c1);
+	s2 += offset;
+      }
     else {
-      sprintf(s2, "\\%03o", (unsigned char)c);
+      assert(0777 >= c1);
+      sprintf(s2, "\\%03o", (unsigned char)c1);
       s2 += 4;
     }
   }
@@ -2482,16 +2489,17 @@ uw_Basis_bool uw_Basis_strlenGe(uw_context ctx, uw_Basis_string s, uw_Basis_int 
 }
 
 int aux_strchr(uw_Basis_string s, uw_Basis_char ch, int* o_offset) {
-  int u8idx = 0, offset = 0;
+  int u8idx = 0, offset = 0, offsetpr = 0;
   uw_Basis_char c;
     
   while (s[offset] != 0) {
     U8_NEXT(s, offset, -1, c);
     if (c == ch) {
-      *o_offset = offset;
+      *o_offset = offsetpr;
       return u8idx;
     }
 
+    offsetpr = offset;
     ++u8idx;
   }
 
