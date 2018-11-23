@@ -19,6 +19,18 @@ fun test_fn_sside [a ::: Type] (_ : eq a) (_ : show a) (f : unit -> a) (expected
       <pre>{[assert (f () = expected) "False" testname "True" ]}</pre>
     </xml>
 
+fun test_fn_cside [a ::: Type] (_ : eq a) (_ : show a) (f : unit -> a) (expected : a) (testname : string) : xbody =
+    <xml>
+      <active code={let
+		    val computed = f ()
+		    val msgErr = "False " ^ testname ^ ": expected " ^ (show expected) ^ " but is " ^ (show computed)
+		    val r = assert (computed = expected) msgErr testname "True"
+		in
+		    return <xml><p>Client side test: {[testname]}</p><pre>{[r]}</pre></xml>
+		    end}>
+      </active>
+    </xml>
+
 fun substrings () : transaction page =
     return <xml>
       <body>
@@ -359,27 +371,40 @@ fun isxdigits () : transaction page =
       </xml>
 
 fun tolowers () : transaction page =
-    return <xml>
-      <body>
-	{test_fn_both_sides (fn _ => tolower #"A") #"a" "tolower 1"}
-	{test_fn_both_sides (fn _ => tolower #"a") #"a" "tolower 2"}
-	{test_fn_both_sides (fn _ => tolower (strsub "á" 0)) (strsub "á" 0) "tolower 3"}
-	{test_fn_both_sides (fn _ => tolower (strsub "Á" 0)) (strsub "á" 0) "tolower 4"}
-	{test_fn_both_sides (fn _ => tolower #"1") #"1" "tolower 5"}
-      </body>
-    </xml>
+    let
+	fun lower_of a _ =
+	    tolower a
+    in
+	return <xml>
+	  <body>
+	    {test_fn_both_sides (lower_of #"A") #"a" "tolower 1"}
+	    {test_fn_both_sides (lower_of #"a") #"a" "tolower 2"}
+	    {test_fn_both_sides (lower_of (strsub "á" 0)) (strsub "á" 0) "tolower 3"}
+	    {test_fn_both_sides (lower_of (strsub "Á" 0)) (strsub "á" 0) "tolower 4"}
+	    {test_fn_both_sides (lower_of #"1") #"1" "tolower 5"}
+	    {test_fn_cside (lower_of (strsub "ß" 0)) (lower_of (strsub "ß" 0) ()) "tolower 6"}
+	  </body>
+	</xml>
+    end
     
 fun touppers () : transaction page =
-    return <xml>
-      <body>
-	{test_fn_both_sides (fn _ => toupper #"A") #"A" "toupper 1"}
-	{test_fn_both_sides (fn _ => toupper #"a") #"A" "toupper 2"}
-	{test_fn_both_sides (fn _ => toupper (strsub "á" 0)) (strsub "Á" 0) "toupper 3"}
-	{test_fn_both_sides (fn _ => toupper (strsub "Á" 0)) (strsub "Á" 0) "toupper 4"}
-	{test_fn_both_sides (fn _ => toupper #"1") #"1" "toupper 5"}	
-      </body>
-      </xml>
-
+    let
+	fun upper_of a _ =
+	    toupper a
+    in
+	return <xml>
+	  <body>
+	    {test_fn_both_sides (upper_of #"A") #"A" "toupper 1"}
+	    {test_fn_both_sides (upper_of #"a") #"A" "toupper 2"}
+	    {test_fn_both_sides (upper_of (strsub "á" 0)) (strsub "Á" 0) "toupper 3"}
+	    {test_fn_both_sides (upper_of (strsub "Á" 0)) (strsub "Á" 0) "toupper 4"}
+	    {test_fn_both_sides (upper_of #"1") #"1" "toupper 5"}
+	    
+	    {test_fn_cside (upper_of (strsub "ß" 0)) (upper_of (strsub "ß" 0) ()) "toupper 6"}
+	  </body>
+	</xml>
+    end
+    
 fun ord_and_chrs () : transaction page =
     return <xml>
       <body>
@@ -393,7 +418,19 @@ fun ord_and_chrs () : transaction page =
 	{test_fn_both_sides (fn _ => chr (ord (strsub "漢" 0))) (strsub "漢" 0) "ord => chr 8"}
 	{test_fn_both_sides (fn _ => chr (ord (strsub "カ" 0))) (strsub "カ" 0) "ord => chr 9"}	
       </body>
-      </xml>
+    </xml>
+
+fun test_ords () : transaction page =
+    let
+	fun ord_of c _ =
+	    ord c
+    in
+	return <xml>
+	  <body>
+	    {test_fn_cside (ord_of (strsub "a" 0)) (ord_of (strsub "a" 0) ()) "test ord 1"}
+	  </body>
+	</xml>
+    end
     
 table t : { Id : int, Text : string }
 
@@ -469,6 +506,7 @@ fun index () : transaction page =
 	<a link={tolowers ()}>tolowers</a>
 	<a link={touppers ()}>touppers</a>
 	<a link={ord_and_chrs ()}>ord_and_chrs</a>
+	<a link={test_ords ()}>test ord</a>
 	<a link={test_db ()}>test_db</a>
       </body>
       </xml>
