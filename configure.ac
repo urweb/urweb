@@ -111,6 +111,8 @@ pthread_t a;
     AC_MSG_RESULT(yes),
   AC_MSG_RESULT(no))
 
+AC_CHECK_FUNCS_ONCE([memmem])
+
 AC_SUBST(CC)
 AC_SUBST(BIN)
 AC_SUBST(LIB)
