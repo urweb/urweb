@@ -1559,101 +1559,89 @@ const char *uw_Basis_get_settings(uw_context ctx, uw_unit u) {
   }
 }
 
-uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
-  char *r, *s2;
-
-  uw_check_heap(ctx, strlen(s) * 4 + 3);
-
-  r = s2 = ctx->heap.front;
-  *s2++ = '"';
-
-  for (; *s; s++) {
-    unsigned char c = *s;
-
-    switch (c) {
-    case '"':
-      strcpy(s2, "\\\"");
-      s2 += 2;
-      break;
-    case '\'':
-      strcpy(s2, "\\047");
-      s2 += 4;
-      break;
-    case '\\':
-      strcpy(s2, "\\\\");
-      s2 += 2;
-      break;
-    case '<':
-      strcpy(s2, "\\074");
-      s2 += 4;
-      break;
-    case '&':
-      strcpy(s2, "\\046");
-      s2 += 4;
-      break;
-    default:
-      if (isprint((int)c) || c >= 128)
-        *s2++ = c;
-      else {
-        sprintf(s2, "\\%03o", c);
-        s2 += 4;
-      }
-    }
-  }
-
-  strcpy(s2, "\"");
-  ctx->heap.front = s2 + 2;
-  return r;
-}
-
 uw_Basis_bool uw_Basis_isprint(uw_context ctx, uw_Basis_char ch);
-
-uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
-  char *r, *s2;
-
-  uw_check_heap(ctx, 7);
-
-  r = s2 = ctx->heap.front;
-  *s2++ = '"';
-
+void jsifyChar(char**buffer_ptr, uw_context ctx, uw_Basis_char c1) {
+  char* buffer = *buffer_ptr;
+  
   switch (c1) {
   case '"':
-    strcpy(s2, "\\\"");
-    s2 += 2;
+    strcpy(buffer, "\\\"");
+    buffer += 2;
     break;
   case '\'':
-    strcpy(s2, "\\047");
-    s2 += 4;
+    strcpy(buffer, "\\047");
+    buffer += 4;
     break;
   case '\\':
-    strcpy(s2, "\\\\");
-    s2 += 2;
+    strcpy(buffer, "\\\\");
+    buffer += 2;
     break;
   case '<':
-    strcpy(s2, "\\074");
-    s2 += 4;
+    strcpy(buffer, "\\074");
+    buffer += 4;
     break;
   case '&':
-    strcpy(s2, "\\046");
-    s2 += 4;
+    strcpy(buffer, "\\046");
+    buffer += 4;
     break;
   default:
     
     if (uw_Basis_isprint(ctx, c1) == uw_Basis_True)
       {
 	int offset = 0;
-	U8_APPEND_UNSAFE(s2, offset, c1);
-	s2 += offset;
+	U8_APPEND_UNSAFE(buffer, offset, c1);
+	buffer += offset;
       }
     else {
-      assert(0777 >= c1);
-      sprintf(s2, "\\%03o", (unsigned char)c1);
-      s2 += 4;
+      assert(65536 > c1);
+      sprintf(buffer, "\\u%04x", (unsigned char)c1);
+      buffer += 6;
     }
   }
 
+ 
+  *buffer_ptr = buffer;
+}
+
+uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
+  char *r, *s2;
+  uw_Basis_char c;
+
+  uw_check_heap(ctx, strlen(s) * 6 + 3);
+
+  r = s2 = ctx->heap.front;
+  *s2++ = '"';
+
+  int offset = 0;
+  while(s[offset] != 0)
+    {
+      U8_NEXT(s, offset, -1, c);
+      
+      jsifyChar(&s2, ctx, c);      
+    }
+
   strcpy(s2, "\"");
   ctx->heap.front = s2 + 2;
+
+  return r;
+}
+
+uw_Basis_int uw_Basis_ord(uw_context ctx, uw_Basis_char c);
+
+uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
+  char *r, *s2;
+
+  uw_check_heap(ctx, 8);
+
+  r = s2 = ctx->heap.front;
+  
+  *s2++ = '"';
+  
+  jsifyChar(&s2, ctx, c1);
+
+  strcpy(s2, "\"");
+  ctx->heap.front = s2 + 2;
+
   return r;
 }
 
@@ -1697,6 +1685,7 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
 
   strcpy(s2, "\"");
   ctx->script.front = s2 + 1;
+
   return r;
 }
 
@@ -2262,25 +2251,27 @@ uw_unit uw_Basis_htmlifyInt_w(uw_context ctx, uw_Basis_int n) {
   return uw_unit_v;
 }
 
-char *uw_Basis_htmlifySpecialChar(uw_context ctx, unsigned char ch) {
+char *uw_Basis_htmlifySpecialChar(uw_context ctx, uw_Basis_char ch) {
   unsigned int n = ch;
   int len;
   char *r;
 
-  uw_check_heap(ctx, INTS_MAX+3);
+  uw_check_heap(ctx, INTS_MAX+3 + 1);
   r = ctx->heap.front;
-  sprintf(r, "&#%u;%n", n, &len);
+  len = sprintf(r, "&#%u;", n);
   ctx->heap.front += len+1;
+
   return r;
 }
 
-uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, unsigned char ch) {
+uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, uw_Basis_char ch) {
   unsigned int n = ch;
   int len;
 
   uw_check(ctx, INTS_MAX+3);
-  sprintf(ctx->page.front, "&#%u;%n", n, &len);
+  len = sprintf(ctx->page.front, "&#%u;", n);
   ctx->page.front += len;
+
   return uw_unit_v;
 }
 
@@ -2328,48 +2319,69 @@ uw_unit uw_Basis_jsifyInt_w(uw_context ctx, uw_Basis_int n) {
 
 char *uw_Basis_htmlifyString(uw_context ctx, const char *s) {
   char *r, *s2;
+  uw_Basis_char c1;
+  int offset = 0, len = 0;
+  
+  uw_check_heap(ctx, strlen(s) * (INTS_MAX + 3) + 1);
 
-  uw_check_heap(ctx, strlen(s) * 5 + 1);
-
-  for (r = s2 = ctx->heap.front; *s; s++) {
-    unsigned char c = *s;
-
-    switch (c) {
-    case '<':
-      strcpy(s2, "&lt;");
-      s2 += 4;
-      break;
-    case '&':
-      strcpy(s2, "&amp;");
-      s2 += 5;
-      break;
-    default:
-      *s2++ = c;
+  r = s2 = ctx->heap.front;
+  
+  while (s[offset] != 0) {
+    
+    U8_NEXT(s, offset, -1, c1);
+     
+    
+    if (U8_IS_SINGLE(c1) && uw_Basis_isprint(ctx, c1)) {
+      switch (c1) {
+      case '<':
+	strcpy(s2, "&lt;");
+	s2 += 4;
+	break;
+      case '&':
+	strcpy(s2, "&amp;");
+	s2 += 5;
+	break;
+      default:
+	*s2++ = c1;	
+      }      
+    } else {
+      len = sprintf(s2, "&#%u;", c1);
+      s2 += len;
     }
   }
-
+  
   *s2++ = 0;
   ctx->heap.front = s2;
+
   return r;
 }
 
 uw_unit uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
   uw_check(ctx, strlen(s) * 6);
+  int offset = 0;
+  uw_Basis_char c1;
+  
+  while(s[offset] != 0){
 
-  for (; *s; s++) {
-    unsigned char c = *s;
-
-    switch (c) {
-    case '<':
-      uw_write_unsafe(ctx, "&lt;");
-      break;
-    case '&':
-      uw_write_unsafe(ctx, "&amp;");
-      break;
-    default:
-      uw_writec_unsafe(ctx, c);
+    U8_NEXT(s, offset, -1, c1);
+ 
+    if (U8_IS_SINGLE(c1) && uw_Basis_isprint(ctx, c1)) {
+	
+      switch (c1) {
+      case '<':
+	uw_write_unsafe(ctx, "&lt;");
+	break;
+      case '&':
+	uw_write_unsafe(ctx, "&amp;");
+	break;
+      default:
+	uw_writec_unsafe(ctx, c1);
+      }
     }
-  }
+    else {
+      uw_Basis_htmlifySpecialChar_w(ctx, c1);
+    }    
+  }  
 
   return uw_unit_v;
 }
@@ -4474,9 +4486,46 @@ uw_Basis_int uw_Basis_ord(uw_context ctx, uw_Basis_char c) {
   return (uw_Basis_int)c;
 }
 
+uw_Basis_bool uw_Basis_iscodepoint (uw_context ctx, uw_Basis_int n) {
+  (void)ctx;
+  uw_Basis_char ch = (uw_Basis_char)n;
+
+  if (UCHAR_MIN_VALUE <= ch && UCHAR_MAX_VALUE > ch) {
+
+    if (U8_LENGTH(ch) == 0) {
+      return uw_Basis_False;
+    }
+
+    if (u_charType(ch) == U_UNASSIGNED) {
+      return uw_Basis_False;
+    }
+
+  } else {
+    return uw_Basis_False;
+  }
+
+  return uw_Basis_True;
+}
+
 uw_Basis_char uw_Basis_chr(uw_context ctx, uw_Basis_int n) {
   (void)ctx;
-  return (uw_Basis_char)n;
+  uw_Basis_char ch = (uw_Basis_char)n;
+
+  if (UCHAR_MIN_VALUE <= ch && UCHAR_MAX_VALUE > ch) {
+
+    if (U8_LENGTH(ch) == 0) {
+      uw_error(ctx, FATAL, "The integer %lld cannot be converted to a char", n);
+    }
+
+    if (u_charType(ch) == U_UNASSIGNED) {
+      uw_error(ctx, FATAL, "The integer %lld is not a valid char codepoint", n);
+    }
+
+  } else {
+    uw_error(ctx, FATAL, "Integer %lld out of range of unicode chars", n);
+  }
+ 
+  return ch;
 }
 
 uw_Basis_string uw_Basis_currentUrl(uw_context ctx) {

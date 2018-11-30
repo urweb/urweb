@@ -79,6 +79,8 @@ val toupper : char -> char
 val ord : char -> int
 val chr : int -> char
 
+val iscodepoint : int -> bool
+
 (** String operations *)
 
 val strlen : string -> int
