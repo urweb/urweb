@@ -2321,18 +2321,17 @@ uw_unit uw_Basis_jsifyInt_w(uw_context ctx, uw_Basis_int n) {
 char *uw_Basis_htmlifyString(uw_context ctx, const char *s) {
   char *r, *s2;
   uw_Basis_char c1;
-  int offset = 0, len = 0;
+  int oldoffset = 0, offset = 0, offset2 = 0, len = 0;
   
   uw_check_heap(ctx, strlen(s) * (INTS_MAX + 3) + 1);
 
   r = s2 = ctx->heap.front;
   
   while (s[offset] != 0) {
-    
+    oldoffset = offset;
     U8_NEXT(s, offset, -1, c1);
-     
-    
-    if (U8_IS_SINGLE(c1) && uw_Basis_isprint(ctx, c1)) {
+
+    if ((offset - oldoffset == 1) && uw_Basis_isprint(ctx, c1)) {
       switch (c1) {
       case '<':
 	strcpy(s2, "&lt;");
@@ -2343,7 +2342,9 @@ char *uw_Basis_htmlifyString(uw_context ctx, const char *s) {
 	s2 += 5;
 	break;
       default:
-	*s2++ = c1;	
+	offset2 = 0;
+	U8_APPEND_UNSAFE(s2, offset2, c1);
+	s2 += offset2;
       }      
     } else {
       len = sprintf(s2, "&#%u;", c1);
@@ -2353,20 +2354,19 @@ char *uw_Basis_htmlifyString(uw_context ctx, const char *s) {
   
   *s2++ = 0;
   ctx->heap.front = s2;
-
   return r;
 }
 
 uw_unit uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
   uw_check(ctx, strlen(s) * 6);
-  int offset = 0;
+  int offset = 0, oldoffset = 0;
   uw_Basis_char c1;
   
   while(s[offset] != 0){
-
+    oldoffset = offset;
     U8_NEXT(s, offset, -1, c1);
  
-    if (U8_IS_SINGLE(c1) && uw_Basis_isprint(ctx, c1)) {
+    if ((offset - oldoffset == 1) && uw_Basis_isprint(ctx, c1)) {
 	
       switch (c1) {
       case '<':
