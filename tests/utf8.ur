@@ -100,7 +100,10 @@ fun strcats () : transaction page =
 	    {test_cat_and_len 5 "àà" "áá" "ààáá" 4}
 	    {test_cat_and_len 6 "" "áá" "áá" 2}
 	    {test_cat_and_len 7 "àà" "" "àà" 2}
-	    {test_cat_and_len 8 "函數" "ãã" "函數ãã" 4}	     
+	    {test_cat_and_len 8 "函數" "ãã" "函數ãã" 4}
+	    {test_cat_and_len 9 "ç" "ã" "çã" 2}
+	    {test_cat_and_len 10 (show (strsub "ç" 0)) (show (strsub "ã" 0)) "çã" 2}
+	    {test_cat_and_len 11 (show (chr 231)) (show (chr 227)) "çã" 2}
 	  </body>
 	</xml>
 end

@@ -1560,6 +1560,7 @@ const char *uw_Basis_get_settings(uw_context ctx, uw_unit u) {
 }
 
 uw_Basis_bool uw_Basis_isprint(uw_context ctx, uw_Basis_char ch);
+
 void jsifyChar(char**buffer_ptr, uw_context ctx, uw_Basis_char c1) {
   char* buffer = *buffer_ptr;
   
@@ -1594,7 +1595,7 @@ void jsifyChar(char**buffer_ptr, uw_context ctx, uw_Basis_char c1) {
       }
     else {
       assert(65536 > c1);
-      sprintf(buffer, "\\u%04x", (unsigned char)c1);
+      sprintf(buffer, "\\u%04x", c1);
       buffer += 6;
     }
   }
@@ -4488,43 +4489,17 @@ uw_Basis_int uw_Basis_ord(uw_context ctx, uw_Basis_char c) {
 
 uw_Basis_bool uw_Basis_iscodepoint (uw_context ctx, uw_Basis_int n) {
   (void)ctx;
-  uw_Basis_char ch = (uw_Basis_char)n;
-
-  if (UCHAR_MIN_VALUE <= ch && UCHAR_MAX_VALUE > ch) {
-
-    if (U8_LENGTH(ch) == 0) {
-      return uw_Basis_False;
-    }
-
-    if (u_charType(ch) == U_UNASSIGNED) {
-      return uw_Basis_False;
-    }
-
-  } else {
-    return uw_Basis_False;
-  }
-
-  return uw_Basis_True;
+  return !!(n <= 0x10FFFF);
 }
 
 uw_Basis_char uw_Basis_chr(uw_context ctx, uw_Basis_int n) {
   (void)ctx;
   uw_Basis_char ch = (uw_Basis_char)n;
 
-  if (UCHAR_MIN_VALUE <= ch && UCHAR_MAX_VALUE > ch) {
-
-    if (U8_LENGTH(ch) == 0) {
-      uw_error(ctx, FATAL, "The integer %lld cannot be converted to a char", n);
-    }
-
-    if (u_charType(ch) == U_UNASSIGNED) {
-      uw_error(ctx, FATAL, "The integer %lld is not a valid char codepoint", n);
-    }
-
-  } else {
-    uw_error(ctx, FATAL, "Integer %lld out of range of unicode chars", n);
+  if (n > 0x10FFFF) {
+    uw_error(ctx, FATAL, "The integer %lld is not a valid char codepoint", n);
   }
- 
+
   return ch;
 }
 
