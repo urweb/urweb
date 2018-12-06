@@ -68,6 +68,12 @@ fun highencode () : transaction page =
 	{test_fn_cside (fn _ => strindex "𝌆𝌇𝌈𝌉" (strsub "𝌇" 0)) (strindex "𝌆𝌇𝌈𝌉" (strsub "𝌇" 0)) "high encode - strindex 3"}
 	{test_fn_cside (fn _ => strindex "𝌆𝌇𝌈𝌉" (strsub "𝌈" 0)) (strindex "𝌆𝌇𝌈𝌉" (strsub "𝌈" 0)) "high encode - strindex 4"}
 	{test_fn_cside (fn _ => strindex "𝌆𝌇𝌈𝌉" (strsub "𝌉" 0)) (strindex "𝌆𝌇𝌈𝌉" (strsub "𝌉" 0)) "high encode - strindex 5"}
+
+	{test_fn_cside (fn _ => ord (strsub "𝌆𝌇𝌈𝌉" 0)) (ord (strsub "𝌆𝌇𝌈𝌉" 0)) "high encode - ord 1"}
+	{test_fn_cside (fn _ => ord (strsub "𝌆𝌇𝌈𝌉" 1)) (ord (strsub "𝌆𝌇𝌈𝌉" 1)) "high encode - ord 2"}
+	{test_fn_cside (fn _ => ord (strsub "𝌆𝌇𝌈𝌉" 2)) (ord (strsub "𝌆𝌇𝌈𝌉" 2)) "high encode - ord 3"}
+	{test_fn_cside (fn _ => ord (strsub "𝌆𝌇𝌈𝌉" 3)) (ord (strsub "𝌆𝌇𝌈𝌉" 3)) "high encode - ord 4"}
+
 	</body>
       </xml>
 
@@ -471,6 +477,11 @@ fun test_ords () : transaction page =
 	return <xml>
 	  <body>
 	    {test_fn_cside (ord_of (strsub "a" 0)) (ord_of (strsub "a" 0) ()) "test ord 1"}
+	    {test_fn_cside (ord_of (strsub "á" 0)) (ord_of (strsub "á" 0) ()) "test ord 2"}
+	    {test_fn_cside (ord_of (strsub "5" 0)) (ord_of (strsub "5" 0) ()) "test ord 3"}
+	    {test_fn_cside (ord_of (strsub "が" 0)) (ord_of (strsub "が" 0) ()) "test ord 4"}
+	    {test_fn_cside (ord_of (strsub "漢" 0)) (ord_of (strsub "漢" 0) ()) "test ord 5"}
+	    {test_fn_cside (ord_of (strsub "カ" 0)) (ord_of (strsub "カ" 0) ()) "test ord 6"}
 	  </body>
 	</xml>
     end
