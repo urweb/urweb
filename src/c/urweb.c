@@ -1594,9 +1594,13 @@ void jsifyChar(char**buffer_ptr, uw_context ctx, uw_Basis_char c1) {
 	buffer += offset;
       }
     else {
-      assert(65536 > c1);
-      sprintf(buffer, "\\u%04x", c1);
-      buffer += 6;
+      if(65536 > c1) {
+	sprintf(buffer, "\\u%04x", c1);
+	buffer += 6;
+      } else {
+	sprintf(buffer, "\\u{%06x}", c1);
+	buffer += 10;
+      }
     }
   }
 
@@ -1608,7 +1612,7 @@ uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *s2;
   uw_Basis_char c;
 
-  uw_check_heap(ctx, strlen(s) * 6 + 3);
+  uw_check_heap(ctx, strlen(s) * 10 + 3);
 
   r = s2 = ctx->heap.front;
   *s2++ = '"';
@@ -1632,7 +1636,7 @@ uw_Basis_int uw_Basis_ord(uw_context ctx, uw_Basis_char c);
 uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
   char *r, *s2;
 
-  uw_check_heap(ctx, 8);
+  uw_check_heap(ctx, 10);
 
   r = s2 = ctx->heap.front;
   

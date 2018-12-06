@@ -31,6 +31,25 @@ fun test_fn_cside [a ::: Type] (_ : eq a) (_ : show a) (f : unit -> a) (expected
       </active>
     </xml>
 
+fun highencode () : transaction page =
+    return <xml>
+      <body>
+	{test_fn_cside (fn _ => strlen "𝌆𝌇𝌈𝌉") (strlen "𝌆𝌇𝌈𝌉") "high encode - strlen 1"}
+	{test_fn_cside (fn _ => strlen "𝌇𝌈𝌉") (strlen "𝌇𝌈𝌉") "high encode - strlen 2"}
+	{test_fn_cside (fn _ => strlen "𝌈𝌉") (strlen "𝌈𝌉") "high encode - strlen 3"}
+	{test_fn_cside (fn _ => strlen "𝌉") (strlen "𝌉") "high encode - strlen 4"}
+	
+	{test_fn_cside (fn _ => substring "𝌆𝌇𝌈𝌉" 1 3) (substring "𝌆𝌇𝌈𝌉" 1 3) "high encode - substring 1"}
+	{test_fn_cside (fn _ => substring "𝌆𝌇𝌈𝌉" 2 2) (substring "𝌆𝌇𝌈𝌉" 2 2) "high encode - substring 2"}
+	{test_fn_cside (fn _ => substring "𝌆𝌇𝌈𝌉" 3 1) (substring "𝌆𝌇𝌈𝌉" 3 1) "high encode - substring 3"}
+
+	{test_fn_cside (fn _ => strlen (substring "𝌆𝌇𝌈𝌉" 1 3)) (strlen (substring "𝌆𝌇𝌈𝌉" 1 3)) "high encode - strlen of substring 1"}
+	{test_fn_cside (fn _ => strlen (substring "𝌆𝌇𝌈𝌉" 2 2)) (strlen (substring "𝌆𝌇𝌈𝌉" 2 2)) "high encode - strlen of substring 2"}
+	{test_fn_cside (fn _ => strlen (substring "𝌆𝌇𝌈𝌉" 3 1)) (strlen (substring "𝌆𝌇𝌈𝌉" 3 1)) "high encode - strlen of substring 3"}
+	
+      </body>
+      </xml>
+
 fun substrings () : transaction page =
     return <xml>
       <body>
@@ -510,6 +529,7 @@ fun index () : transaction page =
 	<a link={touppers ()}>touppers</a>
 	<a link={ord_and_chrs ()}>ord_and_chrs</a>
 	<a link={test_ords ()}>test ord</a>
+	<a link={highencode ()}>highencode</a>
 	<a link={test_db ()}>test_db</a>
       </body>
       </xml>
