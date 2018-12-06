@@ -46,8 +46,29 @@ fun highencode () : transaction page =
 	{test_fn_cside (fn _ => strlen (substring "𝌆𝌇𝌈𝌉" 1 3)) (strlen (substring "𝌆𝌇𝌈𝌉" 1 3)) "high encode - strlen of substring 1"}
 	{test_fn_cside (fn _ => strlen (substring "𝌆𝌇𝌈𝌉" 2 2)) (strlen (substring "𝌆𝌇𝌈𝌉" 2 2)) "high encode - strlen of substring 2"}
 	{test_fn_cside (fn _ => strlen (substring "𝌆𝌇𝌈𝌉" 3 1)) (strlen (substring "𝌆𝌇𝌈𝌉" 3 1)) "high encode - strlen of substring 3"}
-	
-      </body>
+
+	{test_fn_cside (fn _ => strsub "𝌆𝌇𝌈𝌉" 0) (strsub "𝌆𝌇𝌈𝌉" 0) "high encode - strsub 1"}
+	{test_fn_cside (fn _ => strsub "𝌆𝌇𝌈𝌉" 1) (strsub "𝌆𝌇𝌈𝌉" 1) "high encode - strsub 2"}
+	{test_fn_cside (fn _ => strsub "𝌆𝌇𝌈𝌉" 2) (strsub "𝌆𝌇𝌈𝌉" 2) "high encode - strsub 3"}
+	{test_fn_cside (fn _ => strsub "𝌆𝌇𝌈𝌉" 3) (strsub "𝌆𝌇𝌈𝌉" 3) "high encode - strsub 4"}
+
+	{test_fn_cside (fn _ => strsuffix "𝌆𝌇𝌈𝌉" 0) (strsuffix "𝌆𝌇𝌈𝌉" 0) "high encode - strsuffix 1"}
+	{test_fn_cside (fn _ => strsuffix "𝌆𝌇𝌈𝌉" 1) (strsuffix "𝌆𝌇𝌈𝌉" 1) "high encode - strsuffix 2"}
+	{test_fn_cside (fn _ => strsuffix "𝌆𝌇𝌈𝌉" 2) (strsuffix "𝌆𝌇𝌈𝌉" 2) "high encode - strsuffix 3"}
+	{test_fn_cside (fn _ => strsuffix "𝌆𝌇𝌈𝌉" 3) (strsuffix "𝌆𝌇𝌈𝌉" 3) "high encode - strsuffix 4"}
+
+	{test_fn_cside (fn _ => strchr "𝌆𝌇𝌈𝌉" #"c") (strchr "𝌆𝌇𝌈𝌉" #"c") "high encode - strchr 1"}
+	{test_fn_cside (fn _ => strchr "𝌆𝌇𝌈𝌉" (strsub "𝌆" 0)) (strchr "𝌆𝌇𝌈𝌉" (strsub "𝌆" 0)) "high encode - strchr 2"}
+	{test_fn_cside (fn _ => strchr "𝌆𝌇𝌈𝌉" (strsub "𝌇" 0)) (strchr "𝌆𝌇𝌈𝌉" (strsub "𝌇" 0)) "high encode - strchr 3"}
+	{test_fn_cside (fn _ => strchr "𝌆𝌇𝌈𝌉" (strsub "𝌈" 0)) (strchr "𝌆𝌇𝌈𝌉" (strsub "𝌈" 0)) "high encode - strchr 4"}
+	{test_fn_cside (fn _ => strchr "𝌆𝌇𝌈𝌉" (strsub "𝌉" 0)) (strchr "𝌆𝌇𝌈𝌉" (strsub "𝌉" 0)) "high encode - strchr 5"}
+
+	{test_fn_cside (fn _ => strindex "𝌆𝌇𝌈𝌉" #"c") (strindex "𝌆𝌇𝌈𝌉" #"c") "high encode - strindex 1"}
+	{test_fn_cside (fn _ => strindex "𝌆𝌇𝌈𝌉" (strsub "𝌆" 0)) (strindex "𝌆𝌇𝌈𝌉" (strsub "𝌆" 0)) "high encode - strindex 2"}
+	{test_fn_cside (fn _ => strindex "𝌆𝌇𝌈𝌉" (strsub "𝌇" 0)) (strindex "𝌆𝌇𝌈𝌉" (strsub "𝌇" 0)) "high encode - strindex 3"}
+	{test_fn_cside (fn _ => strindex "𝌆𝌇𝌈𝌉" (strsub "𝌈" 0)) (strindex "𝌆𝌇𝌈𝌉" (strsub "𝌈" 0)) "high encode - strindex 4"}
+	{test_fn_cside (fn _ => strindex "𝌆𝌇𝌈𝌉" (strsub "𝌉" 0)) (strindex "𝌆𝌇𝌈𝌉" (strsub "𝌉" 0)) "high encode - strindex 5"}
+	</body>
       </xml>
 
 fun substrings () : transaction page =
