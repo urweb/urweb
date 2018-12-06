@@ -69,10 +69,32 @@ fun highencode () : transaction page =
 	{test_fn_cside (fn _ => strindex "𝌆𝌇𝌈𝌉" (strsub "𝌈" 0)) (strindex "𝌆𝌇𝌈𝌉" (strsub "𝌈" 0)) "high encode - strindex 4"}
 	{test_fn_cside (fn _ => strindex "𝌆𝌇𝌈𝌉" (strsub "𝌉" 0)) (strindex "𝌆𝌇𝌈𝌉" (strsub "𝌉" 0)) "high encode - strindex 5"}
 
+	{test_fn_cside (fn _ => strsindex "𝌆𝌇𝌈𝌉" "") (strsindex "𝌆𝌇𝌈𝌉" "") "high encode - strsindex 1"}
+	{test_fn_cside (fn _ => strsindex "𝌆𝌇𝌈𝌉" "𝌆𝌇𝌈𝌉") (strsindex "𝌆𝌇𝌈𝌉" "𝌆𝌇𝌈𝌉") "high encode - strsindex 2"}
+	{test_fn_cside (fn _ => strsindex "𝌆𝌇𝌈𝌉" "𝌆𝌇𝌈c") (strsindex "𝌆𝌇𝌈𝌉" "𝌆𝌇𝌈c") "high encode - strsindex 3"}
+	{test_fn_cside (fn _ => strsindex "𝌆𝌇𝌈𝌉" "𝌇𝌈𝌉") (strsindex "𝌆𝌇𝌈𝌉" "𝌇𝌈𝌉") "high encode - strsindex 4"}
+	{test_fn_cside (fn _ => strsindex "𝌆𝌇𝌈𝌉" "𝌇𝌈c") (strsindex "𝌆𝌇𝌈𝌉" "𝌇𝌈c") "high encode - strsindex 5"}
+	{test_fn_cside (fn _ => strsindex "𝌆𝌇𝌈𝌉" "𝌈𝌉") (strsindex "𝌆𝌇𝌈𝌉" "𝌈𝌉") "high encode - strsindex 6"}
+	{test_fn_cside (fn _ => strsindex "𝌆𝌇𝌈𝌉" "𝌈c") (strsindex "𝌆𝌇𝌈𝌉" "𝌈c") "high encode - strsindex 7"}
+	{test_fn_cside (fn _ => strsindex "𝌆𝌇𝌈𝌉" "𝌉") (strsindex "𝌆𝌇𝌈𝌉" "𝌉") "high encode - strsindex 8"}
+	{test_fn_cside (fn _ => strsindex "𝌆𝌇𝌈𝌉" "c") (strsindex "𝌆𝌇𝌈𝌉" "c") "high encode - strsindex 9"}
+
+	{test_fn_cside (fn _ => strcspn "𝌆𝌇𝌈𝌉" "") (strcspn "𝌆𝌇𝌈𝌉" "") "high encode - strcspn 1"}
+	{test_fn_cside (fn _ => strcspn "𝌆𝌇𝌈𝌉" "𝌆𝌇𝌈𝌉") (strcspn "𝌆𝌇𝌈𝌉" "𝌆𝌇𝌈𝌉") "high encode - strcspn 2"}
+	{test_fn_cside (fn _ => strcspn "𝌆𝌇𝌈𝌉" "𝌆") (strcspn "𝌆𝌇𝌈𝌉" "𝌆") "high encode - strcspn 3"}
+	{test_fn_cside (fn _ => strcspn "𝌆𝌇𝌈𝌉" "𝌇𝌈𝌉") (strcspn "𝌆𝌇𝌈𝌉" "𝌇𝌈𝌉") "high encode - strcspn 4"}
+	{test_fn_cside (fn _ => strcspn "𝌆𝌇𝌈𝌉" "𝌈𝌉") (strcspn "𝌆𝌇𝌈𝌉" "𝌈𝌉") "high encode - strcspn 5"}
+	{test_fn_cside (fn _ => strcspn "𝌆𝌇𝌈𝌉" "𝌉") (strcspn "𝌆𝌇𝌈𝌉" "𝌉") "high encode - strcspn 6"}
+	
 	{test_fn_cside (fn _ => ord (strsub "𝌆𝌇𝌈𝌉" 0)) (ord (strsub "𝌆𝌇𝌈𝌉" 0)) "high encode - ord 1"}
 	{test_fn_cside (fn _ => ord (strsub "𝌆𝌇𝌈𝌉" 1)) (ord (strsub "𝌆𝌇𝌈𝌉" 1)) "high encode - ord 2"}
 	{test_fn_cside (fn _ => ord (strsub "𝌆𝌇𝌈𝌉" 2)) (ord (strsub "𝌆𝌇𝌈𝌉" 2)) "high encode - ord 3"}
 	{test_fn_cside (fn _ => ord (strsub "𝌆𝌇𝌈𝌉" 3)) (ord (strsub "𝌆𝌇𝌈𝌉" 3)) "high encode - ord 4"}
+
+	{test_fn_cside (fn _ => show (strsub "𝌆𝌇𝌈𝌉" 0)) (show (strsub "𝌆𝌇𝌈𝌉" 0)) "high encode - show 1"}
+	{test_fn_cside (fn _ => show (strsub "𝌆𝌇𝌈𝌉" 1)) (show (strsub "𝌆𝌇𝌈𝌉" 1)) "high encode - show 2"}
+	{test_fn_cside (fn _ => show (strsub "𝌆𝌇𝌈𝌉" 2)) (show (strsub "𝌆𝌇𝌈𝌉" 2)) "high encode - show 3"}
+	{test_fn_cside (fn _ => show (strsub "𝌆𝌇𝌈𝌉" 3)) (show (strsub "𝌆𝌇𝌈𝌉" 3)) "high encode - show 4"}
 
 	</body>
       </xml>
