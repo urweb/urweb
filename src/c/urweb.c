@@ -4473,7 +4473,7 @@ uw_Basis_bool uw_Basis_isupper(uw_context ctx, uw_Basis_char c) {
 
 uw_Basis_bool uw_Basis_isxdigit(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!u_hasBinaryProperty(c, UCHAR_POSIX_XDIGIT);
+  return !!(c <= 0x7f && u_isxdigit(c));
 }
 
 uw_Basis_char uw_Basis_tolower(uw_context ctx, uw_Basis_char c) {
