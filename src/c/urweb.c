@@ -1975,7 +1975,7 @@ char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
 
     if (c == ' ')
       *p++ = '+';
-    else if (isalnum(c))
+    else if (U8_IS_SINGLE(c) && isalnum(c))
       *p++ = c;
     else {
       sprintf(p, ".%02X", c);
@@ -2067,7 +2067,7 @@ uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
 
     if (c == ' ')
       uw_writec_unsafe(ctx, '+');
-    else if (isalnum(c))
+    else if (U8_IS_SINGLE(c) && isalnum(c))
       uw_writec_unsafe(ctx, c);
     else {
       sprintf(ctx->page.front, ".%02X", c);
@@ -4758,7 +4758,7 @@ uw_Basis_string uw_Basis_atom(uw_context ctx, uw_Basis_string s) {
 
   for (p = s; *p; ++p) {
     char c = *p;
-    if (!U8_IS_SINGLE(c) && !isalnum((int)c) && c != '+' && c != '-' && c != '.' && c != '%' && c != '#')
+    if (!U8_IS_SINGLE(c) || (!isalnum((int)c) && c != '+' && c != '-' && c != '.' && c != '%' && c != '#'))
       uw_error(ctx, FATAL, "Disallowed character in CSS atom");
   }
 
@@ -4770,8 +4770,8 @@ uw_Basis_string uw_Basis_css_url(uw_context ctx, uw_Basis_string s) {
 
   for (p = s; *p; ++p) {
     char c = *p;
-    if (!U8_IS_SINGLE(c) && !isalnum((int)c) && c != ':' && c != '/' && c != '.' && c != '_' && c != '+'
-        && c != '-' && c != '%' && c != '?' && c != '&' && c != '=' && c != '#')
+    if (!U8_IS_SINGLE(c) || (!isalnum((int)c) && c != ':' && c != '/' && c != '.' && c != '_' && c != '+'
+			     && c != '-' && c != '%' && c != '?' && c != '&' && c != '=' && c != '#'))
       uw_error(ctx, FATAL, "Disallowed character in CSS URL");
   }
 
@@ -4784,12 +4784,12 @@ uw_Basis_string uw_Basis_property(uw_context ctx, uw_Basis_string s) {
   if (!*s)
     uw_error(ctx, FATAL, "Empty CSS property");
 
-  if (!islower((int)s[0]) && s[0] != '_')
+  if (!U8_IS_SINGLE(s[0]) || (!islower((int)s[0]) && s[0] != '_'))
     uw_error(ctx, FATAL, "Bad initial character in CSS property");
 
   for (p = s; *p; ++p) {
     char c = *p;
-    if (!U8_IS_SINGLE(c) && !islower((int)c) && !isdigit((int)c) && c != '_' && c != '-')
+    if (!U8_IS_SINGLE(c) || (!islower((int)c) && !isdigit((int)c) && c != '_' && c != '-'))
       uw_error(ctx, FATAL, "Disallowed character in CSS property");
   }
 
@@ -4840,9 +4840,9 @@ uw_Basis_postField *uw_Basis_firstFormField(uw_context ctx, uw_Basis_string s) {
 
 uw_Basis_string uw_Basis_blessData(uw_context ctx, uw_Basis_string s) {
   char *p = s;
-
+  
   for (; *p; ++p)
-    if (!isalnum(*p) && *p != '-' && *p != '_')
+    if (!U8_IS_SINGLE(*p) || (!isalnum(*p) && *p != '-' && *p != '_'))
       uw_error(ctx, FATAL, "Illegal HTML5 data-* attribute: %s", s);
 
   return s;
@@ -5174,7 +5174,7 @@ int strcmp_nullsafe(const char *str1, const char *str2) {
 
 static int is_valid_hash(uw_Basis_string hash) {
   for (; *hash; ++hash)
-    if (!U8_IS_SINGLE(*hash) && !isxdigit(*hash))
+    if (!U8_IS_SINGLE(*hash) || !isxdigit(*hash))
       return 0;
 
   return 1;
