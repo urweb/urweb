@@ -1,4 +1,13 @@
 
+fun from_m_upto_n f m n =
+    if m < n then
+	<xml>
+	  { f m }
+	  { from_m_upto_n f (m + 1) n }
+	</xml>
+    else
+	<xml></xml>
+
 fun test_fn_both_sides [a ::: Type] (_ : eq a) (_ : show a) (f : unit -> a) (expected : a) (testname : string) : xbody =
 <xml>
   <p>Server side test: {[testname]}</p>
@@ -30,6 +39,38 @@ fun test_fn_cside [a ::: Type] (_ : eq a) (_ : show a) (f : unit -> a) (expected
 		    end}>
       </active>
     </xml>
+
+
+fun test_fn_cside_ch (f : unit -> char) (expected : char) (testname : string) : xbody =
+    <xml>
+      <active code={let
+		    val computed = f ()
+		    val msgErr = "Expected (S) " ^ (show expected) ^ " [" ^ (show (ord expected)) ^ "] but is (C) " ^
+				 (show computed) ^ "[" ^ (show (ord computed)) ^ "]."
+		    in
+			if computed = expected then
+			    return <xml></xml>
+			else
+			    return <xml><p>ERROR {[testname]}: {[msgErr]}</p></xml>
+		    end}>
+      </active>
+	</xml>
+
+fun test_fn_cside_b (f : unit -> bool) (expected : bool) (testname : string) : xbody =
+    <xml>
+      <active code={let
+		    val computed = f ()
+		    val msgErr = "Expected (S) " ^ (show expected) ^ " but is (C) " ^
+				 (show computed) ^ "."
+		    in
+			if computed = expected then
+			    return <xml></xml>
+			else
+			    return <xml><p>ERROR {[testname]}: {[msgErr]}</p></xml>
+		    end}>
+      </active>
+</xml>
+
 
 fun highencode () : transaction page =
     return <xml>
@@ -553,6 +594,182 @@ fun test_db () : transaction page =
       </xml>
     end
 
+and ftTolower (minCh : int) (maxCh : int) : transaction page =
+    let
+	fun test_chr (n : int) : xbody =
+	    if iscodepoint n then
+		test_fn_cside_ch (fn _ => tolower (chr n)) (tolower (chr n))
+				 ("test chr " ^ (show n) ^ " : " ^ (show (chr n)))
+	    else
+		<xml></xml>
+    in
+	return <xml>
+	  <body>
+	    { from_m_upto_n (fn n => test_chr n) minCh maxCh }
+	  </body>
+	</xml>
+    end
+
+and ftToupper (minCh : int) (maxCh : int) : transaction page =
+    let
+	fun test_chr (n : int) : xbody =
+	    if iscodepoint n then
+		test_fn_cside_ch (fn _ => toupper (chr n)) (toupper (chr n))
+				 ("test chr " ^ (show n) ^ " : " ^ (show (chr n)))
+	    else
+		<xml></xml>
+    in
+	return <xml>
+	  <body>
+	    { from_m_upto_n (fn n => test_chr n) minCh maxCh }
+	  </body>
+	</xml>
+    end
+
+and ftIsalpha (minCh : int) (maxCh : int) : transaction page =
+    let
+	fun test_chr (n : int) : xbody =
+	    if iscodepoint n then
+		test_fn_cside_b (fn _ => isalpha (chr n)) (isalpha (chr n))
+				 ("test chr " ^ (show n) ^ " : " ^ (show (chr n)))
+	    else
+		<xml></xml>
+    in
+	return <xml>
+	  <body>
+	    { from_m_upto_n (fn n => test_chr n) minCh maxCh }
+	  </body>
+	</xml>
+    end
+
+and ftIsdigit (minCh : int) (maxCh : int) : transaction page =
+    let
+	fun test_chr (n : int) : xbody =
+	    if iscodepoint n then
+		test_fn_cside_b (fn _ => isdigit (chr n)) (isdigit (chr n))
+				 ("test chr " ^ (show n) ^ " : " ^ (show (chr n)))
+	    else
+		<xml></xml>
+    in
+	return <xml>
+	  <body>
+	    { from_m_upto_n (fn n => test_chr n) minCh maxCh }
+	  </body>
+	</xml>
+    end
+    
+and ftIsalnum (minCh : int) (maxCh : int) : transaction page =
+    let
+	fun test_chr (n : int) : xbody =
+	    if iscodepoint n then
+		test_fn_cside_b (fn _ => isalnum (chr n)) (isalnum (chr n))
+				 ("test chr " ^ (show n) ^ " : " ^ (show (chr n)))
+	    else
+		<xml></xml>
+    in
+	return <xml>
+	  <body>
+	    { from_m_upto_n (fn n => test_chr n) minCh maxCh }
+	  </body>
+	</xml>
+    end
+
+and ftIsspace (minCh : int) (maxCh : int) : transaction page =
+    let
+	fun test_chr (n : int) : xbody =
+	    if iscodepoint n then
+		test_fn_cside_b (fn _ => isspace (chr n)) (isspace (chr n))
+				 ("test chr " ^ (show n) ^ " : " ^ (show (chr n)))
+	    else
+		<xml></xml>
+    in
+	return <xml>
+	  <body>
+	    { from_m_upto_n (fn n => test_chr n) minCh maxCh }
+	  </body>
+	</xml>
+    end
+
+and ftIsblank (minCh : int) (maxCh : int) : transaction page =
+    let
+	fun test_chr (n : int) : xbody =
+	    if iscodepoint n then
+		test_fn_cside_b (fn _ => isblank (chr n)) (isblank (chr n))
+				 ("test chr " ^ (show n) ^ " : " ^ (show (chr n)))
+	    else
+		<xml></xml>
+    in
+	return <xml>
+	  <body>
+	    { from_m_upto_n (fn n => test_chr n) minCh maxCh }
+	  </body>
+	</xml>
+    end
+    
+and ftIsprint (minCh : int) (maxCh : int) : transaction page =
+    let
+	fun test_chr (n : int) : xbody =
+	    if iscodepoint n then
+		test_fn_cside_b (fn _ => isprint (chr n)) (isprint (chr n))
+				 ("test chr " ^ (show n) ^ " : " ^ (show (chr n)))
+	    else
+		<xml></xml>
+    in
+	return <xml>
+	  <body>
+	    { from_m_upto_n (fn n => test_chr n) minCh maxCh }
+	  </body>
+	</xml>
+    end
+    
+and ftIsxdigit (minCh : int) (maxCh : int) : transaction page =
+    let
+	fun test_chr (n : int) : xbody =
+	    if iscodepoint n then
+		test_fn_cside_b (fn _ => isxdigit (chr n)) (isxdigit (chr n))
+				 ("test chr " ^ (show n) ^ " : " ^ (show (chr n)))
+	    else
+		<xml></xml>
+    in
+	return <xml>
+	  <body>
+	    { from_m_upto_n (fn n => test_chr n) minCh maxCh }
+	  </body>
+	</xml>
+    end
+
+and ftIsupper (minCh : int) (maxCh : int) : transaction page =
+    let
+	fun test_chr (n : int) : xbody =
+	    if iscodepoint n then
+		test_fn_cside_b (fn _ => isupper (chr n)) (isupper (chr n))
+				 ("test chr " ^ (show n) ^ " : " ^ (show (chr n)))
+	    else
+		<xml></xml>
+    in
+	return <xml>
+	  <body>
+	    { from_m_upto_n (fn n => test_chr n) minCh maxCh }
+	  </body>
+	</xml>
+    end
+
+and ftIslower (minCh : int) (maxCh : int) : transaction page =
+    let
+	fun test_chr (n : int) : xbody =
+	    if iscodepoint n then
+		test_fn_cside_b (fn _ => islower (chr n)) (islower (chr n))
+				 ("test chr " ^ (show n) ^ " : " ^ (show (chr n)))
+	    else
+		<xml></xml>
+    in
+	return <xml>
+	  <body>
+	    { from_m_upto_n (fn n => test_chr n) minCh maxCh }
+	  </body>
+	</xml>
+    end
+    
 fun index () : transaction page =
     return <xml>
       <body>

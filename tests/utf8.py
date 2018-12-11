@@ -2,51 +2,51 @@ import unittest
 import base
 
 class Suite(base.Base):
-    def test_1(self):
+    def test_99(self):
         """Test case: substring (1)"""
         self.start('Utf8/substrings')
         
-    def test_2(self):
+    def test_98(self):
         """Test case: strlen (2)"""
         self.start('Utf8/strlens')
         
-    def test_3(self):
+    def test_97(self):
         """Test case: strlenGe (3)"""
         self.start('Utf8/strlenGens')
 
-    def test_4(self):
+    def test_96(self):
         """Test case: strcat (4)"""
         self.start('Utf8/strcats')
 
-    def test_5(self):
+    def test_95(self):
         """Test case: strsub (5)"""
         self.start('Utf8/strsubs')
 
-    def test_6(self):
+    def test_94(self):
         """Test case: strsuffix (6)"""
         self.start('Utf8/strsuffixs')
 
-    def test_7(self):
+    def test_93(self):
         """Test case: strchr (7)"""
         self.start('Utf8/strchrs')
         
-    def test_8(self):
+    def test_92(self):
         """Test case: strindex (8)"""
         self.start('Utf8/strindexs')
 
-    def test_9(self):
+    def test_91(self):
         """Test case: strindex (9)"""
         self.start('Utf8/strsindexs')
 
-    def test_10(self):
+    def test_90(self):
         """Test case: strcspn (10)"""
         self.start('Utf8/strcspns')
 
-    def test_11(self):
+    def test_89(self):
         """Test case: str1 (11)"""
         self.start('Utf8/str1s')
 
-    def test_12(self):
+    def test_88(self):
         """Test case: isalnum (12)"""
         self.start('Utf8/isalnums')
         
@@ -105,3 +105,58 @@ class Suite(base.Base):
     def test_26 (self):
         """Test case: test_db (26) """
         self.start('Utf8/test_db')
+        
+    def full_test (self, name):
+
+        gap = 1000
+        i = 0
+        while (i + gap < 130000):        
+            self.start('Utf8/' + name + '/' + str(i) + '/' + str(i + gap))
+            errors = self.body_text()
+            self.assertEqual("", errors, errors)
+            i = i + gap
+
+
+    def test_1 (self):
+        """Test case: ftTolower """
+        self.full_test("ftTolower")
+
+    def test_2 (self):
+        """Test case: ftToupper """
+        self.full_test("ftToupper")
+
+    def test_3 (self):
+        """Test case: ftIsalpha """
+        self.full_test("ftIsalpha")
+
+    def test_4 (self):
+        """Test case: ftIsdigit """
+        self.full_test("ftIsdigit")
+    
+    def test_5 (self):
+        """Test case: ftIsalnum """
+        self.full_test("ftIsalnum")
+
+    def test_6 (self):
+        """Test case: ftIsspace """
+        self.full_test("ftIsspace")
+
+    def test_7 (self):
+        """Test case: ftIsblank """
+        self.full_test("ftIsblank")
+        
+    def test_8 (self):
+        """Test case: ftIsprint """
+        self.full_test("ftIsprint")
+
+    def test_9 (self):
+        """Test case: ftIsxdigit """
+        self.full_test("ftIsxdigit")
+
+    def test_10 (self):
+        """Test case: ftIsupper """
+        self.full_test("ftIsupper")
+        
+    def test_11 (self):
+        """Test case: ftIslower """
+        self.full_test("ftIslower")

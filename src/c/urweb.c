@@ -4496,6 +4496,11 @@ uw_Basis_bool uw_Basis_iscodepoint (uw_context ctx, uw_Basis_int n) {
   return !!(n <= 0x10FFFF);
 }
 
+uw_Basis_bool uw_Basis_issingle (uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
+  return !!(c < 128);
+}
+
 uw_Basis_char uw_Basis_chr(uw_context ctx, uw_Basis_int n) {
   (void)ctx;
   uw_Basis_char ch = (uw_Basis_char)n;
