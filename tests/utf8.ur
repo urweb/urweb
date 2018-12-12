@@ -11,32 +11,20 @@ fun from_m_upto_n f m n =
 fun test_fn_both_sides [a ::: Type] (_ : eq a) (_ : show a) (f : unit -> a) (expected : a) (testname : string) : xbody =
 <xml>
   <p>Server side test: {[testname]}</p>
-  <pre>{[assert (f () = expected) "False" testname "True" ]}</pre>	
-  <active code={let
-		    val computed = f ()
-		    val msgErr = "False " ^ testname ^ ": expected " ^ (show expected) ^ " but is " ^ (show computed)
-		    val r = assert (computed = expected) msgErr testname "True"
-		in
-		    return <xml><p>Client side test: {[testname]}</p><pre>{[r]}</pre></xml>
-		end}>
+  <pre>{[show (f () = expected)]}</pre>	
+  <active code={return <xml><p>Client side test: {[testname]}</p><pre>{[show (f () = expected)]}</pre></xml>}>
 </active>
 </xml>
 
 fun test_fn_sside [a ::: Type] (_ : eq a) (_ : show a) (f : unit -> a) (expected : a) (testname : string) : xbody =
     <xml>
       <p>Server side test: {[testname]}</p>
-      <pre>{[assert (f () = expected) "False" testname "True" ]}</pre>
+      <pre>{[show (f () = expected)]}</pre>
     </xml>
 
 fun test_fn_cside [a ::: Type] (_ : eq a) (_ : show a) (f : unit -> a) (expected : a) (testname : string) : xbody =
     <xml>
-      <active code={let
-		    val computed = f ()
-		    val msgErr = "False " ^ testname ^ ": expected " ^ (show expected) ^ " but is " ^ (show computed)
-		    val r = assert (computed = expected) msgErr testname "True"
-		in
-		    return <xml><p>Client side test: {[testname]}</p><pre>{[r]}</pre></xml>
-		    end}>
+      <active code={return <xml><p>Client side test: {[testname]}</p><pre>{[show (f () = expected)]}</pre></xml>}>
       </active>
     </xml>
 
