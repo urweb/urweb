@@ -61,6 +61,7 @@ signature COMPILER = sig
          dbms : string option,
          sigFile : string option,
          fileCache : string option,
+         safeGetDefault : bool,
          safeGets : string list,
          onError : (string * string list * string) option,
          minHeap : int,

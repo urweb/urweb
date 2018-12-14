@@ -65,6 +65,7 @@ type job = {
      dbms : string option,
      sigFile : string option,
      fileCache : string option,
+     safeGetDefault : bool,
      safeGets : string list,
      onError : (string * string list * string) option,
      minHeap : int,
@@ -385,6 +386,7 @@ fun institutionalizeJob (job : job) =
      Settings.setMetaRules (#filterMeta job);
      Option.app Settings.setProtocol (#protocol job);
      Option.app Settings.setDbms (#dbms job);
+     Settings.setSafeGetDefault (#safeGetDefault job);
      Settings.setSafeGets (#safeGets job);
      Settings.setOnError (#onError job);
      Settings.setMinHeap (#minHeap job);
@@ -470,6 +472,7 @@ fun parseUrp' accLibs fname =
                         dbms = NONE,
                         sigFile = NONE,
                         fileCache = NONE,
+                        safeGetDefault = false,
                         safeGets = [],
                         onError = NONE,
                         minHeap = 0,
@@ -605,6 +608,7 @@ fun parseUrp' accLibs fname =
                      val dbms = ref NONE
                      val sigFile = ref (Settings.getSigFile ())
                      val fileCache = ref (Settings.getFileCache ())
+                     val safeGetDefault = ref false
                      val safeGets = ref []
                      val onError = ref NONE
                      val minHeap = ref 0
@@ -645,6 +649,7 @@ fun parseUrp' accLibs fname =
                                  dbms = !dbms,
                                  sigFile = !sigFile,
                                  fileCache = !fileCache,
+                                 safeGetDefault = !safeGetDefault,
                                  safeGets = rev (!safeGets),
                                  onError = !onError,
                                  minHeap = !minHeap,
@@ -708,6 +713,7 @@ fun parseUrp' accLibs fname =
                                  dbms = mergeO #2 (#dbms old, #dbms new),
                                  sigFile = mergeO #2 (#sigFile old, #sigFile new),
                                  fileCache = mergeO #2 (#fileCache old, #fileCache new),
+                                 safeGetDefault = #safeGetDefault old orelse #safeGetDefault new,
                                  safeGets = #safeGets old @ #safeGets new,
                                  onError = mergeO #2 (#onError old, #onError new),
                                  minHeap = Int.max (#minHeap old, #minHeap new),
@@ -829,6 +835,7 @@ fun parseUrp' accLibs fname =
                                    | "include" => headers := relifyA arg :: !headers
                                    | "script" => scripts := arg :: !scripts
                                    | "clientToServer" => clientToServer := ffiS () :: !clientToServer
+                                   | "safeGetDefault" => safeGetDefault := true
                                    | "safeGet" => safeGets := arg :: !safeGets
                                    | "effectful" => effectful := ffiS () :: !effectful
                                    | "benignEffectful" => benignEffectful := ffiS () :: !benignEffectful

@@ -124,6 +124,7 @@ fun make' {prefix, dirname, guided} =
             dbms = mergeWith #2 (#dbms combined, #dbms urp),
             sigFile = mergeWith #2 (#sigFile combined, #sigFile urp),
             fileCache = mergeWith #2 (#fileCache combined, #fileCache urp),
+            safeGetDefault = #safeGetDefault combined orelse #safeGetDefault urp,
             safeGets = #safeGets combined @ #safeGets urp,
             onError = NONE,
             minHeap = 0,

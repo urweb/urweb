@@ -258,6 +258,7 @@ signature SETTINGS = sig
     val getFileCache : unit -> string option
 
     (* Which GET-able functions should be allowed to have side effects? *)
+    val setSafeGetDefault : bool -> unit
     val setSafeGets : string list -> unit
     val isSafeGet : string -> bool
 
