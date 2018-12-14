@@ -1540,17 +1540,31 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfiApp ("Basis", "dml", [(e, _)]) =>
             let
+                val string = (L'.TFfi ("Basis", "string"), loc)
                 val (e, fm) = monoExp (env, st, fm) e
             in
-                ((L'.EDml (e, L'.Error), loc),
+                ((L'.ECase (e,
+                            [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
+                              (L'.ERecord [], loc)),
+                             ((L'.PVar ("cmd", string), loc),
+                              (L'.EDml ((L'.ERel 0, loc), L'.Error), loc))],
+                            {disc = string,
+                             result = (L'.TRecord [], loc)}), loc),
                  fm)
             end
 
           | L.EFfiApp ("Basis", "tryDml", [(e, _)]) =>
             let
+                val string = (L'.TFfi ("Basis", "string"), loc)
                 val (e, fm) = monoExp (env, st, fm) e
             in
-                ((L'.EDml (e, L'.None), loc),
+                ((L'.ECase (e,
+                            [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
+                              (L'.ERecord [], loc)),
+                             ((L'.PVar ("cmd", string), loc),
+                              (L'.EDml ((L'.ERel 0, loc), L'.None), loc))],
+                            {disc = string,
+                             result = (L'.TRecord [], loc)}), loc),
                  fm)
             end
 
@@ -1579,7 +1593,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "update"), _), _), _), _), _), changed) =>
             (case monoType env (L.TRecord changed, loc) of
-                 (L'.TRecord changed, _) =>
+                 (L'.TRecord [], _)  =>
+                 let
+                     val s = (L'.TFfi ("Basis", "string"), loc)
+                     val rt = (L'.TRecord [], loc)
+                 in
+                     ((L'.EAbs ("fs", rt, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                                (L'.EAbs ("tab", s, (L'.TFun (s, s), loc),
+                                          (L'.EAbs ("e", s, s,
+                                                    str ""), loc)), loc)), loc),
+                      fm)
+                 end
+               | (L'.TRecord changed, _) =>
                  let
                      val s = (L'.TFfi ("Basis", "string"), loc)
                      val changed = map (fn (x, _) => (x, s)) changed
