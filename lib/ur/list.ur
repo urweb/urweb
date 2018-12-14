@@ -479,6 +479,22 @@ fun assocAdd [a] [b] (_ : eq a) (x : a) (y : b) (ls : t (a * b)) =
         None => (x, y) :: ls
       | Some _ => ls
 
+fun assocAddSorted [a] [b] (_ : eq a) (_ : ord a) (x : a) (y : b) (ls : t (a * b)) =
+    let
+        fun aas (ls : t (a * b)) (acc : t (a * b)) =
+            case ls of
+                [] => rev ((x, y) :: acc)
+              | (x', y') :: ls' =>
+                if x' = x then
+                    revAppend ((x, y) :: acc) ls'
+                else if x < x' then
+                    revAppend ((x, y) :: acc) ls
+                else
+                    aas ls' ((x', y') :: acc)
+    in
+        aas ls []
+    end
+
 fun recToList [a ::: Type] [r ::: {Unit}] (fl : folder r)
   = @foldUR [a] [fn _ => list a] (fn [nm ::_] [rest ::_] [[nm] ~ rest] x xs =>
 				      x :: xs) [] fl

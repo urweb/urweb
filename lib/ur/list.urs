@@ -109,6 +109,9 @@ val assoc : a ::: Type -> b ::: Type -> eq a -> a -> t (a * b) -> option b
 
 val assocAdd : a ::: Type -> b ::: Type -> eq a -> a -> b -> t (a * b) -> t (a * b)
 
+val assocAddSorted : a ::: Type -> b ::: Type -> eq a -> ord a -> a -> b -> t (a * b) -> t (a * b)
+(* Assume the list is already sorted in ascending order and maintain that ordering. *)
+
 (** Converting records to lists *)
 
 val recToList : a ::: Type -> r ::: {Unit} -> folder r -> $(mapU a r) -> t a
