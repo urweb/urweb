@@ -248,6 +248,27 @@ val specDecl = U.Decl.foldMap {kind = kind, con = con, exp = exp, decl = decl}
 
 fun specialize file =
     let
+        (*val () = CorePrint.debug := true
+        val () = print "SPECIALIZING\n"*)
+                
+        (* Let's run around a file, finding any polymorphic uses of a datatype.
+         * However, don't count polymorphism within a datatype's own definition!
+         * To that end, we run a silly transform on the file before traversing. *)
+        val file' =
+            map (fn d =>
+                    case #1 d of
+                        DDatatype dts =>
+                        U.Decl.map {kind = fn x => x,
+                                    exp = fn x => x,
+                                    decl = fn x => x,
+                                    con = fn CNamed n =>
+                                             if List.exists (fn (_, n', _, _) => n' = n) dts then
+                                                 CUnit
+                                             else
+                                                 CNamed n
+                                           | c => c} d
+                      | _ => d) file
+
         val fancyDatatypes = U.File.fold {kind = fn (_, fd) => fd,
                                           exp = fn (_, fd) => fd,
                                           decl = fn (_, fd) => fd,
@@ -256,12 +277,18 @@ fun specialize file =
                                                        CApp (c1, c2) =>
                                                        if isOpen c2 then
                                                            case findApp (c, []) of
-                                                               SOME (n, _) => IS.add (fd, n)
+                                                               SOME (n, _) =>
+                                                               ((*Print.preface ("Disqualifier",
+                                                                               CorePrint.p_con CoreEnv.empty (c, ErrorMsg.dummySpan));*)
+                                                                IS.add (fd, n))
                                                              | NONE => fd
                                                        else
                                                            fd
                                                     |  _ => fd}
-                                         IS.empty file
+                                         IS.empty file'
+
+        (* Why did we find the polymorphism?
+         * It would be incoherent to specialize a datatype used polymorphically. *)
 
         fun doDecl (d, st) =
             let
@@ -271,7 +298,8 @@ fun specialize file =
                 case #1 d of
                     DDatatype dts =>
                     if List.exists (fn (_, n, _, _) => IS.member (fancyDatatypes, n)) dts then
-                        ([d], st)
+                        ((*Print.preface ("Skipping", CorePrint.p_decl CoreEnv.empty d);*)
+                         ([d], st))
                     else
                         ((case #decls st of
                               [] => [d]
