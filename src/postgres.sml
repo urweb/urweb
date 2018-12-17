@@ -1154,7 +1154,7 @@ val () = addDbms {name = "postgres",
                   nestedRelops = true,
                   windowFunctions = true,
                   supportsIsDistinctFrom = true,
-                  supportsSHA512 = true}
+                  supportsSHA512 = SOME "CREATE EXTENSION pgcrypto;"}
 
 val () = setDbms "postgres"
 

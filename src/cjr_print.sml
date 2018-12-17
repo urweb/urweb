@@ -3783,7 +3783,13 @@ fun p_sql env (ds, _) =
                            end)
                        env ds
     in
-        box (string (#sqlPrefix (Settings.currentDbms ())) :: pps)
+        box ((case Settings.getFileCache () of
+                  NONE => []
+                | SOME _ => case #supportsSHA512 (Settings.currentDbms ()) of
+                                NONE => (ErrorMsg.error "Using file cache with database that doesn't support SHA512";
+                                         [])
+                              | SOME line => [string line, newline, newline])
+             @ string (#sqlPrefix (Settings.currentDbms ())) :: pps)
     end
 
 end

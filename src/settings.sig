@@ -220,7 +220,9 @@ signature SETTINGS = sig
          nestedRelops : bool,
          windowFunctions : bool,
          supportsIsDistinctFrom : bool,
-         supportsSHA512 : bool
+         supportsSHA512 : string option (* If supported, give the SQL code to
+                                         * enable the feature in a particular
+                                         * database. *)
     }
 
     val addDbms : dbms -> unit

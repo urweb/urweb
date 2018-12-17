@@ -647,7 +647,7 @@ type dbms = {
      nestedRelops : bool,
      windowFunctions: bool,
      supportsIsDistinctFrom : bool,
-     supportsSHA512 : bool
+     supportsSHA512 : string option
 }
 
 val dbmses = ref ([] : dbms list)
@@ -681,7 +681,7 @@ val curDb = ref ({name = "",
                   nestedRelops = false,
                   windowFunctions = false,
                   supportsIsDistinctFrom = false,
-                  supportsSHA512 = false} : dbms)
+                  supportsSHA512 = NONE} : dbms)
 
 fun addDbms v = dbmses := v :: !dbmses
 fun setDbms s =
@@ -728,7 +728,8 @@ fun getSigFile () = !sigFile
 
 val fileCache = ref (NONE : string option)
 fun setFileCache v =
-    (if Option.isSome v andalso not (#supportsSHA512 (currentDbms ())) then
+    (if Option.isSome v andalso (case #supportsSHA512 (currentDbms ()) of NONE => true 
+                                                                        | SOME _ => false) then
          ErrorMsg.error "The selected database engine is incompatible with file caching."
      else
         ();
