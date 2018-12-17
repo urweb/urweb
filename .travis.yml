@@ -21,9 +21,7 @@ before_install:
   - if command -v brew &>/dev/null; then brew uninstall libtool; fi
   - if command -v brew &>/dev/null; then brew install libtool; fi
   - if command -v brew &>/dev/null; then brew install openssl mlton icu4c; fi
-  - if command -v brew &>/dev/null; then brew ls --verbose icu4c; fi
-  - if command -v brew &>/dev/null; then brew --prefix icu4c; fi
-  - if command -v brew &>/dev/null; then brew unlink icu4c && brew link icu4c; fi
+  - if command -v brew &>/dev/null; then export ICU_INCLUDES=`brew --prefix icu4c`/include; fi
   - if command -v brew &>/dev/null; then export CONFIGURE_ARGS="--with-openssl=/usr/local/opt/openssl"; fi
 
 
