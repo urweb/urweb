@@ -32,6 +32,7 @@ val configLib = ref Config.lib
 val configSrcLib = ref Config.srclib
 val configInclude = ref Config.includ
 val configSitelisp = ref Config.sitelisp
+val configIcuIncludes = ref Config.icuIncludes
 val configIcuLibs = ref Config.icuLibs
 val configCCompiler = ref Config.ccompiler
 
