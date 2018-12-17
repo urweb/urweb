@@ -11,7 +11,7 @@ AM_CFLAGS = -Wall -Wunused-parameter -Werror -Wno-format-security -Wno-deprecate
 liburweb_la_LDFLAGS = $(AM_LDFLAGS) $(OPENSSL_LDFLAGS) \
 	-export-symbols-regex '^(client_pruner|pthread_create_big|strcmp_nullsafe|uw_.*)' \
 	-version-info 1:0:0
-liburweb_la_LIBADD = $(PTHREAD_LIBS) -lm $(OPENSSL_LIBS) -licui18n -licuuc -licudata
+liburweb_la_LIBADD = $(PTHREAD_LIBS) -lm $(OPENSSL_LIBS) $(ICU_LIBS) -licui18n -licuuc -licudata
 liburweb_http_la_LIBADD = liburweb.la
 liburweb_http_la_LDFLAGS = -export-symbols-regex '^(main|uw_.*)' \
 	-version-info 1:0:0
