@@ -28,6 +28,9 @@ val pgheader = "@PGHEADER@"
 val msheader = "@MSHEADER@"
 val sqheader = "@SQHEADER@"
 
+val icuIncludes = "@ICU_INCLUDES@"
+val icuLibs = "@ICU_LIBS@"
+
 val versionNumber  = "@VERSION@"
 val versionString  = "The Ur/Web compiler, version " ^ versionNumber
 

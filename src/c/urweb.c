@@ -20,6 +20,9 @@
 
 #include <pthread.h>
 
+#include <unicode/utf8.h>
+#include <unicode/uchar.h>
+
 #include "types.h"
 
 #include "uthash.h"
@@ -1556,94 +1559,94 @@ const char *uw_Basis_get_settings(uw_context ctx, uw_unit u) {
   }
 }
 
-uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
-  char *r, *s2;
+uw_Basis_bool uw_Basis_isprint(uw_context ctx, uw_Basis_char ch);
 
-  uw_check_heap(ctx, strlen(s) * 4 + 3);
-
-  r = s2 = ctx->heap.front;
-  *s2++ = '"';
-
-  for (; *s; s++) {
-    unsigned char c = *s;
-
-    switch (c) {
-    case '"':
-      strcpy(s2, "\\\"");
-      s2 += 2;
-      break;
-    case '\'':
-      strcpy(s2, "\\047");
-      s2 += 4;
-      break;
-    case '\\':
-      strcpy(s2, "\\\\");
-      s2 += 2;
-      break;
-    case '<':
-      strcpy(s2, "\\074");
-      s2 += 4;
-      break;
-    case '&':
-      strcpy(s2, "\\046");
-      s2 += 4;
-      break;
-    default:
-      if (isprint((int)c) || c >= 128)
-        *s2++ = c;
-      else {
-        sprintf(s2, "\\%03o", c);
-        s2 += 4;
+void jsifyChar(char**buffer_ptr, uw_context ctx, uw_Basis_char c1) {
+  char* buffer = *buffer_ptr;
+  
+  switch (c1) {
+  case '"':
+    strcpy(buffer, "\\\"");
+    buffer += 2;
+    break;
+  case '\'':
+    strcpy(buffer, "\\047");
+    buffer += 4;
+    break;
+  case '\\':
+    strcpy(buffer, "\\\\");
+    buffer += 2;
+    break;
+  case '<':
+    strcpy(buffer, "\\074");
+    buffer += 4;
+    break;
+  case '&':
+    strcpy(buffer, "\\046");
+    buffer += 4;
+    break;
+  default:
+    
+    if (uw_Basis_isprint(ctx, c1) == uw_Basis_True)
+      {
+	int offset = 0;
+	U8_APPEND_UNSAFE(buffer, offset, c1);
+	buffer += offset;
+      }
+    else {
+      if(65536 > c1) {
+	sprintf(buffer, "\\u%04x", c1);
+	buffer += 6;
+      } else {
+	sprintf(buffer, "\\u{%06x}", c1);
+	buffer += 10;
       }
     }
   }
 
-  strcpy(s2, "\"");
-  ctx->heap.front = s2 + 2;
-  return r;
+ 
+  *buffer_ptr = buffer;
 }
 
-uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
-  unsigned char c = c1;
+uw_Basis_string uw_Basis_jsifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *s2;
+  uw_Basis_char c;
 
-  uw_check_heap(ctx, 7);
+  uw_check_heap(ctx, strlen(s) * 10 + 3);
 
   r = s2 = ctx->heap.front;
   *s2++ = '"';
 
-  switch (c) {
-  case '"':
-    strcpy(s2, "\\\"");
-    s2 += 2;
-    break;
-  case '\'':
-    strcpy(s2, "\\047");
-    s2 += 4;
-    break;
-  case '\\':
-    strcpy(s2, "\\\\");
-    s2 += 2;
-    break;
-  case '<':
-    strcpy(s2, "\\074");
-    s2 += 4;
-    break;
-  case '&':
-    strcpy(s2, "\\046");
-    s2 += 4;
-    break;
-  default:
-    if (isprint((int)c) || c >= 128)
-      *s2++ = c;
-    else {
-      sprintf(s2, "\\%03o", (unsigned char)c);
-      s2 += 4;
+  int offset = 0;
+  while(s[offset] != 0)
+    {
+      U8_NEXT(s, offset, -1, c);
+      
+      jsifyChar(&s2, ctx, c);      
     }
-  }
 
   strcpy(s2, "\"");
   ctx->heap.front = s2 + 2;
+
+  return r;
+}
+
+uw_Basis_int uw_Basis_ord(uw_context ctx, uw_Basis_char c);
+
+uw_Basis_string uw_Basis_jsifyChar(uw_context ctx, uw_Basis_char c1) {
+  char *r, *s2;
+
+  uw_check_heap(ctx, 10);
+
+  r = s2 = ctx->heap.front;
+  
+  *s2++ = '"';
+  
+  jsifyChar(&s2, ctx, c1);
+
+  strcpy(s2, "\"");
+  ctx->heap.front = s2 + 2;
+
   return r;
 }
 
@@ -1687,6 +1690,7 @@ uw_Basis_string uw_Basis_jsifyString_ws(uw_context ctx, uw_Basis_string s) {
 
   strcpy(s2, "\"");
   ctx->script.front = s2 + 1;
+
   return r;
 }
 
@@ -1971,7 +1975,7 @@ char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
 
     if (c == ' ')
       *p++ = '+';
-    else if (isalnum(c))
+    else if (U8_IS_SINGLE(c) && isalnum(c))
       *p++ = c;
     else {
       sprintf(p, ".%02X", c);
@@ -2063,7 +2067,7 @@ uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
 
     if (c == ' ')
       uw_writec_unsafe(ctx, '+');
-    else if (isalnum(c))
+    else if (U8_IS_SINGLE(c) && isalnum(c))
       uw_writec_unsafe(ctx, c);
     else {
       sprintf(ctx->page.front, ".%02X", c);
@@ -2252,25 +2256,27 @@ uw_unit uw_Basis_htmlifyInt_w(uw_context ctx, uw_Basis_int n) {
   return uw_unit_v;
 }
 
-char *uw_Basis_htmlifySpecialChar(uw_context ctx, unsigned char ch) {
+char *uw_Basis_htmlifySpecialChar(uw_context ctx, uw_Basis_char ch) {
   unsigned int n = ch;
   int len;
   char *r;
 
-  uw_check_heap(ctx, INTS_MAX+3);
+  uw_check_heap(ctx, INTS_MAX+3 + 1);
   r = ctx->heap.front;
-  sprintf(r, "&#%u;%n", n, &len);
+  len = sprintf(r, "&#%u;", n);
   ctx->heap.front += len+1;
+
   return r;
 }
 
-uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, unsigned char ch) {
+uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, uw_Basis_char ch) {
   unsigned int n = ch;
   int len;
 
   uw_check(ctx, INTS_MAX+3);
-  sprintf(ctx->page.front, "&#%u;%n", n, &len);
+  len = sprintf(ctx->page.front, "&#%u;", n);
   ctx->page.front += len;
+
   return uw_unit_v;
 }
 
@@ -2318,26 +2324,38 @@ uw_unit uw_Basis_jsifyInt_w(uw_context ctx, uw_Basis_int n) {
 
 char *uw_Basis_htmlifyString(uw_context ctx, const char *s) {
   char *r, *s2;
+  uw_Basis_char c1;
+  int oldoffset = 0, offset = 0, offset2 = 0, len = 0;
+  
+  uw_check_heap(ctx, strlen(s) * (INTS_MAX + 3) + 1);
 
-  uw_check_heap(ctx, strlen(s) * 5 + 1);
+  r = s2 = ctx->heap.front;
+  
+  while (s[offset] != 0) {
+    oldoffset = offset;
+    U8_NEXT(s, offset, -1, c1);
 
-  for (r = s2 = ctx->heap.front; *s; s++) {
-    unsigned char c = *s;
-
-    switch (c) {
-    case '<':
-      strcpy(s2, "&lt;");
-      s2 += 4;
-      break;
-    case '&':
-      strcpy(s2, "&amp;");
-      s2 += 5;
-      break;
-    default:
-      *s2++ = c;
+    if ((offset - oldoffset == 1) && uw_Basis_isprint(ctx, c1)) {
+      switch (c1) {
+      case '<':
+	strcpy(s2, "&lt;");
+	s2 += 4;
+	break;
+      case '&':
+	strcpy(s2, "&amp;");
+	s2 += 5;
+	break;
+      default:
+	offset2 = 0;
+	U8_APPEND_UNSAFE(s2, offset2, c1);
+	s2 += offset2;
+      }      
+    } else {
+      len = sprintf(s2, "&#%u;", c1);
+      s2 += len;
     }
   }
-
+  
   *s2++ = 0;
   ctx->heap.front = s2;
   return r;
@@ -2345,21 +2363,30 @@ char *uw_Basis_htmlifyString(uw_context ctx, const char *s) {
 
 uw_unit uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
   uw_check(ctx, strlen(s) * 6);
-
-  for (; *s; s++) {
-    unsigned char c = *s;
-
-    switch (c) {
-    case '<':
-      uw_write_unsafe(ctx, "&lt;");
-      break;
-    case '&':
-      uw_write_unsafe(ctx, "&amp;");
-      break;
-    default:
-      uw_writec_unsafe(ctx, c);
+  int offset = 0, oldoffset = 0;
+  uw_Basis_char c1;
+  
+  while(s[offset] != 0){
+    oldoffset = offset;
+    U8_NEXT(s, offset, -1, c1);
+ 
+    if ((offset - oldoffset == 1) && uw_Basis_isprint(ctx, c1)) {
+	
+      switch (c1) {
+      case '<':
+	uw_write_unsafe(ctx, "&lt;");
+	break;
+      case '&':
+	uw_write_unsafe(ctx, "&amp;");
+	break;
+      default:
+	uw_writec_unsafe(ctx, c1);
+      }
     }
-  }
+    else {
+      uw_Basis_htmlifySpecialChar_w(ctx, c1);
+    }    
+  }  
 
   return uw_unit_v;
 }
@@ -2421,28 +2448,34 @@ uw_unit uw_Basis_htmlifySource_w(uw_context ctx, uw_Basis_source src) {
   return uw_unit_v;
 }
 
-uw_Basis_char uw_Basis_strsub(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
+uw_Basis_char uw_Basis_strsub(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {  
+  uw_Basis_char c;
+  int offset = 0;
+  
   while (n >= 0) {
-    if (*s == 0)
+    
+    if (s[offset] == 0)
       uw_error(ctx, FATAL, "Out-of-bounds strsub");
 
+    U8_NEXT(s, offset, -1, c);
+    
     if (n == 0)
-      return *s;
+      return c;
 
     --n;
-    ++s;
   }
 
   uw_error(ctx, FATAL, "Negative strsub bound");
 }
 
 uw_Basis_string uw_Basis_strsuffix(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
+  int offset = 0;
   while (n >= 0) {
-    if (*s == 0 || n == 0)
-      return s;
+    if (s[offset] == 0 || n == 0)
+      return s + offset;
 
+    U8_FWD_1(s, offset, -1);
     --n;
-    ++s;
   }
 
   uw_error(ctx, FATAL, "Negative strsuffix bound");
@@ -2450,40 +2483,81 @@ uw_Basis_string uw_Basis_strsuffix(uw_context ctx, uw_Basis_string s, uw_Basis_i
 
 uw_Basis_int uw_Basis_strlen(uw_context ctx, uw_Basis_string s) {
   (void)ctx;
-  return strlen(s);
+  int offset = 0, iterations = 0;
+  while (s[offset] != 0) {
+    U8_FWD_1(s, offset, -1);
+    ++iterations;
+  }
+  return iterations;
 }
 
 uw_Basis_bool uw_Basis_strlenGe(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
   (void)ctx;
-
+  int offset = 0;
   while (n > 0) {
-    if (*s == 0)
+    if (s[offset] == 0)
       return uw_Basis_False;
-
+        
+    U8_FWD_1(s, offset, -1);
     --n;
-    ++s;
   }
 
   return uw_Basis_True;
 }
 
+int aux_strchr(uw_Basis_string s, uw_Basis_char ch, int* o_offset) {
+  int u8idx = 0, offset = 0, offsetpr = 0;
+  uw_Basis_char c;
+    
+  while (s[offset] != 0) {
+    U8_NEXT(s, offset, -1, c);
+    if (c == ch) {
+      *o_offset = offsetpr;
+      return u8idx;
+    }
+
+    offsetpr = offset;
+    ++u8idx;
+  }
+
+  *o_offset = -1;
+  return -1;
+}
+
 uw_Basis_string uw_Basis_strchr(uw_context ctx, uw_Basis_string s, uw_Basis_char ch) {
   (void)ctx;
-  return strchr(s, ch);
+  int offset = -1;
+  if (aux_strchr(s, ch, &offset) > -1) {
+    return s + offset;
+  }
+  return NULL;  
 }
 
 uw_Basis_int uw_Basis_strcspn(uw_context ctx, uw_Basis_string s, uw_Basis_string chs) {
   (void)ctx;
-  return strcspn(s, chs);
+  int offset = 0, u8idx = 0, offsetChs = 0;
+  uw_Basis_char c;
+  
+  while (s[offset] != 0) {
+    U8_NEXT(s, offset, -1, c);
+    if (aux_strchr(chs, c, &offsetChs) > -1) {
+      return u8idx;
+    }
+    ++u8idx;
+  }
+
+  return u8idx;
 }
 
 uw_Basis_int *uw_Basis_strindex(uw_context ctx, uw_Basis_string s, uw_Basis_char ch) {
-  uw_Basis_string r = strchr(s, ch);
-  if (r == NULL)
+  (void)ctx;
+  int offset = -1;
+  int r = aux_strchr(s, ch, &offset);
+  if (r == -1)
     return NULL;
   else {
     uw_Basis_int *nr = uw_malloc(ctx, sizeof(uw_Basis_int));
-    *nr = r - s;
+    *nr = r;
     return nr;
   }
 }
@@ -2494,13 +2568,19 @@ uw_Basis_int *uw_Basis_strsindex(uw_context ctx, const char *haystack, const cha
     return NULL;
   else {
     uw_Basis_int *nr = uw_malloc(ctx, sizeof(uw_Basis_int));
-    *nr = r - haystack;
+    int src = r - haystack, offset = 0, utf8idx = 0;
+    while (offset < src) {
+      U8_FWD_1(haystack, offset, -1);
+      ++utf8idx;
+    }
+    
+    *nr = utf8idx;
     return nr;
   }
 }
 
 uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_string s2) {
-  int len = uw_Basis_strlen(ctx, s1) + uw_Basis_strlen(ctx, s2) + 1;
+  int len = strlen(s1) + strlen(s2) + 1;
   char *s;
 
   uw_check_heap(ctx, len);
@@ -2515,8 +2595,8 @@ uw_Basis_string uw_Basis_strcat(uw_context ctx, uw_Basis_string s1, uw_Basis_str
 }
 
 uw_Basis_string uw_Basis_substring(uw_context ctx, uw_Basis_string s, uw_Basis_int start, uw_Basis_int len) {
-  size_t full_len = uw_Basis_strlen(ctx, s);
-
+  int full_len = uw_Basis_strlen(ctx, s);
+  
   if (start < 0)
     uw_error(ctx, FATAL, "substring: Negative start index");
   if (len < 0)
@@ -2524,32 +2604,41 @@ uw_Basis_string uw_Basis_substring(uw_context ctx, uw_Basis_string s, uw_Basis_i
   if (start + len > full_len)
     uw_error(ctx, FATAL, "substring: Start index plus length is too large");
 
-  if (start + len == full_len)
-    return &s[start];
-  else {
-    uw_Basis_string r = uw_malloc(ctx, len+1);
-    memcpy(r, s+start, len);
-    r[len] = 0;
+  int offset = 0;
+  U8_FWD_N(s, offset, -1, start);
+  
+  if (start + len == full_len) {
+    return s + offset;
+  } else {
+    int end = offset;
+    U8_FWD_N(s, end, -1, len);
+
+    int actual_len = end - offset;
+
+    uw_Basis_string r = uw_malloc(ctx, actual_len + 1);
+    memcpy(r, s + offset, actual_len);
+    r[actual_len] = 0;
     return r;
   }
-
 }
 
 uw_Basis_string uw_Basis_str1(uw_context ctx, uw_Basis_char ch) {
   char *r;
-
-  uw_check_heap(ctx, 2);
+  int req = U8_LENGTH(ch);
+  int offset = 0;
+  
+  uw_check_heap(ctx, req + 1);
   r = ctx->heap.front;
-  r[0] = ch;
-  r[1] = 0;
 
-  ctx->heap.front += 2;
+  U8_APPEND_UNSAFE(r, offset, ch);  
+  r[req] = 0;
 
-  return r;
+  ctx->heap.front += req + 1;
+  return r; 
 }
 
 uw_Basis_string uw_strdup(uw_context ctx, uw_Basis_string s1) {
-  int len = uw_Basis_strlen(ctx, s1) + 1;
+  int len = strlen(s1) + 1;
   char *s;
 
   uw_check_heap(ctx, len);
@@ -2676,7 +2765,6 @@ uw_Basis_string uw_Basis_sqlifyString(uw_context ctx, uw_Basis_string s) {
 
 uw_Basis_string uw_Basis_sqlifyChar(uw_context ctx, uw_Basis_char c) {
   char *r, *s2;
-
   uw_check_heap(ctx, 5 + uw_Estrings + strlen(uw_sqlsuffixChar));
 
   r = s2 = ctx->heap.front;
@@ -2934,10 +3022,7 @@ uw_Basis_string uw_Basis_floatToString(uw_context ctx, uw_Basis_float n) {
 }
 
 uw_Basis_string uw_Basis_charToString(uw_context ctx, uw_Basis_char ch) {
-  char *r = uw_malloc(ctx, 2);
-  r[0] = ch;
-  r[1] = 0;
-  return r;
+  return uw_Basis_str1(ctx, ch);
 }
 
 uw_Basis_string uw_Basis_boolToString(uw_context ctx, uw_Basis_bool b) {
@@ -2997,11 +3082,12 @@ uw_Basis_char *uw_Basis_stringToChar(uw_context ctx, uw_Basis_string s) {
     uw_Basis_char *r = uw_malloc(ctx, 1);
     r[0] = 0;
     return r;
-  } else if (s[1] != 0)
+  } else if (uw_Basis_strlenGe(ctx, s, 2) == uw_Basis_True)
     return NULL;
   else {
     uw_Basis_char *r = uw_malloc(ctx, 1);
-    r[0] = s[0];
+    int offset = 0;
+    U8_NEXT(s, offset, -1, *r);
     return r;
   }
 }
@@ -3126,10 +3212,14 @@ uw_Basis_float uw_Basis_stringToFloat_error(uw_context ctx, uw_Basis_string s) {
 uw_Basis_char uw_Basis_stringToChar_error(uw_context ctx, uw_Basis_string s) {
   if (s[0] == 0)
     return 0;
-  else if (s[1] != 0)
+  else if (uw_Basis_strlenGe(ctx, s, 2) == uw_Basis_True)
     uw_error(ctx, FATAL, "Can't parse char: %s", uw_Basis_htmlifyString(ctx, s));
-  else
-    return s[0];
+  else {
+    uw_Basis_char c;
+    int offset = 0;
+    U8_NEXT(s, offset, -1, c);
+    return c;
+  }
 }
 
 uw_Basis_bool uw_Basis_stringToBool_error(uw_context ctx, uw_Basis_string s) {
@@ -4328,82 +4418,98 @@ void uw_set_global(uw_context ctx, char *name, void *data, void (*free)(void*)) 
 
 uw_Basis_bool uw_Basis_isalnum(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!isalnum((int)c);
+  return !!u_hasBinaryProperty(c, UCHAR_POSIX_ALNUM);
 }
 
 uw_Basis_bool uw_Basis_isalpha(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!isalpha((int)c);
+  return !!u_hasBinaryProperty(c, UCHAR_ALPHABETIC);
 }
 
 uw_Basis_bool uw_Basis_isblank(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!isblank((int)c);
+  return !!u_hasBinaryProperty(c, UCHAR_POSIX_BLANK);
 }
 
 uw_Basis_bool uw_Basis_iscntrl(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!iscntrl((int)c);
+  return !!(u_charType(c)==U_CONTROL_CHAR);
 }
 
 uw_Basis_bool uw_Basis_isdigit(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!isdigit((int)c);
+  return !!u_isdigit(c);
 }
 
 uw_Basis_bool uw_Basis_isgraph(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!isgraph((int)c);
+  return !!u_hasBinaryProperty(c, UCHAR_POSIX_GRAPH);
 }
 
 uw_Basis_bool uw_Basis_islower(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!islower((int)c);
+  return !!u_hasBinaryProperty(c, UCHAR_LOWERCASE);
 }
 
 uw_Basis_bool uw_Basis_isprint(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!isprint((int)c);
+  return !!u_hasBinaryProperty(c, UCHAR_POSIX_PRINT);
 }
 
 uw_Basis_bool uw_Basis_ispunct(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!ispunct((int)c);
+  return !!u_ispunct(c);
 }
 
 uw_Basis_bool uw_Basis_isspace(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!isspace((int)c);
+  return !!u_hasBinaryProperty(c, UCHAR_WHITE_SPACE);
 }
 
 uw_Basis_bool uw_Basis_isupper(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!isupper((int)c);
+  return !!u_hasBinaryProperty(c, UCHAR_UPPERCASE);
 }
 
 uw_Basis_bool uw_Basis_isxdigit(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return !!isxdigit((int)c);
+  return !!(c <= 0x7f && u_isxdigit(c));
 }
 
 uw_Basis_char uw_Basis_tolower(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return tolower((int)c);
+  return u_tolower(c);
 }
 
 uw_Basis_char uw_Basis_toupper(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return toupper((int)c);
+  return u_toupper(c);
 }
 
 uw_Basis_int uw_Basis_ord(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
-  return (unsigned char)c;
+  return (uw_Basis_int)c;
+}
+
+uw_Basis_bool uw_Basis_iscodepoint (uw_context ctx, uw_Basis_int n) {
+  (void)ctx;
+  return !!(n <= 0x10FFFF);
+}
+
+uw_Basis_bool uw_Basis_issingle (uw_context ctx, uw_Basis_char c) {
+  (void)ctx;
+  return !!(c < 128);
 }
 
 uw_Basis_char uw_Basis_chr(uw_context ctx, uw_Basis_int n) {
   (void)ctx;
-  return n;
+  uw_Basis_char ch = (uw_Basis_char)n;
+
+  if (n > 0x10FFFF) {
+    uw_error(ctx, FATAL, "The integer %lld is not a valid char codepoint", n);
+  }
+
+  return ch;
 }
 
 uw_Basis_string uw_Basis_currentUrl(uw_context ctx) {
@@ -4657,7 +4763,7 @@ uw_Basis_string uw_Basis_atom(uw_context ctx, uw_Basis_string s) {
 
   for (p = s; *p; ++p) {
     char c = *p;
-    if (!isalnum((int)c) && c != '+' && c != '-' && c != '.' && c != '%' && c != '#')
+    if (!U8_IS_SINGLE(c) || (!isalnum((int)c) && c != '+' && c != '-' && c != '.' && c != '%' && c != '#'))
       uw_error(ctx, FATAL, "Disallowed character in CSS atom");
   }
 
@@ -4669,8 +4775,8 @@ uw_Basis_string uw_Basis_css_url(uw_context ctx, uw_Basis_string s) {
 
   for (p = s; *p; ++p) {
     char c = *p;
-    if (!isalnum((int)c) && c != ':' && c != '/' && c != '.' && c != '_' && c != '+'
-        && c != '-' && c != '%' && c != '?' && c != '&' && c != '=' && c != '#')
+    if (!U8_IS_SINGLE(c) || (!isalnum((int)c) && c != ':' && c != '/' && c != '.' && c != '_' && c != '+'
+			     && c != '-' && c != '%' && c != '?' && c != '&' && c != '=' && c != '#'))
       uw_error(ctx, FATAL, "Disallowed character in CSS URL");
   }
 
@@ -4683,12 +4789,12 @@ uw_Basis_string uw_Basis_property(uw_context ctx, uw_Basis_string s) {
   if (!*s)
     uw_error(ctx, FATAL, "Empty CSS property");
 
-  if (!islower((int)s[0]) && s[0] != '_')
+  if (!U8_IS_SINGLE(s[0]) || (!islower((int)s[0]) && s[0] != '_'))
     uw_error(ctx, FATAL, "Bad initial character in CSS property");
 
   for (p = s; *p; ++p) {
     char c = *p;
-    if (!islower((int)c) && !isdigit((int)c) && c != '_' && c != '-')
+    if (!U8_IS_SINGLE(c) || (!islower((int)c) && !isdigit((int)c) && c != '_' && c != '-'))
       uw_error(ctx, FATAL, "Disallowed character in CSS property");
   }
 
@@ -4739,9 +4845,9 @@ uw_Basis_postField *uw_Basis_firstFormField(uw_context ctx, uw_Basis_string s) {
 
 uw_Basis_string uw_Basis_blessData(uw_context ctx, uw_Basis_string s) {
   char *p = s;
-
+  
   for (; *p; ++p)
-    if (!isalnum(*p) && *p != '-' && *p != '_')
+    if (!U8_IS_SINGLE(*p) || (!isalnum(*p) && *p != '-' && *p != '_'))
       uw_error(ctx, FATAL, "Illegal HTML5 data-* attribute: %s", s);
 
   return s;
@@ -5064,7 +5170,7 @@ void uw_Sqlcache_flush(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys) {
   pthread_rwlock_unlock(&cache->lockIn);
 }
 
-int strcmp_nullsafe(const char *str1, const char *str2) {
+int strcmp_nullsafe(const char *str1, const char *str2) {  
   if (str1)
     return strcmp(str1, str2);
   else
@@ -5073,7 +5179,7 @@ int strcmp_nullsafe(const char *str1, const char *str2) {
 
 static int is_valid_hash(uw_Basis_string hash) {
   for (; *hash; ++hash)
-    if (!isxdigit(*hash))
+    if (!U8_IS_SINGLE(*hash) || !isxdigit(*hash))
       return 0;
 
   return 1;

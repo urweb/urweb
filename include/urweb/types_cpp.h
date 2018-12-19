@@ -4,11 +4,12 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <unicode/utypes.h>
 
 typedef long long uw_Basis_int;
 typedef double uw_Basis_float;
 typedef char* uw_Basis_string;
-typedef char uw_Basis_char;
+typedef UChar32 uw_Basis_char;
 typedef struct {
   time_t seconds;
   unsigned microseconds;
