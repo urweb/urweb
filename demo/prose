@@ -5,12 +5,13 @@
 <h6>Install System Dependencies</h6>
 
 <p>
-<blockquote><pre>sudo apt-get install build-essential \
+<blockquote><pre>sudo apt install build-essential \
   emacs-goodies-el \
   libgmp-dev \
   libssl-dev \
   libpq-dev \
   libsqlite3-dev \
+  libicu-dev \
   mlton \
   sqlite3</blockquote></pre></p>
 
