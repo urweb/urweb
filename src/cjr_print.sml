@@ -3345,9 +3345,20 @@ fun p_file env (ds, ps) =
                  string "}",
                  newline]
 
-        val initializers = List.mapPartial (fn (DTask (Initialize, x1, x2, e), _) => SOME (x1, x2, e) | _ => NONE) ds
-        val expungers = List.mapPartial (fn (DTask (ClientLeaves, x1, x2, e), _) => SOME (x1, x2, e) | _ => NONE) ds
-        val periodics = List.mapPartial (fn (DTask (Periodic n, x1, x2, e), _) => SOME (n, x1, x2, e) | _ => NONE) ds
+        val initializers = List.mapPartial (fn (DTask (Initialize, x1, x2, e), _) =>
+                                               SOME (x1, x2, p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e)
+                                             | _ => NONE) ds
+        val expungers = List.mapPartial (fn (DTask (ClientLeaves, x1, x2, e), _) =>
+                                            SOME (x1, x2, p_exp (E.pushERel (E.pushERel env x1 (TFfi ("Basis", "client"), ErrorMsg.dummySpan))
+                                                                            x2 dummyt) e)
+                                          | _ => NONE) ds
+        val periodics = List.mapPartial (fn (DTask (Periodic n, x1, x2, e), _) =>
+                                            SOME (n, x1, x2, p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e)
+                                        | _ => NONE) ds
+
+        val (protos', defs') = ListPair.unzip (latestUrlHandlers ())
+        val protos = protos @ protos'
+        val defs = defs @ defs'
 
         val onError = ListUtil.search (fn (DOnError n, _) => SOME n | _ => NONE) ds
 
@@ -3467,7 +3478,7 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
-             box (ListUtil.mapi (fn (i, (_, x1, x2, e)) =>
+             box (ListUtil.mapi (fn (i, (_, x1, x2, pe)) =>
                                     box [string "static void uw_periodic",
                                          string (Int.toString i),
                                          string "(uw_context ctx) {",
@@ -3478,7 +3489,7 @@ fun p_file env (ds, ps) =
                                               string x2,
                                               string "_1 = 0;",
                                               newline,
-                                              p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e,
+                                              pe,
                                               string ";",
                                               newline],
                                          string "}",
@@ -3617,22 +3628,21 @@ fun p_file env (ds, ps) =
              box [string "static void uw_expunger(uw_context ctx, uw_Basis_client cli) {",
                   newline,
 
-                  p_list_sep (box []) (fn (x1, x2, e) => box [string "({",
-                                                              newline,
-                                                              string "uw_Basis_client __uwr_",
-                                                              string x1,
-                                                              string "_0 = cli;",
-                                                              newline,
-                                                              string "uw_unit __uwr_",
-                                                              string x2,
-                                                              string "_1 = 0;",
-                                                              newline,
-                                                              p_exp (E.pushERel (E.pushERel env x1 (TFfi ("Basis", "client"), ErrorMsg.dummySpan))
-                                                                                x2 dummyt) e,
-                                                              string ";",
-                                                              newline,
-                                                              string "});",
-                                                              newline]) expungers,
+                  p_list_sep (box []) (fn (x1, x2, pe) => box [string "({",
+                                                               newline,
+                                                               string "uw_Basis_client __uwr_",
+                                                               string x1,
+                                                               string "_0 = cli;",
+                                                               newline,
+                                                               string "uw_unit __uwr_",
+                                                               string x2,
+                                                               string "_1 = 0;",
+                                                               newline,
+                                                               pe,
+                                                               string ";",
+                                                               newline,
+                                                               string "});",
+                                                               newline]) expungers,
 
                   if hasDb then
                       box [p_enamed env (!expunge),
@@ -3650,19 +3660,19 @@ fun p_file env (ds, ps) =
                   p_list_sep newline (fn x => x) (rev (!global_initializers)),
                   string "uw_end_initializing(ctx);",
                   newline,
-                  p_list_sep (box []) (fn (x1, x2, e) => box [string "({",
-                                                              newline,
-                                                              string "uw_unit __uwr_",
-                                                              string x1,
-                                                              string "_0 = 0, __uwr_",
-                                                              string x2,
-                                                              string "_1 = 0;",
-                                                              newline,
-                                                              p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e,
-                                                              string ";",
-                                                              newline,
-                                                              string "});",
-                                                              newline]) initializers,
+                  p_list_sep (box []) (fn (x1, x2, pe) => box [string "({",
+                                                               newline,
+                                                               string "uw_unit __uwr_",
+                                                               string x1,
+                                                               string "_0 = 0, __uwr_",
+                                                               string x2,
+                                                               string "_1 = 0;",
+                                                               newline,
+                                                               pe,
+                                                               string ";",
+                                                               newline,
+                                                               string "});",
+                                                               newline]) initializers,
                   if hasDb then
                       box [p_enamed env (!initialize),
                            string "(ctx, 0);",
