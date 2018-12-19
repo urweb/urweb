@@ -95,6 +95,8 @@ if test [-z $ICU_INCLUDES]; then
    ICU_INCLUDES=
 fi
 
+CPPFLAGS=$ICU_INCLUDES$CPPFLAGS
+
 if test [-z $ICU_LIBS]; then
    ICU_LIBS=
 fi
