@@ -1561,7 +1561,7 @@ const char *uw_Basis_get_settings(uw_context ctx, uw_unit u) {
 
 uw_Basis_bool uw_Basis_isprint(uw_context ctx, uw_Basis_char ch);
 
-void jsifyChar(char**buffer_ptr, uw_context ctx, uw_Basis_char c1) {
+static void jsifyChar(char **buffer_ptr, uw_context ctx, uw_Basis_char c1) {
   char* buffer = *buffer_ptr;
   
   switch (c1) {
@@ -1586,14 +1586,11 @@ void jsifyChar(char**buffer_ptr, uw_context ctx, uw_Basis_char c1) {
     buffer += 4;
     break;
   default:
-    
-    if (uw_Basis_isprint(ctx, c1) == uw_Basis_True)
-      {
-	int offset = 0;
-	U8_APPEND_UNSAFE(buffer, offset, c1);
-	buffer += offset;
-      }
-    else {
+    if (uw_Basis_isprint(ctx, c1)) {
+      int offset = 0;
+      U8_APPEND_UNSAFE(buffer, offset, c1);
+      buffer += offset;
+    } else {
       if(65536 > c1) {
 	sprintf(buffer, "\\u%04x", c1);
 	buffer += 6;
@@ -1604,7 +1601,6 @@ void jsifyChar(char**buffer_ptr, uw_context ctx, uw_Basis_char c1) {
     }
   }
 
- 
   *buffer_ptr = buffer;
 }
 
@@ -1990,7 +1986,7 @@ char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
 
 char *uw_Basis_urlifyBool(uw_context ctx, uw_Basis_bool b) {
   (void)ctx;
-  if (b == uw_Basis_False)
+  if (!b)
     return "0";
   else
     return "1";
@@ -2079,7 +2075,7 @@ uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
 }
 
 uw_unit uw_Basis_urlifyBool_w(uw_context ctx, uw_Basis_bool b) {
-  if (b == uw_Basis_False)
+  if (!b)
     uw_writec(ctx, '0');
   else
     uw_writec(ctx, '1');
@@ -2355,7 +2351,7 @@ char *uw_Basis_htmlifyString(uw_context ctx, const char *s) {
       s2 += len;
     }
   }
-  
+
   *s2++ = 0;
   ctx->heap.front = s2;
   return r;
@@ -2393,14 +2389,14 @@ uw_unit uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
 
 uw_Basis_string uw_Basis_htmlifyBool(uw_context ctx, uw_Basis_bool b) {
   (void)ctx;
-  if (b == uw_Basis_False)
+  if (!b)
     return "False";
   else
     return "True";
 }
 
 uw_unit uw_Basis_htmlifyBool_w(uw_context ctx, uw_Basis_bool b) {
-  if (b == uw_Basis_False) {
+  if (!b) {
     uw_check(ctx, 6);
     strcpy(ctx->page.front, "False");
     ctx->page.front += 5;
@@ -2448,7 +2444,7 @@ uw_unit uw_Basis_htmlifySource_w(uw_context ctx, uw_Basis_source src) {
   return uw_unit_v;
 }
 
-uw_Basis_char uw_Basis_strsub(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {  
+uw_Basis_char uw_Basis_strsub(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
   uw_Basis_char c;
   int offset = 0;
   
@@ -2505,7 +2501,7 @@ uw_Basis_bool uw_Basis_strlenGe(uw_context ctx, uw_Basis_string s, uw_Basis_int 
   return uw_Basis_True;
 }
 
-int aux_strchr(uw_Basis_string s, uw_Basis_char ch, int* o_offset) {
+static int aux_strchr(uw_Basis_string s, uw_Basis_char ch, int *o_offset) {
   int u8idx = 0, offset = 0, offsetpr = 0;
   uw_Basis_char c;
     
@@ -2909,7 +2905,7 @@ uw_Basis_string uw_Basis_sqlifyStringN(uw_context ctx, uw_Basis_string s) {
 
 char *uw_Basis_sqlifyBool(uw_context ctx, uw_Basis_bool b) {
   (void)ctx;
-  if (b == uw_Basis_False)
+  if (!b)
     return "FALSE";
   else
     return "TRUE";
@@ -2993,7 +2989,7 @@ char *uw_Basis_ensqlBool(uw_Basis_bool b) {
   static uw_Basis_int true = 1;
   static uw_Basis_int false = 0;
 
-  if (b == uw_Basis_False)
+  if (!b)
     return (char *)&false;
   else
     return (char *)&true;
@@ -3027,7 +3023,7 @@ uw_Basis_string uw_Basis_charToString(uw_context ctx, uw_Basis_char ch) {
 
 uw_Basis_string uw_Basis_boolToString(uw_context ctx, uw_Basis_bool b) {
   (void)ctx;
-  if (b == uw_Basis_False)
+  if (!b)
     return "False";
   else
     return "True";
@@ -3082,7 +3078,7 @@ uw_Basis_char *uw_Basis_stringToChar(uw_context ctx, uw_Basis_string s) {
     uw_Basis_char *r = uw_malloc(ctx, 1);
     r[0] = 0;
     return r;
-  } else if (uw_Basis_strlenGe(ctx, s, 2) == uw_Basis_True)
+  } else if (uw_Basis_strlenGe(ctx, s, 2))
     return NULL;
   else {
     uw_Basis_char *r = uw_malloc(ctx, 1);
@@ -3212,7 +3208,7 @@ uw_Basis_float uw_Basis_stringToFloat_error(uw_context ctx, uw_Basis_string s) {
 uw_Basis_char uw_Basis_stringToChar_error(uw_context ctx, uw_Basis_string s) {
   if (s[0] == 0)
     return 0;
-  else if (uw_Basis_strlenGe(ctx, s, 2) == uw_Basis_True)
+  else if (uw_Basis_strlenGe(ctx, s, 2))
     uw_error(ctx, FATAL, "Can't parse char: %s", uw_Basis_htmlifyString(ctx, s));
   else {
     uw_Basis_char c;
@@ -4491,12 +4487,12 @@ uw_Basis_int uw_Basis_ord(uw_context ctx, uw_Basis_char c) {
   return (uw_Basis_int)c;
 }
 
-uw_Basis_bool uw_Basis_iscodepoint (uw_context ctx, uw_Basis_int n) {
+uw_Basis_bool uw_Basis_iscodepoint(uw_context ctx, uw_Basis_int n) {
   (void)ctx;
   return !!(n <= 0x10FFFF);
 }
 
-uw_Basis_bool uw_Basis_issingle (uw_context ctx, uw_Basis_char c) {
+uw_Basis_bool uw_Basis_issingle(uw_context ctx, uw_Basis_char c) {
   (void)ctx;
   return !!(c < 128);
 }
@@ -4845,7 +4841,7 @@ uw_Basis_postField *uw_Basis_firstFormField(uw_context ctx, uw_Basis_string s) {
 
 uw_Basis_string uw_Basis_blessData(uw_context ctx, uw_Basis_string s) {
   char *p = s;
-  
+
   for (; *p; ++p)
     if (!U8_IS_SINGLE(*p) || (!isalnum(*p) && *p != '-' && *p != '_'))
       uw_error(ctx, FATAL, "Illegal HTML5 data-* attribute: %s", s);
@@ -5170,7 +5166,7 @@ void uw_Sqlcache_flush(uw_context ctx, uw_Sqlcache_Cache *cache, char **keys) {
   pthread_rwlock_unlock(&cache->lockIn);
 }
 
-int strcmp_nullsafe(const char *str1, const char *str2) {  
+int strcmp_nullsafe(const char *str1, const char *str2) {
   if (str1)
     return strcmp(str1, str2);
   else
