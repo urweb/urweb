@@ -24,15 +24,15 @@ val toString = fn x =>
           | C B => "C B"
           | D => "D"
 
-val rec page = fn x => <html><body>
+val rec page = fn x => return <xml><body>
         {cdata (toString x)}<br/>
         <br/>
 
         <a link={page x}>Again!</a>
-</body></html>
+</body></xml>
 
-val main : unit -> page = fn () => <html><body>
+val main : unit -> transaction page = fn () => return <xml><body>
         <li> <a link={page (C A)}>C A</a></li>
         <li> <a link={page (C B)}>C B</a></li>
         <li> <a link={page D}>D</a></li>
-</body></html>
+</body></xml>

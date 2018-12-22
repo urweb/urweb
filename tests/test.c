@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "../include/urweb.h"
+#include "urweb/urweb.h"
 
 typedef uw_Basis_string uw_Test_t;
 
@@ -27,16 +27,16 @@ uw_Basis_unit uw_Test_foo(uw_context ctx) {
 }
 
 static void commit(void *data) {
-  printf("Commit: %s\n", data);
+  printf("Commit: %s\n", (char*)data);
 }
 static void rollback(void *data) {
-  printf("Rollback: %s\n", data);
+  printf("Rollback: %s\n", (char*)data);
 }
-static void free(void *data) {
-  printf("Free: %s\n", data);
+static void ffree(void *data, int will_retry) {
+  printf("Free: %s, %d\n", (char*)data, will_retry);
 }
 
 uw_Basis_unit uw_Test_transactional(uw_context ctx) {
-  uw_register_transactional(ctx, "Beppo", commit, rollback, free);
+  uw_register_transactional(ctx, "Beppo", commit, rollback, ffree);
   return uw_unit_v;
 }

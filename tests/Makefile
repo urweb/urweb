@@ -7,6 +7,7 @@ test.o: test.c
 simple::
 	./driver.sh aborter2
 	./driver.sh aborter
+	./driver.sh a_case_of_the_splits
 	./driver.sh activeBlock
 	./driver.sh activeFocus
 	./driver.sh active
@@ -22,6 +23,17 @@ simple::
 	./driver.sh autocomp
 	./driver.sh babySpawn
 	./driver.sh bindpat
+	./driver.sh bodyClick
+	./driver.sh bool
+	./driver.sh both
+	./driver.sh both2
+	./driver.sh button
+	./driver.sh case
+	./driver.sh caseMod
+	./driver.sh ccheckbox
+	./driver.sh cdataF
+	./driver.sh cdataL
+	./cffi.sh
 	./driver.sh DynChannel
 	./driver.sh jsonTest
 	./driver.sh entities
@@ -29,4 +41,3 @@ simple::
 	./driver.sh filter
 	./driver.sh jsbspace
 	./driver.sh utf8
-
