@@ -1,6 +1,6 @@
 ffi test
 include test.h
-script http://localhost/test/test.js
+jsFile test.js
 link test.o
 effectful Test.print
 serverOnly Test.foo

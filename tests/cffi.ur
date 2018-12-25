@@ -3,9 +3,9 @@ fun printer () = Test.foo
 fun effect () =
   Test.print;
   return <xml><body>
-    <button value="Remote" onclick={printer ()}/>
-    <button value="Local" onclick={Test.bar "Hoho"}/>
-    <button value="Either" onclick={Test.print}/>
+    <button value="Remote" onclick={fn _ => rpc (printer ())}/>
+    <button value="Local" onclick={fn _ => Test.bar "Hoho"}/>
+    <button value="Either" onclick={fn _ => Test.print}/>
   </body></xml>
 
 fun xact () =

@@ -1,8 +1,8 @@
-val snippet = fn s => <body>
+val snippet = fn s => <xml>
         <h1>{cdata s}</h1>
-</body>
+</xml>
 
-val main = fn () => <html><body>
+val main : unit -> transaction page = fn () => return <xml><body>
         {snippet "<Hi."}
         {snippet "Bye."}
-</body></html>
+</body></xml>
