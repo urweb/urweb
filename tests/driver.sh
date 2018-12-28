@@ -21,5 +21,9 @@ fi
 $TESTSRV -q -a 127.0.0.1 &
 echo $! >> $TESTPID
 sleep 1
-python3 -m unittest $1.py
+if [[ $# -eq 1 ]] ; then
+    python3 -m unittest $1.py
+else
+    python3 -m unittest $1.Suite.$2
+fi
 kill `cat $TESTPID`
