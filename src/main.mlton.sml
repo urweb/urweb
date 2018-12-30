@@ -175,7 +175,7 @@ fun oneRun args =
                                 demo := SOME (prefix, true)),
                     NONE),
               ("tutorial", set_true tutorial,
-                    NONE),
+                    SOME "render HTML tutorials from .ur source files"),
               ("protocol", ONE ("[http|cgi|fastcgi|static]",
                                 Settings.setProtocol),
                     SOME "set server protocol"),
@@ -186,7 +186,7 @@ fun oneRun args =
               ("dbms", ONE ("[sqlite|mysql|postgres]", Settings.setDbms),
                     SOME "select database engine"),
               ("debug", call_true Settings.setDebug,
-                    NONE),
+                    SOME "save some intermediate C files"),
               ("verbose", ZERO (fn () =>
                                 (Compiler.debug := true;
                                  Elaborate.verbose := true)),
@@ -202,7 +202,8 @@ fun oneRun args =
               ("unifyMore", set_true Elaborate.unifyMore,
                     SOME "continue unification before reporting type error"),
               ("dumpSource", set_true Compiler.dumpSource,
-                    NONE),
+                    SOME ("print source code of last intermediate program "^
+                          "if there is an error")),
               ("dumpVerboseSource", ZERO (fn () =>
                                 (Compiler.dumpSource := true;
                                  ElabPrint.debug := true;
@@ -221,17 +222,19 @@ fun oneRun args =
               ("stop", ONE ("<phase>", Compiler.setStop),
                     SOME "stop compilation after <phase>"),
               ("path", TWO ("<name>", "<path>", Compiler.addPath),
-                    NONE),
+                    SOME ("set path variable <name> to <path> for use in "^
+                          ".urp files")),
               ("root", TWO ("<name>", "<path>",
                             (fn (name, path) =>
                                 Compiler.addModuleRoot (path, name))),
-                    NONE),
+                    SOME "prefix names of modules found in <path> with <name>"),
               ("boot", ZERO (fn () =>
                             (Compiler.enableBoot ();
                              Settings.setBootLinking true)),
-                    NONE),
+                    SOME ("run from build tree and generate statically linked "^
+                          "executables ")),
               ("sigfile", ONE ("<file>", Settings.setSigFile o SOME),
-                    NONE),
+                    SOME "search for cryptographic signing keys in <file>"),
               ("iflow", set_true Compiler.doIflow,
                     NONE),
               ("sqlcache", call_true Settings.setSqlcache,
@@ -243,7 +246,7 @@ fun oneRun args =
               ("noEmacs", set_true Demo.noEmacs,
                     NONE),
               ("limit", TWO ("<class>", "<num>", add_class),
-                    NONE),
+                    SOME "set resource usage limit for <class> to <num>"),
               ("explainEmbed", set_true JsComp.explainEmbed,
                     SOME ("explain errors about embedding of server-side "^
                           "values in client code"))
