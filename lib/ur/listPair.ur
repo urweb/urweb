@@ -40,7 +40,21 @@ fun mp [a] [b] [c] (f : a -> b -> c) =
             case (ls1, ls2) of
                 ([], []) => []
               | (x1 :: ls1, x2 :: ls2) => f x1 x2 :: map' ls1 ls2
-              | _ => error <xml>ListPair.map2: Unequal list lengths</xml>
+              | _ => error <xml>ListPair.mp: Unequal list lengths</xml>
     in
         map'
+    end
+
+fun mapM [m] (_ : monad m) [a] [b] [c] (f : a -> b -> m c) =
+    let
+        fun mapM' ls1 ls2 =
+            case (ls1, ls2) of
+                ([], []) => return []
+              | (x1 :: ls1, x2 :: ls2) =>
+                y <- f x1 x2;
+                ls <- mapM' ls1 ls2;
+                return (y :: ls)
+              | _ => error <xml>ListPair.mapM: Unequal list lengths</xml>
+    in
+        mapM'
     end
