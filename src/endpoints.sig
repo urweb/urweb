@@ -30,7 +30,7 @@ signature ENDPOINTS = sig
     datatype method = GET | POST
     val methodToString : method -> string
 
-    type endpoint = {Method : method, Url : string}
+    type endpoint = {Method : method, Url : string, ContentType : string option, LastModified : Time.time option}
     val p_endpoint : endpoint Print.printer
 
     type report = {Endpoints : endpoint list}

@@ -37,14 +37,20 @@ datatype method = GET | POST
 fun methodToString GET = "GET"
   | methodToString POST = "POST"
 
-type endpoint = {Method : method, Url : string}
+type endpoint = {Method : method, Url : string, ContentType : string option, LastModified : Time.time option}
 type report = {Endpoints : endpoint list}
 
-fun p_endpoint {Method = m, Url = u} =
-    box [string "{",
-         string "\"method\": \"", string (methodToString m), string "\",",
-         string "\"url\": \"", string u, string "\"",
-         string "}"]
+fun p_endpoint {Method = m, Url = u, ContentType = oct, LastModified = olm} =
+    let
+        val rfcFmt = "%a, %d %b %Y %H:%M:%S GMT"
+    in
+        box [string "{",
+             string "\"method\": \"", string (methodToString m), string "\", ",
+             string "\"url\": \"", string u, string "\", ",
+             string "\"content-type\": ", (case oct of SOME ct => box [string "\"", string ct, string"\""]
+                                                     | NONE => string "null"),
+             string "}"]
+    end
 
 fun p_report {Endpoints = el} =
     box [string "{\"endpoints\":",
@@ -65,12 +71,22 @@ fun summarize file =
             in
                 case d of
                     DExport (ek, id, i, tl, rt, f) =>
-                    {Method = exportKindToMethod ek, Url = id} :: st
+                    {Method = exportKindToMethod ek, Url = id, LastModified = NONE, ContentType = NONE} :: st
                  | _ => st
             end
 
         val (decls, _) = file
         val ep = foldl decl [] decls
+
+        fun binfile ({Uri = u, ContentType = ct, LastModified = lm, Bytes = _ }, st) =
+            {Method = GET, Url = u, LastModified = SOME lm, ContentType = ct} :: st
+
+        val ep = foldl binfile ep (Settings.listFiles ())
+
+        fun jsfile ({Filename = f, Content = _}, st) =
+            {Method = GET, Url = f, LastModified = NONE, ContentType = SOME "text/javascript"} :: st
+
+        val ep = foldl jsfile ep (Settings.listJsFiles ())
     in
         {Endpoints = ep}
     end
