@@ -1429,6 +1429,13 @@ val mono_opt = {
     print = MonoPrint.p_file MonoEnv.empty
 }
 
+val endpoints = {
+    func = Endpoints.summarize,
+    print = Endpoints.p_report
+}
+
+val toEndpoints = transform endpoints "endpoints" o toMonoize
+
 val toMono_opt1 = transform mono_opt "mono_opt1" o toMonoize
 
 val untangle = {

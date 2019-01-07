@@ -171,6 +171,7 @@ signature COMPILER = sig
     val toEffectize : (string, Core.file) transform
     val toCss : (string, Css.report) transform
     val toMonoize : (string, Mono.file) transform
+    val toEndpoints : (string, Endpoints.report) transform
     val toMono_opt1 : (string, Mono.file) transform
     val toUntangle : (string, Mono.file) transform
     val toMono_reduce : (string, Mono.file) transform

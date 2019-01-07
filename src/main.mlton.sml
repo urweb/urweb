@@ -49,7 +49,7 @@ fun parse_flags flag_info args =
             | "--h" => "-help"
             | "--help" => "-help"
             | _ => arg
-                
+
         fun loop [] : string list = []
           | loop (arg :: args) =
             let
@@ -114,6 +114,7 @@ fun oneRun args =
         val demo = ref (NONE : (string * bool) option)
         val tutorial = ref false
         val css = ref false
+        val endpoints = ref false
 
         val () = (Compiler.debug := false;
                   Elaborate.verbose := false;
@@ -162,12 +163,14 @@ fun oneRun args =
                     SOME "print numeric version number and exit"),
               ("css", set_true css,
                     SOME "print categories of CSS properties"),
+              ("endpoints", set_true endpoints,
+                    SOME "print exposed URL endpoints"),
               ("print-ccompiler", ZERO printCCompiler,
                     SOME "print C compiler and exit"),
               ("print-cinclude", ZERO printCInclude,
                     SOME "print directory of C headers and exit"),
               ("ccompiler", ONE ("<program>", Settings.setCCompiler),
-                    SOME "set the C compiler to <program>"), 
+                    SOME "set the C compiler to <program>"),
               ("demo", ONE ("<prefix>", fn prefix =>
                                 demo := SOME (prefix, false)),
                     NONE),
@@ -268,8 +271,8 @@ fun oneRun args =
                                 " only one is allowed.\nSpecified projects: "^
                                 String.concatWith ", " files)
     in
-        case (!css, !demo, !tutorial) of
-            (true, _, _) =>
+        case (!css, !demo, !tutorial, !endpoints) of
+            (true, _, _, _) =>
             (case Compiler.run Compiler.toCss job of
                  NONE => OS.Process.failure
                | SOME {Overall = ov, Classes = cl} =>
@@ -282,13 +285,24 @@ fun oneRun args =
                            app (print o Css.othersToString) ots;
                            print "\n")) cl;
                   OS.Process.success))
-          | (_, SOME (prefix, guided), _) =>
+          | (_, SOME (prefix, guided), _, _) =>
             if Demo.make' {prefix = prefix, dirname = job, guided = guided} then
                 OS.Process.success
             else
                 OS.Process.failure
-          | (_, _, true) => (Tutorial.make job;
-                             OS.Process.success)
+          | (_, _, true, _) => (Tutorial.make job;
+                                OS.Process.success)
+          | (_, _, _, true) =>
+            (case Compiler.run Compiler.toEndpoints job of
+                 NONE => OS.Process.failure
+               | SOME es =>
+                 let
+                     val r = Endpoints.p_report es
+                 in
+                     Print.eprint r;
+                     print "\n";
+                     OS.Process.success
+                 end)
           | _ =>
             if !tc then
                 (Compiler.check Compiler.toElaborate job;
