@@ -1954,29 +1954,61 @@ char *uw_Basis_urlifyFloat(uw_context ctx, uw_Basis_float n) {
   return r;
 }
 
+static void aux_urlifyChar(char** ptr, uw_Basis_char c) {
+  char* p = *ptr;
+  
+  if((uint32_t)(c) <= 0x7f) {
+    sprintf(p, ".%02X", (uint8_t)(c));
+    p += 3;
+  } else {
+    if((uint32_t)(c) <= 0x7ff) {
+      sprintf(p, ".%02X", (uint8_t)(((c)>>6)|0xc0));
+      p += 3;
+    } else {
+      if((uint32_t)(c) <= 0xffff) { 
+	sprintf(p, ".%02X", (uint8_t)(((c)>>12)|0xe0));
+	p += 3;
+      } else { 
+	sprintf(p, ".%02X", (uint8_t)(((c)>>18)|0xf0));
+	p += 3;
+	sprintf(p, ".%02X", (uint8_t)((((c)>>12)&0x3f)|0x80));
+	p += 3;
+      } 
+      sprintf(p, ".%02X", (uint8_t)((((c)>>6)&0x3f)|0x80));
+      p += 3;
+    } 
+    sprintf(p, ".%02X", (uint8_t)(((c)&0x3f)|0x80));
+    p += 3;
+  }
+
+  *ptr = p;
+}
+
 char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *p;
 
   if (s[0] == '\0')
     return "_";
 
-  uw_check_heap(ctx, strlen(s) * 3 + 1 + !!(s[0] == '_'));
+  uw_check_heap(ctx, strlen(s) * 12 + 1 + !!(s[0] == '_'));
 
   r = p = ctx->heap.front;
   if (s[0] == '_')
     *p++ = '_';
 
-  for (; *s; s++) {
-    unsigned char c = *s;
-
-    if (c == ' ')
+  uw_Basis_char c;
+  int offset = 0, curr = 0;
+  while (s[offset] != 0) {
+    U8_NEXT(s, offset, -1, c);
+  
+    if (U8_IS_SINGLE(s[curr]) && s[curr] == ' ')
       *p++ = '+';
-    else if (U8_IS_SINGLE(c) && isalnum(c))
-      *p++ = c;
+    else if (U8_IS_SINGLE(s[curr]) && isalnum(s[curr]))
+      *p++ = s[offset];
     else {
-      sprintf(p, ".%02X", c);
-      p += 3;
+      aux_urlifyChar(&p, c);
     }
+    curr = offset;
   }
 
   *p++ = 0;
@@ -2046,6 +2078,29 @@ uw_unit uw_Basis_urlifyTime_w(uw_context ctx, uw_Basis_time t) {
   return uw_Basis_urlifyInt_w(ctx, (uw_Basis_int)t.seconds * 1000000 + t.microseconds);
 }
 
+uw_unit uw_Basis_urlifyChar_w(uw_context ctx, uw_Basis_char c) {
+  if (c == '\0') {
+    uw_check(ctx, 1);
+    uw_writec_unsafe(ctx, '_');
+    return uw_unit_v;
+  }
+
+  uw_check(ctx, 12 + !!(c == '_'));
+
+  if (c == '_')
+    uw_writec_unsafe(ctx, '_');
+  
+  if (c == ' ')
+    uw_writec_unsafe(ctx, '+');
+  else if (isalnum(c) && c <= 0x7f)
+    uw_writec_unsafe(ctx, c);
+  else {
+    aux_urlifyChar(&(ctx->page.front), c);
+  }
+  
+  return uw_unit_v;
+}
+
 uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
   if (s[0] == '\0') {
     uw_check(ctx, 1);
@@ -2053,22 +2108,24 @@ uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
     return uw_unit_v;
   }
 
-  uw_check(ctx, strlen(s) * 3 + !!(s[0] == '_'));
+  uw_check(ctx, strlen(s) * 12 + !!(s[0] == '_'));
 
   if (s[0] == '_')
     uw_writec_unsafe(ctx, '_');
 
-  for (; *s; s++) {
-    unsigned char c = *s;
-
-    if (c == ' ')
+  uw_Basis_char c;
+  int offset = 0, curr = 0;
+  while (s[offset] != 0) {
+    U8_NEXT(s, offset, -1, c);   
+    
+    if (U8_IS_SINGLE(s[curr]) && s[curr] == ' ')
       uw_writec_unsafe(ctx, '+');
-    else if (U8_IS_SINGLE(c) && isalnum(c))
-      uw_writec_unsafe(ctx, c);
-    else {
-      sprintf(ctx->page.front, ".%02X", c);
-      ctx->page.front += 3;
+    else if (U8_IS_SINGLE(s[curr]) && isalnum(s[curr]))
+      uw_writec_unsafe(ctx, s[curr]);
+    else {      
+      aux_urlifyChar(&(ctx->page.front),  c);
     }
+    curr = offset;
   }
 
   return uw_unit_v;
