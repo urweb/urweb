@@ -1,0 +1,4 @@
+rewrite url Endpoints/main index.html
+rewrite url Endpoints/formbased greet.html
+
+endpoints
