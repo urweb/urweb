@@ -59,7 +59,14 @@ fun p_report {Endpoints = el} =
          p_list_sep (box [string ",", newline]) p_endpoint el,
          string "]}"]
 
-fun summarize file =
+val endpoints = ref ([] : endpoint list)
+val jsFile = ref (NONE : string option)
+
+fun setJavaScript x = jsFile := SOME x
+
+fun reset () = (endpoints := []; jsFile := NONE)
+
+fun collect file =
     let
         fun exportKindToMethod (Link _) = GET
           | exportKindToMethod (Action _) = POST
@@ -75,6 +82,8 @@ fun summarize file =
                  | _ => st
             end
 
+        val () = reset ()
+
         val (decls, _) = file
         val ep = foldl decl [] decls
 
@@ -87,6 +96,20 @@ fun summarize file =
             {Method = GET, Url = f, LastModified = NONE, ContentType = SOME "text/javascript"} :: st
 
         val ep = foldl jsfile ep (Settings.listJsFiles ())
+    in
+        endpoints := ep;
+        file
+    end
+
+fun summarize () =
+    let
+        val ep = !endpoints
+        val js = !jsFile
+        val ep =
+            case js of
+                NONE => ep
+             |  SOME js =>
+                {Method = GET, Url = js, LastModified = NONE, ContentType = SOME "text/javascript"} :: ep
     in
         {Endpoints = ep}
     end

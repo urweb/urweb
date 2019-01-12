@@ -2550,8 +2550,10 @@ fun p_decl env (dAll as (d, loc) : decl) =
 		(case Settings.getOutputJsFile () of
 		    NONE => "app." ^ SHA1.bintohex (SHA1.hash s) ^ ".js"
 		  | SOME s => s)
-            val () = app_js := OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
-                                                    file = name}
+            val js = OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
+                                          file = name}
+            val () = app_js := js
+            val () = Endpoints.setJavaScript js
         in
             box [string "static char jslib[] = \"",
                  string (Prim.toCString s),

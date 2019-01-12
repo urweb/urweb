@@ -703,6 +703,10 @@ val sql = ref (NONE : string option)
 fun setSql so = sql := so
 fun getSql () = !sql
 
+val endpoints = ref (NONE : string option)
+fun setEndpoints so = endpoints := so
+fun getEndpoints () = !endpoints
+
 val coreInline = ref 5
 fun setCoreInline n = coreInline := n
 fun getCoreInline () = !coreInline
@@ -729,7 +733,7 @@ fun getSigFile () = !sigFile
 
 val fileCache = ref (NONE : string option)
 fun setFileCache v =
-    (if Option.isSome v andalso (case #supportsSHA512 (currentDbms ()) of NONE => true 
+    (if Option.isSome v andalso (case #supportsSHA512 (currentDbms ()) of NONE => true
                                                                         | SOME _ => false) then
          ErrorMsg.error "The selected database engine is incompatible with file caching."
      else
@@ -1007,6 +1011,7 @@ fun reset () =
      dbstring := NONE;
      exe := NONE;
      sql := NONE;
+     endpoints := NONE;
      coreInline := 5;
      monoInline := 5;
      staticLinking := false;

@@ -39,6 +39,7 @@ type job = {
      sources : string list,
      exe : string,
      sql : string option,
+     endpoints : string option,
      debug : bool,
      profile : bool,
      timeout : int,
@@ -275,7 +276,7 @@ val parseUr = {
               handle LrParser.ParseError => [],
      print = SourcePrint.p_file}
 
-fun p_job ({prefix, database, exe, sql, sources, debug, profile,
+fun p_job ({prefix, database, exe, sql, endpoints, sources, debug, profile,
             timeout, ffi, link, headers, scripts,
             clientToServer, effectful, benignEffectful, clientOnly, serverOnly, jsModule, jsFuncs, ...} : job) =
     let
@@ -303,6 +304,10 @@ fun p_job ({prefix, database, exe, sql, sources, debug, profile,
              case sql of
                  NONE => string "No SQL file."
                | SOME sql => string ("SQL fle: " ^ sql),
+             newline,
+             case endpoints of
+                 NONE => string "No endpoints file."
+               | SOME ep => string ("Endpoints fle: " ^ ep),
              newline,
              string "Timeout: ",
              string (Int.toString timeout),
@@ -443,6 +448,7 @@ fun parseUrp' accLibs fname =
                         sources = [fname],
                         exe = fname ^ ".exe",
                         sql = NONE,
+                        endpoints = NONE,
                         debug = Settings.getDebug (),
                         profile = false,
                         timeout = 120,
@@ -581,6 +587,7 @@ fun parseUrp' accLibs fname =
                      val database = ref (Settings.getDbstring ())
                      val exe = ref (Settings.getExe ())
                      val sql = ref (Settings.getSql ())
+                     val endpoints = ref (Settings.getEndpoints ())
                      val debug = ref (Settings.getDebug ())
                      val profile = ref false
                      val timeout = ref NONE
@@ -622,6 +629,7 @@ fun parseUrp' accLibs fname =
                                  exe = Option.getOpt (!exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
                                                                                  ext = SOME "exe"}),
                                  sql = !sql,
+                                 endpoints = !endpoints,
                                  debug = !debug,
                                  profile = !profile,
                                  timeout = Option.getOpt (!timeout, 60),
@@ -684,6 +692,7 @@ fun parseUrp' accLibs fname =
                                  database = mergeO (fn (old, _) => old) (#database old, #database new),
                                  exe = #exe old,
                                  sql = #sql old,
+                                 endpoints = #endpoints old,
                                  debug = #debug old orelse #debug new,
                                  profile = #profile old orelse #profile new,
                                  timeout = #timeout old,
@@ -1430,13 +1439,13 @@ val mono_opt = {
 }
 
 val endpoints = {
-    func = Endpoints.summarize,
-    print = Endpoints.p_report
+    func = Endpoints.collect,
+    print = MonoPrint.p_file MonoEnv.empty
 }
 
 val toEndpoints = transform endpoints "endpoints" o toMonoize
 
-val toMono_opt1 = transform mono_opt "mono_opt1" o toMonoize
+val toMono_opt1 = transform mono_opt "mono_opt1" o toEndpoints
 
 val untangle = {
     func = Untangle.untangle,
@@ -1723,6 +1732,18 @@ fun compile job =
                              val s = TextIOPP.openOut {dst = outf, wid = 80}
                          in
                              Print.fprint s (CjrPrint.p_sql CjrEnv.empty file);
+                             TextIO.closeOut outf
+                         end;
+
+                     case #endpoints job of
+                         NONE => ()
+                       | SOME endpoints =>
+                         let
+                             val report = Endpoints.summarize ()
+                             val outf = TextIO.openOut endpoints
+                             val s = TextIOPP.openOut {dst = outf, wid = 80}
+                         in
+                             Print.fprint s (Endpoints.p_report report);
                              TextIO.closeOut outf
                          end;
 

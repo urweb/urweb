@@ -36,6 +36,9 @@ signature ENDPOINTS = sig
     type report = {Endpoints : endpoint list}
     val p_report : report Print.printer
 
-    val summarize : Mono.file -> report
+    val reset : unit -> unit
+    val collect : Mono.file -> Mono.file
+    val setJavaScript : string -> unit
+    val summarize : unit -> report
 
 end

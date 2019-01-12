@@ -114,7 +114,6 @@ fun oneRun args =
         val demo = ref (NONE : (string * bool) option)
         val tutorial = ref false
         val css = ref false
-        val endpoints = ref false
 
         val () = (Compiler.debug := false;
                   Elaborate.verbose := false;
@@ -163,8 +162,6 @@ fun oneRun args =
                     SOME "print numeric version number and exit"),
               ("css", set_true css,
                     SOME "print categories of CSS properties"),
-              ("endpoints", set_true endpoints,
-                    SOME "print exposed URL endpoints"),
               ("print-ccompiler", ZERO printCCompiler,
                     SOME "print C compiler and exit"),
               ("print-cinclude", ZERO printCInclude,
@@ -220,6 +217,8 @@ fun oneRun args =
                     SOME "serve JavaScript as <file>"),
               ("sql", ONE ("<file>", Settings.setSql o SOME),
                     SOME "output sql script as <file>"),
+              ("endpoints", ONE ("<file>", Settings.setEndpoints o SOME),
+                    SOME "output exposed URL endpoints in JSON as <file>"),
               ("static", call_true Settings.setStaticLinking,
                     SOME "enable static linking"),
               ("stop", ONE ("<phase>", Compiler.setStop),
@@ -271,8 +270,8 @@ fun oneRun args =
                                 " only one is allowed.\nSpecified projects: "^
                                 String.concatWith ", " files)
     in
-        case (!css, !demo, !tutorial, !endpoints) of
-            (true, _, _, _) =>
+        case (!css, !demo, !tutorial) of
+            (true, _, _) =>
             (case Compiler.run Compiler.toCss job of
                  NONE => OS.Process.failure
                | SOME {Overall = ov, Classes = cl} =>
@@ -285,24 +284,13 @@ fun oneRun args =
                            app (print o Css.othersToString) ots;
                            print "\n")) cl;
                   OS.Process.success))
-          | (_, SOME (prefix, guided), _, _) =>
+          | (_, SOME (prefix, guided), _) =>
             if Demo.make' {prefix = prefix, dirname = job, guided = guided} then
                 OS.Process.success
             else
                 OS.Process.failure
-          | (_, _, true, _) => (Tutorial.make job;
+          | (_, _, true) => (Tutorial.make job;
                                 OS.Process.success)
-          | (_, _, _, true) =>
-            (case Compiler.run Compiler.toEndpoints job of
-                 NONE => OS.Process.failure
-               | SOME es =>
-                 let
-                     val r = Endpoints.p_report es
-                 in
-                     Print.eprint r;
-                     print "\n";
-                     OS.Process.success
-                 end)
           | _ =>
             if !tc then
                 (Compiler.check Compiler.toElaborate job;
