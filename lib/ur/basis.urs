@@ -1011,7 +1011,7 @@ val fileName : file -> option string
 val fileMimeType : file -> string
 val fileData : file -> blob
 
-val upload : formTag file [] ([Value = string, Size = int] ++ boxAttrs)
+val upload : formTag file [] ([Value = string, Size = int, Accept = string] ++ boxAttrs)
 
 type mimeType
 val blessMime : string -> mimeType
