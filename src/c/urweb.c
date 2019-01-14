@@ -2004,7 +2004,7 @@ char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
     if (U8_IS_SINGLE(s[curr]) && s[curr] == ' ')
       *p++ = '+';
     else if (U8_IS_SINGLE(s[curr]) && isalnum(s[curr]))
-      *p++ = s[offset];
+      *p++ = s[curr];
     else {
       aux_urlifyChar(&p, c);
     }
