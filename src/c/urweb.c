@@ -4075,6 +4075,20 @@ uw_Basis_blob uw_Basis_textBlob(uw_context ctx, uw_Basis_string s) {
   return b;
 }
 
+uw_Basis_string uw_Basis_textOfBlob(uw_context ctx, uw_Basis_blob b) {
+  size_t i;
+  uw_Basis_string r;
+
+  for (i = 0; i < b.size; ++i)
+    if (b.data[i] == 0)
+      return NULL;
+
+  r = uw_malloc(ctx, b.size + 1);
+  memcpy(r, b.data, b.size);
+  r[b.size] = 0;
+  return r;
+}
+
 uw_Basis_blob uw_Basis_fileData(uw_context ctx, uw_Basis_file f) {
   (void)ctx;
   return f.data;
@@ -5207,7 +5221,7 @@ uw_unit uw_Basis_cache_file(uw_context ctx, uw_Basis_blob contents) {
 
   fd = mkstemp(tempfile);
   if (fd < 0)
-    uw_error(ctx, FATAL, "Error creating temporary file for cache");
+    uw_error(ctx, FATAL, "Error creating temporary file %s for cache", tempfile);
 
   while (written_so_far < contents.size) {
     ssize_t written_just_now = write(fd, contents.data + written_so_far, contents.size - written_so_far);

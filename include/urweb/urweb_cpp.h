@@ -262,6 +262,7 @@ uw_Basis_string uw_Basis_fileMimeType(struct uw_context *, uw_Basis_file);
 uw_Basis_blob uw_Basis_fileData(struct uw_context *, uw_Basis_file);
 uw_Basis_int uw_Basis_blobSize(struct uw_context *, uw_Basis_blob);
 uw_Basis_blob uw_Basis_textBlob(struct uw_context *, uw_Basis_string);
+uw_Basis_string uw_Basis_textOfBlob(struct uw_context *, uw_Basis_blob);
 
 uw_Basis_string uw_Basis_postType(struct uw_context *, uw_Basis_postBody);
 uw_Basis_string uw_Basis_postData(struct uw_context *, uw_Basis_postBody);
