@@ -68,9 +68,9 @@ fun htmlifySpecialChar ch = "&#" ^ Int.toString (ord ch) ^ ";"
 
 fun hexPad c =
     let
-	val s = Int.fmt StringCvt.HEX c
+        val s = Int.fmt StringCvt.HEX c
     in
-	case size s of
+        case size s of
             0 => "00"
           | 1 => "0" ^ s
           | _ => s
@@ -88,42 +88,42 @@ fun andb a b =
 
 fun hexIt ch =
     let
-	val c = ord ch
+        val c = ord ch
     in
-	if (c <= 0x7f) then
-	    hexPad c
-	else
-	    ((if (c <= 0x7fff) then
-		 hexPad (orb (rsh c 6) 0xc0) 
-	     else
-		 (if (c <= 0xffff) then
-		      hexPad (orb (rsh c 12) 0xe0)
-		  else
-		      hexPad (orb (rsh c 18) 0xf0)
-		      ^ hexPad (orb (andb (rsh c 12) 0x3f) 0x80)
-		 )
-		 ^ hexPad (orb (andb (rsh c 6) 0x3f) 0x80))
-	     ) ^ hexPad (orb (andb c 0x3f) 0x80)
+        if (c <= 0x7f) then
+            hexPad c
+        else
+            ((if (c <= 0x7fff) then
+                 hexPad (orb (rsh c 6) 0xc0) 
+             else
+                 (if (c <= 0xffff) then
+                      hexPad (orb (rsh c 12) 0xe0)
+                  else
+                      hexPad (orb (rsh c 18) 0xf0)
+                      ^ hexPad (orb (andb (rsh c 12) 0x3f) 0x80)
+                 )
+                 ^ hexPad (orb (andb (rsh c 6) 0x3f) 0x80))
+             ) ^ hexPad (orb (andb c 0x3f) 0x80)
     end
 
 fun urlifyCharAux ch =
     case ch of
-	#" "  => "+"
+        #" "  => "+"
      |  _ =>
-	if ord ch = 0 then
-	    "_"
-	else
-	    if Char.isAlphaNum ch then
-		str ch
+        if ord ch = 0 then
+            "_"
+        else
+            if Char.isAlphaNum ch then
+                str ch
             else
-		"." ^ hexIt ch
-	
+                "." ^ hexIt ch
+        
 fun urlifyChar c =
     case c of
-	#"_" => "_" ^ urlifyCharAux c 
+        #"_" => "_" ^ urlifyCharAux c 
      |  _ => urlifyCharAux c
-		  
-	
+                  
+        
 fun urlifyString s =
     case s of
         "" => "_"
@@ -399,7 +399,7 @@ fun exp e =
         EWrite (EPrim (Prim.String (Prim.Normal, urlifyChar c)), loc)
       | EWrite (EFfiApp ("Basis", "urlifyChar", [e]), _) =>
         EFfiApp ("Basis", "urlifyChar_w", [e])
-		
+                
       | EFfiApp ("Basis", "urlifyBool", [((ECon (Enum, PConFfi {con = "True", ...}, NONE), _), _)]) =>
         EPrim (Prim.String (Prim.Normal, "1"))
       | EFfiApp ("Basis", "urlifyBool", [((ECon (Enum, PConFfi {con = "False", ...}, NONE), _), _)]) =>
