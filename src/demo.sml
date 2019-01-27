@@ -98,6 +98,10 @@ fun make' {prefix, dirname, guided} =
                             NONE => OS.Path.joinDirFile {dir = dirname,
                                                          file = "demo.sql"}
                           | SOME s => s),
+            endpoints = SOME (case Settings.getEndpoints () of
+                                  NONE => OS.Path.joinDirFile {dir = dirname,
+                                                               file = "demo-endpoints.json"}
+                               | SOME e => e),
             debug = Settings.getDebug (),
             timeout = Int.max (#timeout combined, #timeout urp),
             profile = false,

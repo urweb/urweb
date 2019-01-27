@@ -240,6 +240,9 @@ signature SETTINGS = sig
     val setSql : string option -> unit
     val getSql : unit -> string option
 
+    val setEndpoints : string option -> unit
+    val getEndpoints : unit -> string option
+
     val setCoreInline : int -> unit
     val getCoreInline : unit -> int
 

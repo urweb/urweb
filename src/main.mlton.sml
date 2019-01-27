@@ -49,7 +49,7 @@ fun parse_flags flag_info args =
             | "--h" => "-help"
             | "--help" => "-help"
             | _ => arg
-                
+
         fun loop [] : string list = []
           | loop (arg :: args) =
             let
@@ -167,7 +167,7 @@ fun oneRun args =
               ("print-cinclude", ZERO printCInclude,
                     SOME "print directory of C headers and exit"),
               ("ccompiler", ONE ("<program>", Settings.setCCompiler),
-                    SOME "set the C compiler to <program>"), 
+                    SOME "set the C compiler to <program>"),
               ("demo", ONE ("<prefix>", fn prefix =>
                                 demo := SOME (prefix, false)),
                     NONE),
@@ -217,6 +217,8 @@ fun oneRun args =
                     SOME "serve JavaScript as <file>"),
               ("sql", ONE ("<file>", Settings.setSql o SOME),
                     SOME "output sql script as <file>"),
+              ("endpoints", ONE ("<file>", Settings.setEndpoints o SOME),
+                    SOME "output exposed URL endpoints in JSON as <file>"),
               ("static", call_true Settings.setStaticLinking,
                     SOME "enable static linking"),
               ("stop", ONE ("<phase>", Compiler.setStop),
@@ -288,7 +290,7 @@ fun oneRun args =
             else
                 OS.Process.failure
           | (_, _, true) => (Tutorial.make job;
-                             OS.Process.success)
+                                OS.Process.success)
           | _ =>
             if !tc then
                 (Compiler.check Compiler.toElaborate job;
