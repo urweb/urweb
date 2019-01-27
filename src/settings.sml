@@ -157,6 +157,7 @@ fun isEffectful ("Sqlcache", _) = true
 fun addEffectful x = effectful := S.add (!effectful, x)
 
 val benignBase = basis ["get_cookie",
+                        "getenv",
                         "new_client_source",
                         "get_client_source",
                         "set_client_source",

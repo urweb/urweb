@@ -138,6 +138,7 @@ char *uw_Basis_urlifySource(struct uw_context *, uw_Basis_source);
 
 uw_unit uw_Basis_urlifyInt_w(struct uw_context *, uw_Basis_int);
 uw_unit uw_Basis_urlifyFloat_w(struct uw_context *, uw_Basis_float);
+uw_unit uw_Basis_urlifyChar_w(struct uw_context *, uw_Basis_char);
 uw_unit uw_Basis_urlifyString_w(struct uw_context *, uw_Basis_string);
 uw_unit uw_Basis_urlifyBool_w(struct uw_context *, uw_Basis_bool);
 uw_unit uw_Basis_urlifyTime_w(struct uw_context *, uw_Basis_time);
@@ -262,6 +263,7 @@ uw_Basis_string uw_Basis_fileMimeType(struct uw_context *, uw_Basis_file);
 uw_Basis_blob uw_Basis_fileData(struct uw_context *, uw_Basis_file);
 uw_Basis_int uw_Basis_blobSize(struct uw_context *, uw_Basis_blob);
 uw_Basis_blob uw_Basis_textBlob(struct uw_context *, uw_Basis_string);
+uw_Basis_string uw_Basis_textOfBlob(struct uw_context *, uw_Basis_blob);
 
 uw_Basis_string uw_Basis_postType(struct uw_context *, uw_Basis_postBody);
 uw_Basis_string uw_Basis_postData(struct uw_context *, uw_Basis_postBody);

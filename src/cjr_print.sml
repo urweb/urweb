@@ -3393,6 +3393,14 @@ fun p_file env (ds, ps) =
              newline,
              string "#include <time.h>",
              newline,
+             (case Settings.getFileCache () of
+                  NONE => box []
+                | SOME _ => box [string "#include <sys/types.h>",
+                                 newline,
+                                 string "#include <sys/stat.h>",
+                                 newline,
+                                 string "#include <unistd.h>",
+                                 newline]),
              if hasDb then
                  box [string ("#include <" ^ #header (Settings.currentDbms ()) ^ ">"),
                       newline]
@@ -3657,7 +3665,21 @@ fun p_file env (ds, ps) =
              newline,
              string "static void uw_initializer(uw_context ctx) {",
              newline,
-             box [string "uw_begin_initializing(ctx);",
+             box [(case Settings.getFileCache () of
+                       NONE => box []
+                     | SOME dir => box [newline,
+                                        string "struct stat st = {0};",
+                                        newline,
+                                        newline,
+                                        string "if (stat(\"",
+                                        string (Prim.toCString dir),
+                                        string "\", &st) == -1)",
+                                        newline,
+                                        box [string "mkdir(\"",
+                                             string (Prim.toCString dir),
+                                             string "\", 0700);",
+                                             newline]]),
+                  string "uw_begin_initializing(ctx);",
                   newline,
                   p_list_sep newline (fn x => x) (rev (!global_initializers)),
                   string "uw_end_initializing(ctx);",

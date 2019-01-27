@@ -1019,6 +1019,8 @@ val checkMime : string -> option mimeType
 val returnBlob : t ::: Type -> blob -> mimeType -> transaction t
 val blobSize : blob -> int
 val textBlob : string -> blob
+val textOfBlob : blob -> option string
+(* Returns [Some] exactly when the blob contains no zero bytes. *)
 
 type postBody
 val postType : postBody -> string

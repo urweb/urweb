@@ -14,3 +14,5 @@ val bind : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> t b
 
 val get : a ::: Type -> a -> option a -> a
 val unsafeGet : a ::: Type -> option a -> a
+
+val mapM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type -> (a -> m b) -> t a -> m (t b)

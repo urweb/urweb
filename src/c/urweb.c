@@ -1954,29 +1954,61 @@ char *uw_Basis_urlifyFloat(uw_context ctx, uw_Basis_float n) {
   return r;
 }
 
+static void aux_urlifyChar(char** ptr, uw_Basis_char c) {
+  char* p = *ptr;
+  
+  if((uint32_t)(c) <= 0x7f) {
+    sprintf(p, ".%02X", (uint8_t)(c));
+    p += 3;
+  } else {
+    if((uint32_t)(c) <= 0x7ff) {
+      sprintf(p, ".%02X", (uint8_t)(((c)>>6)|0xc0));
+      p += 3;
+    } else {
+      if((uint32_t)(c) <= 0xffff) { 
+	sprintf(p, ".%02X", (uint8_t)(((c)>>12)|0xe0));
+	p += 3;
+      } else { 
+	sprintf(p, ".%02X", (uint8_t)(((c)>>18)|0xf0));
+	p += 3;
+	sprintf(p, ".%02X", (uint8_t)((((c)>>12)&0x3f)|0x80));
+	p += 3;
+      } 
+      sprintf(p, ".%02X", (uint8_t)((((c)>>6)&0x3f)|0x80));
+      p += 3;
+    } 
+    sprintf(p, ".%02X", (uint8_t)(((c)&0x3f)|0x80));
+    p += 3;
+  }
+
+  *ptr = p;
+}
+
 char *uw_Basis_urlifyString(uw_context ctx, uw_Basis_string s) {
   char *r, *p;
 
   if (s[0] == '\0')
     return "_";
 
-  uw_check_heap(ctx, strlen(s) * 3 + 1 + !!(s[0] == '_'));
+  uw_check_heap(ctx, strlen(s) * 12 + 1 + !!(s[0] == '_'));
 
   r = p = ctx->heap.front;
   if (s[0] == '_')
     *p++ = '_';
 
-  for (; *s; s++) {
-    unsigned char c = *s;
-
-    if (c == ' ')
+  uw_Basis_char c;
+  int offset = 0, curr = 0;
+  while (s[offset] != 0) {
+    U8_NEXT(s, offset, -1, c);
+  
+    if (U8_IS_SINGLE(s[curr]) && s[curr] == ' ')
       *p++ = '+';
-    else if (U8_IS_SINGLE(c) && isalnum(c))
-      *p++ = c;
+    else if (U8_IS_SINGLE(s[curr]) && isalnum(s[curr]))
+      *p++ = s[curr];
     else {
-      sprintf(p, ".%02X", c);
-      p += 3;
+      aux_urlifyChar(&p, c);
     }
+    curr = offset;
   }
 
   *p++ = 0;
@@ -2046,6 +2078,29 @@ uw_unit uw_Basis_urlifyTime_w(uw_context ctx, uw_Basis_time t) {
   return uw_Basis_urlifyInt_w(ctx, (uw_Basis_int)t.seconds * 1000000 + t.microseconds);
 }
 
+uw_unit uw_Basis_urlifyChar_w(uw_context ctx, uw_Basis_char c) {
+  if (c == '\0') {
+    uw_check(ctx, 1);
+    uw_writec_unsafe(ctx, '_');
+    return uw_unit_v;
+  }
+
+  uw_check(ctx, 12 + !!(c == '_'));
+
+  if (c == '_')
+    uw_writec_unsafe(ctx, '_');
+  
+  if (c == ' ')
+    uw_writec_unsafe(ctx, '+');
+  else if (isalnum(c) && c <= 0x7f)
+    uw_writec_unsafe(ctx, c);
+  else {
+    aux_urlifyChar(&(ctx->page.front), c);
+  }
+  
+  return uw_unit_v;
+}
+
 uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
   if (s[0] == '\0') {
     uw_check(ctx, 1);
@@ -2053,22 +2108,24 @@ uw_unit uw_Basis_urlifyString_w(uw_context ctx, uw_Basis_string s) {
     return uw_unit_v;
   }
 
-  uw_check(ctx, strlen(s) * 3 + !!(s[0] == '_'));
+  uw_check(ctx, strlen(s) * 12 + !!(s[0] == '_'));
 
   if (s[0] == '_')
     uw_writec_unsafe(ctx, '_');
 
-  for (; *s; s++) {
-    unsigned char c = *s;
-
-    if (c == ' ')
+  uw_Basis_char c;
+  int offset = 0, curr = 0;
+  while (s[offset] != 0) {
+    U8_NEXT(s, offset, -1, c);   
+    
+    if (U8_IS_SINGLE(s[curr]) && s[curr] == ' ')
       uw_writec_unsafe(ctx, '+');
-    else if (U8_IS_SINGLE(c) && isalnum(c))
-      uw_writec_unsafe(ctx, c);
-    else {
-      sprintf(ctx->page.front, ".%02X", c);
-      ctx->page.front += 3;
+    else if (U8_IS_SINGLE(s[curr]) && isalnum(s[curr]))
+      uw_writec_unsafe(ctx, s[curr]);
+    else {      
+      aux_urlifyChar(&(ctx->page.front),  c);
     }
+    curr = offset;
   }
 
   return uw_unit_v;
@@ -4075,6 +4132,20 @@ uw_Basis_blob uw_Basis_textBlob(uw_context ctx, uw_Basis_string s) {
   return b;
 }
 
+uw_Basis_string uw_Basis_textOfBlob(uw_context ctx, uw_Basis_blob b) {
+  size_t i;
+  uw_Basis_string r;
+
+  for (i = 0; i < b.size; ++i)
+    if (b.data[i] == 0)
+      return NULL;
+
+  r = uw_malloc(ctx, b.size + 1);
+  memcpy(r, b.data, b.size);
+  r[b.size] = 0;
+  return r;
+}
+
 uw_Basis_blob uw_Basis_fileData(uw_context ctx, uw_Basis_file f) {
   (void)ctx;
   return f.data;
@@ -5207,7 +5278,7 @@ uw_unit uw_Basis_cache_file(uw_context ctx, uw_Basis_blob contents) {
 
   fd = mkstemp(tempfile);
   if (fd < 0)
-    uw_error(ctx, FATAL, "Error creating temporary file for cache");
+    uw_error(ctx, FATAL, "Error creating temporary file %s for cache", tempfile);
 
   while (written_so_far < contents.size) {
     ssize_t written_just_now = write(fd, contents.data + written_so_far, contents.size - written_so_far);
