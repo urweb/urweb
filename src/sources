@@ -165,6 +165,9 @@ $(SRC)/css.sml
 
 $(SRC)/mono.sml
 
+$(SRC)/endpoints.sig
+$(SRC)/endpoints.sml
+
 $(SRC)/mono_util.sig
 $(SRC)/mono_util.sml
 
