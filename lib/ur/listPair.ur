@@ -58,3 +58,13 @@ fun mapM [m] (_ : monad m) [a] [b] [c] (f : a -> b -> m c) =
     in
         mapM'
     end
+
+fun unzip [a] [b] (ls : list (a * b)) : list a * list b =
+    let
+        fun unzip' ls ls1 ls2 =
+            case ls of
+                [] => (List.rev ls1, List.rev ls2)
+              | (x1, x2) :: ls => unzip' ls (x1 :: ls1) (x2 :: ls2)
+    in
+        unzip' ls [] []
+    end

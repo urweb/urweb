@@ -293,6 +293,20 @@ fun search [a] [b] f =
         search'
     end
 
+fun searchM [m] (_ : monad m) [a] [b] f =
+    let
+        fun search' ls =
+            case ls of
+                [] => return None
+              | x :: ls =>
+                o <- f x;
+                case o of
+                    None => search' ls
+                  | v => return v
+    in
+        search'
+    end
+
 fun foldlM [m] (_ : monad m) [a] [b] f =
     let
         fun foldlM' acc ls =

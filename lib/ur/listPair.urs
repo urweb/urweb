@@ -11,3 +11,5 @@ val mp : a ::: Type -> b ::: Type -> c ::: Type
 
 val mapM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type -> c ::: Type
          -> (a -> b -> m c) -> list a -> list b -> m (list c)
+
+val unzip : a ::: Type -> b ::: Type -> list (a * b) -> list a * list b
