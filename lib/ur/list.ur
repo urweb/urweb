@@ -101,6 +101,16 @@ fun mp [a] [b] f =
         mp' []
     end
 
+fun mapConcat [a] [b] f =
+    let
+        fun mapConcat' acc ls =
+            case ls of
+                [] => rev acc
+              | x :: ls => mapConcat' (revAppend (f x) acc) ls
+    in
+        mapConcat' []
+    end
+
 fun mapi [a] [b] f =
     let
         fun mp' n acc ls =
@@ -151,6 +161,16 @@ fun mapM [m ::: (Type -> Type)] (_ : monad m) [a] [b] f =
               | x :: ls => x' <- f x; mapM' (x' :: acc) ls
     in
         mapM' []
+    end
+
+fun mapConcatM [m] (_ : monad m) [a] [b] f =
+    let
+        fun mapConcatM' acc ls =
+            case ls of
+                [] => return (rev acc)
+              | x :: ls' => ls <- f x; mapConcatM' (revAppend ls acc) ls'
+    in
+        mapConcatM' []
     end
 
 fun mapMi [m ::: (Type -> Type)] (_ : monad m) [a] [b] f =

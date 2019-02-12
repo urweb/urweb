@@ -20,6 +20,10 @@ val append : a ::: Type -> t a -> t a -> t a
 
 val mp : a ::: Type -> b ::: Type -> (a -> b) -> t a -> t b
 
+val mapConcat : a ::: Type -> b ::: Type -> (a -> t b) -> t a -> t b
+
+val mapConcatM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type -> (a -> m (t b)) -> t a -> m (t b)
+
 val mapPartial : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> t b
 
 val mapi : a ::: Type -> b ::: Type -> (int -> a -> b) -> t a -> t b
