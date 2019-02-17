@@ -1,4 +1,19 @@
 ========
+20190217
+========
+
+- Update of standard-library string functions to handle non-ASCII UTF-8 properly
+- New command-line options: -endpoints
+- New .urp directive: safeGetDefault
+- New Basis functions: textOfBlob, unsafeSerialized[To|From]String
+- New Top functions: mapX4, foldR4
+- New List functions: allM, assocAddSorted, mapConcat, mapConcatM, mapMi, searchM
+- New ListPair functions: mapM, unzip
+- New Option function: mapM
+- Flycheck integration
+- Bug fixes and improvements to type inference, documentation, error messages, and compatibility
+
+========
 20180616
 ========
 
