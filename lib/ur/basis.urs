@@ -79,6 +79,9 @@ val toupper : char -> char
 val ord : char -> int
 val chr : int -> char
 
+val iscodepoint : int -> bool
+val issingle : char -> bool
+
 (** String operations *)
 
 val strlen : string -> int
@@ -192,11 +195,6 @@ val datetimeSecond : time -> int
 val datetimeDayOfWeek : time -> int
 
 
-(** * Encryption *)
-
-val crypt : string -> string -> string
-
-
 (** HTTP operations *)
 
 con http_cookie :: Type -> Type
@@ -279,6 +277,8 @@ con serialized :: Type -> Type
 val serialize : t ::: Type -> t -> serialized t
 val deserialize : t ::: Type -> serialized t -> t
 val sql_serialized : t ::: Type -> sql_injectable_prim (serialized t)
+val unsafeSerializedToString : t ::: Type -> serialized t -> string
+val unsafeSerializedFromString : t ::: Type -> string -> serialized t
 
 con primary_key :: {Type} -> {{Unit}} -> Type
 val no_primary_key : fs ::: {Type} -> primary_key fs []
@@ -835,7 +835,7 @@ val meta : unit -> tag [Nam = meta, Content = string, Id = id] head [] [] []
 
 datatype mouseButton = Left | Right | Middle
 
-type mouseEvent = { ScreenX : int, ScreenY : int, ClientX : int, ClientY : int,
+type mouseEvent = { ScreenX : int, ScreenY : int, ClientX : int, ClientY : int, OffsetX : int, OffsetY : int,
                     CtrlKey : bool, ShiftKey : bool, AltKey : bool, MetaKey : bool,
                     Button : mouseButton }
 
@@ -1019,6 +1019,8 @@ val checkMime : string -> option mimeType
 val returnBlob : t ::: Type -> blob -> mimeType -> transaction t
 val blobSize : blob -> int
 val textBlob : string -> blob
+val textOfBlob : blob -> option string
+(* Returns [Some] exactly when the blob contains no zero bytes. *)
 
 type postBody
 val postType : postBody -> string
@@ -1086,10 +1088,13 @@ val button : cformTag ([Value = string, Disabled = bool] ++ boxAttrs) []
 
 val ccheckbox : cformTag ([Size = int, Source = source bool] ++ boxAttrs ++ inputAttrs') []
 
+val cradio : cformTag ([Source = source (option string), Value = string] ++ boxAttrs ++ inputAttrs') []
+
 val cselect : cformTag ([Source = source string] ++ boxAttrs ++ inputAttrs') [Cselect]
 val coption : unit -> tag [Value = string, Selected = bool] [Cselect, Body] [] [] []
 
-val ctextarea : cformTag ([Rows = int, Cols = int, Placeholder = string, Source = source string] ++ boxAttrs ++ inputAttrs) []
+val ctextarea : cformTag ([Rows = int, Cols = int, Placeholder = string, Source = source string,
+                           Ontext = transaction unit] ++ boxAttrs ++ inputAttrs) []
 
 (*** Tables *)
 

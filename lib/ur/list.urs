@@ -20,6 +20,10 @@ val append : a ::: Type -> t a -> t a -> t a
 
 val mp : a ::: Type -> b ::: Type -> (a -> b) -> t a -> t b
 
+val mapConcat : a ::: Type -> b ::: Type -> (a -> t b) -> t a -> t b
+
+val mapConcatM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type -> (a -> m (t b)) -> t a -> m (t b)
+
 val mapPartial : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> t b
 
 val mapi : a ::: Type -> b ::: Type -> (int -> a -> b) -> t a -> t b
@@ -31,6 +35,9 @@ val mapXi : a ::: Type -> ctx ::: {Unit} -> (int -> a -> xml ctx [] []) -> t a -
 val mapM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
            -> (a -> m b) -> t a -> m (t b)
 
+val mapMi : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
+            -> (int -> a -> m b) -> t a -> m (t b)
+
 val mapPartialM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type -> (a -> m (option b)) -> t a -> m (t b)
                                                                         
 val mapXM : m ::: (Type -> Type) -> monad m -> a ::: Type -> ctx ::: {Unit}
@@ -41,6 +48,8 @@ val mapXiM : m ::: (Type -> Type) -> monad m -> a ::: Type -> ctx ::: {Unit} -> 
 val filter : a ::: Type -> (a -> bool) -> t a -> t a
 
 val exists : a ::: Type -> (a -> bool) -> t a -> bool
+
+val existsM : m ::: (Type -> Type) -> monad m -> a ::: Type -> (a -> m bool) -> t a -> m bool
 
 val foldlM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
              -> (a -> b -> m b) -> b -> t a -> m b
@@ -58,9 +67,15 @@ val mem : a ::: Type -> eq a -> a -> t a -> bool
 
 val find : a ::: Type -> (a -> bool) -> t a -> option a
 
+val findM : m ::: (Type -> Type) -> monad m -> a ::: Type -> (a -> m bool) -> t a -> m (option a)
+
 val search : a ::: Type -> b ::: Type -> (a -> option b) -> t a -> option b
 
+val searchM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type -> (a -> m (option b)) -> t a -> m (option b)
+
 val all : a ::: Type -> (a -> bool) -> t a -> bool
+
+val allM : m ::: (Type -> Type) -> monad m -> a ::: Type -> (a -> m bool) -> t a -> m bool
 
 val app : m ::: (Type -> Type) -> monad m -> a ::: Type
           -> (a -> m unit) -> t a -> m unit
@@ -99,6 +114,9 @@ val replaceNth : a ::: Type -> list a -> int -> a -> list a
 val assoc : a ::: Type -> b ::: Type -> eq a -> a -> t (a * b) -> option b
 
 val assocAdd : a ::: Type -> b ::: Type -> eq a -> a -> b -> t (a * b) -> t (a * b)
+
+val assocAddSorted : a ::: Type -> b ::: Type -> eq a -> ord a -> a -> b -> t (a * b) -> t (a * b)
+(* Assume the list is already sorted in ascending order and maintain that ordering. *)
 
 (** Converting records to lists *)
 

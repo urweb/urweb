@@ -43,14 +43,25 @@ fun parse_flags flag_info args =
                 fn (flag1, _, _) => flag0 = flag1
             end
 
+        fun normalizeArg arg =
+          case arg of
+              "-h" => "-help"
+            | "--h" => "-help"
+            | "--help" => "-help"
+            | _ => arg
+
         fun loop [] : string list = []
           | loop (arg :: args) =
-             if String.isPrefix "-" arg then
-                case List.find (search_pred arg) flag_info of
-                  NONE => raise Fail ("Unknown flag "^arg^", see -help")
-                | SOME x => exec x args
-             else
-                arg :: loop args
+            let
+                val arg = normalizeArg arg
+            in
+                if String.isPrefix "-" arg then
+                    case List.find (search_pred arg) flag_info of
+                        NONE => raise Fail ("Unknown flag "^arg^", see -help")
+                      | SOME x => exec x args
+                else
+                    arg :: loop args
+            end
 
         and exec (_, ZERO f, _) args =
                 (f (); loop args)
@@ -156,7 +167,7 @@ fun oneRun args =
               ("print-cinclude", ZERO printCInclude,
                     SOME "print directory of C headers and exit"),
               ("ccompiler", ONE ("<program>", Settings.setCCompiler),
-                    SOME "set the C compiler to <program>"), 
+                    SOME "set the C compiler to <program>"),
               ("demo", ONE ("<prefix>", fn prefix =>
                                 demo := SOME (prefix, false)),
                     NONE),
@@ -164,7 +175,7 @@ fun oneRun args =
                                 demo := SOME (prefix, true)),
                     NONE),
               ("tutorial", set_true tutorial,
-                    NONE),
+                    SOME "render HTML tutorials from .ur source files"),
               ("protocol", ONE ("[http|cgi|fastcgi|static]",
                                 Settings.setProtocol),
                     SOME "set server protocol"),
@@ -175,7 +186,7 @@ fun oneRun args =
               ("dbms", ONE ("[sqlite|mysql|postgres]", Settings.setDbms),
                     SOME "select database engine"),
               ("debug", call_true Settings.setDebug,
-                    NONE),
+                    SOME "save some intermediate C files"),
               ("verbose", ZERO (fn () =>
                                 (Compiler.debug := true;
                                  Elaborate.verbose := true)),
@@ -191,7 +202,8 @@ fun oneRun args =
               ("unifyMore", set_true Elaborate.unifyMore,
                     SOME "continue unification before reporting type error"),
               ("dumpSource", set_true Compiler.dumpSource,
-                    NONE),
+                    SOME ("print source code of last intermediate program "^
+                          "if there is an error")),
               ("dumpVerboseSource", ZERO (fn () =>
                                 (Compiler.dumpSource := true;
                                  ElabPrint.debug := true;
@@ -205,22 +217,26 @@ fun oneRun args =
                     SOME "serve JavaScript as <file>"),
               ("sql", ONE ("<file>", Settings.setSql o SOME),
                     SOME "output sql script as <file>"),
+              ("endpoints", ONE ("<file>", Settings.setEndpoints o SOME),
+                    SOME "output exposed URL endpoints in JSON as <file>"),
               ("static", call_true Settings.setStaticLinking,
                     SOME "enable static linking"),
               ("stop", ONE ("<phase>", Compiler.setStop),
                     SOME "stop compilation after <phase>"),
               ("path", TWO ("<name>", "<path>", Compiler.addPath),
-                    NONE),
+                    SOME ("set path variable <name> to <path> for use in "^
+                          ".urp files")),
               ("root", TWO ("<name>", "<path>",
                             (fn (name, path) =>
                                 Compiler.addModuleRoot (path, name))),
-                    NONE),
+                    SOME "prefix names of modules found in <path> with <name>"),
               ("boot", ZERO (fn () =>
                             (Compiler.enableBoot ();
                              Settings.setBootLinking true)),
-                    NONE),
+                    SOME ("run from build tree and generate statically linked "^
+                          "executables ")),
               ("sigfile", ONE ("<file>", Settings.setSigFile o SOME),
-                    NONE),
+                    SOME "search for cryptographic signing keys in <file>"),
               ("iflow", set_true Compiler.doIflow,
                     NONE),
               ("sqlcache", call_true Settings.setSqlcache,
@@ -232,7 +248,7 @@ fun oneRun args =
               ("noEmacs", set_true Demo.noEmacs,
                     NONE),
               ("limit", TWO ("<class>", "<num>", add_class),
-                    NONE),
+                    SOME "set resource usage limit for <class> to <num>"),
               ("explainEmbed", set_true JsComp.explainEmbed,
                     SOME ("explain errors about embedding of server-side "^
                           "values in client code"))
@@ -274,7 +290,7 @@ fun oneRun args =
             else
                 OS.Process.failure
           | (_, _, true) => (Tutorial.make job;
-                             OS.Process.success)
+                                OS.Process.success)
           | _ =>
             if !tc then
                 (Compiler.check Compiler.toElaborate job;

@@ -98,6 +98,10 @@ fun make' {prefix, dirname, guided} =
                             NONE => OS.Path.joinDirFile {dir = dirname,
                                                          file = "demo.sql"}
                           | SOME s => s),
+            endpoints = SOME (case Settings.getEndpoints () of
+                                  NONE => OS.Path.joinDirFile {dir = dirname,
+                                                               file = "demo-endpoints.json"}
+                               | SOME e => e),
             debug = Settings.getDebug (),
             timeout = Int.max (#timeout combined, #timeout urp),
             profile = false,
@@ -123,6 +127,8 @@ fun make' {prefix, dirname, guided} =
             protocol = mergeWith #2 (#protocol combined, #protocol urp),
             dbms = mergeWith #2 (#dbms combined, #dbms urp),
             sigFile = mergeWith #2 (#sigFile combined, #sigFile urp),
+            fileCache = mergeWith #2 (#fileCache combined, #fileCache urp),
+            safeGetDefault = #safeGetDefault combined orelse #safeGetDefault urp,
             safeGets = #safeGets combined @ #safeGets urp,
             onError = NONE,
             minHeap = 0,

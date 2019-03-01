@@ -161,6 +161,12 @@ structure Decl : sig
                    decl : (Core.decl', 'state, 'abort) Search.mapfolder}
                   -> (Core.decl, 'state, 'abort) Search.mapfolder
 
+    val map : {kind : Core.kind' -> Core.kind',
+               con : Core.con' -> Core.con',
+               exp : Core.exp' -> Core.exp',
+               decl : Core.decl' -> Core.decl'}
+              -> Core.decl -> Core.decl
+                                                 
     val fold : {kind : Core.kind' * 'state -> 'state,
                 con : Core.con' * 'state -> 'state,
                 exp : Core.exp' * 'state -> 'state,

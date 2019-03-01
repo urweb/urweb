@@ -35,6 +35,7 @@ signature COMPILER = sig
          sources : string list,
          exe : string,
          sql : string option,
+         endpoints : string option,
          debug : bool,
          profile : bool,
          timeout : int,
@@ -60,6 +61,8 @@ signature COMPILER = sig
          protocol : string option,
          dbms : string option,
          sigFile : string option,
+         fileCache : string option,
+         safeGetDefault : bool,
          safeGets : string list,
          onError : (string * string list * string) option,
          minHeap : int,
@@ -114,6 +117,7 @@ signature COMPILER = sig
     val css : (Core.file, Css.report) phase
     val monoize : (Core.file, Mono.file) phase
     val mono_opt : (Mono.file, Mono.file) phase
+    val endpoints : (Mono.file, Mono.file) phase
     val untangle : (Mono.file, Mono.file) phase
     val mono_reduce : (Mono.file, Mono.file) phase
     val mono_shake : (Mono.file, Mono.file) phase
@@ -125,6 +129,7 @@ signature COMPILER = sig
     val pathcheck : (Mono.file, Mono.file) phase
     val sidecheck : (Mono.file, Mono.file) phase
     val sigcheck : (Mono.file, Mono.file) phase
+    val filecache : (Mono.file, Mono.file) phase
     val sqlcache : (Mono.file, Mono.file) phase
     val cjrize : (Mono.file, Cjr.file) phase
     val prepare : (Cjr.file, Cjr.file) phase
@@ -161,12 +166,14 @@ signature COMPILER = sig
     val toUnpoly2 : (string, Core.file) transform
     val toShake4'' : (string, Core.file) transform
     val toEspecialize3 : (string, Core.file) transform
+    val toSpecialize3 : (string, Core.file) transform
     val toReduce2 : (string, Core.file) transform
     val toShake5 : (string, Core.file) transform
     val toMarshalcheck : (string, Core.file) transform
     val toEffectize : (string, Core.file) transform
     val toCss : (string, Css.report) transform
     val toMonoize : (string, Mono.file) transform
+    val toEndpoints : (string, Mono.file) transform
     val toMono_opt1 : (string, Mono.file) transform
     val toUntangle : (string, Mono.file) transform
     val toMono_reduce : (string, Mono.file) transform
@@ -191,6 +198,7 @@ signature COMPILER = sig
     val toPathcheck : (string, Mono.file) transform
     val toSidecheck : (string, Mono.file) transform
     val toSigcheck : (string, Mono.file) transform
+    val toFilecache : (string, Mono.file) transform
     val toSqlcache : (string, Mono.file) transform
     val toCjrize : (string, Cjr.file) transform
     val toPrepare : (string, Cjr.file) transform

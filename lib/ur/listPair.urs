@@ -8,3 +8,8 @@ val all : a ::: Type -> b ::: Type -> (a -> b -> bool) -> list a -> list b -> bo
 
 val mp : a ::: Type -> b ::: Type -> c ::: Type
          -> (a -> b -> c) -> list a -> list b -> list c
+
+val mapM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type -> c ::: Type
+         -> (a -> b -> m c) -> list a -> list b -> m (list c)
+
+val unzip : a ::: Type -> b ::: Type -> list (a * b) -> list a * list b

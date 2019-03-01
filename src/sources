@@ -165,6 +165,9 @@ $(SRC)/css.sml
 
 $(SRC)/mono.sml
 
+$(SRC)/endpoints.sig
+$(SRC)/endpoints.sml
+
 $(SRC)/mono_util.sig
 $(SRC)/mono_util.sml
 
@@ -230,6 +233,9 @@ $(SRC)/sidecheck.sml
 
 $(SRC)/sigcheck.sig
 $(SRC)/sigcheck.sml
+
+$(SRC)/filecache.sig
+$(SRC)/filecache.sml
 
 $(SRC)/mono_inline.sml
 

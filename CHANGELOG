@@ -1,4 +1,34 @@
 ========
+20190217
+========
+
+- Update of standard-library string functions to handle non-ASCII UTF-8 properly
+- New command-line options: -endpoints
+- New .urp directive: safeGetDefault
+- New Basis functions: textOfBlob, unsafeSerialized[To|From]String
+- New Top functions: mapX4, foldR4
+- New List functions: allM, assocAddSorted, mapConcat, mapConcatM, mapMi, searchM
+- New ListPair functions: mapM, unzip
+- New Option function: mapM
+- Flycheck integration
+- Bug fixes and improvements to type inference, documentation, error messages, and compatibility
+
+========
+20180616
+========
+
+- New feature to cache files stored in the database as blobs, via the
+  'filecache' .urp directive
+- New .urp directives: 'mimeTypes' and 'file' (new long form)
+- New HTML pseudo-tag: <cradio>
+- New HTML tag attributes: 'oninput', 'onscroll', 'title', 'size'
+- New standard-library functions: 'List.findM' and 'List.existsM'
+- New '-help' command-line option for compiler
+- Remove insecure function 'Basis.crypt' (which didn't seem to have any users)
+- Selenium-based automatic testing
+- Bug fixes and improvements to documentation and error messages
+
+========
 20170720
 ========
 

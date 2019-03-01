@@ -1,0 +1,4 @@
+rewrite all A_case_of_the_splits/*
+
+$/list
+a_case_of_the_splits

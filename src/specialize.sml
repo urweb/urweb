@@ -44,6 +44,7 @@ end
 
 structure CM = BinaryMapFn(CK)
 structure IM = IntBinaryMap
+structure IS = IntBinarySet
 
 type datatyp' = {
      name : int,
@@ -61,7 +62,7 @@ type state = {
      count : int,
      datatypes : datatyp IM.map,
      constructors : int IM.map,
-     decls : (string * int * string list * (string * int * con option) list) list     
+     decls : (string * int * string list * (string * int * con option) list) list
 }
 
 fun kind (k, st) = (k, st)
@@ -72,6 +73,12 @@ val isOpen = U.Con.exists {kind = fn _ => false,
                                         CRel _ => true
                                       | _ => false}
 
+fun findApp (c, args) =
+    case c of
+        CApp ((c', _), arg) => findApp (c', arg :: args)
+      | CNamed n => SOME (n, args)
+              | _ => NONE
+                          
 fun considerSpecialization (st : state, n, args, dt : datatyp) =
     let
         val args = map ReduceLocal.reduceCon args
@@ -132,31 +139,20 @@ fun considerSpecialization (st : state, n, args, dt : datatyp) =
     end
 
 and con (c, st : state) =
-    let
-        fun findApp (c, args) =
-            case c of
-                CApp ((c', _), arg) => findApp (c', arg :: args)
-              | CNamed n => SOME (n, args)
-              | _ => NONE
-    in
-        case findApp (c, []) of
-            SOME (n, args as (_ :: _)) =>
-            if List.exists isOpen args then
-                (c, st)
-            else
-                (case IM.find (#datatypes st, n) of
-                     NONE => (c, st)
-                   | SOME dt =>
-                     if length args <> #params dt then
-                         (c, st)
-                     else
-                         let
-                             val (n, _, st) = considerSpecialization (st, n, args, dt)
-                         in
-                             (CNamed n, st)
-                         end)
-          | _ => (c, st)
-    end
+    case findApp (c, []) of
+        SOME (n, args as ((_, loc) :: _)) =>
+        (case IM.find (#datatypes st, n) of
+             NONE => (c, st)
+           | SOME dt =>
+             if length args <> #params dt then
+                 (c, st)
+             else
+                 let
+                     val (n, _, st) = considerSpecialization (st, n, args, dt)
+                 in
+                     (CNamed n, st)
+                 end)
+      | _ => (c, st)
 
 and specCon st = U.Con.foldMap {kind = kind, con = con} st
 
@@ -252,6 +248,48 @@ val specDecl = U.Decl.foldMap {kind = kind, con = con, exp = exp, decl = decl}
 
 fun specialize file =
     let
+        (*val () = CorePrint.debug := true
+        val () = print "SPECIALIZING\n"*)
+                
+        (* Let's run around a file, finding any polymorphic uses of a datatype.
+         * However, don't count polymorphism within a datatype's own definition!
+         * To that end, we run a silly transform on the file before traversing. *)
+        val file' =
+            map (fn d =>
+                    case #1 d of
+                        DDatatype dts =>
+                        U.Decl.map {kind = fn x => x,
+                                    exp = fn x => x,
+                                    decl = fn x => x,
+                                    con = fn CNamed n =>
+                                             if List.exists (fn (_, n', _, _) => n' = n) dts then
+                                                 CUnit
+                                             else
+                                                 CNamed n
+                                           | c => c} d
+                      | _ => d) file
+
+        val fancyDatatypes = U.File.fold {kind = fn (_, fd) => fd,
+                                          exp = fn (_, fd) => fd,
+                                          decl = fn (_, fd) => fd,
+                                          con = fn (c, fd) =>
+                                                   case c of
+                                                       CApp (c1, c2) =>
+                                                       if isOpen c2 then
+                                                           case findApp (c, []) of
+                                                               SOME (n, _) =>
+                                                               ((*Print.preface ("Disqualifier",
+                                                                               CorePrint.p_con CoreEnv.empty (c, ErrorMsg.dummySpan));*)
+                                                                IS.add (fd, n))
+                                                             | NONE => fd
+                                                       else
+                                                           fd
+                                                    |  _ => fd}
+                                         IS.empty file'
+
+        (* Why did we find the polymorphism?
+         * It would be incoherent to specialize a datatype used polymorphically. *)
+
         fun doDecl (d, st) =
             let
                 (*val () = Print.preface ("decl:", CorePrint.p_decl CoreEnv.empty all)*)
@@ -259,23 +297,27 @@ fun specialize file =
             in
                 case #1 d of
                     DDatatype dts =>
-                    ((case #decls st of
-                          [] => [d]
-                        | dts' => [(DDatatype (dts' @ dts), #2 d)]),
-                     {count = #count st,
-                      datatypes = foldl (fn ((x, n, xs, xnts), dts) =>
-                                            IM.insert (dts, n,
-                                                       {name = x,
-                                                        params = length xs,
-                                                        constructors = xnts,
-                                                        specializations = CM.empty}))
-                                        (#datatypes st) dts,
-                      constructors = foldl (fn ((x, n, xs, xnts), cs) =>
-                                               foldl (fn ((_, n', _), constructors) =>
-                                                         IM.insert (constructors, n', n))
+                    if List.exists (fn (_, n, _, _) => IS.member (fancyDatatypes, n)) dts then
+                        ((*Print.preface ("Skipping", CorePrint.p_decl CoreEnv.empty d);*)
+                         ([d], st))
+                    else
+                        ((case #decls st of
+                              [] => [d]
+                            | dts' => [(DDatatype (dts' @ dts), #2 d)]),
+                         {count = #count st,
+                          datatypes = foldl (fn ((x, n, xs, xnts), dts) =>
+                                                IM.insert (dts, n,
+                                                           {name = x,
+                                                            params = length xs,
+                                                            constructors = xnts,
+                                                            specializations = CM.empty}))
+                                            (#datatypes st) dts,
+                          constructors = foldl (fn ((x, n, xs, xnts), cs) =>
+                                                   foldl (fn ((_, n', _), constructors) =>
+                                                             IM.insert (constructors, n', n))
                                                      cs xnts)
-                                           (#constructors st) dts,
-                      decls = []})
+                                               (#constructors st) dts,
+                          decls = []})
                   | _ =>
                     (case #decls st of
                           [] => [d]
@@ -287,10 +329,10 @@ fun specialize file =
             end
 
         val (ds, _) = ListUtil.foldlMapConcat doDecl
-                      {count = U.File.maxName file + 1,
-                       datatypes = IM.empty,
-                       constructors = IM.empty,
-                       decls = []} file
+                                              {count = U.File.maxName file + 1,
+                                               datatypes = IM.empty,
+                                               constructors = IM.empty,
+                                               decls = []} file
     in
         ds
     end

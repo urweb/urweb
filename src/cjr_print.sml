@@ -659,7 +659,16 @@ fun unurlify fromClient env (t, loc) =
                                  doEm rest,
                                  string ")"]
                 in
-                    doEm xncs
+                    box [string "(",
+                         string request,
+                         string "[0] == '/' ? ++",
+                         string request,
+                         string " : ",
+                         string request,
+                         string ",",
+                         newline,
+                         doEm xncs,
+                         string ")"]
                 end
 
               | TDatatype (Option, i, xncs) =>
@@ -2186,6 +2195,25 @@ and p_exp' par tail env (e, loc) =
                                                        string ";"])
                                       inputs,
                           newline,
+                          case Settings.getFileCache () of
+                              NONE => box []
+                            | SOME _ =>
+                              p_list_sepi newline
+                                          (fn i => fn (_, t) =>
+                                              case t of
+                                                  Settings.Blob =>
+                                                  box [string "uw_Basis_cache_file(ctx, arg",
+                                                       string (Int.toString (i + 1)),
+                                                       string ");"]
+                                                | Settings.Nullable Settings.Blob =>
+                                                  box [string "if (arg",
+                                                       string (Int.toString (i + 1)),
+                                                       string ") uw_Basis_cache_file(ctx, arg",
+                                                       string (Int.toString (i + 1)),
+                                                       string ");"]
+                                                | _ => box [])
+                                          inputs,
+                          newline,
                           string "uw_ensure_transaction(ctx);",
                           newline,
                           newline,
@@ -2522,8 +2550,10 @@ fun p_decl env (dAll as (d, loc) : decl) =
 		(case Settings.getOutputJsFile () of
 		    NONE => "app." ^ SHA1.bintohex (SHA1.hash s) ^ ".js"
 		  | SOME s => s)
-            val () = app_js := OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
-                                                    file = name}
+            val js = OS.Path.joinDirFile {dir = Settings.getUrlPrefix (),
+                                          file = name}
+            val () = app_js := js
+            val () = Endpoints.setJavaScript js
         in
             box [string "static char jslib[] = \"",
                  string (Prim.toCString s),
@@ -3317,9 +3347,20 @@ fun p_file env (ds, ps) =
                  string "}",
                  newline]
 
-        val initializers = List.mapPartial (fn (DTask (Initialize, x1, x2, e), _) => SOME (x1, x2, e) | _ => NONE) ds
-        val expungers = List.mapPartial (fn (DTask (ClientLeaves, x1, x2, e), _) => SOME (x1, x2, e) | _ => NONE) ds
-        val periodics = List.mapPartial (fn (DTask (Periodic n, x1, x2, e), _) => SOME (n, x1, x2, e) | _ => NONE) ds
+        val initializers = List.mapPartial (fn (DTask (Initialize, x1, x2, e), _) =>
+                                               SOME (x1, x2, p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e)
+                                             | _ => NONE) ds
+        val expungers = List.mapPartial (fn (DTask (ClientLeaves, x1, x2, e), _) =>
+                                            SOME (x1, x2, p_exp (E.pushERel (E.pushERel env x1 (TFfi ("Basis", "client"), ErrorMsg.dummySpan))
+                                                                            x2 dummyt) e)
+                                          | _ => NONE) ds
+        val periodics = List.mapPartial (fn (DTask (Periodic n, x1, x2, e), _) =>
+                                            SOME (n, x1, x2, p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e)
+                                        | _ => NONE) ds
+
+        val (protos', defs') = ListPair.unzip (latestUrlHandlers ())
+        val protos = protos @ protos'
+        val defs = defs @ defs'
 
         val onError = ListUtil.search (fn (DOnError n, _) => SOME n | _ => NONE) ds
 
@@ -3352,6 +3393,14 @@ fun p_file env (ds, ps) =
              newline,
              string "#include <time.h>",
              newline,
+             (case Settings.getFileCache () of
+                  NONE => box []
+                | SOME _ => box [string "#include <sys/types.h>",
+                                 newline,
+                                 string "#include <sys/stat.h>",
+                                 newline,
+                                 string "#include <unistd.h>",
+                                 newline]),
              if hasDb then
                  box [string ("#include <" ^ #header (Settings.currentDbms ()) ^ ">"),
                       newline]
@@ -3439,7 +3488,7 @@ fun p_file env (ds, ps) =
              newline,
              newline,
 
-             box (ListUtil.mapi (fn (i, (_, x1, x2, e)) =>
+             box (ListUtil.mapi (fn (i, (_, x1, x2, pe)) =>
                                     box [string "static void uw_periodic",
                                          string (Int.toString i),
                                          string "(uw_context ctx) {",
@@ -3450,7 +3499,7 @@ fun p_file env (ds, ps) =
                                               string x2,
                                               string "_1 = 0;",
                                               newline,
-                                              p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e,
+                                              pe,
                                               string ";",
                                               newline],
                                          string "}",
@@ -3589,22 +3638,21 @@ fun p_file env (ds, ps) =
              box [string "static void uw_expunger(uw_context ctx, uw_Basis_client cli) {",
                   newline,
 
-                  p_list_sep (box []) (fn (x1, x2, e) => box [string "({",
-                                                              newline,
-                                                              string "uw_Basis_client __uwr_",
-                                                              string x1,
-                                                              string "_0 = cli;",
-                                                              newline,
-                                                              string "uw_unit __uwr_",
-                                                              string x2,
-                                                              string "_1 = 0;",
-                                                              newline,
-                                                              p_exp (E.pushERel (E.pushERel env x1 (TFfi ("Basis", "client"), ErrorMsg.dummySpan))
-                                                                                x2 dummyt) e,
-                                                              string ";",
-                                                              newline,
-                                                              string "});",
-                                                              newline]) expungers,
+                  p_list_sep (box []) (fn (x1, x2, pe) => box [string "({",
+                                                               newline,
+                                                               string "uw_Basis_client __uwr_",
+                                                               string x1,
+                                                               string "_0 = cli;",
+                                                               newline,
+                                                               string "uw_unit __uwr_",
+                                                               string x2,
+                                                               string "_1 = 0;",
+                                                               newline,
+                                                               pe,
+                                                               string ";",
+                                                               newline,
+                                                               string "});",
+                                                               newline]) expungers,
 
                   if hasDb then
                       box [p_enamed env (!expunge),
@@ -3617,24 +3665,38 @@ fun p_file env (ds, ps) =
              newline,
              string "static void uw_initializer(uw_context ctx) {",
              newline,
-             box [string "uw_begin_initializing(ctx);",
+             box [(case Settings.getFileCache () of
+                       NONE => box []
+                     | SOME dir => box [newline,
+                                        string "struct stat st = {0};",
+                                        newline,
+                                        newline,
+                                        string "if (stat(\"",
+                                        string (Prim.toCString dir),
+                                        string "\", &st) == -1)",
+                                        newline,
+                                        box [string "mkdir(\"",
+                                             string (Prim.toCString dir),
+                                             string "\", 0700);",
+                                             newline]]),
+                  string "uw_begin_initializing(ctx);",
                   newline,
                   p_list_sep newline (fn x => x) (rev (!global_initializers)),
                   string "uw_end_initializing(ctx);",
                   newline,
-                  p_list_sep (box []) (fn (x1, x2, e) => box [string "({",
-                                                              newline,
-                                                              string "uw_unit __uwr_",
-                                                              string x1,
-                                                              string "_0 = 0, __uwr_",
-                                                              string x2,
-                                                              string "_1 = 0;",
-                                                              newline,
-                                                              p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e,
-                                                              string ";",
-                                                              newline,
-                                                              string "});",
-                                                              newline]) initializers,
+                  p_list_sep (box []) (fn (x1, x2, pe) => box [string "({",
+                                                               newline,
+                                                               string "uw_unit __uwr_",
+                                                               string x1,
+                                                               string "_0 = 0, __uwr_",
+                                                               string x2,
+                                                               string "_1 = 0;",
+                                                               newline,
+                                                               pe,
+                                                               string ";",
+                                                               newline,
+                                                               string "});",
+                                                               newline]) initializers,
                   if hasDb then
                       box [p_enamed env (!initialize),
                            string "(ctx, 0);",
@@ -3674,7 +3736,10 @@ fun p_file env (ds, ps) =
                          "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime", "uw_check_requestHeader", "uw_check_responseHeader", "uw_check_envVar", "uw_check_meta",
                          case onError of NONE => "NULL" | SOME _ => "uw_onError", "my_periodics",
                          "\"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\"",
-                         if Settings.getIsHtml5 () then "1" else "0"],
+                         if Settings.getIsHtml5 () then "1" else "0",
+                         (case Settings.getFileCache () of
+                              NONE => "NULL"
+                            | SOME s => "\"" ^ Prim.toCString s ^ "\"")],
              string "};",
              newline]
     end
@@ -3752,7 +3817,13 @@ fun p_sql env (ds, _) =
                            end)
                        env ds
     in
-        box (string (#sqlPrefix (Settings.currentDbms ())) :: pps)
+        box ((case Settings.getFileCache () of
+                  NONE => []
+                | SOME _ => case #supportsSHA512 (Settings.currentDbms ()) of
+                                NONE => (ErrorMsg.error "Using file cache with database that doesn't support SHA512";
+                                         [])
+                              | SOME line => [string line, newline, newline])
+             @ string (#sqlPrefix (Settings.currentDbms ())) :: pps)
     end
 
 end

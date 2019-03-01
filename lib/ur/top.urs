@@ -121,6 +121,15 @@ val foldR3 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type
              -> tr []
              -> r ::: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> tr r
 
+(* Fold (generalized safe zip) along four heterogenously-typed records *)
+val foldR4 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type) -> tf4 :: (K -> Type)
+             -> tr :: ({K} -> Type)
+             -> (nm :: Name -> t :: K -> rest :: {K}
+                 -> [[nm] ~ rest] =>
+                       tf1 t -> tf2 t -> tf3 t -> tf4 t -> tr rest -> tr ([nm = t] ++ rest))
+             -> tr []
+             -> r ::: {K} -> folder r -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> $(map tf4 r) -> tr r
+
 (* Generate some XML by mapping over a uniformly-typed record *)
 val mapUX : tf :: Type -> ctx :: {Unit}
             -> (nm :: Name -> rest :: {Unit} -> [[nm] ~ rest] =>
@@ -158,6 +167,13 @@ val mapX3 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type)
                 tf1 t -> tf2 t -> tf3 t -> xml ctx [] [])
             -> r ::: {K} -> folder r
             -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> xml ctx [] []
+
+val mapX4 : K --> tf1 :: (K -> Type) -> tf2 :: (K -> Type) -> tf3 :: (K -> Type) -> tf4 :: (K -> Type) -> ctx :: {Unit}
+            -> (nm :: Name -> t :: K -> rest :: {K}
+                -> [[nm] ~ rest] =>
+                tf1 t -> tf2 t -> tf3 t -> tf4 t -> xml ctx [] [])
+            -> r ::: {K} -> folder r
+            -> $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> $(map tf4 r) -> xml ctx [] []
 
 (* Note that the next two functions return elements in the _reverse_ of the natural order!
  * Such a choice interacts well with the time complexity of standard list operations.

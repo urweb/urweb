@@ -1,4 +1,4 @@
-AC_INIT([urweb], [20170720])
+AC_INIT([urweb], [20190217])
 WORKING_VERSION=1
 AC_USE_SYSTEM_EXTENSIONS
 
@@ -91,6 +91,20 @@ if test [-z $SQHEADER]; then
    SQHEADER=sqlite3.h
 fi
 
+if test [-z $ICU_INCLUDES]; then
+   ICU_INCLUDES=
+fi
+
+CPPFLAGS=$ICU_INCLUDES$CPPFLAGS
+
+if test [-z $ICU_LIBS]; then
+   ICU_LIBS=
+fi
+
+AC_CHECK_HEADERS([unicode/utypes.h],
+                 [],
+                 [echo "You must install ICU."; exit 1])
+
 if test [$WORKING_VERSION = "1"]; then
    VERSION="$VERSION + `git log -1 --format="%H" || echo ?`"
 fi
@@ -111,6 +125,8 @@ pthread_t a;
     AC_MSG_RESULT(yes),
   AC_MSG_RESULT(no))
 
+AC_CHECK_FUNCS_ONCE([memmem])
+
 AC_SUBST(CC)
 AC_SUBST(BIN)
 AC_SUBST(LIB)
@@ -125,6 +141,8 @@ AC_SUBST(SQHEADER)
 AC_SUBST(VERSION)
 AC_SUBST(PTHREAD_CFLAGS)
 AC_SUBST(PTHREAD_LIBS)
+AC_SUBST(ICU_INCLUDES)
+AC_SUBST(ICU_LIBS)
 
 AC_CONFIG_FILES([
         Makefile
@@ -148,6 +166,8 @@ Ur/Web configuration:
   Postgres C header:   PGHEADER       $PGHEADER
   MySQL C header:      MSHEADER       $MSHEADER
   SQLite C header:     SQHEADER       $SQHEADER
+  ICU includes:        ICU_INCLUDES   $ICU_INCLUDES
+  ICU libs:            ICU_LIBS       $ICU_LIBS
   OpenSSL:             OPENSSL_LIBS   $OPENSSL_LIBS
   pthreads:            PTHREAD_CFLAGS $PTHREAD_CFLAGS
                        PTHREAD_LIBS   $PTHREAD_LIBS

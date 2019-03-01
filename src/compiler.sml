@@ -39,6 +39,7 @@ type job = {
      sources : string list,
      exe : string,
      sql : string option,
+     endpoints : string option,
      debug : bool,
      profile : bool,
      timeout : int,
@@ -64,6 +65,8 @@ type job = {
      protocol : string option,
      dbms : string option,
      sigFile : string option,
+     fileCache : string option,
+     safeGetDefault : bool,
      safeGets : string list,
      onError : (string * string list * string) option,
      minHeap : int,
@@ -273,7 +276,7 @@ val parseUr = {
               handle LrParser.ParseError => [],
      print = SourcePrint.p_file}
 
-fun p_job ({prefix, database, exe, sql, sources, debug, profile,
+fun p_job ({prefix, database, exe, sql, endpoints, sources, debug, profile,
             timeout, ffi, link, headers, scripts,
             clientToServer, effectful, benignEffectful, clientOnly, serverOnly, jsModule, jsFuncs, ...} : job) =
     let
@@ -301,6 +304,10 @@ fun p_job ({prefix, database, exe, sql, sources, debug, profile,
              case sql of
                  NONE => string "No SQL file."
                | SOME sql => string ("SQL fle: " ^ sql),
+             newline,
+             case endpoints of
+                 NONE => string "No endpoints file."
+               | SOME ep => string ("Endpoints fle: " ^ ep),
              newline,
              string "Timeout: ",
              string (Int.toString timeout),
@@ -384,10 +391,12 @@ fun institutionalizeJob (job : job) =
      Settings.setMetaRules (#filterMeta job);
      Option.app Settings.setProtocol (#protocol job);
      Option.app Settings.setDbms (#dbms job);
+     Settings.setSafeGetDefault (#safeGetDefault job);
      Settings.setSafeGets (#safeGets job);
      Settings.setOnError (#onError job);
      Settings.setMinHeap (#minHeap job);
      Settings.setSigFile (#sigFile job);
+     Settings.setFileCache (#fileCache job);
      Settings.setMimeFilePath (Option.getOpt (#mimeTypes job, "/etc/mime.types")))
 
 datatype commentableLine =
@@ -439,6 +448,7 @@ fun parseUrp' accLibs fname =
                         sources = [fname],
                         exe = fname ^ ".exe",
                         sql = NONE,
+                        endpoints = NONE,
                         debug = Settings.getDebug (),
                         profile = false,
                         timeout = 120,
@@ -467,6 +477,8 @@ fun parseUrp' accLibs fname =
                         protocol = NONE,
                         dbms = NONE,
                         sigFile = NONE,
+                        fileCache = NONE,
+                        safeGetDefault = false,
                         safeGets = [],
                         onError = NONE,
                         minHeap = 0,
@@ -575,6 +587,7 @@ fun parseUrp' accLibs fname =
                      val database = ref (Settings.getDbstring ())
                      val exe = ref (Settings.getExe ())
                      val sql = ref (Settings.getSql ())
+                     val endpoints = ref (Settings.getEndpoints ())
                      val debug = ref (Settings.getDebug ())
                      val profile = ref false
                      val timeout = ref NONE
@@ -601,6 +614,8 @@ fun parseUrp' accLibs fname =
                      val protocol = ref NONE
                      val dbms = ref NONE
                      val sigFile = ref (Settings.getSigFile ())
+                     val fileCache = ref (Settings.getFileCache ())
+                     val safeGetDefault = ref false
                      val safeGets = ref []
                      val onError = ref NONE
                      val minHeap = ref 0
@@ -614,6 +629,7 @@ fun parseUrp' accLibs fname =
                                  exe = Option.getOpt (!exe, OS.Path.joinBaseExt {base = OS.Path.base filename,
                                                                                  ext = SOME "exe"}),
                                  sql = !sql,
+                                 endpoints = !endpoints,
                                  debug = !debug,
                                  profile = !profile,
                                  timeout = Option.getOpt (!timeout, 60),
@@ -640,6 +656,8 @@ fun parseUrp' accLibs fname =
                                  protocol = !protocol,
                                  dbms = !dbms,
                                  sigFile = !sigFile,
+                                 fileCache = !fileCache,
+                                 safeGetDefault = !safeGetDefault,
                                  safeGets = rev (!safeGets),
                                  onError = !onError,
                                  minHeap = !minHeap,
@@ -674,6 +692,7 @@ fun parseUrp' accLibs fname =
                                  database = mergeO (fn (old, _) => old) (#database old, #database new),
                                  exe = #exe old,
                                  sql = #sql old,
+                                 endpoints = #endpoints old,
                                  debug = #debug old orelse #debug new,
                                  profile = #profile old orelse #profile new,
                                  timeout = #timeout old,
@@ -702,6 +721,8 @@ fun parseUrp' accLibs fname =
                                  protocol = mergeO #2 (#protocol old, #protocol new),
                                  dbms = mergeO #2 (#dbms old, #dbms new),
                                  sigFile = mergeO #2 (#sigFile old, #sigFile new),
+                                 fileCache = mergeO #2 (#fileCache old, #fileCache new),
+                                 safeGetDefault = #safeGetDefault old orelse #safeGetDefault new,
                                  safeGets = #safeGets old @ #safeGets new,
                                  onError = mergeO #2 (#onError old, #onError new),
                                  minHeap = Int.max (#minHeap old, #minHeap new),
@@ -790,6 +811,10 @@ fun parseUrp' accLibs fname =
                                      (case !sigFile of
                                           NONE => sigFile := SOME arg
                                         | SOME _ => ())
+                                   | "filecache" =>
+                                     (case !fileCache of
+                                          NONE => fileCache := SOME arg
+                                        | SOME _ => ())
                                    | "exe" =>
                                      (case !exe of
                                           NONE => exe := SOME (relify arg)
@@ -819,6 +844,7 @@ fun parseUrp' accLibs fname =
                                    | "include" => headers := relifyA arg :: !headers
                                    | "script" => scripts := arg :: !scripts
                                    | "clientToServer" => clientToServer := ffiS () :: !clientToServer
+                                   | "safeGetDefault" => safeGetDefault := true
                                    | "safeGet" => safeGets := arg :: !safeGets
                                    | "effectful" => effectful := ffiS () :: !effectful
                                    | "benignEffectful" => benignEffectful := ffiS () :: !benignEffectful
@@ -1373,8 +1399,9 @@ val toUnpoly2 = transform unpoly "unpoly2" o toShake4'
 val toSpecialize2 = transform specialize "specialize2" o toUnpoly2
 val toShake4'' = transform shake "shake4'" o toSpecialize2
 val toEspecialize3 = transform especialize "especialize3" o toShake4''
+val toSpecialize3 = transform specialize "specialize3" o toEspecialize3
 
-val toReduce2 = transform reduce "reduce2" o toEspecialize3
+val toReduce2 = transform reduce "reduce2" o toSpecialize3
 
 val toShake5 = transform shake "shake5" o toReduce2
 
@@ -1411,7 +1438,14 @@ val mono_opt = {
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toMono_opt1 = transform mono_opt "mono_opt1" o toMonoize
+val endpoints = {
+    func = Endpoints.collect,
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toEndpoints = transform endpoints "endpoints" o toMonoize
+
+val toMono_opt1 = transform mono_opt "mono_opt1" o toEndpoints
 
 val untangle = {
     func = Untangle.untangle,
@@ -1513,6 +1547,13 @@ val sigcheck = {
 
 val toSigcheck = transform sigcheck "sigcheck" o toSidecheck
 
+val filecache = {
+    func = FileCache.instrument,
+    print = MonoPrint.p_file MonoEnv.empty
+}
+
+val toFilecache = transform filecache "filecache" o toSigcheck
+
 val sqlcache = {
     func = (fn file =>
                if Settings.getSqlcache ()
@@ -1521,7 +1562,7 @@ val sqlcache = {
     print = MonoPrint.p_file MonoEnv.empty
 }
 
-val toSqlcache = transform sqlcache "sqlcache" o toSigcheck
+val toSqlcache = transform sqlcache "sqlcache" o toFilecache
 
 val cjrize = {
     func = Cjrize.cjrize,
@@ -1568,9 +1609,9 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
         val proto = Settings.currentProtocol ()
 
         val lib = if Settings.getBootLinking () then
-                      !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a"
+                      !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a " ^ !Settings.configIcuLibs ^ " -licui18n -licuuc -licudata"
                   else if Settings.getStaticLinking () then
-                      " -static " ^ !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a"
+                      " -static " ^ !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a " ^ !Settings.configIcuLibs ^ " -licui18n -licuuc -licudata"
                   else
                       "-L" ^ !Settings.configLib ^ " " ^ #linkDynamic proto ^ " -lurweb"
 
@@ -1581,6 +1622,7 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
 
         val compile = (Settings.getCCompiler ()) ^ " " ^ Config.ccArgs ^ " " ^ Config.pthreadCflags ^ " -Wimplicit -Werror -Wno-unused-value"
                       ^ opt ^ " -I " ^ !Settings.configInclude
+		      ^ " " ^ !Settings.configIcuIncludes
                       ^ " " ^ #compile proto
                       ^ " -c " ^ escapeFilename cname ^ " -o " ^ escapeFilename oname
 
@@ -1690,6 +1732,18 @@ fun compile job =
                              val s = TextIOPP.openOut {dst = outf, wid = 80}
                          in
                              Print.fprint s (CjrPrint.p_sql CjrEnv.empty file);
+                             TextIO.closeOut outf
+                         end;
+
+                     case #endpoints job of
+                         NONE => ()
+                       | SOME endpoints =>
+                         let
+                             val report = Endpoints.summarize ()
+                             val outf = TextIO.openOut endpoints
+                             val s = TextIOPP.openOut {dst = outf, wid = 80}
+                         in
+                             Print.fprint s (Endpoints.p_report report);
                              TextIO.closeOut outf
                          end;
 

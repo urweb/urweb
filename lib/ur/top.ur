@@ -172,6 +172,17 @@ fun foldR3 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [tr :: {
            f [nm] [t] [rest] r1.nm r2.nm r3.nm (acc (r1 -- nm) (r2 -- nm) (r3 -- nm)))
        (fn _ _ _ => i)
 
+fun foldR4 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [tf4 :: K -> Type] [tr :: {K} -> Type]
+            (f : nm :: Name -> t :: K -> rest :: {K}
+                 -> [[nm] ~ rest] =>
+                       tf1 t -> tf2 t -> tf3 t -> tf4 t -> tr rest -> tr ([nm = t] ++ rest))
+            (i : tr []) [r ::: {K}] (fl : folder r) =
+    fl [fn r :: {K} => $(map tf1 r) -> $(map tf2 r) -> $(map tf3 r) -> $(map tf4 r) -> tr r]
+       (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest] 
+                        (acc : _ -> _ -> _ -> _ -> tr rest) r1 r2 r3 r4 =>
+           f [nm] [t] [rest] r1.nm r2.nm r3.nm r4.nm (acc (r1 -- nm) (r2 -- nm) (r3 -- nm) (r4 -- nm)))
+       (fn _ _ _ _ => i)
+
 fun mapUX [tf :: Type] [ctx :: {Unit}]
           (f : nm :: Name -> rest :: {Unit} -> [[nm] ~ rest] => tf -> xml ctx [] []) =
     @@foldR [fn _ => tf] [fn _ => xml ctx [] []]
@@ -222,6 +233,16 @@ fun mapX3 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [ctx :: {
       (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest]
                        r1 r2 r3 acc =>
           <xml>{f [nm] [t] [rest] r1 r2 r3}{acc}</xml>)
+      <xml/>
+
+fun mapX4 [K] [tf1 :: K -> Type] [tf2 :: K -> Type] [tf3 :: K -> Type] [tf4 :: K -> Type] [ctx :: {Unit}]
+          (f : nm :: Name -> t :: K -> rest :: {K}
+               -> [[nm] ~ rest] =>
+               tf1 t -> tf2 t -> tf3 t -> tf4 t -> xml ctx [] []) =
+    @@foldR4 [tf1] [tf2] [tf3] [tf4] [fn _ => xml ctx [] []]
+      (fn [nm :: Name] [t :: K] [rest :: {K}] [[nm] ~ rest]
+                       r1 r2 r3 r4 acc =>
+          <xml>{f [nm] [t] [rest] r1 r2 r3 r4}{acc}</xml>)
       <xml/>
 
 fun query1 [t ::: Name] [fs ::: {Type}] [state ::: Type] (q : sql_query [] [] [t = fs] [])

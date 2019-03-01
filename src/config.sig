@@ -20,4 +20,7 @@ signature CONFIG = sig
 
     val pthreadCflags : string
     val pthreadLibs : string
+
+    val icuIncludes : string
+    val icuLibs : string
 end

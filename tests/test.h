@@ -1,4 +1,4 @@
-#include "../include/urweb.h"
+#include "urweb/urweb.h"
 
 typedef uw_Basis_string uw_Test_t;
 

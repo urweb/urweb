@@ -59,3 +59,8 @@ fun unsafeGet [a] (o : option a) =
     case o of
         None   => error <xml>Option.unsafeGet: encountered None</xml>
       | Some v => v
+
+fun mapM [m] (_ : monad m) [a] [b] (f : a -> m b) (x : t a) : m (t b) =
+    case x of
+        None => return None
+      | Some y => z <- f y; return (Some z)

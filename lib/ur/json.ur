@@ -46,10 +46,15 @@ fun escape s =
                 let
                     val ch = String.sub s 0
                 in
-                    (if ch = #"\"" || ch = #"\\" then
-                         "\\" ^ String.str ch
-                     else
-                         String.str ch) ^ esc (String.suffix s 1)
+		    (case ch of
+			 #"\n" => "\\n"
+		       | #"\r" => "\\r"
+		       | #"\t" => "\\t"
+		       | #"\"" => "\\\""
+		       | #"\\" => "\\\\"
+		       | #"/" => "\\/"
+		       | x => String.str ch
+		    ) ^ esc (String.suffix s 1)
                 end
     in
         "\"" ^ esc s
@@ -90,7 +95,16 @@ fun unescape s =
                         if i+1 >= len then
                             error <xml>JSON unescape: Bad escape sequence: {[s]}</xml>
                         else
-                            String.str (String.sub s (i+1)) ^ unesc (i+2)
+			    (case String.sub s (i+1) of
+				 #"n" => "\n"
+                               | #"r" => "\r"
+                               | #"t" => "\t"
+                               | #"\"" => "\""
+			       | #"\\" => "\\"
+			       | #"/" => "/"
+                               | x => error <xml>JSON unescape: Bad escape char: {[x]}</xml>)
+			    ^
+			    unesc (i+2)
                       | _ => String.str ch ^ unesc (i+1)
                 end
     in

@@ -1540,17 +1540,31 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfiApp ("Basis", "dml", [(e, _)]) =>
             let
+                val string = (L'.TFfi ("Basis", "string"), loc)
                 val (e, fm) = monoExp (env, st, fm) e
             in
-                ((L'.EDml (e, L'.Error), loc),
+                ((L'.ECase (e,
+                            [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
+                              (L'.ERecord [], loc)),
+                             ((L'.PVar ("cmd", string), loc),
+                              (L'.EDml ((L'.ERel 0, loc), L'.Error), loc))],
+                            {disc = string,
+                             result = (L'.TRecord [], loc)}), loc),
                  fm)
             end
 
           | L.EFfiApp ("Basis", "tryDml", [(e, _)]) =>
             let
+                val string = (L'.TFfi ("Basis", "string"), loc)
                 val (e, fm) = monoExp (env, st, fm) e
             in
-                ((L'.EDml (e, L'.None), loc),
+                ((L'.ECase (e,
+                            [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
+                              (L'.ERecord [], loc)),
+                             ((L'.PVar ("cmd", string), loc),
+                              (L'.EDml ((L'.ERel 0, loc), L'.None), loc))],
+                            {disc = string,
+                             result = (L'.TRecord [], loc)}), loc),
                  fm)
             end
 
@@ -1579,7 +1593,18 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.ECApp ((L.ECApp ((L.ECApp ((L.EFfi ("Basis", "update"), _), _), _), _), _), changed) =>
             (case monoType env (L.TRecord changed, loc) of
-                 (L'.TRecord changed, _) =>
+                 (L'.TRecord [], _)  =>
+                 let
+                     val s = (L'.TFfi ("Basis", "string"), loc)
+                     val rt = (L'.TRecord [], loc)
+                 in
+                     ((L'.EAbs ("fs", rt, (L'.TFun (s, (L'.TFun (s, s), loc)), loc),
+                                (L'.EAbs ("tab", s, (L'.TFun (s, s), loc),
+                                          (L'.EAbs ("e", s, s,
+                                                    str ""), loc)), loc)), loc),
+                      fm)
+                 end
+               | (L'.TRecord changed, _) =>
                  let
                      val s = (L'.TFfi ("Basis", "string"), loc)
                      val changed = map (fn (x, _) => (x, s)) changed
@@ -1792,18 +1817,21 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                   NONE), loc),
                                                         str "")],
                                                       {disc = b, result = s}), loc),
-                                           strcatComma (map (fn (x, t) =>
-                                                                strcat [
-                                                                (L'.EField (gf "SelectExps", x), loc),
-                                                                str (" AS " ^ Settings.mangleSql x)
-                                                            ]) sexps
-                                                        @ map (fn (x, xts) =>
-                                                                  strcatComma
-                                                                      (map (fn (x', _) =>
-                                                                               str ("T_" ^ x
-										   ^ "."
-										   ^ Settings.mangleSql x'))
-                                                                           xts)) stables),
+                                           if List.null sexps andalso List.all (List.null o #2) stables then
+                                               str "0"
+                                           else
+                                               strcatComma (map (fn (x, t) =>
+                                                                    strcat [
+                                                                        (L'.EField (gf "SelectExps", x), loc),
+                                                                        str (" AS " ^ Settings.mangleSql x)
+                                                                ]) sexps
+                                                            @ map (fn (x, xts) =>
+                                                                      strcatComma
+                                                                          (map (fn (x', _) =>
+                                                                                   str ("T_" ^ x
+										        ^ "."
+										        ^ Settings.mangleSql x'))
+                                                                               xts)) stables),
                                            (L'.ECase (gf "From",
                                                       [((L'.PPrim (Prim.String (Prim.Normal, "")), loc),
                                                         str ""),
@@ -3067,7 +3095,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                              | _ => (attrs, NONE)
 
 
-                val dynamics = ["dyn", "ctextbox", "cpassword", "ccheckbox", "cselect", "coption", "ctextarea", "active", "script", "cemail", "csearch", "curl", "ctel", "ccolor"]
+                val dynamics = ["dyn", "ctextbox", "cpassword", "ccheckbox", "cradio", "cselect", "coption", "ctextarea", "active", "script", "cemail", "csearch", "curl", "ctel", "ccolor"]
 
                 fun isSome (e, _) =
                     case e of
@@ -3557,6 +3585,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | "ctime" => cinput ("time", "time")
 
                       | "ccheckbox" => cinput ("checkbox", "chk")
+                      | "cradio" => cinput ("radio", "crad")
+
                       | "cselect" =>
 			(case List.find (fn ("Source", _, _) => true | _ => false) attrs of
                              NONE =>
@@ -3946,6 +3976,20 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("v", (L'.TFfi ("Basis", "string"), loc), t, (L'.EUnurlify ((L'.ERel 0, loc), t, false),
                                                                         loc)), loc),
+                 fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "unsafeSerializedToString"), _), _) =>
+            let
+                val t = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("v", t, t, (L'.ERel 0, loc)), loc),
+                 fm)
+            end
+          | L.ECApp ((L.EFfi ("Basis", "unsafeSerializedFromString"), _), _) =>
+            let
+                val t = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("v", t, t, (L'.ERel 0, loc)), loc),
                  fm)
             end
 

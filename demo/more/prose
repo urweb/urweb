@@ -1,8 +1,8 @@
-<p>These are some extra demo applications written in <a href="http://www.impredicative.com/ur/">Ur/Web</a>.  See <a href="http://www.impredicative.com/ur/demo/">the main demo</a> for a more tutorial-like progression through language and library features.</p>
+<p>These are some extra demo applications written in <a target="_top" href="http://www.impredicative.com/ur/">Ur/Web</a>.  See <a target="_top" href="http://www.impredicative.com/ur/demo/">the main demo</a> for a more tutorial-like progression through language and library features.</p>
 
 dragList.urp
 
-<p>This is an Ur/Web version of the "draggable lists" <a href="http://groups.inf.ed.ac.uk/links/examples/">demo program from Links</a>.</p>
+<p>This is an Ur/Web version of the "draggable lists" <a target="_top" href="http://groups.inf.ed.ac.uk/links/examples/">demo program from Links</a>.</p>
 
 grid1.urp
 

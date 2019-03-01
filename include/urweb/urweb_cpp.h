@@ -103,7 +103,7 @@ char *uw_Basis_htmlifyFloat(struct uw_context *, uw_Basis_float);
 char *uw_Basis_htmlifyString(struct uw_context *, uw_Basis_string);
 char *uw_Basis_htmlifyBool(struct uw_context *, uw_Basis_bool);
 char *uw_Basis_htmlifyTime(struct uw_context *, uw_Basis_time);
-char *uw_Basis_htmlifySpecialChar(struct uw_context *, unsigned char);
+char *uw_Basis_htmlifySpecialChar(struct uw_context *, uw_Basis_char);
 char *uw_Basis_htmlifySource(struct uw_context *, uw_Basis_source);
 
 uw_unit uw_Basis_htmlifyInt_w(struct uw_context *, uw_Basis_int);
@@ -111,7 +111,7 @@ uw_unit uw_Basis_htmlifyFloat_w(struct uw_context *, uw_Basis_float);
 uw_unit uw_Basis_htmlifyString_w(struct uw_context *, uw_Basis_string);
 uw_unit uw_Basis_htmlifyBool_w(struct uw_context *, uw_Basis_bool);
 uw_unit uw_Basis_htmlifyTime_w(struct uw_context *, uw_Basis_time);
-uw_unit uw_Basis_htmlifySpecialChar_w(struct uw_context *, unsigned char);
+uw_unit uw_Basis_htmlifySpecialChar_w(struct uw_context *, uw_Basis_char);
 uw_unit uw_Basis_htmlifySource_w(struct uw_context *, uw_Basis_source);
 
 char *uw_Basis_attrifyInt(struct uw_context *, uw_Basis_int);
@@ -138,6 +138,7 @@ char *uw_Basis_urlifySource(struct uw_context *, uw_Basis_source);
 
 uw_unit uw_Basis_urlifyInt_w(struct uw_context *, uw_Basis_int);
 uw_unit uw_Basis_urlifyFloat_w(struct uw_context *, uw_Basis_float);
+uw_unit uw_Basis_urlifyChar_w(struct uw_context *, uw_Basis_char);
 uw_unit uw_Basis_urlifyString_w(struct uw_context *, uw_Basis_string);
 uw_unit uw_Basis_urlifyBool_w(struct uw_context *, uw_Basis_bool);
 uw_unit uw_Basis_urlifyTime_w(struct uw_context *, uw_Basis_time);
@@ -262,6 +263,7 @@ uw_Basis_string uw_Basis_fileMimeType(struct uw_context *, uw_Basis_file);
 uw_Basis_blob uw_Basis_fileData(struct uw_context *, uw_Basis_file);
 uw_Basis_int uw_Basis_blobSize(struct uw_context *, uw_Basis_blob);
 uw_Basis_blob uw_Basis_textBlob(struct uw_context *, uw_Basis_string);
+uw_Basis_string uw_Basis_textOfBlob(struct uw_context *, uw_Basis_blob);
 
 uw_Basis_string uw_Basis_postType(struct uw_context *, uw_Basis_postBody);
 uw_Basis_string uw_Basis_postData(struct uw_context *, uw_Basis_postBody);
@@ -327,6 +329,7 @@ uw_Basis_bool uw_Basis_isxdigit(struct uw_context *, uw_Basis_char);
 uw_Basis_char uw_Basis_tolower(struct uw_context *, uw_Basis_char);
 uw_Basis_char uw_Basis_toupper(struct uw_context *, uw_Basis_char);
 
+uw_Basis_bool uw_Basis_iscodepoint(struct uw_context *, uw_Basis_int);
 uw_Basis_int uw_Basis_ord(struct uw_context *, uw_Basis_char);
 uw_Basis_char uw_Basis_chr(struct uw_context *, uw_Basis_int);
 
@@ -357,8 +360,6 @@ failure_kind uw_runCallback(struct uw_context *, void (*callback)(struct uw_cont
 uw_Basis_string uw_Basis_timef(struct uw_context *, const char *fmt, uw_Basis_time);
 uw_Basis_time uw_Basis_stringToTimef(struct uw_context *, const char *fmt, uw_Basis_string);
 uw_Basis_time uw_Basis_stringToTimef_error(struct uw_context *, const char *fmt, uw_Basis_string);
-
-uw_Basis_string uw_Basis_crypt(struct uw_context *, uw_Basis_string key, uw_Basis_string salt);
 
 uw_Basis_bool uw_Basis_eq_time(struct uw_context *, uw_Basis_time, uw_Basis_time);
 uw_Basis_bool uw_Basis_lt_time(struct uw_context *, uw_Basis_time, uw_Basis_time);
@@ -431,5 +432,9 @@ void *uw_Sqlcache_store(struct uw_context *, uw_Sqlcache_Cache *, char **, uw_Sq
 void *uw_Sqlcache_flush(struct uw_context *, uw_Sqlcache_Cache *, char **);
 
 int strcmp_nullsafe(const char *, const char *);
+
+uw_unit uw_Basis_cache_file(struct uw_context *, uw_Basis_blob contents);
+uw_Basis_blob uw_Basis_check_filecache(struct uw_context *, uw_Basis_string hash);
+uw_Basis_bool uw_Basis_filecache_missed(struct uw_context *);
 
 #endif

@@ -1029,6 +1029,22 @@ fun mapfold {kind = fk, con = fc, exp = fe, decl = fd} =
               decl = fn () => fd,
               bind = fn ((), _) => ()} ()
 
+fun mapB {kind, con, exp, decl, bind} ctx d =
+    case mapfoldB {kind = fn ctx => fn k => fn () => S.Continue (kind ctx k, ()),
+                   con = fn ctx => fn c => fn () => S.Continue (con ctx c, ()),
+                   exp = fn ctx => fn e => fn () => S.Continue (exp ctx e, ()),
+                   decl = fn ctx => fn d => fn () => S.Continue (decl ctx d, ()),
+                   bind = bind} ctx d () of
+        S.Continue (d, ()) => d
+      | S.Return _ => raise Fail "CoreUtil.Decl.mapB: Impossible"
+
+fun map {kind, con, exp, decl} d =
+    mapB {kind = fn () => kind,
+          con = fn () => con,
+          exp = fn () => exp,
+          decl = fn () => decl,
+          bind = fn _ => ()} () d
+             
 fun fold {kind, con, exp, decl} s d =
     case mapfold {kind = fn k => fn s => S.Continue (k, kind (k, s)),
                   con = fn c => fn s => S.Continue (c, con (c, s)),
