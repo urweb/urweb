@@ -174,7 +174,7 @@ fun unescape loc s =
 %%
 %header (functor UrwebLexFn(structure Tokens : Urweb_TOKENS));
 %full
-%s COMMENT STRING CHAR XML XMLTAG;
+%s COMMENT XMLCOMMENT STRING CHAR XML XMLTAG;
 
 id = [a-z_][A-Za-z0-9_']*;
 xmlid = [A-Za-z][A-Za-z0-9_-]*;
@@ -184,13 +184,12 @@ intconst = [0-9]+;
 realconst = [0-9]+\.[0-9]*;
 hexconst = 0x[0-9A-F]+;
 notags = ([^<{\n(]|(\([^\*<{\n]))+;
-xcom = ([^\-]|(-[^\-]))+;
 oint = [0-9][0-9][0-9];
 xint = x[0-9a-fA-F][0-9a-fA-F];
 
 %%
 
-<INITIAL,COMMENT,XMLTAG>
+<INITIAL,COMMENT,XMLTAG,XMLCOMMENT>
       \n              => (newline yypos;
                           continue ());
 <XML> \n              => (newline yypos;
@@ -219,7 +218,9 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <COMMENT> "*)"        => (exitComment ();
 			  continue ());
 
-<XML> "<!--" {xcom} "-->" => (continue ());
+<XML> "<!--"          => (YYBEGIN XMLCOMMENT; continue ());
+<XMLCOMMENT> "-->"    => (YYBEGIN XML; continue ());
+<XMLCOMMENT> .        => (continue ());
 
 <STRING,CHAR> "\\\""  => (str := #"\"" :: !str; continue());
 <STRING,CHAR> "\\'"   => (str := #"'" :: !str; continue());
