@@ -953,7 +953,7 @@ fun parseUrp' accLibs fname =
                                           uri :: fname :: rest =>
                                           (Settings.setFilePath thisPath;
                                            Settings.addFile {Uri = uri,
-                                                             LoadFromFilename = fname,
+                                                             LoadFromFilename = pathify fname,
                                                              MimeType = case rest of
                                                                             [] => NONE
                                                                           | [ty] => SOME ty
@@ -964,7 +964,7 @@ fun parseUrp' accLibs fname =
 
                                    | "jsFile" =>
                                      (Settings.setFilePath thisPath;
-                                      Settings.addJsFile arg)
+                                      Settings.addJsFile (pathify arg))
 
                                    | _ => ErrorMsg.error ("Unrecognized command '" ^ cmd ^ "'");
                                  read ()
