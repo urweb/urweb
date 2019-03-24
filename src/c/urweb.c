@@ -2267,6 +2267,23 @@ uw_Basis_string uw_Basis_unurlifyString(uw_context ctx, char **s) {
   return r;
 }
 
+uw_Basis_char uw_Basis_unurlifyChar(uw_context ctx, char **s) {
+  char *new_s = uw_unurlify_advance(*s);
+  char *r;
+  int len;
+
+  len = strlen(*s);
+  uw_check_heap(ctx, len + 1);
+
+  r = ctx->heap.front;
+  ctx->heap.front = uw_unurlifyString_to(0, ctx, ctx->heap.front, *s);
+  *s = new_s;
+  if (strlen(r) == 1)
+    return r[0];
+  else
+    uw_error(ctx, FATAL, "Unurlified character is multiple characters long");
+}
+
 uw_Basis_unit uw_Basis_unurlifyUnit(uw_context ctx, char **s) {
   (void)ctx;
   *s = uw_unurlify_advance(*s);
