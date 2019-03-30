@@ -1200,6 +1200,7 @@ val parse = {
                                                        else
                                                            ();
                                                        ErrorMsg.error ("Missing source file: " ^ fname);
+                                                       anyErrors := true;
                                                        (Source.DSequence "", ErrorMsg.dummySpan))
 
                   val dsFfi = map parseFfi ffi
