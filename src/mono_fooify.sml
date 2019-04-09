@@ -165,12 +165,12 @@ fun fooifyExpWithExceptions fk lookupENamed lookupDatatype =
                 end
               | _ =>
                 case t of
-                    TFfi ("Basis", "unit") => ((EPrim (Prim.String (Prim.Normal, "")), loc), fm)
+                    TFfi ("Basis", "unit") => ((EPrim (Prim.String (Prim.Normal, "_")), loc), fm)
                   | TFfi (m, x) => (if Settings.mayClientToServer (m, x)
                                     then ((EFfiApp (m, fk2s fk ^ "ify" ^ capitalize x, [(e, tAll)]), loc), fm)
                                     else raise CantPass (fm, tAll))
 
-                  | TRecord [] => ((EPrim (Prim.String (Prim.Normal, "")), loc), fm)
+                  | TRecord [] => ((EPrim (Prim.String (Prim.Normal, "_")), loc), fm)
                   | TRecord ((x, t) :: xts) =>
                     let
                         val (se, fm) = fooify fm ((EField (e, x), loc), t)

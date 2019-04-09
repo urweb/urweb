@@ -952,7 +952,7 @@ fun unurlify fromClient env (t, loc) =
                                               newline,
                                               string ":",
                                               space,
-                                              string ("(uw_error(ctx, FATAL, \"Error unurlifying list: %s\", request), NULL))));"),
+                                              string ("(uw_error(ctx, FATAL, \"Error unurlifying list: %s\", *request), NULL))));"),
                                               newline],
                                          string "}",
                                          newline,
