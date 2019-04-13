@@ -3771,7 +3771,12 @@ fun p_sql env (ds, _) =
                                                  cut,
                                                  case pk of
                                                      "" => box []
-                                                   | _ => box [string "PRIMARY",
+                                                   | _ => box [string "CONSTRAINT",
+                                                               space,
+                                                               string s,
+                                                               string "_pkey",
+                                                               space,
+                                                               string "PRIMARY",
                                                                space,
                                                                string "KEY",
                                                                space,
