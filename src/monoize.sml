@@ -50,6 +50,36 @@ structure RM = BinaryMapFn(struct
                                                                         (L'.TRecord r2, E.dummySpan))
                            end)
 
+local
+    val url_prefixes = ref []
+in
+
+fun reset () = url_prefixes := []
+
+fun addPrefix prefix =
+    let
+        fun isPrefix s1 s2 =
+            String.isPrefix s1 s2
+            andalso (size s1 = size s2
+                     orelse String.sub (s2, size s1) = #"/")
+    in
+        if List.exists (fn prefix' =>
+                           let
+                               fun tryOne prefix' prefix =
+                                   isPrefix prefix' prefix
+                                   andalso (ErrorMsg.error ("Conflicting URL prefixes for page handlers: \"" ^ prefix' ^ "\" is a prefix of \"" ^ prefix ^ "\".");
+                                            true)
+                           in
+                               tryOne prefix' prefix
+                               orelse tryOne prefix prefix'
+                           end) (!url_prefixes) then
+            ()
+        else
+            url_prefixes := prefix :: !url_prefixes
+    end
+
+end
+                          
 val nextPvar = MonoFooify.nextPvar
 val pvars = ref (RM.empty : (int * (string * int * L'.typ) list) RM.map)
 val pvarDefs = MonoFooify.pvarDefs
@@ -4233,6 +4263,7 @@ fun monoDecl (env, fm) (all as (d, loc)) =
           | L.DExport (ek, n, b) =>
             let
                 val (_, t, _, s) = Env.lookupENamed env n
+                val () = addPrefix s
 
                 fun unwind (t, args) =
                     case #1 t of
@@ -4392,6 +4423,7 @@ datatype expungable = Client | Channel
 
 fun monoize env file =
     let
+        val () = reset ()
         val () = pvars := RM.empty
 
         (* Calculate which exported functions need cookie signature protection *)
