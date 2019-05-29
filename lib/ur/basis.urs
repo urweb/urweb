@@ -975,7 +975,7 @@ con formTag = fn (ty :: Type) (inner :: {Unit}) (attrs :: {Type}) =>
                         -> tag attrs ([Form] ++ ctx) inner [] [nm = ty]
 
 con inputAttrs' = [Required = bool, Autofocus = bool,
-                   Onchange = transaction unit]
+                   Onchange = transaction unit, Disabled = bool]
 con inputAttrs = inputAttrs' ++ [Oninput = transaction unit]
 
 val hidden : formTag string [] [Data = data_attr, Id = string, Value = string]
