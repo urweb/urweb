@@ -222,9 +222,11 @@ signature SETTINGS = sig
          nestedRelops : bool,
          windowFunctions : bool,
          supportsIsDistinctFrom : bool,
-         supportsSHA512 : string option (* If supported, give the SQL code to
-                                         * enable the feature in a particular
-                                         * database. *)
+         supportsSHA512 : {InitializeDb : string,
+                           GenerateHash : string -> string} option
+         (* If supported, give the SQL code to
+          * enable the feature in a particular
+          * database and to compute a hash of a value. *)
     }
 
     val addDbms : dbms -> unit

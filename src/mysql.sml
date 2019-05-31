@@ -1610,6 +1610,7 @@ val () = addDbms {name = "mysql",
                   nestedRelops = false,
                   windowFunctions = false,
                   supportsIsDistinctFrom = true,
-                  supportsSHA512 = NONE}
+                  supportsSHA512 = SOME {InitializeDb = "",
+                                         GenerateHash = fn name => "SHA2(" ^ name ^ ", 512)"}}
 
 end

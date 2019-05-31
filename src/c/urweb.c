@@ -5327,9 +5327,8 @@ uw_Basis_blob uw_Basis_check_filecache(uw_context ctx, uw_Basis_string hash) {
 
   // Hashes come formatted for printing by Postgres, which means they start with
   // two extra characters.  Let's remove them.
-  if (!hash[0] || !hash[1])
-    uw_error(ctx, FATAL, "Hash to check against file cache came in not in Postgres format: %s", hash);
-  hash += 2;
+  if (hash[0] == '\\' && hash[1] == 'x')
+    hash += 2;
 
   if (!dir)
     uw_error(ctx, FATAL, "Checking file cache when no directory is set");

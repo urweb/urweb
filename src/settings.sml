@@ -652,7 +652,7 @@ type dbms = {
      nestedRelops : bool,
      windowFunctions: bool,
      supportsIsDistinctFrom : bool,
-     supportsSHA512 : string option
+     supportsSHA512 : {InitializeDb : string, GenerateHash : string -> string} option
 }
 
 val dbmses = ref ([] : dbms list)
