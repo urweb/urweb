@@ -1,0 +1,5 @@
+dbms mysql
+database dbname=foreign_text
+sql foreign_text.sql
+
+foreign_text

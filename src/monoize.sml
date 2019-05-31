@@ -1369,7 +1369,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                             Settings.mangleSql (monoNameLc env x)
                                                             ^ (if #textKeysNeedLengths (Settings.currentDbms ())
                                                                   andalso isBlobby t then
-                                                                   "(767)"
+                                                                   "(255)"
                                                                else
                                                                    "")) unique)))),
                   loc),
@@ -1413,7 +1413,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                           (map (fn (x, t) => Settings.mangleSql (monoNameLc env x)
                                                              ^ (if #textKeysNeedLengths (Settings.currentDbms ())
                                                                    andalso isBlobby t then
-                                                                    "(767)"
+                                                                    "(255)"
                                                                 else
                                                                     "")) unique)
                       ^ ")"),

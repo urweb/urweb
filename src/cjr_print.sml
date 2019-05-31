@@ -3744,6 +3744,26 @@ fun p_file env (ds, ps) =
              newline]
     end
 
+fun isText t =
+    case t of
+        String => true
+      | Nullable t => isText t
+      | _ => false
+
+fun declaresAsForeignKey xs s =
+    case String.tokens (fn ch => Char.isSpace ch orelse ch = #"," orelse ch = #"(" orelse ch = #")") s of
+        "FOREIGN" :: "KEY" :: rest =>
+        let
+            fun consume rest =
+                case rest of
+                    [] => false
+                  | "REFERENCES" :: _ => false
+                  | xs' :: rest' => xs' = xs orelse consume rest'
+        in
+            consume rest
+        end
+     |  _ => false
+             
 fun p_sql env (ds, _) =
     let
         val (pps, _) = ListUtil.foldlMap
@@ -3756,11 +3776,19 @@ fun p_sql env (ds, _) =
                                                  string "(",
                                                  p_list (fn (x, t) =>
                                                             let
+                                                                val xs = Settings.mangleSql (CharVector.map Char.toLower x)
                                                                 val t = sql_type_in env t
+
+                                                                val ts = if #textKeysNeedLengths (Settings.currentDbms ()) andalso isText t
+                                                                            andalso (List.exists (declaresAsForeignKey xs o #2) csts
+                                                                                     orelse List.exists (String.isSubstring (xs ^ "(255)")) (pk :: map #2 csts)) then
+                                                                             "varchar(255)"
+                                                                         else
+                                                                             #p_sql_type (Settings.currentDbms ()) t
                                                             in
-                                                                box [string (Settings.mangleSql (CharVector.map Char.toLower x)),
+                                                                box [string xs,
                                                                      space,
-                                                                     string (#p_sql_type (Settings.currentDbms ()) t),
+                                                                     string ts,
                                                                      case t of
                                                                          Nullable _ => box []
                                                                        | _ => string " NOT NULL"]
