@@ -221,6 +221,7 @@ signature SETTINGS = sig
          onlyUnion : bool,
          nestedRelops : bool,
          windowFunctions : bool,
+         requiresTimestampDefaults : bool,
          supportsIsDistinctFrom : bool,
          supportsSHA512 : {InitializeDb : string,
                            GenerateHash : string -> string} option

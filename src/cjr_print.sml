@@ -3791,7 +3791,13 @@ fun p_sql env (ds, _) =
                                                                      string ts,
                                                                      case t of
                                                                          Nullable _ => box []
-                                                                       | _ => string " NOT NULL"]
+                                                                       | _ => string " NOT NULL",
+                                                                     case t of
+                                                                         Time => if #requiresTimestampDefaults (Settings.currentDbms ()) then
+                                                                                     string " DEFAULT CURRENT_TIMESTAMP"
+                                                                                 else
+                                                                                     box []
+                                                                       | _ => box []]
                                                             end) xts,
                                                  case (pk, csts) of
                                                      ("", []) => box []

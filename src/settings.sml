@@ -651,6 +651,7 @@ type dbms = {
      onlyUnion : bool,
      nestedRelops : bool,
      windowFunctions: bool,
+     requiresTimestampDefaults : bool,
      supportsIsDistinctFrom : bool,
      supportsSHA512 : {InitializeDb : string, GenerateHash : string -> string} option
 }
@@ -685,6 +686,7 @@ val curDb = ref ({name = "",
                   onlyUnion = false,
                   nestedRelops = false,
                   windowFunctions = false,
+                  requiresTimestampDefaults = false,
                   supportsIsDistinctFrom = false,
                   supportsSHA512 = NONE} : dbms)
 
