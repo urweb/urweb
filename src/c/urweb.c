@@ -902,9 +902,12 @@ char *uw_error_message(uw_context ctx) {
   return ctx->error_message;
 }
 
-void uw_set_error_message(uw_context ctx, const char *msg) {
-  strncpy(ctx->error_message, msg, sizeof(ctx->error_message));
-  ctx->error_message[sizeof(ctx->error_message)-1] = 0;
+void uw_set_error_message(uw_context ctx, const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  
+  vsnprintf(ctx->error_message, ERROR_BUF_LEN, fmt, ap);
+  ctx->error_message[ERROR_BUF_LEN-1] = 0;
 }
 
 static input *INP(uw_context ctx) {
