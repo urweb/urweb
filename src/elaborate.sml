@@ -3284,12 +3284,27 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                                 SOME env
                                             end
 
-                                        val env = E.pushCNamedAs env x1 n1 k' NONE
-                                        val env = if n1 = n2 then
-                                                      env
-                                                  else
-                                                      (cparts (n2, n1);
-                                                       E.pushCNamedAs env x1 n2 k' (SOME (L'.CNamed n1, loc)))
+                                        fun dt_pusher (dts1, dts2, env) =
+                                            case (dts1, dts2) of
+                                                ((x1, n1, xs1, _) :: dts1', (x2, n2, xs2, _) :: dts2') =>
+                                                let
+                                                    val k = (L'.KType, loc)
+                                                    val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs1
+                                                
+                                                    val env = E.pushCNamedAs env x1 n1 k' NONE
+                                                    val env = if n1 = n2 then
+                                                                  env
+                                                              else
+                                                                  (cparts (n2, n1);
+                                                                   E.pushCNamedAs env x1 n2 k' (SOME (L'.CNamed n1, loc)))
+                                                in
+                                                    dt_pusher (dts1', dts2', env)
+                                                end
+                                             |  _ => env
+                                        val env = case #1 sgi1All of
+                                                      L'.SgiDatatype dts1 => dt_pusher (dts1, dts2, env)
+                                                    | _ => env
+                                                         
                                         val env = foldl (fn (x, env) => E.pushCRel env x k) env xs1
                                         fun xncBad ((x1, _, t1), (x2, _, t2)) =
                                             String.compare (x1, x2) <> EQUAL
