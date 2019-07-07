@@ -2800,7 +2800,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
              ([(L'.SgiClass (x, n, k, c'), loc)], (env, denv, []))
          end)
 
-and elabSgn (env, denv) (sgn, loc) =
+and elabSgn (env, denv) (sgn, loc): (L'.sgn * D.goal list) =
     case sgn of
         L.SgnConst sgis =>
         let
@@ -4165,6 +4165,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                    | NONE =>
                      let
                          val () = if !verbose then TextIO.print ("CHECK: " ^ x ^ "\n") else ()
+                         val () = ErrorMsg.startElabStructure x
 
                          val () = if x = "Basis" then
                                       raise Fail "Not allowed to redefine structure 'Basis'"
@@ -4206,7 +4207,13 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                   L'.StrFun _ => ()
                                 | _ => strError env (FunctorRebind loc))
                            | _ => ();
-                         Option.map (fn tm => ModDb.insert (dNew, tm)) tmo;
+                         Option.map (fn tm => ModDb.insert (dNew,
+                                                            tm,
+                                                            ErrorMsg.stopElabStructureAndGetErrored x,
+                                                            case sgno of
+                                                                NONE => true
+                                                              | SOME sgn => false
+                                                            )) tmo;
                          ([dNew], (env', denv', gs' @ gs))
                      end)
 
@@ -4221,6 +4228,8 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                      end
                    | NONE =>
                      let
+                         val () = ErrorMsg.startElabStructure x
+
                          val (sgn', gs') = elabSgn (env, denv) sgn
                                            
                          val (env', n) = E.pushStrNamed env x sgn'
@@ -4239,7 +4248,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                                epreface ("item", p_sgn_item env sgi)))
                            | _ => raise Fail "FFI signature isn't SgnConst";
 
-                         Option.map (fn tm => ModDb.insert (dNew, tm)) tmo;
+                         Option.map (fn tm => ModDb.insert (dNew, tm, ErrorMsg.stopElabStructureAndGetErrored x, false)) tmo;
                          ([dNew], (env', denv, enD gs' @ gs))
                      end)
 
@@ -4735,6 +4744,8 @@ fun resolveClass env = E.resolveClass (hnormCon env) (consEq env dummy) env
 fun elabFile basis basis_tm topStr topSgn top_tm env file =
     let
         val () = ModDb.snapshot ()
+        val () = ErrorMsg.resetStructureTracker ()
+
 
         val () = mayDelay := true
         val () = delayedUnifs := []
@@ -4756,7 +4767,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
 
                     val (env', basis_n) = E.pushStrNamed env "Basis" sgn
                 in
-                    ModDb.insert ((L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan), basis_tm);
+                    ModDb.insert ((L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan), basis_tm, false, false); (* TODO: also check for errors? *)
                     (basis_n, env', sgn)
                 end
               | SOME (d' as (L'.DFfiStr (_, basis_n, sgn), _)) =>
@@ -4815,7 +4826,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
 
                     val (env', top_n) = E.pushStrNamed env' "Top" topSgn
                 in
-                    ModDb.insert ((L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan), top_tm);
+                    ModDb.insert ((L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan), top_tm, false, false); (* TODO: also check for errors? *)
                     (top_n, env', topSgn, topStr)
                 end
               | SOME (d' as (L'.DStr (_, top_n, topSgn, topStr), _)) =>
@@ -5099,9 +5110,10 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
             ();
 
         if ErrorMsg.anyErrors () then
-            ModDb.revert ()
+            ()
         else
-            ();
+            ModDb.flagAllOk ();
+        
 
         (*Print.preface("File", ElabPrint.p_file env file);*)
 
