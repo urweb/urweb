@@ -902,9 +902,12 @@ char *uw_error_message(uw_context ctx) {
   return ctx->error_message;
 }
 
-void uw_set_error_message(uw_context ctx, const char *msg) {
-  strncpy(ctx->error_message, msg, sizeof(ctx->error_message));
-  ctx->error_message[sizeof(ctx->error_message)-1] = 0;
+void uw_set_error_message(uw_context ctx, const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  
+  vsnprintf(ctx->error_message, ERROR_BUF_LEN, fmt, ap);
+  ctx->error_message[ERROR_BUF_LEN-1] = 0;
 }
 
 static input *INP(uw_context ctx) {
@@ -2265,6 +2268,23 @@ uw_Basis_string uw_Basis_unurlifyString(uw_context ctx, char **s) {
   ctx->heap.front = uw_unurlifyString_to(0, ctx, ctx->heap.front, *s);
   *s = new_s;
   return r;
+}
+
+uw_Basis_char uw_Basis_unurlifyChar(uw_context ctx, char **s) {
+  char *new_s = uw_unurlify_advance(*s);
+  char *r;
+  int len;
+
+  len = strlen(*s);
+  uw_check_heap(ctx, len + 1);
+
+  r = ctx->heap.front;
+  ctx->heap.front = uw_unurlifyString_to(0, ctx, ctx->heap.front, *s);
+  *s = new_s;
+  if (strlen(r) == 1)
+    return r[0];
+  else
+    uw_error(ctx, FATAL, "Unurlified character is multiple characters long");
 }
 
 uw_Basis_unit uw_Basis_unurlifyUnit(uw_context ctx, char **s) {
@@ -5311,9 +5331,8 @@ uw_Basis_blob uw_Basis_check_filecache(uw_context ctx, uw_Basis_string hash) {
 
   // Hashes come formatted for printing by Postgres, which means they start with
   // two extra characters.  Let's remove them.
-  if (!hash[0] || !hash[1])
-    uw_error(ctx, FATAL, "Hash to check against file cache came in not in Postgres format: %s", hash);
-  hash += 2;
+  if (hash[0] == '\\' && hash[1] == 'x')
+    hash += 2;
 
   if (!dir)
     uw_error(ctx, FATAL, "Checking file cache when no directory is set");

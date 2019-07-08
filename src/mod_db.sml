@@ -42,7 +42,10 @@ structure IM = IntBinaryMap
 
 type oneMod = {Decl : decl,
                When : Time.time,
-               Deps : SS.set}
+               Deps : SS.set,
+               HasErrors: bool,
+               HasInference: bool
+              }
 
 val byName = ref (SM.empty : oneMod SM.map)
 val byId = ref (IM.empty : string IM.map)
@@ -50,7 +53,25 @@ val byId = ref (IM.empty : string IM.map)
 fun reset () = (byName := SM.empty;
                 byId := IM.empty)
 
-fun insert (d, tm) =
+fun printByName (bn: oneMod SM.map): unit =
+    (TextIO.print ("Contents of ModDb.byName: \n");
+     List.app (fn tup =>
+                  let
+                      val name = #1 tup
+                      val m = #2 tup
+                      val renderedDeps = String.concatWith ", " (SS.listItems (#Deps m))
+                      val renderedMod =
+                          "  " ^ name
+                          ^ ". Stored at : " ^ Time.toString (#When m)
+                          ^", HasErrors: " ^ Bool.toString (#HasErrors m)
+                          ^", HasInference: " ^ Bool.toString (#HasInference m)
+                          ^". Deps: " ^ renderedDeps ^"\n"
+                  in
+                      TextIO.print renderedMod
+                  end)
+              (SM.listItemsi bn))
+
+fun insert (d, tm, hasErrors, hasInference) =
     let
         val xn =
             case #1 d of
@@ -73,7 +94,10 @@ fun insert (d, tm) =
                     let
                         fun doMod (n', deps) =
                             case IM.find (!byId, n') of
-                                NONE => deps
+                                NONE => raise Fail ("ModDb: Trying to make dep tree but couldn't find module " ^ Int.toString n')
+                              (* This should probably throw: *)
+                              (* Trying to add a dep for a module but can't find the dep... *)
+                              (* That will always cause a hole in the dependency tree and cause problems down the line *)
                               | SOME x' =>
                                 SS.union (deps,
                                           SS.add (case SM.find (!byName, x') of
@@ -118,8 +142,12 @@ fun insert (d, tm) =
                                              x,
                                              {Decl = d,
                                               When = tm,
-                                              Deps = deps});
+                                              Deps = deps,
+                                              HasErrors = hasErrors,
+                                              HasInference = hasInference
+                                            });
                         byId := IM.insert (!byId, n, x)
+                        (* printByName (!byName) *)
                     end
             end
     end
@@ -130,7 +158,7 @@ fun lookup (d : Source.decl) =
         (case SM.find (!byName, x) of
              NONE => NONE
            | SOME r =>
-             if tm = #When r then
+             if tm = #When r andalso not (#HasErrors r) andalso not (#HasInference r) then
                  SOME (#Decl r)
              else
                  NONE)
@@ -138,7 +166,7 @@ fun lookup (d : Source.decl) =
         (case SM.find (!byName, x) of
              NONE => NONE
            | SOME r =>
-             if tm = #When r then
+             if tm = #When r andalso not (#HasErrors r) andalso not (#HasInference r) then
                  SOME (#Decl r)
              else
                  NONE)
@@ -146,6 +174,13 @@ fun lookup (d : Source.decl) =
 
 val byNameBackup = ref (!byName)
 val byIdBackup = ref (!byId)
+
+fun flagAllOk () = byName := SM.map (fn r => { Decl = #Decl r
+                                             , When = #When r
+                                             , Deps = #Deps r
+                                             , HasErrors = #HasErrors r
+                                             , HasInference = false
+                                    }) (!byName)
 
 fun snapshot () = (byNameBackup := !byName; byIdBackup := !byId)
 fun revert () = (byName := !byNameBackup; byId := !byIdBackup)

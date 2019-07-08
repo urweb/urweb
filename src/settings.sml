@@ -117,6 +117,7 @@ fun basis x = S.addList (S.empty, map (fn x : string => ("Basis", x)) x)
 val clientToServerBase = basis ["int",
                                 "float",
                                 "string",
+                                "char",
                                 "time",
                                 "file",
                                 "unit",
@@ -277,6 +278,7 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("urlifyFloat", "ts"),
                           ("urlifyTime", "ts"),
                           ("urlifyString", "uf"),
+                          ("urlifyChar", "uf"),
                           ("urlifyBool", "ub"),
                           ("recv", "rv"),
                           ("strcat", "cat"),
@@ -325,6 +327,7 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("checkUrl", "checkUrl"),
                           ("bless", "bless"),
                           ("blessData", "blessData"),
+                          ("currentUrl", "currentUrl"),
 
                           ("eq_time", "eq"),
                           ("lt_time", "lt"),
@@ -648,8 +651,9 @@ type dbms = {
      onlyUnion : bool,
      nestedRelops : bool,
      windowFunctions: bool,
+     requiresTimestampDefaults : bool,
      supportsIsDistinctFrom : bool,
-     supportsSHA512 : string option
+     supportsSHA512 : {InitializeDb : string, GenerateHash : string -> string} option
 }
 
 val dbmses = ref ([] : dbms list)
@@ -682,6 +686,7 @@ val curDb = ref ({name = "",
                   onlyUnion = false,
                   nestedRelops = false,
                   windowFunctions = false,
+                  requiresTimestampDefaults = false,
                   supportsIsDistinctFrom = false,
                   supportsSHA512 = NONE} : dbms)
 

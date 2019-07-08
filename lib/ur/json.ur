@@ -52,7 +52,6 @@ fun escape s =
 		       | #"\t" => "\\t"
 		       | #"\"" => "\\\""
 		       | #"\\" => "\\\\"
-		       | #"/" => "\\/"
 		       | x => String.str ch
 		    ) ^ esc (String.suffix s 1)
                 end

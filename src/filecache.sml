@@ -81,7 +81,10 @@ fun instrument file =
                         fun wrapCol (name, t) =
                             case #1 t of
                                 TFfi ("Basis", "blob") =>
-                                "DIGEST(" ^ name ^ ", 'sha512')"
+                                (case #supportsSHA512 (Settings.currentDbms ()) of
+                                     NONE => (ErrorMsg.error "DBMS doesn't support SHA512.";
+                                              "ERROR")
+                                   | SOME r => #GenerateHash r name)
                               | TOption t' => wrapCol (name, t')
                               | _ => name
 

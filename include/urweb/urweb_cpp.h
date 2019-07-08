@@ -149,6 +149,7 @@ uw_Basis_unit uw_Basis_unurlifyUnit(struct uw_context * ctx, char **s);
 uw_Basis_int uw_Basis_unurlifyInt(struct uw_context *, char **);
 uw_Basis_float uw_Basis_unurlifyFloat(struct uw_context *, char **);
 uw_Basis_string uw_Basis_unurlifyString(struct uw_context *, char **);
+uw_Basis_char uw_Basis_unurlifyChar(struct uw_context *, char **);
 uw_Basis_string uw_Basis_unurlifyString_fromClient(struct uw_context *, char **);
 uw_Basis_bool uw_Basis_unurlifyBool(struct uw_context *, char **);
 uw_Basis_time uw_Basis_unurlifyTime(struct uw_context *, char **);
