@@ -998,7 +998,7 @@ val color : textWidget
 
 val number : formTag float [] ([Value = float, Min = float, Max = float, Step = float, Size = int] ++ boxAttrs ++ inputAttrs)
 val range : formTag float [] ([Value = float, Min = float, Max = float, Size = int] ++ boxAttrs ++ inputAttrs)
-val date : formTag string [] ([Value = string, Min = string, Max = string, Size = int] ++ boxAttrs ++ inputAttrs)
+val date : formTag string [] ([Value = string, Min = string, Max = string, Size = int, Placeholder = string] ++ boxAttrs ++ inputAttrs)
 val datetime : formTag string [] ([Value = string, Min = string, Max = string, Size = int] ++ boxAttrs ++ inputAttrs)
 val datetime_local : formTag string [] ([Value = string, Min = string, Max = string, Size = int] ++ boxAttrs ++ inputAttrs)
 val month : formTag string [] ([Value = string, Min = string, Max = string, Size = int] ++ boxAttrs ++ inputAttrs)
@@ -1078,7 +1078,7 @@ val ccolor : ctext
 
 val cnumber : cformTag ([Source = source (option float), Min = float, Max = float, Step = float, Size = int] ++ boxAttrs ++ inputAttrs) []
 val crange : cformTag ([Source = source (option float), Min = float, Max = float, Size = int] ++ boxAttrs ++ inputAttrs) []
-val cdate : cformTag ([Source = source string, Min = string, Max = string, Size = int] ++ boxAttrs ++ inputAttrs) []
+val cdate : cformTag ([Source = source string, Min = string, Max = string, Size = int, Placeholder = string] ++ boxAttrs ++ inputAttrs) []
 val cdatetime : cformTag ([Source = source string, Min = string, Max = string, Size = int] ++ boxAttrs ++ inputAttrs) []
 val cdatetime_local : cformTag ([Source = source string, Min = string, Max = string, Size = int] ++ boxAttrs ++ inputAttrs) []
 val cmonth : cformTag ([Source = source string, Min = string, Max = string, Size = int] ++ boxAttrs ++ inputAttrs) []
