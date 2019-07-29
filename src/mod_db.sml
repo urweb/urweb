@@ -43,8 +43,7 @@ structure IM = IntBinaryMap
 type oneMod = {Decl : decl,
                When : Time.time,
                Deps : SS.set,
-               HasErrors: bool,
-               HasInference: bool
+               HasErrors: bool
               }
 
 val byName = ref (SM.empty : oneMod SM.map)
@@ -59,19 +58,43 @@ fun printByName (bn: oneMod SM.map): unit =
                   let
                       val name = #1 tup
                       val m = #2 tup
-                      val renderedDeps = String.concatWith ", " (SS.listItems (#Deps m))
+                      val renderedDeps =
+                          String.concatWith ", " (SS.listItems (#Deps m))
                       val renderedMod =
                           "  " ^ name
                           ^ ". Stored at : " ^ Time.toString (#When m)
                           ^", HasErrors: " ^ Bool.toString (#HasErrors m)
-                          ^", HasInference: " ^ Bool.toString (#HasInference m)
                           ^". Deps: " ^ renderedDeps ^"\n"
                   in
                       TextIO.print renderedMod
                   end)
               (SM.listItemsi bn))
 
-fun insert (d, tm, hasErrors, hasInference) =
+fun printById (bi: string IM.map): unit =
+    (TextIO.print ("Contents of ModDb.byId: \n");
+     List.app (fn tup =>
+                  let
+                      val i = #1 tup
+                      val name = #2 tup
+                  in
+                      TextIO.print ("  " ^  Int.toString i ^": "^ name ^"\n")
+                  end)
+              (IM.listItemsi bi))
+
+fun dContainsUndeterminedUnif d =
+    ElabUtil.Decl.exists
+        {kind = fn _ => false,
+         con = fn _ => false,
+         exp = fn e => case e of
+                           EUnif (ref NONE) => true 
+                         | _ => false,
+         sgn_item = fn _ => false,
+         sgn = fn _ => false,
+         str = fn _ => false,
+         decl = fn _ => false}
+        d
+
+fun insert (d, tm, hasErrors) =
     let
         val xn =
             case #1 d of
@@ -83,10 +106,13 @@ fun insert (d, tm, hasErrors, hasInference) =
             NONE => ()
           | SOME (x, n) =>
             let
+                (* Keep module when it's file didn't change and it was OK before *)
                 val skipIt =
                     case SM.find (!byName, x) of
                         NONE => false
                       | SOME r => #When r = tm
+                                  andalso not (#HasErrors r)
+                                  andalso not (dContainsUndeterminedUnif (#Decl r))
             in
                 if skipIt then
                     ()
@@ -94,8 +120,16 @@ fun insert (d, tm, hasErrors, hasInference) =
                     let
                         fun doMod (n', deps) =
                             case IM.find (!byId, n') of
-                                NONE => raise Fail ("ModDb: Trying to make dep tree but couldn't find module " ^ Int.toString n')
-                              (* This should probably throw: *)
+                                NONE =>
+                                (TextIO.print ("MISSED_DEP: " ^ Int.toString n' ^"\n");
+                                 deps)
+                                (* raise Fail ("ModDb: Trying to make dep tree but couldn't find module " ^ Int.toString n') *)
+                              (* I feel like this should throw, but the dependency searching algorithm *)
+                              (* is not 100% precise. I encountered problems in json.urs: *)
+                              (*   datatype r = Rec of M.t r *)
+                              (* M is the structure passed to the Recursive functor, so this is not an external dependency *)
+                              (* I'm just not sure how to filter these out yet *)
+                              (* I still think this should throw: *)
                               (* Trying to add a dep for a module but can't find the dep... *)
                               (* That will always cause a hole in the dependency tree and cause problems down the line *)
                               | SOME x' =>
@@ -143,11 +177,11 @@ fun insert (d, tm, hasErrors, hasInference) =
                                              {Decl = d,
                                               When = tm,
                                               Deps = deps,
-                                              HasErrors = hasErrors,
-                                              HasInference = hasInference
+                                              HasErrors = hasErrors
                                             });
                         byId := IM.insert (!byId, n, x)
                         (* printByName (!byName) *)
+                        (* printById (!byId) *)
                     end
             end
     end
@@ -158,7 +192,7 @@ fun lookup (d : Source.decl) =
         (case SM.find (!byName, x) of
              NONE => NONE
            | SOME r =>
-             if tm = #When r andalso not (#HasErrors r) andalso not (#HasInference r) then
+             if tm = #When r andalso not (#HasErrors r) andalso not (dContainsUndeterminedUnif (#Decl r)) then
                  SOME (#Decl r)
              else
                  NONE)
@@ -166,7 +200,7 @@ fun lookup (d : Source.decl) =
         (case SM.find (!byName, x) of
              NONE => NONE
            | SOME r =>
-             if tm = #When r andalso not (#HasErrors r) andalso not (#HasInference r) then
+             if tm = #When r andalso not (#HasErrors r) andalso not (dContainsUndeterminedUnif (#Decl r)) then
                  SOME (#Decl r)
              else
                  NONE)
@@ -174,13 +208,6 @@ fun lookup (d : Source.decl) =
 
 val byNameBackup = ref (!byName)
 val byIdBackup = ref (!byId)
-
-fun flagAllOk () = byName := SM.map (fn r => { Decl = #Decl r
-                                             , When = #When r
-                                             , Deps = #Deps r
-                                             , HasErrors = #HasErrors r
-                                             , HasInference = false
-                                    }) (!byName)
 
 fun snapshot () = (byNameBackup := !byName; byIdBackup := !byId)
 fun revert () = (byName := !byNameBackup; byId := !byIdBackup)
