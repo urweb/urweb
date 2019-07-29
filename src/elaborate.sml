@@ -4209,10 +4209,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                            | _ => ();
                          Option.map (fn tm => ModDb.insert (dNew,
                                                             tm,
-                                                            ErrorMsg.stopElabStructureAndGetErrored x,
-                                                            case sgno of
-                                                                NONE => true
-                                                              | SOME sgn => false
+                                                            ErrorMsg.stopElabStructureAndGetErrored x
                                                             )) tmo;
                          ([dNew], (env', denv', gs' @ gs))
                      end)
@@ -4248,7 +4245,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                                epreface ("item", p_sgn_item env sgi)))
                            | _ => raise Fail "FFI signature isn't SgnConst";
 
-                         Option.map (fn tm => ModDb.insert (dNew, tm, ErrorMsg.stopElabStructureAndGetErrored x, false)) tmo;
+                         Option.map (fn tm => ModDb.insert (dNew, tm, ErrorMsg.stopElabStructureAndGetErrored x)) tmo;
                          ([dNew], (env', denv, enD gs' @ gs))
                      end)
 
@@ -4767,7 +4764,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
 
                     val (env', basis_n) = E.pushStrNamed env "Basis" sgn
                 in
-                    ModDb.insert ((L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan), basis_tm, false, false); (* TODO: also check for errors? *)
+                    ModDb.insert ((L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan), basis_tm, false); (* TODO: also check for errors? *)
                     (basis_n, env', sgn)
                 end
               | SOME (d' as (L'.DFfiStr (_, basis_n, sgn), _)) =>
@@ -4826,7 +4823,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
 
                     val (env', top_n) = E.pushStrNamed env' "Top" topSgn
                 in
-                    ModDb.insert ((L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan), top_tm, false, false); (* TODO: also check for errors? *)
+                    ModDb.insert ((L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan), top_tm, false); (* TODO: also check for errors? *)
                     (top_n, env', topSgn, topStr)
                 end
               | SOME (d' as (L'.DStr (_, top_n, topSgn, topStr), _)) =>
@@ -5108,12 +5105,6 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
             end
         else
             ();
-
-        if ErrorMsg.anyErrors () then
-            ()
-        else
-            ModDb.flagAllOk ();
-        
 
         (*Print.preface("File", ElabPrint.p_file env file);*)
 

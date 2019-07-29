@@ -435,10 +435,12 @@ val () = (Globals.setResetTime ();
                                                                 wrs = [Socket.sockDesc sock],
                                                                 exs = [],
                                                                 timeout = SOME (Time.fromSeconds 1)}))) then
-                     (app (fn arg => send (sock, arg ^ "\n")) args;
+                     (TextIO.print "Using daemon\n";
+                      app (fn arg => send (sock, arg ^ "\n")) args;
                       send (sock, "\n");
                       OS.Process.exit (wait ()))
                  else
                      (OS.FileSys.remove socket;
                       raise OS.SysErr ("", NONE))
-             end handle OS.SysErr _ => OS.Process.exit (oneRun args))
+             end handle OS.SysErr _ =>
+                        OS.Process.exit (oneRun args))
