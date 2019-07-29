@@ -121,7 +121,8 @@ fun insert (d, tm, hasErrors) =
                         fun doMod (n', deps) =
                             case IM.find (!byId, n') of
                                 NONE =>
-                                (TextIO.print ("MISSED_DEP: " ^ Int.toString n' ^"\n");
+                                (
+                                  (* TextIO.print ("MISSED_DEP: " ^ Int.toString n' ^"\n"); *)
                                  deps)
                                 (* raise Fail ("ModDb: Trying to make dep tree but couldn't find module " ^ Int.toString n') *)
                               (* I feel like this should throw, but the dependency searching algorithm *)
