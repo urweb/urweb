@@ -215,6 +215,7 @@ signature COMPILER = sig
     val addModuleRoot : string * string -> unit
 
     val moduleOf : string -> string
+    val typeOf : string -> Print.PD.pp_desc
 
     val setStop : string -> unit
     (* Stop compilation after this phase. *)

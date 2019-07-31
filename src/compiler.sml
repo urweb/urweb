@@ -1781,4 +1781,191 @@ fun moduleOf fname =
             end
     end
 
+fun isPosIn row col span =
+    let
+        val start = #first span
+        val end_ = #last span
+    in
+        ((#line start < row) orelse
+         (#line start = row) andalso (#char start <= col))
+        andalso 
+        ((#line end_ > row) orelse
+         (#line end_ = row) andalso (#char end_ >= col))
+    end
+
+fun isSmallerThan (s1: ErrorMsg.span) (s2: ErrorMsg.span) =
+    (#line (#first s1) > #line (#first s2) orelse
+     (#line (#first s1) = #line (#first s2) andalso (#char (#first s1) >= #char (#first s2))))
+    andalso 
+    (#line (#last s1) < #line (#last s2) orelse
+     (#line (#last s1) = #line (#last s2) andalso (#char (#last s1) <= #char (#last s2)))) 
+
+datatype foundStuff =
+         Kind of Elab.kind
+       | Con of Elab.con
+       | Exp of Elab.exp
+       | Sgn_item of Elab.sgn_item
+       | Sgn of Elab.sgn
+       | Str of Elab.str
+       | Decl of Elab.decl
+
+fun getSpan (f: foundStuff * ElabEnv.env) =
+    case #1 f of
+        Kind k => #2 k
+      | Con c => #2 c
+      | Exp e => #2 e
+      | Sgn_item si => #2 si
+      | Sgn s => #2 s
+      | Str s => #2 s
+      | Decl d => #2 d
+
+fun getTypeAt file row col =
+    if not (!Elaborate.incremental)
+    then Print.PD.string "ERROR: urweb daemon is needed to use typeOf command"
+    else
+        case ModDb.lookupForTooling (moduleOf file) of
+            NONE => Print.PD.string ("ERROR: No module found: " ^ moduleOf file)
+          | SOME (decl, deps) => 
+            let
+                (* TODO Top is not always found as a dep *)
+                val () = ElabUtilPos.mliftConInCon := ElabEnv.mliftConInCon
+                (* Adding dependencies to environment *)
+                val env = List.foldl (fn (d, e) => ElabEnv.declBinds e d)
+                                     ElabEnv.empty
+                                     deps
+                (* Adding previous declarations to environment *)
+                val env =
+                    case #1 decl of 
+                        Elab.DStr (name, _, sgn, str) =>
+                        (case #1 str of
+                             Elab.StrConst decls =>
+                             List.foldl
+                                 (fn (d, e) => ElabEnv.declBinds e d)
+                                 env
+                                 decls
+                           | _ => env)
+                      | Elab.DFfiStr _ => env
+                      | _ => env
+                (* Look for item under cursor *)
+                val (atPosition, env) =
+                    ElabUtilPos.Decl.foldB
+                        { kind = fn (env, (k, span), acc) =>
+                                    if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                    then (Kind (k, span), env)
+                                    else acc ,
+                          con = fn (env, (k, span), acc) =>
+                                   if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                   then (Con (k, span), env)
+                                   else acc,
+                          exp = fn (env, (k, span), acc) =>
+                                   if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                   then (Exp (k, span), env)
+                                   else acc,
+                          sgn_item = fn (env, (k, span), acc) =>
+                                        if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                        then (Sgn_item (k, span), env)
+                                        else acc,
+                          sgn = fn (env, (k, span), acc) =>
+                                   if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                   then (Sgn (k, span), env)
+                                   else acc,
+                          str = fn (env, (k, span), acc) =>
+                                   if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                   then (Str (k, span), env)
+                                   else acc,
+                          decl = fn (env, (k, span), acc) =>
+                                    if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                    then (Decl (k, span), env)
+                                    else acc,
+                          bind = fn (env, binder) =>
+                                    case binder of
+                                        ElabUtilPos.Decl.RelK x => 
+                                        ElabEnv.pushKRel env x
+                                      | ElabUtilPos.Decl.RelC (x, k) =>
+                                        ElabEnv.pushCRel env x k
+                                      | ElabUtilPos.Decl.NamedC (x, n, k, co) =>
+                                        ElabEnv.pushCNamedAs env x n k co
+                                      | ElabUtilPos.Decl.RelE (x, c) =>
+                                        ElabEnv.pushERel env x c
+                                      | ElabUtilPos.Decl.NamedE (x, c) => 
+                                        #1 (ElabEnv.pushENamed env x c)
+                                      | ElabUtilPos.Decl.Str (x, n, sgn) =>
+                                        #1 (ElabEnv.pushStrNamed env x sgn)
+                                      | ElabUtilPos.Decl.Sgn (x, n, sgn) =>
+                                        #1 (ElabEnv.pushSgnNamed env x sgn)
+                        }
+                        env
+                        (Decl (#1 decl, { file = file
+                                        , first = { line = 0, char = 0}
+                                        , last = { line = 99999, char = 0} })
+                        , env)
+                        decl
+            in
+                case atPosition of
+                    Kind k =>
+                    Print.box [Print.PD.string "Not implemented yet, KIND: ", ElabPrint.p_kind env k]
+                  | Con c =>
+                    Print.box [Print.PD.string "Not implemented yet, CON: ", ElabPrint.p_con env c]
+                  | Exp (Elab.EPrim p, _) =>
+                    Print.box [Prim.p_t p,
+                               Print.PD.string ": ",
+                               Print.PD.string (case p of
+                                                 Prim.Int _ => "int"
+                                               | Prim.Float _ => "float"
+                                               | Prim.String _ => "string"
+                                               | Prim.Char _ => "char")]
+                  | Exp (Elab.ERel n, _) =>
+                    ((let val found = ElabEnv.lookupERel env n
+                      in
+
+                          Print.box [ Print.PD.string (#1 found)
+                                    , Print.PD.string ": "
+                                    , ElabPrint.p_con env (#2 found)]
+                      end)
+                     handle ElabEnv.UnboundRel _ => Print.PD.string ("UNBOUND_REL" ^ Int.toString n))
+                  | Exp (Elab.ENamed n, _) =>
+                    ((let val found = ElabEnv.lookupENamed env n
+                      in
+                          Print.box [ Print.PD.string (#1 found)
+                                    , Print.PD.string ": "
+                                    , ElabPrint.p_con env (#2 found)]
+                      end)
+                     handle ElabEnv.UnboundNamed _ => Print.PD.string ("UNBOUND_NAMED" ^ Int.toString n))
+                  | Exp (Elab.EModProj ( m1 (* number (= "name") of top level module *)
+                                       , ms (* names of submodules - possibly none *)
+                                       , x (* identifier *)), loc) =>
+                    (let
+                        val (m1name, m1sgn) = ElabEnv.lookupStrNamed env m1
+                        val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                                   case ElabEnv.projectStr env {sgn = sgn, str = str, field = m} of
+                                                       NONE => raise Fail ("Couldn't find Structure: " ^ m)
+                                                     | SOME sgn => ((Elab.StrProj (str, m), loc), sgn))
+                                               ((Elab.StrVar m1, loc), m1sgn)
+                                               ms
+                        val t = case ElabEnv.projectVal env {sgn = sgn, str = str, field = x} of
+                                    NONE => raise Fail ("Couldn't find identifier: " ^ x)
+                                  | SOME t => t
+                    in
+                        Print.box [ Print.p_list_sep (Print.PD.string ".") Print.PD.string (m1name :: ms @ [x])
+                                  , Print.PD.string ": "
+                                  , ElabPrint.p_con env t
+                                  ]
+                    end
+                     handle ElabEnv.UnboundNamed _ => Print.PD.string ("Module not found: " ^ Int.toString m1))
+                  | Exp e => Print.box [Print.PD.string "Not implemented yet, EXP: ", ElabPrint.p_exp env e]
+                  | Sgn_item si => Print.box [Print.PD.string "Not implemented yet, SGN_ITEM: ", ElabPrint.p_sgn_item env si]
+                  | Sgn s => Print.box [Print.PD.string "Not implemented yet, SGN: ", ElabPrint.p_sgn env s]
+                  | Str s => Print.box [Print.PD.string "Not implemented yet, STR: ", ElabPrint.p_str env s]
+                  | Decl d => Print.box [Print.PD.string "Not implemented yet, DECL: ", ElabPrint.p_decl env d]
+            end
+
+
+fun typeOf loc =
+    case String.tokens (fn ch => ch = #":") loc of
+        file :: rowStr :: colStr :: nil =>
+        (case (Int.fromString rowStr, Int.fromString colStr) of
+             (SOME row, SOME col) =>
+             Print.box [getTypeAt file row col, Print.PD.string "\n"]
+           | _ => Print.PD.string "ERROR: Wrong typeOf input format, should be <file:row:col>")
+      | _ => Print.PD.string "ERROR: Wrong typeOf input format, should be <file:row:col>"
 end

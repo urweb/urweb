@@ -139,6 +139,10 @@ fun oneRun args =
         fun printModuleOf fname =
             print_and_exit (Compiler.moduleOf fname) ()
 
+        fun typeOf loc =
+            (Print.print (Compiler.typeOf loc);
+             raise Code OS.Process.success)
+
         fun add_class (class, num) =
             case Int.fromString num of
                  NONE => raise Fail ("Invalid limit number '" ^ num ^ "'")
@@ -245,6 +249,8 @@ fun oneRun args =
                     NONE),
               ("moduleOf", ONE ("<file>", printModuleOf),
                     SOME "print module name of <file> and exit"),
+              ("typeOf", ONE ("<file:row:col>", typeOf),
+                    SOME "print type of expression at <file:row:col> and exit"),
               ("noEmacs", set_true Demo.noEmacs,
                     NONE),
               ("limit", TWO ("<class>", "<num>", add_class),
