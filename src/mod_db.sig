@@ -36,6 +36,8 @@ signature MOD_DB = sig
 
     val lookup : Source.decl -> Elab.decl option
 
+    val lookupForTooling : string -> (Elab.decl * Elab.decl list) option
+
     (* Allow undoing to snapshots after failed compilations. *)
     val snapshot : unit -> unit
     val revert : unit -> unit

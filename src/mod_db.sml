@@ -207,6 +207,15 @@ fun lookup (d : Source.decl) =
                  NONE)
       | _ => NONE
 
+fun lookupForTooling name =
+    case SM.find (!byName, name) of
+        NONE => NONE
+      | SOME m =>
+        SOME (#Decl m, List.map (fn a => #Decl a)
+                                (List.mapPartial
+                                     (fn d => SM.find (!byName, d))
+                                     (SS.listItems (#Deps m))))
+
 val byNameBackup = ref (!byName)
 val byIdBackup = ref (!byId)
 

@@ -70,4 +70,12 @@ fun bindP (r, f) =
              ((x', pos), acc'))
       | Return x => Return x
 
+fun bindPWithPos (r, f) =
+    case r of
+        Continue ((x, pos), acc) =>
+        map (f (x, pos) acc,
+             fn (x', acc') =>
+                ((x', pos), acc'))
+      | Return x => Return x
+
 end
