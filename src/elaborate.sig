@@ -47,4 +47,10 @@ signature ELABORATE = sig
     val incremental : bool ref
     val verbose : bool ref
 
+    val dopen: ElabEnv.env
+               -> { str: int
+                  , strs: string list
+                  , sgn: Elab.sgn }
+               -> (Elab.decl list * ElabEnv.env)
+
 end
