@@ -1781,11 +1781,13 @@ fun moduleOf fname =
             end
     end
 
-fun isPosIn row col span =
+fun isPosIn file row col span =
     let
         val start = #first span
         val end_ = #last span
     in
+        (String.isSuffix file (#file span))
+        andalso
         ((#line start < row) orelse
          (#line start = row) andalso (#char start <= col))
         andalso 
@@ -1827,10 +1829,10 @@ fun getTypeAt file row col =
             NONE => Print.PD.string ("ERROR: No module found: " ^ moduleOf file)
           | SOME (decl, deps) => 
             let
-                (* TODO Top is not always found as a dep *)
                 val () = ElabUtilPos.mliftConInCon := ElabEnv.mliftConInCon
                 (* Adding dependencies to environment *)
-                val env = List.foldl (fn (d, e) => ElabEnv.declBinds e d)
+                val env = List.foldl (fn (d, e) =>
+                                         ElabEnv.declBinds e d)
                                      ElabEnv.empty
                                      deps
                 (* Adding previous declarations to environment *)
@@ -1850,31 +1852,31 @@ fun getTypeAt file row col =
                 val (atPosition, env) =
                     ElabUtilPos.Decl.foldB
                         { kind = fn (env, (k, span), acc) =>
-                                    if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                    if isPosIn file  row col span andalso isSmallerThan span (getSpan acc)
                                     then (Kind (k, span), env)
                                     else acc ,
                           con = fn (env, (k, span), acc) =>
-                                   if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                   if isPosIn file  row col span andalso isSmallerThan span (getSpan acc)
                                    then (Con (k, span), env)
                                    else acc,
                           exp = fn (env, (k, span), acc) =>
-                                   if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                   if isPosIn file  row col span andalso isSmallerThan span (getSpan acc)
                                    then (Exp (k, span), env)
                                    else acc,
                           sgn_item = fn (env, (k, span), acc) =>
-                                        if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                        if isPosIn file  row col span andalso isSmallerThan span (getSpan acc)
                                         then (Sgn_item (k, span), env)
                                         else acc,
                           sgn = fn (env, (k, span), acc) =>
-                                   if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                   if isPosIn file  row col span andalso isSmallerThan span (getSpan acc)
                                    then (Sgn (k, span), env)
                                    else acc,
                           str = fn (env, (k, span), acc) =>
-                                   if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                   if isPosIn file  row col span andalso isSmallerThan span (getSpan acc)
                                    then (Str (k, span), env)
                                    else acc,
                           decl = fn (env, (k, span), acc) =>
-                                    if isPosIn row col span andalso isSmallerThan span (getSpan acc)
+                                    if isPosIn file  row col span andalso isSmallerThan span (getSpan acc)
                                     then (Decl (k, span), env)
                                     else acc,
                           bind = fn (env, binder) =>
