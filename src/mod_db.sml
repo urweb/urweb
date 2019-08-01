@@ -214,7 +214,12 @@ fun lookupForTooling name =
         SOME (#Decl m, List.map (fn a => #Decl a)
                                 (List.mapPartial
                                      (fn d => SM.find (!byName, d))
-                                     (SS.listItems (#Deps m))))
+                                     (* Clumsy way of adding Basis and Top without adding doubles *)
+                                     (["Basis", "Top"]
+                                      @
+                                      (List.filter
+                                           (fn x => x <> "Basis" andalso x <> "Top")
+                                           (SS.listItems (#Deps m))))))
 
 val byNameBackup = ref (!byName)
 val byIdBackup = ref (!byId)
