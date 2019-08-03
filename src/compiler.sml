@@ -1880,7 +1880,6 @@ fun getTypeAt file row col =
                                   | Sgn s => Print.box [Print.PD.string "SGN: ", ElabPrint.p_sgn env s]
                                   | Str s => Print.box [Print.PD.string "STR: ", ElabPrint.p_str env s]
                                   | Decl d => Print.box [Print.PD.string "DECL: ", ElabPrint.p_decl env d]
-                              , Print.PD.string "\n"
                               ]
 
                 (* TODO We lose some really useful information, like eg. inferred parameters, *)
@@ -2004,10 +2003,7 @@ fun getTypeAt file row col =
             in
                 case #smallestgoodpart result of
                     NONE => printLiterally (#smallest result)
-                  | SOME (desc, span) =>
-                    Print.box [(* Print.PD.string (ErrorMsg.spanToString span), Print.PD.string " @ " *)
-                                desc
-                              , Print.PD.string "\n"]
+                  | SOME (desc, span) => desc
             end
 
 
@@ -2015,8 +2011,7 @@ fun typeOf loc =
     case String.tokens (fn ch => ch = #":") loc of
         file :: rowStr :: colStr :: nil =>
         (case (Int.fromString rowStr, Int.fromString colStr) of
-             (SOME row, SOME col) =>
-             Print.box [getTypeAt file row col, Print.PD.string "\n"]
+             (SOME row, SOME col) => getTypeAt file row col
            | _ => Print.PD.string "ERROR: Wrong typeOf input format, should be <file:row:col>")
       | _ => Print.PD.string "ERROR: Wrong typeOf input format, should be <file:row:col>"
 end
