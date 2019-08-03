@@ -43,7 +43,7 @@ structure IM = IntBinaryMap
 type oneMod = {Decl : decl,
                When : Time.time,
                Deps : SS.set,
-               HasErrors: bool
+               HasErrors: bool (* We're saving modules with errors so tooling can find them *)
               }
 
 val byName = ref (SM.empty : oneMod SM.map)
@@ -52,6 +52,7 @@ val byId = ref (IM.empty : string IM.map)
 fun reset () = (byName := SM.empty;
                 byId := IM.empty)
 
+(* For debug purposes *)
 fun printByName (bn: oneMod SM.map): unit =
     (TextIO.print ("Contents of ModDb.byName: \n");
      List.app (fn tup =>
@@ -69,17 +70,6 @@ fun printByName (bn: oneMod SM.map): unit =
                       TextIO.print renderedMod
                   end)
               (SM.listItemsi bn))
-
-fun printById (bi: string IM.map): unit =
-    (TextIO.print ("Contents of ModDb.byId: \n");
-     List.app (fn tup =>
-                  let
-                      val i = #1 tup
-                      val name = #2 tup
-                  in
-                      TextIO.print ("  " ^  Int.toString i ^": "^ name ^"\n")
-                  end)
-              (IM.listItemsi bi))
 
 fun dContainsUndeterminedUnif d =
     ElabUtil.Decl.exists
@@ -112,6 +102,9 @@ fun insert (d, tm, hasErrors) =
                         NONE => false
                       | SOME r => #When r = tm
                                   andalso not (#HasErrors r)
+                                  (* We save results of error'd compiler passes *)
+                                  (* so modules that still have undetermined unif variables *)
+                                  (* should not be reused since those are unsuccessfully compiled *)
                                   andalso not (dContainsUndeterminedUnif (#Decl r))
             in
                 if skipIt then
@@ -182,7 +175,6 @@ fun insert (d, tm, hasErrors) =
                                             });
                         byId := IM.insert (!byId, n, x)
                         (* printByName (!byName) *)
-                        (* printById (!byId) *)
                     end
             end
     end
@@ -207,19 +199,19 @@ fun lookup (d : Source.decl) =
                  NONE)
       | _ => NONE
 
-fun lookupForTooling name =
+fun lookupModAndDepsIncludingErrored name =
     case SM.find (!byName, name) of
         NONE => NONE
       | SOME m =>
-        SOME (#Decl m, List.map (fn a => #Decl a)
-                                (List.mapPartial
-                                     (fn d => SM.find (!byName, d))
-                                     (* Clumsy way of adding Basis and Top without adding doubles *)
-                                     (["Basis", "Top"]
-                                      @
-                                      (List.filter
-                                           (fn x => x <> "Basis" andalso x <> "Top")
-                                           (SS.listItems (#Deps m))))))
+        let
+            val deps = SS.listItems (#Deps m)
+            (* Clumsy way of adding Basis and Top without adding doubles *)
+            val deps = List.filter (fn x => x <> "Basis" andalso x <> "Top") deps
+            val deps = ["Basis", "Top"] @ deps
+            val foundDepModules = List.mapPartial (fn d => SM.find (!byName, d)) deps
+        in
+            SOME (#Decl m, List.map (fn a => #Decl a) foundDepModules)
+        end
 
 val byNameBackup = ref (!byName)
 val byIdBackup = ref (!byId)
