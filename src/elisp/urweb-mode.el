@@ -939,13 +939,14 @@ Optional argument STYLE is currently ignored."
   (let*
       ((row (line-number-at-pos))
        (col (evil-column))
-       (bfn (or (buffer-file-name)
-                "/Users/Simon/ur-proj/testje/a.ur"))
+       (bfn (buffer-file-name))
        (proj-dir (urweb-get-proj-dir bfn))
        (filename (file-relative-name bfn proj-dir))
        (loc (concat filename ":" (number-to-string row) ":" (number-to-string col)))
        )
-    (require 'popup)
+    (require 's)
+    (require 'f)
+    (require 'simple)
     (message (let
                  ((default-directory proj-dir))
                (shell-command-to-string (concat "urweb -getInfo " loc)))))
