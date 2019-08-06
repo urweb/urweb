@@ -274,6 +274,9 @@ $(SRC)/checknest.sml
 $(SRC)/compiler.sig
 $(SRC)/compiler.sml
 
+$(SRC)/getinfo.sig
+$(SRC)/getinfo.sml
+
 $(SRC)/demo.sig
 $(SRC)/demo.sml
 

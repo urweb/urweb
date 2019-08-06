@@ -25,6 +25,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
+(* This is identical to ELAB_UTIL, but keeps source spans around *)
+(* Maybe these modules can be unified? *)
+
 signature ELAB_UTIL_POS = sig 
     
     val mliftConInCon : (int -> Elab.con -> Elab.con) ref
