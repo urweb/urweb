@@ -88,7 +88,8 @@ fun intToMonth i = case i of
                      | n => error <xml>Invalid month number {[n]}</xml>
 
 val eq_month = mkEq (fn a b => monthToInt a = monthToInt b)
-
+val ord_month = mkOrd {Lt = fn a b => monthToInt a < monthToInt b,
+                       Le = fn a b => monthToInt a <= monthToInt b}
 
 fun toTime dt : time = fromDatetime dt.Year (monthToInt dt.Month) dt.Day
                                     dt.Hour dt.Minute dt.Second
