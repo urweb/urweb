@@ -20,7 +20,6 @@
 
 #include <pthread.h>
 
-#include <unicode/utf8.h>
 #include <unicode/uchar.h>
 
 #include "types.h"
@@ -2347,7 +2346,21 @@ uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, uw_Basis_char ch) {
   int len;
 
   uw_check(ctx, INTS_MAX+3);
-  len = sprintf(ctx->page.front, "&#%u;", n);
+
+  if(uw_Basis_isprint(ctx, ch)) {
+
+    UChar32 ins[1] = { ch };
+    char buf[5];
+    int32_t len_written = 0;
+    UErrorCode err = U_ZERO_ERROR;
+
+    u_strToUTF8(buf, 5, &len_written, ins, 1, &err);
+    sprintf(ctx->page.front, "%s", buf);
+    // printf("buf: %s, hex: %x, len_written: %d, err: %s\n", buf, ch, len_written, u_errorName(err));
+    len = len_written;
+  } else {
+    len = sprintf(ctx->page.front, "&#%u;", n);
+  }
   ctx->page.front += len;
 
   return uw_unit_v;
@@ -2459,7 +2472,7 @@ uw_unit uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
     else {
       uw_Basis_htmlifySpecialChar_w(ctx, c1);
     }    
-  }  
+  }
 
   return uw_unit_v;
 }
