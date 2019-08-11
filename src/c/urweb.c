@@ -20,8 +20,8 @@
 
 #include <pthread.h>
 
-#include <unicode/uchar.h>
 #include <unicode/ustring.h>
+#include <unicode/uchar.h>
 
 #include "types.h"
 
@@ -2350,7 +2350,7 @@ uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, uw_Basis_char ch) {
 
   if(uw_Basis_isprint(ctx, ch)) {
 
-    UChar32 ins[1] = { ch };
+    const UChar ins[1] = { ch };
     char buf[5];
     int32_t len_written = 0;
     UErrorCode err = U_ZERO_ERROR;
