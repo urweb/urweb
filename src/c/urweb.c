@@ -21,6 +21,7 @@
 #include <pthread.h>
 
 #include <unicode/uchar.h>
+#include <unicode/ustring.h>
 
 #include "types.h"
 
