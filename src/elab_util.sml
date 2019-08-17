@@ -541,11 +541,13 @@ fun mapfoldB {kind = fk, con = fc, exp = fe, bind} =
         and mfed ctx (dAll as (d, loc)) =
             case d of
                 EDVal (p, t, e) =>
-                S.bind2 (mfc ctx t,
-                         fn t' =>
-                            S.map2 (mfe ctx e,
-                                 fn e' =>
-                                    (EDVal (p, t', e'), loc)))
+                S.bind2 (mfp ctx p,
+                         fn p' =>
+                            S.bind2 (mfc ctx t,
+                                     fn t' =>
+                                        S.map2 (mfe ctx e,
+                                                fn e' =>
+                                                   (EDVal (p', t', e'), loc))))
               | EDValRec vis =>
                 let
                     val ctx = foldl (fn ((x, t, _), ctx) => bind (ctx, RelE (x, t))) ctx vis
