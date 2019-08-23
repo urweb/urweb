@@ -42,7 +42,9 @@ structure IM = IntBinaryMap
 
 type oneMod = {Decl : decl,
                When : Time.time,
-               Deps : SS.set}
+               Deps : SS.set,
+               HasErrors: bool (* We're saving modules with errors so tooling can find them *)
+              }
 
 val byName = ref (SM.empty : oneMod SM.map)
 val byId = ref (IM.empty : string IM.map)
@@ -50,7 +52,39 @@ val byId = ref (IM.empty : string IM.map)
 fun reset () = (byName := SM.empty;
                 byId := IM.empty)
 
-fun insert (d, tm) =
+(* For debug purposes *)
+fun printByName (bn: oneMod SM.map): unit =
+    (TextIO.print ("Contents of ModDb.byName: \n");
+     List.app (fn tup =>
+                  let
+                      val name = #1 tup
+                      val m = #2 tup
+                      val renderedDeps =
+                          String.concatWith ", " (SS.listItems (#Deps m))
+                      val renderedMod =
+                          "  " ^ name
+                          ^ ". Stored at : " ^ Time.toString (#When m)
+                          ^", HasErrors: " ^ Bool.toString (#HasErrors m)
+                          ^". Deps: " ^ renderedDeps ^"\n"
+                  in
+                      TextIO.print renderedMod
+                  end)
+              (SM.listItemsi bn))
+
+fun dContainsUndeterminedUnif d =
+    ElabUtil.Decl.exists
+        {kind = fn _ => false,
+         con = fn _ => false,
+         exp = fn e => case e of
+                           EUnif (ref NONE) => true 
+                         | _ => false,
+         sgn_item = fn _ => false,
+         sgn = fn _ => false,
+         str = fn _ => false,
+         decl = fn _ => false}
+        d
+
+fun insert (d, tm, hasErrors) =
     let
         val xn =
             case #1 d of
@@ -62,10 +96,16 @@ fun insert (d, tm) =
             NONE => ()
           | SOME (x, n) =>
             let
+                (* Keep module when it's file didn't change and it was OK before *)
                 val skipIt =
                     case SM.find (!byName, x) of
                         NONE => false
                       | SOME r => #When r = tm
+                                  andalso not (#HasErrors r)
+                                  (* We save results of error'd compiler passes *)
+                                  (* so modules that still have undetermined unif variables *)
+                                  (* should not be reused since those are unsuccessfully compiled *)
+                                  andalso not (dContainsUndeterminedUnif (#Decl r))
             in
                 if skipIt then
                     ()
@@ -73,7 +113,19 @@ fun insert (d, tm) =
                     let
                         fun doMod (n', deps) =
                             case IM.find (!byId, n') of
-                                NONE => deps
+                                NONE =>
+                                (
+                                  (* TextIO.print ("MISSED_DEP: " ^ Int.toString n' ^"\n"); *)
+                                 deps)
+                                (* raise Fail ("ModDb: Trying to make dep tree but couldn't find module " ^ Int.toString n') *)
+                              (* I feel like this should throw, but the dependency searching algorithm *)
+                              (* is not 100% precise. I encountered problems in json.urs: *)
+                              (*   datatype r = Rec of M.t r *)
+                              (* M is the structure passed to the Recursive functor, so this is not an external dependency *)
+                              (* I'm just not sure how to filter these out yet *)
+                              (* I still think this should throw: *)
+                              (* Trying to add a dep for a module but can't find the dep... *)
+                              (* That will always cause a hole in the dependency tree and cause problems down the line *)
                               | SOME x' =>
                                 SS.union (deps,
                                           SS.add (case SM.find (!byName, x') of
@@ -118,8 +170,11 @@ fun insert (d, tm) =
                                              x,
                                              {Decl = d,
                                               When = tm,
-                                              Deps = deps});
+                                              Deps = deps,
+                                              HasErrors = hasErrors
+                                            });
                         byId := IM.insert (!byId, n, x)
+                        (* printByName (!byName) *)
                     end
             end
     end
@@ -130,7 +185,7 @@ fun lookup (d : Source.decl) =
         (case SM.find (!byName, x) of
              NONE => NONE
            | SOME r =>
-             if tm = #When r then
+             if tm = #When r andalso not (#HasErrors r) andalso not (dContainsUndeterminedUnif (#Decl r)) then
                  SOME (#Decl r)
              else
                  NONE)
@@ -138,11 +193,25 @@ fun lookup (d : Source.decl) =
         (case SM.find (!byName, x) of
              NONE => NONE
            | SOME r =>
-             if tm = #When r then
+             if tm = #When r andalso not (#HasErrors r) andalso not (dContainsUndeterminedUnif (#Decl r)) then
                  SOME (#Decl r)
              else
                  NONE)
       | _ => NONE
+
+fun lookupModAndDepsIncludingErrored name =
+    case SM.find (!byName, name) of
+        NONE => NONE
+      | SOME m =>
+        let
+            val deps = SS.listItems (#Deps m)
+            (* Clumsy way of adding Basis and Top without adding doubles *)
+            val deps = List.filter (fn x => x <> "Basis" andalso x <> "Top") deps
+            val deps = ["Basis", "Top"] @ deps
+            val foundDepModules = List.mapPartial (fn d => SM.find (!byName, d)) deps
+        in
+            SOME (#Decl m, List.map (fn a => #Decl a) foundDepModules)
+        end
 
 val byNameBackup = ref (!byName)
 val byIdBackup = ref (!byId)

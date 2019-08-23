@@ -4850,7 +4850,8 @@ uw_Basis_string uw_Basis_atom(uw_context ctx, uw_Basis_string s) {
 
   for (p = s; *p; ++p) {
     char c = *p;
-    if (!U8_IS_SINGLE(c) || (!isalnum((int)c) && c != '+' && c != '-' && c != '.' && c != '%' && c != '#'))
+    if (!U8_IS_SINGLE(c) || (!isalnum((int)c) && c != '+' && c != '-' && c != '.' && c != '%' && c != ' ' && c != '(' && c != ')' && c != ',' && c != '#')
+        )
       uw_error(ctx, FATAL, "Disallowed character in CSS atom");
   }
 

@@ -139,6 +139,10 @@ fun oneRun args =
         fun printModuleOf fname =
             print_and_exit (Compiler.moduleOf fname) ()
 
+        fun getInfo loc =
+            (Print.print (GetInfo.getInfo loc);
+             raise Code OS.Process.success)
+
         fun add_class (class, num) =
             case Int.fromString num of
                  NONE => raise Fail ("Invalid limit number '" ^ num ^ "'")
@@ -245,6 +249,8 @@ fun oneRun args =
                     NONE),
               ("moduleOf", ONE ("<file>", printModuleOf),
                     SOME "print module name of <file> and exit"),
+              ("getInfo", ONE ("<file:row:col>", getInfo),
+                    SOME "print info of expression at <file:row:col> and exit"),
               ("noEmacs", set_true Demo.noEmacs,
                     NONE),
               ("limit", TWO ("<class>", "<num>", add_class),
@@ -441,4 +447,5 @@ val () = (Globals.setResetTime ();
                  else
                      (OS.FileSys.remove socket;
                       raise OS.SysErr ("", NONE))
-             end handle OS.SysErr _ => OS.Process.exit (oneRun args))
+             end handle OS.SysErr _ =>
+                        OS.Process.exit (oneRun args))

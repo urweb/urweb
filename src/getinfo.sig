@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, 2012, Adam Chlipala
+(* Copyright (c) 2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,32 +25,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature ELABORATE = sig
-
-    val elabFile : Source.sgn_item list -> Time.time
-                   -> Source.decl list -> Source.sgn_item list -> Time.time
-                   -> ElabEnv.env -> Source.file -> Elab.file
-
-    val resolveClass : ElabEnv.env -> Elab.con -> Elab.exp option
-
-    val dumpTypes : bool ref
-    (* After elaboration (successful or failed), should I output a mapping from
-     * all identifiers to their kinds/types? *)
-
-    val dumpTypesOnError : bool ref
-    (* Like above, but only used if there are compile errors. *)
-
-    val unifyMore : bool ref
-    (* Run all phases of type inference, even if an error is detected by an
-     * early phase. *)
-
-    val incremental : bool ref
-    val verbose : bool ref
-
-    val dopen: ElabEnv.env
-               -> { str: int
-                  , strs: string list
-                  , sgn: Elab.sgn }
-               -> (Elab.decl list * ElabEnv.env)
-
+signature GET_INFO = sig 
+    val getInfo: string (* file:row:col *) -> Print.PD.pp_desc
 end
+    
