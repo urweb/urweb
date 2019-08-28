@@ -20,6 +20,7 @@
 
 #include <pthread.h>
 
+#include <unicode/utf8.h>
 #include <unicode/ustring.h>
 #include <unicode/uchar.h>
 
@@ -2344,7 +2345,7 @@ char *uw_Basis_htmlifySpecialChar(uw_context ctx, uw_Basis_char ch) {
 
 uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, uw_Basis_char ch) {
   unsigned int n = ch;
-  int len;
+  int len = 0;
 
   uw_check(ctx, INTS_MAX+3);
 
@@ -2359,7 +2360,10 @@ uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, uw_Basis_char ch) {
     sprintf(ctx->page.front, "%s", buf);
     // printf("buf: %s, hex: %x, len_written: %d, err: %s\n", buf, ch, len_written, u_errorName(err));
     len = len_written;
-  } else {
+  }
+
+  // either it's a non-printable character, or we failed to convert to UTF-8
+  if(len == 0) {
     len = sprintf(ctx->page.front, "&#%u;", n);
   }
   ctx->page.front += len;
