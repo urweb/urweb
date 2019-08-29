@@ -2351,14 +2351,10 @@ uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, uw_Basis_char ch) {
 
   if(uw_Basis_isprint(ctx, ch)) {
 
-    const UChar ins[1] = { ch };
-    char buf[5];
     int32_t len_written = 0;
     UErrorCode err = U_ZERO_ERROR;
 
-    u_strToUTF8(buf, 5, &len_written, ins, 1, &err);
-    sprintf(ctx->page.front, "%s", buf);
-    // printf("buf: %s, hex: %x, len_written: %d, err: %s\n", buf, ch, len_written, u_errorName(err));
+    u_strToUTF8(ctx->page.front, 5, &len_written, (const UChar*)&ch, 1, &err);
     len = len_written;
   }
 
