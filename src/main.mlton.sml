@@ -107,6 +107,8 @@ fun usage flag_info =
 
 (* Encapsulate main invocation handler in a function, possibly to be called multiple times within a daemon. *)
 
+exception DaemonExit
+
 fun oneRun args =
     let
         val timing = ref false
@@ -256,7 +258,7 @@ fun oneRun args =
 
         val () = case args of
                      ["daemon", "stop"] => (OS.FileSys.remove socket handle OS.SysErr _ => ();
-                                            OS.Process.exit OS.Process.success)
+                                            raise DaemonExit)
                    | _ => ()
 
         val sources = parse_flags (flag_info ()) args
@@ -360,7 +362,7 @@ fun startDaemon () =
                                                    OS.Process.exit OS.Process.success)
                                                 | _ =>
                                                   let
-                                                      val success = (oneRun (rev args))
+                                                      val success = (oneRun (rev args) handle DaemonExit => OS.Process.exit OS.Process.success)
                                                                     handle ex => (print "unhandled exception:\n";
                                                                                   print (General.exnMessage ex ^ "\n");
                                                                                   OS.Process.failure)
@@ -445,9 +447,12 @@ fun oneCommandLine args =
         else
             (OS.FileSys.remove socket;
              raise OS.SysErr ("", NONE))
-    end handle OS.SysErr _ => oneRun args
+    end handle OS.SysErr _ => oneRun args handle DaemonExit => OS.Process.success
             
 val () = (Globals.setResetTime ();
           case CommandLine.arguments () of
-             ["daemon", "start"] => startDaemon ()
-           | args => OS.Process.exit (oneCommandLine args))
+              ["daemon", "start"] => startDaemon ()
+            | ["daemon", "restart"] =>
+              (ignore (oneCommandLine ["daemon", "stop"]);
+               startDaemon ())
+            | args => OS.Process.exit (oneCommandLine args))
