@@ -745,7 +745,7 @@ fun parseUrp' accLibs fname =
                            | "relation" => Settings.Relation
                            | "cookie" => Settings.Cookie
                            | "style" => Settings.Style
-                           | _ => (ErrorMsg.error "Bad path kind spec";
+                           | _ => (ErrorMsg.error ("Bad path kind spec \"" ^ s ^ "\"");
                                    Settings.Any)
 
                      fun parsePattern s =
