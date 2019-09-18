@@ -2577,7 +2577,14 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
          let
              val k' = case ko of
                           NONE => kunif env loc
-                        | SOME k => elabKind env k
+                        | SOME k =>
+                          case #1 k of
+                              L.KWild => kunif env loc
+                            (* Why duplicate this case of elabKind here?
+                             * To avoid flagging a disallowed wildcard in
+                             * a signature, since we are guaranteed to
+                             * resolve this kind locally during elaboration. *)
+                            | _ => elabKind env k
 
              val (c', ck, gs') = elabCon (env, denv) c
              val (env', n) = E.pushCNamed env x k' (SOME c')
@@ -4756,6 +4763,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
         val () = mayDelay := true
         val () = delayedUnifs := []
         val () = delayedExhaustives := []
+        val () = inSignature := false
 
         val d = (L.DFfiStr ("Basis", (L.SgnConst basis, ErrorMsg.dummySpan), SOME basis_tm), ErrorMsg.dummySpan)
         val (basis_n, env', sgn) =
