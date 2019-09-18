@@ -29,6 +29,7 @@ signature ELAB_ERR = sig
 
     datatype kind_error =
              UnboundKind of ErrorMsg.span * string
+           | KDisallowedWildcard of ErrorMsg.span
 
     val kindError : ElabEnv.env -> kind_error -> unit
 
@@ -47,6 +48,7 @@ signature ELAB_ERR = sig
            | DuplicateField of ErrorMsg.span * string
            | ProjBounds of Elab.con * int
            | ProjMismatch of Elab.con * Elab.kind
+           | CDisallowedWildcard of ErrorMsg.span
 
     val conError : ElabEnv.env -> con_error -> unit
 

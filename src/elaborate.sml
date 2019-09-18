@@ -260,6 +260,19 @@
 
  end
 
+ (* Wildcards are disallowed inside signatures.
+  * We use a flag to indicate when we are in a signature,
+  * with a helper function for entering this mode and properly backing out afterward. *)
+ val inSignature = ref false
+ fun enterSignature f =
+     let
+         val inS = !inSignature
+     in
+         inSignature := true;
+         (f () handle ex => (inSignature := inS; raise ex))
+         before inSignature := inS
+     end
+ 
  fun elabKind env (k, loc) =
      case k of
          L.KType => (L'.KType, loc)
@@ -268,7 +281,7 @@
        | L.KRecord k => (L'.KRecord (elabKind env k), loc)
        | L.KUnit => (L'.KUnit, loc)
        | L.KTuple ks => (L'.KTuple (map (elabKind env) ks), loc)
-       | L.KWild => kunif env loc
+       | L.KWild => if !inSignature then (kindError env (KDisallowedWildcard loc); kerror) else kunif env loc
 
        | L.KVar s => (case E.lookupK env s of
                           NONE =>
@@ -531,11 +544,15 @@
          end
 
        | L.CWild k =>
-         let
-             val k' = elabKind env k
-         in
-             (cunif env (loc, k'), k', [])
-         end
+         if !inSignature then
+             (conError env (CDisallowedWildcard loc);
+              (cerror, kerror, []))
+         else
+             let
+                 val k' = elabKind env k
+             in
+                 (cunif env (loc, k'), k', [])
+             end
 
  fun kunifsRemain k =
      case k of
@@ -4146,7 +4163,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
 
               | L.DSgn (x, sgn) =>
                 let
-                    val (sgn', gs') = elabSgn (env, denv) sgn
+                    val (sgn', gs') = enterSignature (fn () => elabSgn (env, denv) sgn)
                     val (env', n) = E.pushSgnNamed env x sgn'
                 in
                     ([(L'.DSgn (x, n, sgn'), loc)], (env', denv, enD gs' @ gs))
@@ -4171,7 +4188,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                   else
                                       ()
 
-                         val formal = Option.map (elabSgn (env, denv)) sgno
+                         val formal = enterSignature (fn () => Option.map (elabSgn (env, denv)) sgno)
 
                          val (str', sgn', gs') =
                              case formal of
@@ -4221,7 +4238,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                      end
                    | NONE =>
                      let
-                         val (sgn', gs') = elabSgn (env, denv) sgn
+                         val (sgn', gs') = enterSignature (fn () => elabSgn (env, denv) sgn)
                                            
                          val (env', n) = E.pushStrNamed env x sgn'
 
