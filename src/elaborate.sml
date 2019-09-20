@@ -264,14 +264,16 @@
   * We use a flag to indicate when we are in a signature,
   * with a helper function for entering this mode and properly backing out afterward. *)
  val inSignature = ref false
- fun enterSignature f =
+ fun enterSignature' b f =
      let
          val inS = !inSignature
      in
-         inSignature := true;
+         inSignature := b;
          (f () handle ex => (inSignature := inS; raise ex))
          before inSignature := inS
      end
+ fun enterSignature f = enterSignature' true f
+ fun exitSignature f = enterSignature' false f
  
  fun elabKind env (k, loc) =
      case k of
@@ -2577,14 +2579,10 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
          let
              val k' = case ko of
                           NONE => kunif env loc
-                        | SOME k =>
-                          case #1 k of
-                              L.KWild => kunif env loc
-                            (* Why duplicate this case of elabKind here?
-                             * To avoid flagging a disallowed wildcard in
-                             * a signature, since we are guaranteed to
-                             * resolve this kind locally during elaboration. *)
-                            | _ => elabKind env k
+                        | SOME k => exitSignature (fn () => elabKind env k)
+                          (* Waive wildcard restriction within translation
+                           * of kind annotation.  The kind of [c] will allow
+                           * us to resolve it fully. *)
 
              val (c', ck, gs') = elabCon (env, denv) c
              val (env', n) = E.pushCNamed env x k' (SOME c')
