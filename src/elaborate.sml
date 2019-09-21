@@ -2734,7 +2734,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
              val ct = (L'.CApp (ct, c'), loc)
              val ct = (L'.CApp (ct, (L'.CConcat (pkey, uniques), loc)), loc)
 
-             val (pe', pet, gs'') = elabExp (env', denv) pe
+             val (pe', pet, gs'') = exitSignature (fn () => elabExp (env', denv) pe)
              val gs'' = List.mapPartial (fn Disjoint x => SOME x
                                           | _ => NONE) gs''
 
@@ -2742,7 +2742,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
              val pst = (L'.CApp (pst, c'), loc)
              val pst = (L'.CApp (pst, pkey), loc)
 
-             val (ce', cet, gs''') = elabExp (env', denv) ce
+             val (ce', cet, gs''') = exitSignature (fn () => elabExp (env', denv) ce)
              val gs''' = List.mapPartial (fn Disjoint x => SOME x
                                            | _ => NONE) gs'''
 
