@@ -2724,6 +2724,18 @@ uw_Basis_string uw_Basis_str1(uw_context ctx, uw_Basis_char ch) {
   return r; 
 }
 
+uw_Basis_string uw_Basis_ofUnicode(uw_context ctx, uw_Basis_int n) {
+  UChar buf16[] = {n};
+  uw_Basis_string out = uw_malloc(ctx, 3);
+  int32_t outLen;
+  UErrorCode pErrorCode = 0;
+
+  if (u_strToUTF8(out, 3, &outLen, buf16, 1, &pErrorCode) == NULL || outLen == 0)
+    uw_error(ctx, FATAL, "Bad Unicode string to unescape (error %s)", u_errorName(pErrorCode));
+
+  return out;
+}
+
 uw_Basis_string uw_strdup(uw_context ctx, uw_Basis_string s1) {
   int len = strlen(s1) + 1;
   char *s;

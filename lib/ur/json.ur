@@ -59,6 +59,17 @@ fun escape s =
         "\"" ^ esc s
     end
 
+fun unhex ch =
+    if Char.isDigit ch then
+        Char.toInt ch - Char.toInt #"0"
+    else if Char.isXdigit ch then
+        if Char.isUpper ch then
+            10 + (Char.toInt ch - Char.toInt #"A")
+        else
+            10 + (Char.toInt ch - Char.toInt #"a")
+    else
+        error <xml>Invalid hexadecimal digit "{[ch]}"</xml>
+    
 fun unescape s =
     let
         val len = String.length s
@@ -75,6 +86,11 @@ fun unescape s =
                       | #"\\" =>
                         if i+1 >= len then
                             error <xml>JSON unescape: Bad escape sequence: {[s]}</xml>
+                        else if String.sub s (i + 1) = #"u" then
+                            if i+5 >= len then
+                                error <xml>JSON unescape: Bad escape sequence: {[s]}</xml>
+                            else
+                                findEnd (i+6)
                         else
                             findEnd (i+2)
                       | _ => findEnd (i+1)
@@ -93,6 +109,19 @@ fun unescape s =
                         #"\\" =>
                         if i+1 >= len then
                             error <xml>JSON unescape: Bad escape sequence: {[s]}</xml>
+                        else if String.sub s (i+1) = #"u" then
+                            if i+5 >= len then
+                                error <xml>JSON unescape: Unicode ends early</xml>
+                            else
+                                let
+                                    val n =
+                                        unhex (String.sub s (i+2)) * (256*16)
+                                        + unhex (String.sub s (i+3)) * 256
+                                        + unhex (String.sub s (i+4)) * 16
+                                        + unhex (String.sub s (i+5))
+                                in
+                                    ofUnicode n ^ unesc (i+6)
+                                end
                         else
 			    (case String.sub s (i+1) of
 				 #"n" => "\n"

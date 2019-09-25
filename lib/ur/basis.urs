@@ -95,6 +95,7 @@ val strsindex : string -> string -> option int
 val strcspn : string -> string -> int
 val substring : string -> int -> int -> string
 val str1 : char -> string
+val ofUnicode : int -> string
 
 class show
 val show : t ::: Type -> show t -> t -> string

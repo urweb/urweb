@@ -166,6 +166,7 @@ uw_Basis_string uw_Basis_strchr(struct uw_context *, const char *, uw_Basis_char
 uw_Basis_int uw_Basis_strcspn(struct uw_context *, const char *, const char *);
 uw_Basis_string uw_Basis_substring(struct uw_context *, const char *, uw_Basis_int, uw_Basis_int);
 uw_Basis_string uw_Basis_str1(struct uw_context *, uw_Basis_char);
+uw_Basis_string uw_Basis_ofUnicode(struct uw_context *, uw_Basis_int);
 
 uw_Basis_string uw_strdup(struct uw_context *, const char *);
 uw_Basis_string uw_maybe_strdup(struct uw_context *, const char *);
