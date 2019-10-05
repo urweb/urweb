@@ -74,56 +74,56 @@ fun unescape s =
     let
         val len = String.length s
 
-        fun findEnd i =
+        fun findEnd i s =
             if i >= len then
                 error <xml>JSON unescape: string ends before quote: {[s]}</xml>
             else
                 let
-                    val ch = String.sub s i
+                    val ch = String.sub s 0
                 in
                     case ch of
                         #"\"" => i
                       | #"\\" =>
                         if i+1 >= len then
                             error <xml>JSON unescape: Bad escape sequence: {[s]}</xml>
-                        else if String.sub s (i + 1) = #"u" then
+                        else if String.sub s 1 = #"u" then
                             if i+5 >= len then
                                 error <xml>JSON unescape: Bad escape sequence: {[s]}</xml>
                             else
-                                findEnd (i+6)
+                                findEnd (i+6) (String.suffix s 6)
                         else
-                            findEnd (i+2)
-                      | _ => findEnd (i+1)
+                            findEnd (i+2) (String.suffix s 2)
+                      | _ => findEnd (i+1) (String.suffix s 1)
                 end
 
-        val last = findEnd 1
+        val last = findEnd 1 (String.suffix s 1)
 
-        fun unesc i =
+        fun unesc i s =
             if i >= last then
                 ""
             else
                 let
-                    val ch = String.sub s i
+                    val ch = String.sub s 0
                 in
                     case ch of
                         #"\\" =>
                         if i+1 >= len then
                             error <xml>JSON unescape: Bad escape sequence: {[s]}</xml>
-                        else if String.sub s (i+1) = #"u" then
+                        else if String.sub s 1 = #"u" then
                             if i+5 >= len then
                                 error <xml>JSON unescape: Unicode ends early</xml>
                             else
                                 let
                                     val n =
-                                        unhex (String.sub s (i+2)) * (256*16)
-                                        + unhex (String.sub s (i+3)) * 256
-                                        + unhex (String.sub s (i+4)) * 16
-                                        + unhex (String.sub s (i+5))
+                                        unhex (String.sub s 2) * (256*16)
+                                        + unhex (String.sub s 3) * 256
+                                        + unhex (String.sub s 4) * 16
+                                        + unhex (String.sub s 5)
                                 in
-                                    ofUnicode n ^ unesc (i+6)
+                                    ofUnicode n ^ unesc (i+6) (String.suffix s 6)
                                 end
                         else
-			    (case String.sub s (i+1) of
+			    (case String.sub s 1 of
 				 #"n" => "\n"
                                | #"r" => "\r"
                                | #"t" => "\t"
@@ -132,14 +132,14 @@ fun unescape s =
 			       | #"/" => "/"
                                | x => error <xml>JSON unescape: Bad escape char: {[x]}</xml>)
 			    ^
-			    unesc (i+2)
-                      | _ => String.str ch ^ unesc (i+1)
+			    unesc (i+2) (String.suffix s 2)
+                      | _ => String.str ch ^ unesc (i+1) (String.suffix s 1)
                 end
     in
         if len = 0 || String.sub s 0 <> #"\"" then
             error <xml>JSON unescape: String doesn't start with double quote: {[s]}</xml>
         else
-            (unesc 1, String.substring s {Start = last+1, Len = len-last-1})
+            (unesc 1 (String.suffix s 1), String.suffix s (last+1))
     end
 
 val json_string = {ToJson = escape,
