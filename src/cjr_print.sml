@@ -1014,52 +1014,39 @@ fun urlify env t =
     let
         fun urlify' level (t as (_, loc)) =
             case #1 t of
-                TFfi ("Basis", "unit") => box []
+                TFfi ("Basis", "unit") => box [string "uw_Basis_urlifyString_w(ctx, \"\");",
+                                               newline]
               | TFfi (m, t) => box [string ("uw_" ^ ident m ^ "_urlify" ^ capitalize t
                                             ^ "_w(ctx, it" ^ Int.toString level ^ ");"),
                                     newline]
 
-              | TRecord 0 => box []
+              | TRecord 0 => box [string "uw_Basis_urlifyString_w(ctx, \"\");",
+                                  newline]
               | TRecord i =>
                 let
-                    fun empty (t, _) =
-                        case t of
-                            TFfi ("Basis", "unit") => true
-                          | TRecord 0 => true
-                          | TRecord j =>
-                            List.all (fn (_, t) => empty t) (E.lookupStruct env j)
-                          | _ => false
-
                     val xts = E.lookupStruct env i
 
                     val (blocks, _) = foldl
                                       (fn ((x, t), (blocks, printingSinceLastSlash)) =>
-                                          let
-                                              val thisEmpty = empty t
-                                          in
-                                              if thisEmpty then
-                                                  (blocks, printingSinceLastSlash)
-                                              else
-                                                  (box [string "{",
-                                                        newline,
-                                                        p_typ env t,
-                                                        space,
-                                                        string ("it" ^ Int.toString (level + 1)),
-                                                        space,
-                                                        string "=",
-                                                        space,
-                                                        string ("it" ^ Int.toString level ^ ".__uwf_" ^ x ^ ";"),
-                                                        newline,
-                                                        box (if printingSinceLastSlash then
-                                                                 [string "uw_write(ctx, \"/\");",
-                                                                  newline]
-                                                             else
-                                                                 []),
-                                                        urlify' (level + 1) t,
-                                                        string "}",
-                                                        newline] :: blocks,
-                                                   true)
-                                          end)
+                                          (box [string "{",
+                                                newline,
+                                                p_typ env t,
+                                                space,
+                                                string ("it" ^ Int.toString (level + 1)),
+                                                space,
+                                                string "=",
+                                                space,
+                                                string ("it" ^ Int.toString level ^ ".__uwf_" ^ x ^ ";"),
+                                                newline,
+                                                box (if printingSinceLastSlash then
+                                                         [string "uw_write(ctx, \"/\");",
+                                                          newline]
+                                                     else
+                                                         []),
+                                                urlify' (level + 1) t,
+                                                string "}",
+                                                newline] :: blocks,
+                                           true))
                                       ([], false) xts
                 in
                     box (rev blocks)
