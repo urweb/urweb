@@ -13,6 +13,7 @@ val json_string : json string
 val json_int : json int
 val json_float : json float
 val json_bool : json bool
+val json_time : json time
 val json_option : a ::: Type -> json a -> json (option a)
 val json_list : a ::: Type -> json a -> json (list a)
 

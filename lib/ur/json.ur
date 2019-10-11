@@ -145,6 +145,53 @@ fun unescape s =
 val json_string = {ToJson = escape,
                    FromJson = unescape}
 
+fun rfc3339_out s =
+    let
+        val out1 = timef "%Y-%m-%dT%H:%M:%S%z" s
+        val len = String.length out1
+    in
+        if len < 2 then
+            error <xml>timef output too short</xml>
+        else
+            String.substring out1 {Start = 0, Len = len - 2} ^ ":"
+            ^ String.suffix out1 (len - 2)
+    end
+
+fun rfc3339_in s =
+    case String.split s #"T" of
+        None => error <xml>Invalid RFC 3339 string "{[s]}"</xml>
+      | Some (date, time) =>
+        case String.msplit {Haystack = time, Needle = "Z+-"} of
+            None => error <xml>Invalid RFC 3339 string "{[s]}"</xml>
+          | Some (time, sep, rest) =>
+            let
+                val t = case readUtc (date ^ " " ^ time) of
+                            None => error <xml>Invalid RFC 3339 string "{[s]}"</xml>
+                          | Some t => t
+
+                fun withOffset multiplier =
+                    case String.split rest #":" of
+                        None => error <xml>Invalid RFC 3339 string "{[s]}"</xml>
+                      | Some (h, m) =>
+                        case (read h, read m) of
+                            (Some h, Some m) => addSeconds t (multiplier * 60 * (60 * h + m))
+                          | _ => error <xml>Invalid RFC 3339 string "{[s]}"</xml>
+            in
+                case sep of
+                    #"Z" => t
+                  | #"+" => withOffset (-1)
+                  | #"-" => withOffset 1
+                  | _ => error <xml>msplit returns impossible separator</xml>
+            end
+
+val json_time = {ToJson = fn tm => escape (rfc3339_out tm),
+                 FromJson = fn s =>
+                               let
+                                   val (v, s') = unescape s
+                               in
+                                   (rfc3339_in v, s')
+                               end}
+
 fun numIn [a] (_ : read a) s : a * string =
     let
         val len = String.length s
