@@ -287,6 +287,91 @@ fun skipOne s =
         skipOne s False False 0 0
     end
 
+fun json_record_withOptional [ts ::: {Type}] [ots ::: {Type}] [ts ~ ots]
+                             (fl : folder ts) (jss : $(map json ts)) (names : $(map (fn _ => string) ts))
+                             (ofl : folder ots) (ojss : $(map json ots)) (onames : $(map (fn _ => string) ots)): json $(ts ++ map option ots) =
+    {ToJson = fn r =>
+                 let
+                     val withRequired =
+                         @foldR3 [json] [fn _ => string] [ident] [fn _ => string]
+                          (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (j : json t) name v acc =>
+                              escape name ^ ":" ^ j.ToJson v ^ (case acc of
+                                                                    "" => ""
+                                                                  | acc => "," ^ acc))
+                          "" fl jss names (r --- _)
+
+                     val withOptional =
+                         @foldR3 [json] [fn _ => string] [option] [fn _ => string]
+                          (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (j : json t) name v acc =>
+                              case v of
+                                  None => acc
+                                | Some v =>
+                                  escape name ^ ":" ^ j.ToJson v ^ (case acc of
+                                                                        "" => ""
+                                                                      | acc => "," ^ acc))
+                          "" ofl ojss onames (r --- _)
+                 in
+                     "{" ^ withOptional ^ "}"
+                 end,
+     FromJson = fn s =>
+                   let
+                       fun fromJ s (r : $(map option (ts ++ ots))) : $(map option (ts ++ ots)) * string =
+                           if String.length s = 0 then
+                               error <xml>JSON object doesn't end in brace</xml>
+                           else if String.sub s 0 = #"}" then
+                               (r, String.substring s {Start = 1, Len = String.length s - 1})
+                           else let
+                                   val (name, s') = unescape s
+                                   val s' = skipSpaces s'
+                                   val s' = if String.length s' = 0 || String.sub s' 0 <> #":" then
+                                                error <xml>No colon after JSON object field name</xml>
+                                            else
+                                                skipSpaces (String.substring s' {Start = 1, Len = String.length s' - 1})
+
+                                   val (r, s') = @foldR2 [json] [fn _ => string] [fn ts => $(map option ts) -> $(map option ts) * string]
+                                                  (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (j : json t) name' acc r =>
+                                                      if name = name' then
+                                                          let
+                                                              val (v, s') = j.FromJson s'
+                                                          in
+                                                              (r -- nm ++ {nm = Some v}, s')
+                                                          end
+                                                      else
+                                                          let
+                                                              val (r', s') = acc (r -- nm)
+                                                          in
+                                                              (r' ++ {nm = r.nm}, s')
+                                                          end)
+                                                  (fn r => (r, skipOne s'))
+                                                  (@Folder.concat ! fl ofl) (jss ++ ojss) (names ++ onames) r
+
+                                   val s' = skipSpaces s'
+                                   val s' = if String.length s' <> 0 && String.sub s' 0 = #"," then
+                                                skipSpaces (String.substring s' {Start = 1, Len = String.length s' - 1})
+                                            else
+                                                s'
+                               in
+                                   fromJ s' r
+                               end
+                   in
+                       if String.length s = 0 || String.sub s 0 <> #"{" then
+                           error <xml>JSON record doesn't begin with brace</xml>
+                       else
+                           let
+                               val (r, s') = fromJ (skipSpaces (String.substring s {Start = 1, Len = String.length s - 1}))
+                                                   (@map0 [option] (fn [t ::_] => None) (@Folder.concat ! fl ofl))
+                           in
+                               (@map2 [option] [fn _ => string] [ident] (fn [t] (v : option t) name =>
+                                                                            case v of
+                                                                                None => error <xml>Missing JSON object field {[name]}</xml>
+                                                                              | Some v => v) fl (r --- _) names
+                                 ++ (r --- _), s')
+                           end
+end}
+
+(* At the moment, the below code is largely copied and pasted from the last
+ * definition, because otherwise the compiler fails to inline enough for
+ * compilation to succeed. *)
 fun json_record [ts ::: {Type}] (fl : folder ts) (jss : $(map json ts)) (names : $(map (fn _ => string) ts)) : json $ts =
     {ToJson = fn r => "{" ^ @foldR3 [json] [fn _ => string] [ident] [fn _ => string]
                              (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (j : json t) name v acc =>

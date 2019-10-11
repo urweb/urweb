@@ -17,6 +17,10 @@ val json_option : a ::: Type -> json a -> json (option a)
 val json_list : a ::: Type -> json a -> json (list a)
 
 val json_record : ts ::: {Type} -> folder ts -> $(map json ts) -> $(map (fn _ => string) ts) -> json $ts
+val json_record_withOptional : ts ::: {Type} -> ots ::: {Type} -> [ts ~ ots]
+                               => folder ts -> $(map json ts) -> $(map (fn _ => string) ts)
+                               -> folder ots -> $(map json ots) -> $(map (fn _ => string) ots)
+                               -> json $(ts ++ map option ots)
 val json_variant : ts ::: {Type} -> folder ts -> $(map json ts) -> $(map (fn _ => string) ts) -> json (variant ts)
 
 val json_unit : json unit
