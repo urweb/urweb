@@ -4941,13 +4941,13 @@ uw_Basis_postField *uw_Basis_firstFormField(uw_context ctx, uw_Basis_string s) {
 
   f = uw_malloc(ctx, sizeof(uw_Basis_postField));
   unurl = s;
-  f->name = uw_Basis_unurlifyString(ctx, &unurl);
+  f->name = uw_Basis_unurlifyString_fromClient(ctx, &unurl);
   s = strchr(s, 0);
   if (!s)
     uw_error(ctx, FATAL, "firstFormField: Missing null terminator");
   ++s;
   unurl = s;
-  f->value = uw_Basis_unurlifyString(ctx, &unurl);
+  f->value = uw_Basis_unurlifyString_fromClient(ctx, &unurl);
   s = strchr(s, 0);
   if (!s)
     uw_error(ctx, FATAL, "firstFormField: Missing null terminator");
