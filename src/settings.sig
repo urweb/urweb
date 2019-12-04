@@ -224,10 +224,11 @@ signature SETTINGS = sig
          requiresTimestampDefaults : bool,
          supportsIsDistinctFrom : bool,
          supportsSHA512 : {InitializeDb : string,
-                           GenerateHash : string -> string} option
+                           GenerateHash : string -> string} option,
          (* If supported, give the SQL code to
           * enable the feature in a particular
           * database and to compute a hash of a value. *)
+         supportsSimilar : {InitializeDb : string} option
     }
 
     val addDbms : dbms -> unit

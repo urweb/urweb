@@ -2276,6 +2276,15 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
                                              val e = (EApp (e, fname), loc)
                                          in
                                              (EApp (e, sqlexp), loc)
+                                        end)
+       | fname LPAREN sqlexp COMMA sqlexp RPAREN (let
+                                             val loc = s (fnameleft, RPARENright)
+
+                                             val e = (EVar (["Basis"], "sql_bfunc", Infer), loc)
+                                             val e = (EApp (e, fname), loc)
+                                             val e = (EApp (e, sqlexp1), loc)
+                                         in
+                                             (EApp (e, sqlexp2), loc)
                                          end)
        | LPAREN query RPAREN            (let
                                              val loc = s (LPARENleft, RPARENright)

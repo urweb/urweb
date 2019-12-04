@@ -1,4 +1,5 @@
 debug
 database dbname=filter
+sql filter.sql
 
 filter

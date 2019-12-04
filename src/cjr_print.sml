@@ -3230,10 +3230,11 @@ fun p_file env (ds, ps) =
 
         val _ = foldl (fn (d, env) =>
                           ((case #1 d of
-                                DDatabase {name = x, expunge = y, initialize = z} => (hasDb := true;
-                                                                                      dbstring := x;
-                                                                                      expunge := y;
-                                                                                      initialize := z)
+                                DDatabase {name = x, expunge = y, initialize = z, ...} =>
+                                (hasDb := true;
+                                 dbstring := x;
+                                 expunge := y;
+                                 initialize := z)
                               | DJavaScript _ => hasJs := true
                               | DTable (s, xts, _, _) => tables := (s, map (fn (x, t) =>
                                                                                (x, sql_type_in env t)) xts) :: !tables
@@ -3753,6 +3754,8 @@ fun declaresAsForeignKey xs s =
              
 fun p_sql env (ds, _) =
     let
+        val usesSimilar = ref false
+
         val (pps, _) = ListUtil.foldlMap
                        (fn (dAll as (d, _), env) =>
                            let
@@ -3837,6 +3840,9 @@ fun p_sql env (ds, _) =
                                                  string ";",
                                                  newline,
                                                  newline]
+                                          | DDatabase {usesSimilar = s, ...} =>
+                                            (usesSimilar := s;
+                                             box [])
                                           | _ => box []
                            in
                                (pp, E.declBinds env dAll)
@@ -3849,6 +3855,13 @@ fun p_sql env (ds, _) =
                                 NONE => (ErrorMsg.error "Using file cache with database that doesn't support SHA512";
                                          [])
                               | SOME r => [string (#InitializeDb r), newline, newline])
+             @ (if !usesSimilar then
+                    case #supportsSimilar (Settings.currentDbms ()) of
+                        NONE => (ErrorMsg.error "Using SIMILAR with database that doesn't support it";
+                                 [])
+                      | SOME r => [string (#InitializeDb r), newline, newline]
+                else
+                    [])
              @ string (#sqlPrefix (Settings.currentDbms ())) :: pps)
     end
 

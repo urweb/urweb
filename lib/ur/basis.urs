@@ -623,6 +623,16 @@ val sql_known : t ::: Type -> sql_ufunc t bool
 val sql_lower : sql_ufunc string string
 val sql_upper : sql_ufunc string string
 
+con sql_bfunc :: Type -> Type -> Type -> Type
+val sql_bfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                -> dom1 ::: Type -> dom2 ::: Type -> ran ::: Type
+                -> sql_bfunc dom1 dom2 ran
+                -> sql_exp tables agg exps dom1
+                -> sql_exp tables agg exps dom2
+                -> sql_exp tables agg exps ran
+val sql_similarity : sql_bfunc string string float
+(* Only supported by Postgres for now, via the pg_trgm module *)
+
 val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                    -> sql_injectable_prim t
                    -> sql_exp tables agg exps t
