@@ -20,7 +20,7 @@ stdenv.mkDerivation rec {
   # };
   src = ./.;
 
-  buildInputs = [ openssl mlton mysql.connector-c postgresql sqlite automake autoconf libtool icu.dev];
+  buildInputs = [ openssl mlton mysql.connector-c postgresql sqlite automake autoconf libtool icu.dev openssl.dev];
 
   # prePatch = ''
   #   sed -e 's@/usr/bin/file@${file}/bin/file@g' -i configure
