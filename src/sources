@@ -277,6 +277,12 @@ $(SRC)/compiler.sml
 $(SRC)/getinfo.sig
 $(SRC)/getinfo.sml
 
+$(SRC)/json.sig
+$(SRC)/json.sml
+
+$(SRC)/lsp.sig
+$(SRC)/lsp.sml
+
 $(SRC)/demo.sig
 $(SRC)/demo.sml
 

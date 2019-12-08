@@ -253,6 +253,7 @@ fun oneRun args =
                     SOME "print module name of <file> and exit"),
               ("getInfo", ONE ("<file:row:col>", getInfo),
                     SOME "print info of expression at <file:row:col> and exit"),
+              ("startLspServer", ZERO Lsp.startServer, SOME "Start Language Server Protocol server"),
               ("noEmacs", set_true Demo.noEmacs,
                     NONE),
               ("limit", TWO ("<class>", "<num>", add_class),
