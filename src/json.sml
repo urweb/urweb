@@ -79,7 +79,7 @@ struct
 
    and parsePair () =
       Callbacks.json_pair (parseString (),
-         (ws(); consume ":"; parseValue ()))
+                           (ws(); consume ":"; ws(); parseValue ()))
 
    and parseArray () =
       if not (matches "[") then 
@@ -142,10 +142,9 @@ struct
    and parseInt () =
    let
       val f =
-         if peek () = #"0" then
-            raise JSONParseError ("Invalid number", !inputPosition)
-         else if peek () = #"-" then (take (); "~")
-         else String.str (take ())
+          if peek () = #"-"
+          then (take (); "~")
+          else String.str (take ())
    in
       f ^ parseDigits ()
    end
@@ -270,6 +269,6 @@ fun print (ast: json): string =
       | Bool b => if b then "true" else "false"
       | Int i => Int.toString i
       | Obj l => "{"
-                ^ List.foldl (fn ((k, v), acc) => k ^ ": " ^ print v ) "" l
+                 ^ List.foldl (fn ((k, v), acc) => acc ^ (if acc = "" then "" else ", ") ^ "\"" ^ k ^ "\": " ^ print v ) "" l
                 ^ "}"
 end
