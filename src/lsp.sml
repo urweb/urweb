@@ -22,6 +22,11 @@ fun asString (j: Json.json): string =
         Json.String s => s
      |  _ => raise Fail ("Expected JSON string, got: " ^ Json.print j)
 
+fun asOptionalInt (j: Json.json): int option =
+    case j of
+        Json.Null => NONE
+     |  Json.Int i => SOME i
+     |  _ => raise Fail ("Expected JSON int or null, got: " ^ Json.print j)
 end
 
 structure LspSpec (* :> LSPSPEC *) = struct 
@@ -70,16 +75,16 @@ structure LspSpec (* :> LSPSPEC *) = struct
             | SOME id => RequestMessage {id = id, method = method, params = params}
       end
 
-  type textDocumentIdentifier =
+  type documentUri = 
        { scheme: string
        , authority: string
        , path: string
        , query: string
        , fragment: string
        }
-  fun parseTextDocumentIdentifier (j: Json.json): textDocumentIdentifier = 
+  fun parseDocumentUri (str: string): documentUri = 
       let
-          val str = Substring.full (FromJson.asString (FromJson.get "uri" j))
+          val str = Substring.full str
           val (scheme, rest) = Substring.splitl (fn c => c <> #":") str
           val (authority, rest) = Substring.splitl (fn c => c <> #"/") (Substring.triml 3 rest (* :// *))
           val (path, rest) = Substring.splitl (fn c => c <> #"?" orelse c <> #"#") (Substring.triml 1 rest (* / *))
@@ -98,6 +103,32 @@ structure LspSpec (* :> LSPSPEC *) = struct
           , fragment = Substring.string fragment
           }
       end
+
+  type textDocumentIdentifier = { uri: documentUri}
+  fun parseTextDocumentIdentifier (j: Json.json): textDocumentIdentifier = 
+      { uri = parseDocumentUri (FromJson.asString (FromJson.get "uri" j))}
+
+  type versionedTextDocumentIdentifier =
+       { uri: documentUri
+       , version: int option
+       }
+  fun parseVersionedTextDocumentIdentifier (j: Json.json): versionedTextDocumentIdentifier =
+      { uri = parseDocumentUri (FromJson.asString (FromJson.get "uri" j))
+      , version = FromJson.asOptionalInt (FromJson.get "version" j)
+      }
+
+  type textDocumentItem = {
+      uri: documentUri,
+      languageId: string,
+      version: int, (* The version number of this document (it will increase after each change, including undo/redo). *)
+      text: string
+  }
+  fun parseTextDocumentItem (j: Json.json) =
+      { uri = parseDocumentUri (FromJson.asString (FromJson.get "uri" j))
+      , languageId = FromJson.asString (FromJson.get "languageId" j)
+      , version = FromJson.asInt (FromJson.get "version" j)
+      , text = FromJson.asString (FromJson.get "text" j)
+      }
 
   type position = { line: int
                   , character: int 
@@ -122,15 +153,57 @@ structure LspSpec (* :> LSPSPEC *) = struct
           parseMessage parsed
       end
 
-  fun parseHoverReq (params: Json.json): { textDocument: textDocumentIdentifier , position: position } =
+  type hoverReq = { textDocument: textDocumentIdentifier , position: position }
+  type hoverResp = {contents: string} option
+  fun parseHoverReq (params: Json.json): hoverReq =
       { textDocument = parseTextDocumentIdentifier (FromJson.get "textDocument" params)
       , position = parsePosition (FromJson.get "position" params)
       }
-
-  fun printHoverResponse (resp: {contents: string} option): Json.json =
+  fun printHoverResponse (resp: hoverResp): Json.json =
       case resp of
           NONE => Json.Null
         | SOME obj => Json.Obj [("contents", Json.String (#contents obj))]
+
+  type didOpenParams = { textDocument: textDocumentItem }
+  fun parseDidOpenParams (params: Json.json): didOpenParams =
+      { textDocument = parseTextDocumentItem (FromJson.get "textDocument" params) }
+
+  type didChangeParams = { textDocument: versionedTextDocumentIdentifier }
+  fun parseDidChangeParams (params: Json.json): didChangeParams =
+      { textDocument = parseVersionedTextDocumentIdentifier (FromJson.get "textDocument" params)
+      (* , contentChanges = ... *)
+      }
+
+  type didSaveParams = { textDocument: textDocumentIdentifier }
+  fun parseDidSaveParams (params: Json.json): didSaveParams =
+      { textDocument = parseTextDocumentIdentifier (FromJson.get "textDocument" params)
+      (* , text = ... *)
+      }
+
+  type initializeResponse = { capabilities:
+                              { hoverProvider: bool
+                              , textDocumentSync: { openClose: bool
+                                                  , save: { includeText: bool} option
+                                                  }
+                              }}
+  fun printInitializeResponse (res: initializeResponse) = 
+      Json.Obj [("capabilities",
+                 let
+                     val capabilities = #capabilities res
+                 in
+                     Json.Obj [ ("hoverProvider", Json.Bool (#hoverProvider capabilities))
+                              , ("textDocumentSync",
+                                 let
+                                     val textDocumentSync = #textDocumentSync capabilities
+                                 in
+                                     Json.Obj [ ("openClose", Json.Bool (#openClose textDocumentSync ))
+                                              , ("save", case #save textDocumentSync of
+                                                             NONE => Json.Null
+                                                           | SOME save => Json.Obj [("includeText", Json.Bool (#includeText save) )])]
+                                 end
+                              )]
+                 end
+      )]
 
   datatype 'a result =
            Success of 'a
@@ -140,14 +213,11 @@ structure LspSpec (* :> LSPSPEC *) = struct
       case a of
           Success contents => Success (f contents)
         | Error e => Error e
+  type context = { showMessage: string -> int -> unit}
   type messageHandlers =
-       { initialize: unit -> { capabilities: {hoverProvider: bool}} result
+       { initialize: unit -> initializeResponse result
        , shutdown: unit -> unit result
-       , textDocument_hover:
-         { showMessage: string -> int -> unit}
-         -> { textDocument: textDocumentIdentifier
-            , position: position }
-         ->  ({contents: string} option) result
+       , textDocument_hover: context -> hoverReq -> hoverResp result
        }
       
   fun handleMessage
@@ -165,7 +235,7 @@ structure LspSpec (* :> LSPSPEC *) = struct
             case #method requestMessage of
                 "initialize" =>
                 mapResult
-                    (fn res => Json.Obj [("capabilities", Json.Obj [("hoverProvider", Json.Bool (#hoverProvider (#capabilities res)))])])
+                    printInitializeResponse
                     ((#initialize handlers) ())
               | "textDocument/hover" =>
                 mapResult
@@ -212,15 +282,20 @@ structure LspSpec (* :> LSPSPEC *) = struct
 
   type notificationHandlers =
        { initialized: unit -> unit
+       , textDocument_didOpen: didOpenParams -> unit
+       , textDocument_didChange: didChangeParams -> unit
+       , textDocument_didSave: didSaveParams -> unit
        }
   fun handleNotification
           (notification: {method: string, params: Json.json})
           (handlers: notificationHandlers)
       = case #method notification of
             "initialized" => (#initialized handlers) ()
+          | "textDocument/didOpen" => (#textDocument_didOpen handlers) (parseDidOpenParams (#params notification))
+          | "textDocument/didChange" => (#textDocument_didChange handlers) (parseDidChangeParams (#params notification))
+          | "textDocument/didSave" => (#textDocument_didSave handlers) (parseDidSaveParams (#params notification))
           | m => (TextIO.output ( TextIO.stdErr, "Notification method not supported: " ^ m);
                   TextIO.flushOut TextIO.stdErr)
-
       
 end
 
@@ -234,24 +309,26 @@ fun serverLoop () =
     in
         (case requestMessage of
              LspSpec.Notification n =>
-             ((*  TextIO.output (TextIO.stdErr, "Handling notification: " ^ #method n ^ "\n"); *)
-              (* TextIO.flushOut TextIO.stdErr; *)
-              LspSpec.handleNotification
-                  n
-                  { initialized = fn () => ()
-             })
+             LspSpec.handleNotification
+                 n
+                 { initialized = fn () => ()
+                 , textDocument_didOpen = fn didOpenParams => ()
+                 , textDocument_didChange = fn didChangeParams => ()
+                 , textDocument_didSave = fn didChangeParams => ()
+                 }
            | LspSpec.RequestMessage m => 
-             ((* TextIO.output (TextIO.stdErr, "Handling message: " ^ #method m ^ "\n"); *)
-              (* TextIO.flushOut TextIO.stdErr; *)
-              LspSpec.handleMessage
-                  m
-                  { initialize = fn () => LspSpec.Success {capabilities = {hoverProvider = true}}
-                  , shutdown = fn () => LspSpec.Success ()
-                  , textDocument_hover =
-                    fn ctx =>
-                       fn _ => LspSpec.Success NONE
-                  }
-             )
+             LspSpec.handleMessage
+                 m
+                 { initialize = fn () => LspSpec.Success
+                   { capabilities =
+                     { hoverProvider = true
+                     , textDocumentSync = { openClose = true
+                                          , save = SOME { includeText = false }
+                                          }}
+                   }
+                 , shutdown = fn () => LspSpec.Success ()
+                 , textDocument_hover = fn ctx => fn _ => LspSpec.Success NONE
+                 }
         ) handle ex => (TextIO.output (TextIO.stdErr, General.exnMessage ex ^ "\n"); TextIO.flushOut TextIO.stdErr ; raise ex)
     end
 
