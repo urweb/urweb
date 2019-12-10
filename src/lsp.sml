@@ -1,3 +1,5 @@
+structure C = Compiler
+
 fun trim (s: substring): substring =
     Substring.dropr
         (fn c => c = #" " orelse c = #"\n" orelse c = #"\r")
@@ -327,22 +329,143 @@ type fileState =
      , decls : Elab.decl list
      }
 type state =
-     { rootUri : LspSpec.documentUri
+     { urpPath : string
      , fileStates : fileState SM.map
      }
 val stateRef = ref (NONE: state option)
 
+fun scanDir (f: string -> bool) (path: string) =
+    let
+        val dir = OS.FileSys.openDir path
+        fun doScanDir acc =
+            case OS.FileSys.readDir dir of 
+                NONE => (OS.FileSys.closeDir dir; acc)
+             |  SOME fname =>
+                (if f fname
+                 then doScanDir (fname :: acc)
+                 else doScanDir acc)
+    in
+        doScanDir []
+    end
+
 (* Throws Fail if can't init *)
 fun initState (initParams: LspSpec.initializeParams): state = 
-    { rootUri = case #rootUri initParams of
-                    NONE => raise Fail "Failed to initialize: no rootUri"
-                  | SOME a => a
-    , fileStates = SM.empty
-    }
+    let 
+        val rootPath = case #rootUri initParams of 
+                           NONE => raise Fail "No rootdir found"
+                         | SOME a => #path a
+        val foundUrps = scanDir (fn fname => OS.Path.ext fname = SOME "urp") rootPath
+    in 
+        { urpPath = case foundUrps of
+                        [] => raise Fail ("No .urp files found in path " ^ rootPath)
+                      | one :: [] => one
+                      | many => raise Fail ("Found multiple .urp files in path " ^ rootPath)
+        , fileStates = SM.empty
+        }
+    end
+
+fun addSgnToEnv (env: ElabEnv.env) (sgn: Source.sgn_item list) (fileName: string) (addUnprefixed: bool): ElabEnv.env =
+    let
+        val moduleName = C.moduleOf fileName
+        val (sgn, gs) = Elaborate.elabSgn (env, Disjoint.empty) (Source.SgnConst sgn, { file = fileName
+                                                                                      , first = ErrorMsg.dummyPos
+                                                                                      , last = ErrorMsg.dummyPos })
+        val () = case gs of
+                     [] => ()
+                   | _ => (app (fn (_, env, _, c1, c2) =>
+                                   Print.prefaces "Unresolved"
+                                                  [("c1", ElabPrint.p_con env c1),
+                                                   ("c2", ElabPrint.p_con env c2)]) gs;
+                           raise Fail ("Unresolved disjointness constraints in " ^ moduleName ^ " at " ^ fileName)) (* TODO Not sure if this is needed for all signatures or only for Basis *)
+        val (env', n) = ElabEnv.pushStrNamed env moduleName sgn
+        val (_, env') = if addUnprefixed
+                        then Elaborate.dopen env' {str = n, strs = [], sgn = sgn}
+                        else ([], env)
+    in
+        env'
+    end
+
 fun calculateFileState (state: state) (fileName: string): fileState =
-    { envOfPreviousModules = ElabEnv.empty
-    , decls = []
-    }
+    let
+        (* TODO Optim: cache parsed urp file? *)
+        val () = if (OS.Path.ext fileName = SOME "ur")
+                 then ()
+                 else raise Fail ("Can only handle .ur files for now")
+        val () = Elaborate.unifyMore := true
+        val job = valOf (C.run (C.transform C.parseUrp "parseUrp") (#urpPath state))
+        fun entryInUrpToFileName (entry: string) (ext: string) = (#urpPath state) ^ "/" ^ entry ^ ext
+        val modulesBeforeAndAfterThisFile =
+            List.partition (fn entry => entryInUrpToFileName entry ".ur" = fileName) (#sources job)
+        val () = case #2 modulesBeforeAndAfterThisFile of 
+                     [] =>
+                     (* Module we're handling should always be in here *)
+                     raise Fail ("Couldn't find file " ^ fileName ^ " referenced in .urp file at " ^ (#urpPath state))
+                   | _ => ()
+        val parsedUrss = List.map (fn entry =>
+                                      let
+                                          val fileName = entryInUrpToFileName entry ".urs"
+                                      in
+                                          { fileName = fileName
+                                          , parsed =
+                                            if OS.FileSys.access (fileName, [])
+                                            then raise (Fail ("Couldn't find an .urs file for " ^ fileName))
+                                            else valOf (C.run (C.transform C.parseUrs "parseUrs") fileName)}
+                                      end)
+                                  (#1 modulesBeforeAndAfterThisFile)
+        val parsedBasisUrs = valOf (C.run (C.transform C.parseUrs "parseUrs") (Settings.libFile "basis.urs"))
+        val parsedTopUrs = valOf (C.run (C.transform C.parseUrs "parseUrs") (Settings.libFile "top.urs"))
+        val envWithStdLib =
+            addSgnToEnv
+                (addSgnToEnv ElabEnv.empty parsedBasisUrs (Settings.libFile "basis.urs") true)
+                parsedTopUrs (Settings.libFile "top.urs") true
+        val envBeforeThisFile = List.foldl (fn (sgn, env) => addSgnToEnv env (#parsed sgn) (#fileName sgn) false) envWithStdLib parsedUrss
+        val (parsedUr: Source.decl list) =
+            valOf (C.run (C.transform C.parseUr "parseUr") fileName)
+        val (parsedUrs: (Source.sgn_item list) option) =
+            if OS.FileSys.access (fileName ^ "s", []) then
+                SOME (valOf (C.run (C.transform C.parseUrs "parseUrs") (fileName ^ "s")))
+            else
+                NONE
+        val (str, sgn', gs) =
+            Elaborate.elabStr
+                (envBeforeThisFile, Disjoint.empty)
+                (Source.StrConst parsedUr, {file = fileName, first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos})
+
+        (* TODO definitily not sure about this one, just copied from "top" processing *)
+        val () = case gs of
+                     [] => ()
+                   | _ => app (fn Elaborate.Disjoint (loc, env, denv, c1, c2) =>
+                                  (case Disjoint.prove env denv (c1, c2, loc) of
+                                       [] => ()
+                                     | _ =>
+                                       (Print.prefaces "Unresolved constraint in top.ur"
+                                                       [("loc", Print.PD.string (ErrorMsg.spanToString loc)),
+                                                        ("c1", ElabPrint.p_con env c1),
+                                                        ("c2", ElabPrint.p_con env c2)];
+                                        raise Fail "Unresolved constraint in top.ur"))
+                              | Elaborate.TypeClass (env, c, r, loc) =>
+                                ()
+                                (* let *)
+                                (*     val c = normClassKey env c *)
+                                (* in *)
+                                (*     case resolveClass env c of *)
+                                (*         SOME e => r := SOME e *)
+                                (*       | NONE => expError env (Unresolvable (loc, c)) *)
+                              (* end *)
+                              ) gs
+        val (sgn, gs) = Elaborate.elabSgn
+                            (envBeforeThisFile, Disjoint.empty)
+                            ( Source.SgnConst (case parsedUrs of NONE => [] | SOME a => a)
+                            , {file = fileName ^ "s", first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos})
+        val () = case gs of [] => () | _ => raise Fail ("Unresolved disjointness constraints in " ^ fileName) (* TODO not sure? *)
+        val () = Elaborate.subSgn envBeforeThisFile ErrorMsg.dummySpan sgn' sgn
+    in
+        { envOfPreviousModules = envBeforeThisFile
+        , decls = case str of
+                      (Elab.StrConst decls, _) => decls
+                    | _ => raise Fail ("Impossible: Source.StrConst did not become Elab.StrConst after elaboration")
+        }
+    end
 
 fun serverLoop () =            
     let 
@@ -383,9 +506,9 @@ fun serverLoop () =
                     , textDocument_didOpen = fn didOpenParams =>
                                                 let 
                                                     val path = #path (#uri (#textDocument didOpenParams))
-                                                    val fileState = calculateFileState state (path)
+                                                    val fileState = calculateFileState state path
                                                 in
-                                                    stateRef := SOME { rootUri = #rootUri state
+                                                    stateRef := SOME { urpPath = #urpPath state
                                                                      , fileStates = SM.insert ( #fileStates state
                                                                                               , path
                                                                                               , fileState)
@@ -395,9 +518,9 @@ fun serverLoop () =
                     , textDocument_didSave = fn didSaveParams => 
                                                 let 
                                                     val path = #path (#uri (#textDocument didSaveParams))
-                                                    val fileState = calculateFileState state (path)
+                                                    val fileState = calculateFileState state path
                                                 in
-                                                    stateRef := SOME { rootUri = #rootUri state
+                                                    stateRef := SOME { urpPath = #urpPath state
                                                                      , fileStates = SM.insert ( #fileStates state
                                                                                               , path
                                                                                               , fileState)

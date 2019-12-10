@@ -53,4 +53,18 @@ signature ELABORATE = sig
                   , sgn: Elab.sgn }
                -> (Elab.decl list * ElabEnv.env)
 
+    val elabSgn: (ElabEnv.env * Disjoint.env)
+                 -> Source.sgn
+                 -> (Elab.sgn * Disjoint.goal list)
+
+    datatype constraint =
+             Disjoint of Disjoint.goal
+             | TypeClass of ElabEnv.env * Elab.con * Elab.exp option ref * ErrorMsg.span
+                  
+    val elabStr: (ElabEnv.env * Disjoint.env)
+                 -> Source.str
+                 -> (Elab.str * Elab.sgn * constraint list)
+
+    val subSgn: ElabEnv.env -> ErrorMsg.span -> Elab.sgn -> Elab.sgn -> unit
+
 end
