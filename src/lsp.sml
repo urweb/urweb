@@ -5,6 +5,9 @@ fun trim (s: substring): substring =
         (fn c => c = #" " orelse c = #"\n" orelse c = #"\r")
         (Substring.dropl (fn c => c = #" " orelse c = #"\n" orelse c = #"\r") s)
 
+fun joinStr (sep: string) (strs: string list): string =
+    List.foldl (fn (str, acc) => if acc = "" then str else acc ^ sep ^ str) "" strs
+
 structure FromJson = struct 
 fun get (s: string) (l: Json.json): Json.json =
       case l of
@@ -111,6 +114,12 @@ structure LspSpec (* :> LSPSPEC *) = struct
           , fragment = Substring.string fragment
           }
       end
+  fun printDocumentUri (d: documentUri) =
+      (#scheme d) ^ "://" ^
+      (#authority d) ^ "/" ^
+      (#path d) ^ 
+      (if #query d <> "" then "?" ^ #query d else "") ^
+      (if #fragment d <> "" then "#" ^ #fragment d else "")
 
   type textDocumentIdentifier = { uri: documentUri}
   fun parseTextDocumentIdentifier (j: Json.json): textDocumentIdentifier = 
@@ -145,6 +154,13 @@ structure LspSpec (* :> LSPSPEC *) = struct
       { line = FromJson.asInt (FromJson.get "line" j)
       , character = FromJson.asInt (FromJson.get "character" j)
       }
+  fun printPosition (p: position): Json.json = Json.Obj [ ("line", Json.Int (#line p))
+                                                        , ("character", Json.Int (#character p))]
+                                                  
+  type range = { start: position
+               , end_: position }
+  fun printRange (r: range): Json.json = Json.Obj [ ("start", printPosition (#start r))
+                                                  , ("end", printPosition (#end_ r))]
 
   fun readRequestFromStdIO (): message =
       let 
@@ -195,6 +211,26 @@ structure LspSpec (* :> LSPSPEC *) = struct
           parseDocumentUri
           (FromJson.asOptionalString (FromJson.get "rootUri" j))
       }
+  type diagnostic = { range: range
+                    (* code?: number | string *)
+                    , severity: int (* 1 = error, 2 = warning, 3 = info, 4 = hint*)
+                    , source: string
+                    , message: string
+                    (* relatedInformation?: DiagnosticRelatedInformation[]; *)
+                    }
+  fun printDiagnostic (d: diagnostic): Json.json = 
+      Json.Obj [ ("range", printRange (#range d))
+               , ("severity", Json.Int (#severity d))
+               , ("source", Json.String (#source d))
+               , ("message", Json.String (#message d))
+               ]
+  type publishDiagnosticsParams = { uri: documentUri
+                                  , diagnostics: diagnostic list
+                                  }
+  fun printPublishDiagnosticsParams (p: publishDiagnosticsParams): Json.json =
+      Json.Obj [ ("uri", Json.String (printDocumentUri (#uri p)))
+               , ("diagnostics", Json.Array (List.map printDiagnostic (#diagnostics p)))]
+               
   type initializeResponse = { capabilities:
                               { hoverProvider: bool
                               , textDocumentSync:
@@ -229,24 +265,27 @@ structure LspSpec (* :> LSPSPEC *) = struct
       case a of
           Success contents => Success (f contents)
         | Error e => Error e
-  type context = { showMessage: string -> int -> unit}
+  type toclient = { showMessage: string -> int -> unit
+                  , publishDiagnostics: publishDiagnosticsParams -> unit }
   type messageHandlers =
        { initialize: initializeParams -> initializeResponse result
        , shutdown: unit -> unit result
-       , textDocument_hover: context -> hoverReq -> hoverResp result
+       , textDocument_hover: toclient -> hoverReq -> hoverResp result
        }
       
+  fun showMessage str typ =
+      TextIO.print (Json.print (Json.Obj [ ("method", Json.String "window/showMessage")
+                                         , ("params", Json.Obj [ ("type", Json.Int typ)
+                                                               , ("message", Json.String str)])
+                   ]));
+  fun publishDiagnostics diags = TextIO.print (Json.print (printPublishDiagnosticsParams diags))
+  val toclient: toclient = {showMessage = showMessage, publishDiagnostics = publishDiagnostics}
+
   fun handleMessage
           (requestMessage: {id: Json.json, method: string, params: Json.json})
           (handlers: messageHandlers)
       : unit =
     let 
-        fun showMessage str typ =
-            TextIO.print (Json.print (Json.Obj [ ("method", Json.String "window/showMessage")
-                                               , ("params", Json.Obj [ ("type", Json.Int typ)
-                                                                     , ("message", Json.String str)])
-                         ]));
-        
         val result: Json.json result = 
             case #method requestMessage of
                 "initialize" =>
@@ -258,7 +297,7 @@ structure LspSpec (* :> LSPSPEC *) = struct
                 mapResult
                     printHoverResponse
                     ((#textDocument_hover handlers)
-                         {showMessage = showMessage}
+                         toclient
                          (parseHoverReq (#params requestMessage)))
               | "shutdown" =>
                 mapResult
@@ -299,18 +338,19 @@ structure LspSpec (* :> LSPSPEC *) = struct
 
   type notificationHandlers =
        { initialized: unit -> unit
-       , textDocument_didOpen: didOpenParams -> unit
-       , textDocument_didChange: didChangeParams -> unit
-       , textDocument_didSave: didSaveParams -> unit
+       , textDocument_didOpen: toclient -> didOpenParams -> unit
+       , textDocument_didChange: toclient -> didChangeParams -> unit
+       , textDocument_didSave: toclient -> didSaveParams -> unit
        }
   fun handleNotification
           (notification: {method: string, params: Json.json})
           (handlers: notificationHandlers)
-      = case #method notification of
+      =
+      case #method notification of
             "initialized" => (#initialized handlers) ()
-          | "textDocument/didOpen" => (#textDocument_didOpen handlers) (parseDidOpenParams (#params notification))
-          | "textDocument/didChange" => (#textDocument_didChange handlers) (parseDidChangeParams (#params notification))
-          | "textDocument/didSave" => (#textDocument_didSave handlers) (parseDidSaveParams (#params notification))
+          | "textDocument/didOpen" => (#textDocument_didOpen handlers) toclient (parseDidOpenParams (#params notification))
+          | "textDocument/didChange" => (#textDocument_didChange handlers) toclient (parseDidChangeParams (#params notification))
+          | "textDocument/didSave" => (#textDocument_didSave handlers) toclient (parseDidSaveParams (#params notification))
           | m => (TextIO.output ( TextIO.stdErr, "Notification method not supported: " ^ m);
                   TextIO.flushOut TextIO.stdErr)
       
@@ -385,7 +425,8 @@ fun addSgnToEnv (env: ElabEnv.env) (sgn: Source.sgn_item list) (fileName: string
         env'
     end
 
-fun calculateFileState (state: state) (fileName: string): fileState =
+(* TODO: get errors from elaboration and subsgn and make Diagnostics from these *)
+fun calculateFileState (state: state) (fileName: string): (fileState * LspSpec.diagnostic list) =
     let
         (* TODO Optim: cache parsed urp file? *)
         val () = if (OS.Path.ext fileName = SOME "ur")
@@ -426,12 +467,13 @@ fun calculateFileState (state: state) (fileName: string): fileState =
                 SOME (valOf (C.run (C.transform C.parseUrs "parseUrs") (fileName ^ "s")))
             else
                 NONE
+        val () = ErrorMsg.resetErrors ()
         val (str, sgn', gs) =
             Elaborate.elabStr
                 (envBeforeThisFile, Disjoint.empty)
                 (Source.StrConst parsedUr, {file = fileName, first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos})
 
-        (* TODO definitily not sure about this one, just copied from "top" processing *)
+        (* TODO definitely not sure about this one, just copied from "top" processing *)
         val () = case gs of
                      [] => ()
                    | _ => app (fn Elaborate.Disjoint (loc, env, denv, c1, c2) =>
@@ -459,12 +501,43 @@ fun calculateFileState (state: state) (fileName: string): fileState =
                             , {file = fileName ^ "s", first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos})
         val () = case gs of [] => () | _ => raise Fail ("Unresolved disjointness constraints in " ^ fileName) (* TODO not sure? *)
         val () = Elaborate.subSgn envBeforeThisFile ErrorMsg.dummySpan sgn' sgn
+        val errors = ErrorMsg.readErrorLog ()
     in
-        { envOfPreviousModules = envBeforeThisFile
-        , decls = case str of
-                      (Elab.StrConst decls, _) => decls
-                    | _ => raise Fail ("Impossible: Source.StrConst did not become Elab.StrConst after elaboration")
-        }
+        ({ envOfPreviousModules = envBeforeThisFile
+         , decls = case str of
+                       (Elab.StrConst decls, _) => decls
+                     | _ => raise Fail ("Impossible: Source.StrConst did not become Elab.StrConst after elaboration")
+         },
+         List.map
+             (fn err => { range = { start = { line = #line (#first (#span err))
+                                            , character = #char (#first (#span err))
+                                            }
+                                  , end_ = { line = #line (#last (#span err))
+                                           , character = #char (#last (#span err))
+                                           }
+                                  }
+                        , severity = 1
+                        , source = "UrWeb"
+                        , message = #message err
+                        }
+             )
+             errors
+        )
+    end
+
+fun handleFullDocument (state: state) (toclient: LspSpec.toclient) (documentUri: LspSpec.documentUri) =
+    let 
+        val path = #path documentUri
+        val res = calculateFileState state path
+    in
+        stateRef := SOME { urpPath = #urpPath state
+                         , fileStates = SM.insert ( #fileStates state
+                                                  , path
+                                                  , #1 res)
+                         };
+        case #2 res of
+            [] => ()
+          | diags => #publishDiagnostics toclient { uri = documentUri , diagnostics = diags}
     end
 
 fun serverLoop () =            
@@ -503,29 +576,9 @@ fun serverLoop () =
                 LspSpec.handleNotification
                     n
                     { initialized = fn () => ()
-                    , textDocument_didOpen = fn didOpenParams =>
-                                                let 
-                                                    val path = #path (#uri (#textDocument didOpenParams))
-                                                    val fileState = calculateFileState state path
-                                                in
-                                                    stateRef := SOME { urpPath = #urpPath state
-                                                                     , fileStates = SM.insert ( #fileStates state
-                                                                                              , path
-                                                                                              , fileState)
-                                                                     }
-                                                end
-                    , textDocument_didChange = fn didChangeParams => ()
-                    , textDocument_didSave = fn didSaveParams => 
-                                                let 
-                                                    val path = #path (#uri (#textDocument didSaveParams))
-                                                    val fileState = calculateFileState state path
-                                                in
-                                                    stateRef := SOME { urpPath = #urpPath state
-                                                                     , fileStates = SM.insert ( #fileStates state
-                                                                                              , path
-                                                                                              , fileState)
-                                                                     }
-                                                end
+                    , textDocument_didOpen = fn ctx => fn p => handleFullDocument state ctx (#uri (#textDocument p))
+                    , textDocument_didChange = fn ctx => fn didChangeParams => ()
+                    , textDocument_didSave = fn ctx => fn p => handleFullDocument state ctx (#uri (#textDocument p))
                     }
               | LspSpec.RequestMessage m => 
                 LspSpec.handleMessage

@@ -88,6 +88,9 @@ fun spanOf (pos1, pos2) = {file = !file,
 
 
 val errors = ref false
+val errorLog = ref ([]: { span: span
+                        , message: string } list)
+fun readErrorLog () = !errorLog
 val structuresCurrentlyElaborating: ((string * bool) list) ref = ref nil
 
 fun startElabStructure s =
@@ -106,7 +109,7 @@ fun stopElabStructureAndGetErrored s =
 fun resetStructureTracker () =
     structuresCurrentlyElaborating := []
 
-fun resetErrors () = errors := false
+fun resetErrors () = (errors := false; errorLog := [])
 fun anyErrors () = !errors
 fun error s = (TextIO.output (TextIO.stdErr, s);
                TextIO.output1 (TextIO.stdErr, #"\n");
@@ -120,6 +123,9 @@ fun errorAt (span : span) s = (TextIO.output (TextIO.stdErr, #file span);
                                TextIO.output (TextIO.stdErr, ": (to ");
                                TextIO.output (TextIO.stdErr, posToString (#last span));
                                TextIO.output (TextIO.stdErr, ") ");
+                               errorLog := ({ span = span
+                                            , message = s
+                                            } :: !errorLog);
                                error s)
 fun errorAt' span s = errorAt (spanOf span) s
 

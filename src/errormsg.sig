@@ -58,4 +58,7 @@ signature ERROR_MSG = sig
     val error : string -> unit
     val errorAt : span -> string -> unit
     val errorAt' : int * int -> string -> unit
+    val readErrorLog: unit ->
+                      { span: span
+                      , message: string } list
 end
