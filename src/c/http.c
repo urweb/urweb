@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdarg.h>
-#include <linux/un.h>
+#include <sys/un.h>
 
 #include <pthread.h>
 
