@@ -27,6 +27,12 @@ fun asOptionalInt (j: Json.json): int option =
         Json.Null => NONE
      |  Json.Int i => SOME i
      |  _ => raise Fail ("Expected JSON int or null, got: " ^ Json.print j)
+
+fun asOptionalString (j: Json.json): string option =
+    case j of
+        Json.Null => NONE
+     |  Json.String s => SOME s
+     |  _ => raise Fail ("Expected JSON string or null, got: " ^ Json.print j)
 end
 
 structure LspSpec (* :> LSPSPEC *) = struct 
@@ -179,12 +185,20 @@ structure LspSpec (* :> LSPSPEC *) = struct
       { textDocument = parseTextDocumentIdentifier (FromJson.get "textDocument" params)
       (* , text = ... *)
       }
-
+  type initializeParams =
+       { rootUri: documentUri option }
+  fun parseInitializeParams (j: Json.json) =
+      { rootUri =
+        Option.map
+          parseDocumentUri
+          (FromJson.asOptionalString (FromJson.get "rootUri" j))
+      }
   type initializeResponse = { capabilities:
                               { hoverProvider: bool
-                              , textDocumentSync: { openClose: bool
-                                                  , save: { includeText: bool} option
-                                                  }
+                              , textDocumentSync:
+                                { openClose: bool
+                                , save: { includeText: bool } option
+                                }
                               }}
   fun printInitializeResponse (res: initializeResponse) = 
       Json.Obj [("capabilities",
@@ -215,7 +229,7 @@ structure LspSpec (* :> LSPSPEC *) = struct
         | Error e => Error e
   type context = { showMessage: string -> int -> unit}
   type messageHandlers =
-       { initialize: unit -> initializeResponse result
+       { initialize: initializeParams -> initializeResponse result
        , shutdown: unit -> unit result
        , textDocument_hover: context -> hoverReq -> hoverResp result
        }
@@ -236,7 +250,8 @@ structure LspSpec (* :> LSPSPEC *) = struct
                 "initialize" =>
                 mapResult
                     printInitializeResponse
-                    ((#initialize handlers) ())
+                    ((#initialize handlers)
+                       (parseInitializeParams (#params requestMessage)))
               | "textDocument/hover" =>
                 mapResult
                     printHoverResponse
@@ -301,35 +316,102 @@ end
 
 structure Lsp :> LSP = struct 
 
+structure SK = struct
+  type ord_key = string
+  val compare = String.compare
+end
+structure SM = BinaryMapFn(SK)
+
+type fileState =
+     { envOfPreviousModules : ElabEnv.env
+     , decls : Elab.decl list
+     }
+type state =
+     { rootUri : LspSpec.documentUri
+     , fileStates : fileState SM.map
+     }
+val stateRef = ref (NONE: state option)
+
+(* Throws Fail if can't init *)
+fun initState (initParams: LspSpec.initializeParams): state = 
+    { rootUri = case #rootUri initParams of
+                    NONE => raise Fail "Failed to initialize: no rootUri"
+                  | SOME a => a
+    , fileStates = SM.empty
+    }
+fun calculateFileState (state: state) (fileName: string): fileState =
+    { envOfPreviousModules = ElabEnv.empty
+    , decls = []
+    }
+
 fun serverLoop () =            
     let 
         val requestMessage =
             LspSpec.readRequestFromStdIO ()
             handle ex => (TextIO.output (TextIO.stdErr, General.exnMessage ex ^ "\n"); TextIO.flushOut TextIO.stdErr ; raise ex)
+        val state = !stateRef
     in
-        (case requestMessage of
-             LspSpec.Notification n =>
-             LspSpec.handleNotification
-                 n
-                 { initialized = fn () => ()
-                 , textDocument_didOpen = fn didOpenParams => ()
-                 , textDocument_didChange = fn didChangeParams => ()
-                 , textDocument_didSave = fn didChangeParams => ()
-                 }
-           | LspSpec.RequestMessage m => 
-             LspSpec.handleMessage
-                 m
-                 { initialize = fn () => LspSpec.Success
-                   { capabilities =
-                     { hoverProvider = true
-                     , textDocumentSync = { openClose = true
-                                          , save = SOME { includeText = false }
-                                          }}
-                   }
-                 , shutdown = fn () => LspSpec.Success ()
-                 , textDocument_hover = fn ctx => fn _ => LspSpec.Success NONE
-                 }
-        ) handle ex => (TextIO.output (TextIO.stdErr, General.exnMessage ex ^ "\n"); TextIO.flushOut TextIO.stdErr ; raise ex)
+        case state of
+            NONE =>
+            (case requestMessage of
+                  LspSpec.RequestMessage m =>
+                  LspSpec.handleMessage
+                    m
+                    { initialize = fn _ => 
+                                      let val st = initState (LspSpec.parseInitializeParams (#params m))
+                                      in
+                                          stateRef := SOME st;
+                                          LspSpec.Success
+                                            { capabilities =
+                                                { hoverProvider = true
+                                                , textDocumentSync = { openClose = true
+                                                                      , save = SOME { includeText = false }
+                                                                      }}
+                                            }
+                                      end
+                                      handle (Fail str) => LspSpec.Error (~32602, str)
+                    , shutdown = fn () => LspSpec.Error (~32002, "Server not initialized")
+                    , textDocument_hover = fn ctx => fn _ => LspSpec.Error (~32002, "Server not initialized")
+                    }
+                | LspSpec.Notification n => ())
+          | SOME state => 
+            (case requestMessage of
+                LspSpec.Notification n =>
+                LspSpec.handleNotification
+                    n
+                    { initialized = fn () => ()
+                    , textDocument_didOpen = fn didOpenParams =>
+                                                let 
+                                                    val path = #path (#uri (#textDocument didOpenParams))
+                                                    val fileState = calculateFileState state (path)
+                                                in
+                                                    stateRef := SOME { rootUri = #rootUri state
+                                                                     , fileStates = SM.insert ( #fileStates state
+                                                                                              , path
+                                                                                              , fileState)
+                                                                     }
+                                                end
+                    , textDocument_didChange = fn didChangeParams => ()
+                    , textDocument_didSave = fn didSaveParams => 
+                                                let 
+                                                    val path = #path (#uri (#textDocument didSaveParams))
+                                                    val fileState = calculateFileState state (path)
+                                                in
+                                                    stateRef := SOME { rootUri = #rootUri state
+                                                                     , fileStates = SM.insert ( #fileStates state
+                                                                                              , path
+                                                                                              , fileState)
+                                                                     }
+                                                end
+                    }
+              | LspSpec.RequestMessage m => 
+                LspSpec.handleMessage
+                    m
+                    { initialize = fn _ => LspSpec.Error (~32600, "Server already initialized")
+                    , shutdown = fn () => LspSpec.Success ()
+                    , textDocument_hover = fn ctx => fn _ => LspSpec.Success NONE
+                    }
+            ) handle ex => (TextIO.output (TextIO.stdErr, General.exnMessage ex ^ "\n"); TextIO.flushOut TextIO.stdErr ; raise ex)
     end
 
 fun startServer () = while true do serverLoop ()
