@@ -1,4 +1,6 @@
 structure C = Compiler
+fun debug (str: string): unit =
+    (TextIO.output (TextIO.stdErr, str ^ "\n\n"); TextIO.flushOut TextIO.stdErr)
 
 fun trim (s: substring): substring =
     Substring.dropr
@@ -98,7 +100,7 @@ structure LspSpec (* :> LSPSPEC *) = struct
           val str = Substring.full str
           val (scheme, rest) = Substring.splitl (fn c => c <> #":") str
           val (authority, rest) = Substring.splitl (fn c => c <> #"/") (Substring.triml 3 rest (* :// *))
-          val (path, rest) = Substring.splitl (fn c => c <> #"?" orelse c <> #"#") (Substring.triml 1 rest (* / *))
+          val (path, rest) = Substring.splitl (fn c => c <> #"?" orelse c <> #"#") rest
           val (query, rest) = if Substring.first rest = SOME #"?"
                               then Substring.splitl (fn c => c <> #"#") (Substring.triml 1 rest (* ? *))
                               else (Substring.full "", rest)
@@ -116,7 +118,7 @@ structure LspSpec (* :> LSPSPEC *) = struct
       end
   fun printDocumentUri (d: documentUri) =
       (#scheme d) ^ "://" ^
-      (#authority d) ^ "/" ^
+      (#authority d) ^
       (#path d) ^ 
       (if #query d <> "" then "?" ^ #query d else "") ^
       (if #fragment d <> "" then "#" ^ #fragment d else "")
@@ -274,11 +276,27 @@ structure LspSpec (* :> LSPSPEC *) = struct
        }
       
   fun showMessage str typ =
-      TextIO.print (Json.print (Json.Obj [ ("method", Json.String "window/showMessage")
-                                         , ("params", Json.Obj [ ("type", Json.Int typ)
-                                                               , ("message", Json.String str)])
-                   ]));
-  fun publishDiagnostics diags = TextIO.print (Json.print (printPublishDiagnosticsParams diags))
+      let
+          val jsonToPrint = Json.print (Json.Obj [ ("jsonrpc", Json.String "2.0")
+                                                 , ("method", Json.String "window/showMessage")
+                                                 , ("params", Json.Obj [ ("type", Json.Int typ)
+                                                                       , ("message", Json.String str)])
+                                       ])
+          val toPrint = "Content-Length:" ^ Int.toString (String.size jsonToPrint) ^ "\r\n\r\n" ^ jsonToPrint
+      in
+          TextIO.print toPrint
+      end
+  fun publishDiagnostics diags =
+      let
+          val jsonToPrint = Json.print ((Json.Obj [ ("jsonrpc", Json.String "2.0")
+                                                  , ("method", Json.String "textDocument/publishDiagnostics")
+                                                  , ("params", printPublishDiagnosticsParams diags)
+                                       ]))
+          val toPrint = "Content-Length:" ^ Int.toString (String.size jsonToPrint) ^ "\r\n\r\n" ^ jsonToPrint
+      in
+          (debug ("Sending diagnostics: " ^ toPrint);
+           TextIO.print toPrint)
+      end
   val toclient: toclient = {showMessage = showMessage, publishDiagnostics = publishDiagnostics}
 
   fun handleMessage
@@ -351,8 +369,7 @@ structure LspSpec (* :> LSPSPEC *) = struct
           | "textDocument/didOpen" => (#textDocument_didOpen handlers) toclient (parseDidOpenParams (#params notification))
           | "textDocument/didChange" => (#textDocument_didChange handlers) toclient (parseDidChangeParams (#params notification))
           | "textDocument/didSave" => (#textDocument_didSave handlers) toclient (parseDidSaveParams (#params notification))
-          | m => (TextIO.output ( TextIO.stdErr, "Notification method not supported: " ^ m);
-                  TextIO.flushOut TextIO.stdErr)
+          | m => debug ("Notification method not supported: " ^ m)
       
 end
 
@@ -394,11 +411,12 @@ fun initState (initParams: LspSpec.initializeParams): state =
         val rootPath = case #rootUri initParams of 
                            NONE => raise Fail "No rootdir found"
                          | SOME a => #path a
+        (* val () = debug ("Scanning dir: " ^ rootPath) *)
         val foundUrps = scanDir (fn fname => OS.Path.ext fname = SOME "urp") rootPath
     in 
         { urpPath = case foundUrps of
                         [] => raise Fail ("No .urp files found in path " ^ rootPath)
-                      | one :: [] => one
+                      | one :: [] => OS.Path.base (OS.Path.file one)
                       | many => raise Fail ("Found multiple .urp files in path " ^ rootPath)
         , fileStates = SM.empty
         }
@@ -425,7 +443,6 @@ fun addSgnToEnv (env: ElabEnv.env) (sgn: Source.sgn_item list) (fileName: string
         env'
     end
 
-(* TODO: get errors from elaboration and subsgn and make Diagnostics from these *)
 fun calculateFileState (state: state) (fileName: string): (fileState * LspSpec.diagnostic list) =
     let
         (* TODO Optim: cache parsed urp file? *)
@@ -474,27 +491,26 @@ fun calculateFileState (state: state) (fileName: string): (fileState * LspSpec.d
                 (Source.StrConst parsedUr, {file = fileName, first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos})
 
         (* TODO definitely not sure about this one, just copied from "top" processing *)
-        val () = case gs of
-                     [] => ()
-                   | _ => app (fn Elaborate.Disjoint (loc, env, denv, c1, c2) =>
-                                  (case Disjoint.prove env denv (c1, c2, loc) of
-                                       [] => ()
-                                     | _ =>
-                                       (Print.prefaces "Unresolved constraint in top.ur"
-                                                       [("loc", Print.PD.string (ErrorMsg.spanToString loc)),
-                                                        ("c1", ElabPrint.p_con env c1),
-                                                        ("c2", ElabPrint.p_con env c2)];
-                                        raise Fail "Unresolved constraint in top.ur"))
-                              | Elaborate.TypeClass (env, c, r, loc) =>
-                                ()
-                                (* let *)
-                                (*     val c = normClassKey env c *)
-                                (* in *)
-                                (*     case resolveClass env c of *)
-                                (*         SOME e => r := SOME e *)
-                                (*       | NONE => expError env (Unresolvable (loc, c)) *)
-                              (* end *)
-                              ) gs
+        (* val () = case gs of *)
+        (*              [] => () *)
+        (*            | _ => app (fn Elaborate.Disjoint (loc, env, denv, c1, c2) => *)
+        (*                           (case Disjoint.prove env denv (c1, c2, loc) of *)
+        (*                                [] => () *)
+        (*                              | _ => *)
+        (*                                (Print.prefaces "Unresolved constraint in top.ur" *)
+        (*                                                [("loc", Print.PD.string (ErrorMsg.spanToString loc)), *)
+        (*                                                 ("c1", ElabPrint.p_con env c1), *)
+        (*                                                 ("c2", ElabPrint.p_con env c2)]; *)
+        (*                                 raise Fail "Unresolved constraint in top.ur")) *)
+        (*                       | Elaborate.TypeClass (env, c, r, loc) => *)
+        (*                         let *)
+        (*                             val c = normClassKey env c *)
+        (*                         in *)
+        (*                             case resolveClass env c of *)
+        (*                                 SOME e => r := SOME e *)
+        (*                               | NONE => expError env (Unresolvable (loc, c)) *)
+        (*                       end *)
+        (*                       ) gs *)
         val (sgn, gs) = Elaborate.elabSgn
                             (envBeforeThisFile, Disjoint.empty)
                             ( Source.SgnConst (case parsedUrs of NONE => [] | SOME a => a)
@@ -502,17 +518,19 @@ fun calculateFileState (state: state) (fileName: string): (fileState * LspSpec.d
         val () = case gs of [] => () | _ => raise Fail ("Unresolved disjointness constraints in " ^ fileName) (* TODO not sure? *)
         val () = Elaborate.subSgn envBeforeThisFile ErrorMsg.dummySpan sgn' sgn
         val errors = ErrorMsg.readErrorLog ()
+        val decls = case str of
+                        (Elab.StrConst decls, _) => decls
+                      | _ => raise Fail ("Impossible: Source.StrConst did not become Elab.StrConst after elaboration")
+        val () = debug ("Finished calculateFileState for " ^ fileName ^ " with " ^ Int.toString (List.length errors) ^ " errors. " ^ Int.toString (List.length decls) ^ " decls found")
     in
         ({ envOfPreviousModules = envBeforeThisFile
-         , decls = case str of
-                       (Elab.StrConst decls, _) => decls
-                     | _ => raise Fail ("Impossible: Source.StrConst did not become Elab.StrConst after elaboration")
+         , decls = decls
          },
          List.map
-             (fn err => { range = { start = { line = #line (#first (#span err))
+             (fn err => { range = { start = { line = #line (#first (#span err)) - 1
                                             , character = #char (#first (#span err))
                                             }
-                                  , end_ = { line = #line (#last (#span err))
+                                  , end_ = { line = #line (#last (#span err)) - 1
                                            , character = #char (#last (#span err))
                                            }
                                   }
@@ -535,16 +553,14 @@ fun handleFullDocument (state: state) (toclient: LspSpec.toclient) (documentUri:
                                                   , path
                                                   , #1 res)
                          };
-        case #2 res of
-            [] => ()
-          | diags => #publishDiagnostics toclient { uri = documentUri , diagnostics = diags}
+        #publishDiagnostics toclient { uri = documentUri , diagnostics = #2 res}
     end
 
 fun serverLoop () =            
     let 
         val requestMessage =
             LspSpec.readRequestFromStdIO ()
-            handle ex => (TextIO.output (TextIO.stdErr, General.exnMessage ex ^ "\n"); TextIO.flushOut TextIO.stdErr ; raise ex)
+            handle ex => (debug (General.exnMessage ex) ; raise ex)
         val state = !stateRef
     in
         case state of
@@ -554,17 +570,17 @@ fun serverLoop () =
                   LspSpec.handleMessage
                     m
                     { initialize = fn _ => 
-                                      let val st = initState (LspSpec.parseInitializeParams (#params m))
-                                      in
-                                          stateRef := SOME st;
-                                          LspSpec.Success
-                                            { capabilities =
-                                                { hoverProvider = true
-                                                , textDocumentSync = { openClose = true
+                                      (let val st = initState (LspSpec.parseInitializeParams (#params m))
+                                       in
+                                           stateRef := SOME st;
+                                           LspSpec.Success
+                                               { capabilities =
+                                                 { hoverProvider = true
+                                                 , textDocumentSync = { openClose = true
                                                                       , save = SOME { includeText = false }
-                                                                      }}
-                                            }
-                                      end
+                                                 }}
+                                               }
+                                       end)
                                       handle (Fail str) => LspSpec.Error (~32602, str)
                     , shutdown = fn () => LspSpec.Error (~32002, "Server not initialized")
                     , textDocument_hover = fn ctx => fn _ => LspSpec.Error (~32002, "Server not initialized")
@@ -587,7 +603,7 @@ fun serverLoop () =
                     , shutdown = fn () => LspSpec.Success ()
                     , textDocument_hover = fn ctx => fn _ => LspSpec.Success NONE
                     }
-            ) handle ex => (TextIO.output (TextIO.stdErr, General.exnMessage ex ^ "\n"); TextIO.flushOut TextIO.stdErr ; raise ex)
+            ) handle ex => (debug (General.exnMessage ex); raise ex)
     end
 
 fun startServer () = while true do serverLoop ()

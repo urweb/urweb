@@ -114,8 +114,12 @@ struct
    and parseChars () = 
    let
       fun pickChars s =
-         if peek () = #"\"" (* " *) then s else
-            pickChars (s ^ String.str (take ()))
+          if peek () = #"\"" (* " *)
+          then s
+          else
+              if peek () = #"\\" andalso (String.sub (!inputData, 1)) = #"\""
+              then (consume "\\\""; pickChars (s ^ "\""))
+              else pickChars (s ^ String.str (take ()))
    in
       pickChars ""
    end
@@ -256,8 +260,8 @@ fun parse (str: string): json =
 fun print (ast: json): string = 
     case ast of
         Array l => "["
-                  ^ List.foldl (fn (a, acc) => acc ^ "," ^ print a) "" l
-                  ^ "]"
+                   ^ List.foldl (fn (a, acc) => acc ^ (if acc = "" then "" else ", ") ^ print a) "" l
+                   ^ "]"
       | Null => "null"
       | Float r => Real.toString r
       | String s =>
