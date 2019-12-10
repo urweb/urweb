@@ -443,6 +443,7 @@ fun addSgnToEnv (env: ElabEnv.env) (sgn: Source.sgn_item list) (fileName: string
         env'
     end
 
+(* TODO: Any parse error -> valOf fails, throws and server crashes *)
 fun calculateFileState (state: state) (fileName: string): (fileState * LspSpec.diagnostic list) =
     let
         (* TODO Optim: cache parsed urp file? *)
