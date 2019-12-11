@@ -141,10 +141,6 @@ fun oneRun args =
         fun printModuleOf fname =
             print_and_exit (Compiler.moduleOf fname) ()
 
-        fun getInfo loc =
-            (Print.print (GetInfo.getInfo loc);
-             raise Code OS.Process.success)
-
         fun add_class (class, num) =
             case Int.fromString num of
                  NONE => raise Fail ("Invalid limit number '" ^ num ^ "'")
@@ -251,8 +247,6 @@ fun oneRun args =
                     NONE),
               ("moduleOf", ONE ("<file>", printModuleOf),
                     SOME "print module name of <file> and exit"),
-              ("getInfo", ONE ("<file:row:col>", getInfo),
-                    SOME "print info of expression at <file:row:col> and exit"),
               ("startLspServer", ZERO Lsp.startServer, SOME "Start Language Server Protocol server"),
               ("noEmacs", set_true Demo.noEmacs,
                     NONE),

@@ -417,7 +417,8 @@ end
 structure SM = BinaryMapFn(SK)
 
 type fileState =
-     { decls : Elab.decl list }
+     { envBeforeThisModule: ElabEnv.env
+     , decls : Elab.decl list }
 type state =
      { urpPath : string
      , fileStates : fileState SM.map
@@ -572,10 +573,17 @@ fun calculateFileState (state: state) (fileName: string): (fileState option * Ls
             (* Parsing of .ur succeeded *)
             let 
                 val loc = {file = fileName, first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos}
+                val envBeforeThisModule = ref ElabEnv.empty
                 val res = Elaborate.elabFile
                               parsedBasisUrs tm1 parsedTopUr parsedTopUrs tm2 ElabEnv.empty
                               (* Adding urs's of previous modules to env *)
-                              (fn envB => List.foldl (fn (sgn, env) => addSgnToEnv env (#parsed sgn) (#fileName sgn) false) envB parsedUrss)
+                              (fn envB =>
+                                  let 
+                                      val newEnv = List.foldl (fn (sgn, env) => addSgnToEnv env (#parsed sgn) (#fileName sgn) false) envB parsedUrss
+                                  in
+                                      (envBeforeThisModule := newEnv; newEnv)
+                                  end
+                              )
                               [( Source.DStr (C.moduleOf fileName, parsedUrs, NONE, (Source.StrConst parsedUr, loc), false)
                                , loc )]
                 (* report back errors (as Diagnostics) *)
@@ -584,7 +592,7 @@ fun calculateFileState (state: state) (fileName: string): (fileState option * Ls
                                 (Elab.DStr (_, _, _, (Elab.StrConst decls, _)), _) => decls
                               | _ => raise Fail ("Impossible: Source.StrConst did not become Elab.StrConst after elaboration")
             in 
-                (SOME { decls = decls },
+                (SOME { envBeforeThisModule = !envBeforeThisModule, decls = decls },
                  List.map errorToDiagnostic errors)
             end
     end
@@ -603,6 +611,59 @@ fun handleFullDocument (state: state) (toclient: LspSpec.toclient) (documentUri:
                                                        , fs)
                               }) ;
         #publishDiagnostics toclient { uri = documentUri , diagnostics = #2 res}
+    end
+
+fun scanDir (f: string -> bool) (path: string) =
+    let
+        val dir = OS.FileSys.openDir path
+        fun doScanDir acc =
+            case OS.FileSys.readDir dir of 
+                NONE => (OS.FileSys.closeDir dir; acc)
+             |  SOME fname =>
+                (if f fname
+                 then doScanDir (fname :: acc)
+                 else doScanDir acc)
+    in
+        doScanDir []
+    end
+
+fun readFile (fileName: string): string =
+    let 
+        val str = TextIO.openIn fileName
+        fun doReadFile acc = 
+            case TextIO.inputLine str of
+                NONE => acc
+              | SOME str => (str ^ "\n" ^ acc)
+        val res = doReadFile ""
+    in 
+        (TextIO.closeIn str; res)
+    end
+        
+
+fun handleHover (state: state) (p: LspSpec.hoverReq): LspSpec.hoverResp LspSpec.result =
+    let
+        val fileName = #path (#uri (#textDocument p))
+        val s = SM.find (#fileStates state, fileName)
+    in
+        case s of
+            NONE => LspSpec.Success NONE
+          | SOME s =>
+            let 
+                val env = #envBeforeThisModule s
+                val decls = #decls s
+                val loc = #position p
+                val pp = GetInfo.getInfo env (Elab.StrConst decls) fileName { line = #line loc + 1
+                                                                            , character = #character loc + 1} 
+                (* TODO I couldn't figure out how to print just to a string, so writing to a temp file, then reading it, then deleting it, ... *)
+                val tempfile = OS.FileSys.tmpName ()
+                val outStr = TextIO.openOut tempfile
+                val outDev = TextIOPP.openOut {dst = outStr, wid = 70}
+                val () = Print.fprint outDev pp
+                val res = readFile tempfile
+                val () = TextIO.closeOut outStr
+            in
+                LspSpec.Success (SOME {contents = res})
+            end
     end
 
 fun serverLoop () =            
@@ -653,7 +714,7 @@ fun serverLoop () =
                   m
                   { initialize = fn _ => LspSpec.Error (~32600, "Server already initialized")
                   , shutdown = fn () => LspSpec.Success ()
-                  , textDocument_hover = fn ctx => fn _ => LspSpec.Success NONE
+                  , textDocument_hover = fn ctx => fn p => handleHover state p
                   })
                  handle LspError e => handleLspErrorInRequest (#id m) e
                       | ex => handleLspErrorInRequest (#id m) (InternalError (General.exnMessage ex)))

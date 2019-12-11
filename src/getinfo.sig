@@ -26,6 +26,11 @@
  *)
 
 signature GET_INFO = sig 
-    val getInfo: string (* file:row:col *) -> Print.PD.pp_desc
+    val getInfo:
+        ElabEnv.env ->
+        Elab.str' ->
+        string (* fileName *) ->
+        { line: int , character: int} ->
+        Print.PD.pp_desc
 end
     
