@@ -4760,7 +4760,7 @@ and elabStr (env, denv) (str, loc) =
 
 fun resolveClass env = E.resolveClass (hnormCon env) (consEq env dummy) env
 
-fun elabFile basis basis_tm topStr topSgn top_tm env file =
+fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
     let
         val () = ModDb.snapshot ()
         val () = ErrorMsg.resetStructureTracker ()
@@ -4856,6 +4856,8 @@ fun elabFile basis basis_tm topStr topSgn top_tm env file =
         val () = top_r := top_n
 
         val (ds', env') = dopen env' {str = top_n, strs = [], sgn = topSgn}
+
+        val env' = changeEnv env'
 
         fun elabDecl' x =
             (resetKunif ();

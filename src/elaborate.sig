@@ -29,7 +29,10 @@ signature ELABORATE = sig
 
     val elabFile : Source.sgn_item list -> Time.time
                    -> Source.decl list -> Source.sgn_item list -> Time.time
-                   -> ElabEnv.env -> Source.file -> Elab.file
+                   -> ElabEnv.env
+                   -> (ElabEnv.env -> ElabEnv.env) (* Adapt env after stdlib but before elaborate *)
+                   -> Source.file
+                   -> Elab.file
 
     val resolveClass : ElabEnv.env -> Elab.con -> Elab.exp option
 

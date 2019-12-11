@@ -417,9 +417,7 @@ end
 structure SM = BinaryMapFn(SK)
 
 type fileState =
-     { envOfPreviousModules : ElabEnv.env
-     , decls : Elab.decl list
-     }
+     { decls : Elab.decl list }
 type state =
      { urpPath : string
      , fileStates : fileState SM.map
@@ -498,6 +496,8 @@ fun calculateFileState (state: state) (fileName: string): (fileState option * Ls
                  then ()
                  else raise Fail ("Can only handle .ur files for now")
         val () = Elaborate.unifyMore := true
+        (* To reuse Basis and Top *)
+        val () = Elaborate.incremental := true
         (* Parsing .urp *)
         val job = case C.run (C.transform C.parseUrp "parseUrp") (#urpPath state) of
                       NONE => raise LspError (InternalError ("Couldn't parse .urp file at " ^ (#urpPath state)))
@@ -531,28 +531,35 @@ fun calculateFileState (state: state) (fileName: string): (fileState option * Ls
                                           }
                                       end)
                                   modulesBeforeThisFile
-        (* Parsing Basis and Top .urs *)
+        (* Parsing Basis and Top *)
+        val basisF = Settings.libFile "basis.urs"
+        val topF = Settings.libFile "top.urs"
+        val topF' = Settings.libFile "top.ur"
+
+        val tm1 = OS.FileSys.modTime topF
+        val tm2 = OS.FileSys.modTime topF'
+
         val parsedBasisUrs =
-            case C.run (C.transform C.parseUrs "parseUrs") (Settings.libFile "basis.urs") of
-                NONE => raise LspError (InternalError ("Failed to parse basis.urs file at " ^ (Settings.libFile "basis.urs")))
+            case C.run (C.transform C.parseUrs "parseUrs") basisF of
+                NONE => raise LspError (InternalError ("Failed to parse basis.urs file at " ^ basisF))
               | SOME a => a
         val parsedTopUrs =
-            case C.run (C.transform C.parseUrs "parseUrs") (Settings.libFile "top.urs") of
-                NONE => raise LspError (InternalError ("Failed to parse top.urs file at " ^ (Settings.libFile "top.urs")))
+            case C.run (C.transform C.parseUrs "parseUrs") topF of
+                NONE => raise LspError (InternalError ("Failed to parse top.urs file at " ^ topF))
               | SOME a => a
-        (* Building env with previous .urs files *)
-        val envWithStdLib =
-            addSgnToEnv
-                (addSgnToEnv ElabEnv.empty parsedBasisUrs (Settings.libFile "basis.urs") true)
-                parsedTopUrs (Settings.libFile "top.urs") true
-        val envBeforeThisFile = List.foldl (fn (sgn, env) => addSgnToEnv env (#parsed sgn) (#fileName sgn) false) envWithStdLib parsedUrss
+        val parsedTopUr =
+            case C.run (C.transform C.parseUr "parseUr") topF' of
+                NONE => raise LspError (InternalError ("Failed to parse top.ur file at " ^ topF'))
+              | SOME a => a
+
         (* Parsing .ur and .urs of current file *)
-        val (parsedUrs: (Source.sgn_item list) option) =
+        val (parsedUrs: Source.sgn option) =
             (if OS.FileSys.access (fileName ^ "s", [])
              then
                  case C.run (C.transform C.parseUrs "parseUrs") (fileName ^ "s") of
                      NONE => NONE
-                   | SOME a => SOME a
+                   | SOME a => SOME ( Source.SgnConst a
+                                    , {file = fileName ^ "s", first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos})
              else
                  NONE) handle ex => NONE
         val () = ErrorMsg.resetErrors ()
@@ -562,34 +569,22 @@ fun calculateFileState (state: state) (fileName: string): (fileState option * Ls
         case parsedUrO of
             NONE => (* Parse error *) (NONE, List.map errorToDiagnostic (ErrorMsg.readErrorLog ()))
           | SOME parsedUr => 
-            (* .ur file found -> typecheck *)
+            (* Parsing of .ur succeeded *)
             let 
-                val (str, sgn', gs) =
-                    Elaborate.elabStr
-                        (envBeforeThisFile, Disjoint.empty)
-                        (Source.StrConst parsedUr, {file = fileName, first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos})
-                val () =
-                    (* .urs file found -> check and compare with .ur file *)
-                    (case parsedUrs of
-                        NONE => ()
-                      | SOME parsedUrs => 
-                        let 
-                            val (sgn, gs) = Elaborate.elabSgn
-                                              (envBeforeThisFile, Disjoint.empty)
-                                              ( Source.SgnConst parsedUrs
-                                              , {file = fileName ^ "s", first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos});
-                        in
-                            Elaborate.subSgn envBeforeThisFile ErrorMsg.dummySpan sgn' sgn
-                        end)
+                val loc = {file = fileName, first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos}
+                val res = Elaborate.elabFile
+                              parsedBasisUrs tm1 parsedTopUr parsedTopUrs tm2 ElabEnv.empty
+                              (* Adding urs's of previous modules to env *)
+                              (fn envB => List.foldl (fn (sgn, env) => addSgnToEnv env (#parsed sgn) (#fileName sgn) false) envB parsedUrss)
+                              [( Source.DStr (C.moduleOf fileName, parsedUrs, NONE, (Source.StrConst parsedUr, loc), false)
+                               , loc )]
                 (* report back errors (as Diagnostics) *)
                 val errors = ErrorMsg.readErrorLog ()
-                val decls = case str of
-                                (Elab.StrConst decls, _) => decls
+                val decls = case List.last res of
+                                (Elab.DStr (_, _, _, (Elab.StrConst decls, _)), _) => decls
                               | _ => raise Fail ("Impossible: Source.StrConst did not become Elab.StrConst after elaboration")
             in 
-                (SOME { envOfPreviousModules = envBeforeThisFile
-                      , decls = decls
-                      },
+                (SOME { decls = decls },
                  List.map errorToDiagnostic errors)
             end
     end
