@@ -271,7 +271,9 @@ fun print (ast: json): string =
         s ^
         "\""
       | Bool b => if b then "true" else "false"
-      | Int i => Int.toString i
+      | Int i => if i >= 0
+                 then (Int.toString i)
+                 else "-" ^ (Int.toString (Int.abs i)) (* default printing uses ~ instead of - *)
       | Obj l => "{"
                  ^ List.foldl (fn ((k, v), acc) => acc ^ (if acc = "" then "" else ", ") ^ "\"" ^ k ^ "\": " ^ print v ) "" l
                 ^ "}"
