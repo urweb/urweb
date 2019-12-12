@@ -113,13 +113,20 @@ struct
 
    and parseChars () = 
    let
+       val escapedchars = ["n", "r", "b", "f", "t"]
       fun pickChars s =
-          if peek () = #"\"" (* " *)
+          if peek () = #"\"" (* " = end of string *)
           then s
           else
               if peek () = #"\\" andalso (String.sub (!inputData, 1)) = #"\""
               then (consume "\\\""; pickChars (s ^ "\""))
-              else pickChars (s ^ String.str (take ()))
+              else
+                  if peek () = #"\\" andalso (String.sub (!inputData, 1)) = #"n"
+                  then (consume "\\n"; pickChars (s ^ "\n"))
+                  else
+                      if peek () = #"\\" andalso (String.sub (!inputData, 1)) = #"r"
+                      then (consume "\\r"; pickChars (s ^ "\r"))
+                      else pickChars (s ^ String.str (take ()))
    in
       pickChars ""
    end

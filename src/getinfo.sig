@@ -26,11 +26,29 @@
  *)
 
 signature GET_INFO = sig 
+
+    datatype item =
+             Kind of Elab.kind
+             | Con of Elab.con
+             | Exp of Elab.exp
+             | Sgn_item of Elab.sgn_item
+             | Sgn of Elab.sgn
+             | Str of Elab.str
+             | Decl of Elab.decl
+
     val getInfo:
         ElabEnv.env ->
         Elab.str' ->
         string (* fileName *) ->
         { line: int , character: int} ->
-        Print.PD.pp_desc
+        { smallest : { span : ErrorMsg.span
+                     , item : item
+                     , env : ElabEnv.env }
+        , smallestgoodpart : { span : ErrorMsg.span
+                             , desc : Print.PD.pp_desc
+                             , env : ElabEnv.env
+                             , item : item
+                             } option
+}
 end
     

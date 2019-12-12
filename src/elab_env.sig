@@ -85,6 +85,8 @@ signature ELAB_ENV = sig
     val pushENamedAs : env -> string -> int -> Elab.con -> env
     val lookupENamed : env -> int -> string * Elab.con
     val checkENamed : env -> int -> bool
+    val matchNamedEByPrefix: env -> string -> (string * Elab.con) list
+    val matchRelEByPrefix: env -> string -> (string * Elab.con) list
 
     val lookupE : env -> string -> Elab.con var
 
@@ -100,6 +102,8 @@ signature ELAB_ENV = sig
     val lookupStrNamed : env -> int -> string * Elab.sgn
 
     val lookupStr : env -> string -> (int * Elab.sgn) option
+    val matchStrByPrefix: env -> string -> (string * (int * Elab.sgn)) list
+         
 
     val edeclBinds : env -> Elab.edecl -> env
     val declBinds : env -> Elab.decl -> env

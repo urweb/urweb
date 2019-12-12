@@ -73,6 +73,19 @@ fun getSpan (f: item * E.env) =
       | Str s => #2 s
       | Decl d => #2 d
 
+(* Just use ElabPrint functions. *)
+(* These are better for compiler error messages, but it's better than nothing *)
+fun printLiterally {span = span, item = item, env = env} =
+    P.box [ case item of
+                Kind k => P.box [P.PD.string "KIND: ", ElabPrint.p_kind env k]
+              | Con c => P.box [P.PD.string "CON: ", ElabPrint.p_con env c]
+              | Exp e => P.box [P.PD.string "EXP: ", ElabPrint.p_exp env e]
+              | Sgn_item si => P.box [P.PD.string "SGN_ITEM: ", ElabPrint.p_sgn_item env si]
+              | Sgn s => P.box [P.PD.string "SGN: ", ElabPrint.p_sgn env s]
+              | Str s => P.box [P.PD.string "STR: ", ElabPrint.p_str env s]
+              | Decl d => P.box [P.PD.string "DECL: ", ElabPrint.p_decl env d]
+          ]
+
 fun getInfo env str fileName {line = row, character = col} =
     let
         val () = U.mliftConInCon := E.mliftConInCon
@@ -88,19 +101,6 @@ fun getInfo env str fileName {line = row, character = col} =
                                       then E.declBinds env d
                                       else env) env decls
                      | _ => env)
-
-        (* Just use ElabPrint functions. *)
-        (* These are better for compiler error messages, but it's better than nothing *)
-        fun printLiterally {span = span, item = item, env = env} =
-            P.box [ case item of
-                        Kind k => P.box [P.PD.string "KIND: ", ElabPrint.p_kind env k]
-                      | Con c => P.box [P.PD.string "CON: ", ElabPrint.p_con env c]
-                      | Exp e => P.box [P.PD.string "EXP: ", ElabPrint.p_exp env e]
-                      | Sgn_item si => P.box [P.PD.string "SGN_ITEM: ", ElabPrint.p_sgn_item env si]
-                      | Sgn s => P.box [P.PD.string "SGN: ", ElabPrint.p_sgn env s]
-                      | Str s => P.box [P.PD.string "STR: ", ElabPrint.p_str env s]
-                      | Decl d => P.box [P.PD.string "DECL: ", ElabPrint.p_decl env d]
-                  ]
 
         (* TODO We lose some really useful information, like eg. inferred parameters, *)
         (*   which we do have in the actual items (L.Decl, L.Exp, etc) *)
@@ -161,7 +161,16 @@ fun getInfo env str fileName {line = row, character = col} =
                 | Str s => NONE
                 | Decl d => NONE)
 
-        fun add env item span acc =
+        fun add (env: ElabEnv.env) (item: item) (span: ErrorMsg.span) (acc: { smallest : { span : ErrorMsg.span
+                                                                                         , item : item
+                                                                                         , env : ElabEnv.env }
+                                                                            , smallestgoodpart : { span : ErrorMsg.span
+                                                                                                 , desc : P.PD.pp_desc
+                                                                                                 , env : ElabEnv.env
+                                                                                                 , item : item
+                                                                                                 } option
+                                                                            }
+                                                                      ) =
                     if not (isPosIn fileName row col span)
                     then
                         acc
@@ -176,14 +185,14 @@ fun getInfo env str fileName {line = row, character = col} =
                                     NONE => 
                                     (case printGoodPart env item span of
                                         NONE => NONE
-                                      | SOME desc => SOME (desc, span))
-                                  | SOME (desc', span') => 
+                                      | SOME desc => SOME {desc = desc, span = span, env = env, item = item})
+                                  | SOME (prev as {desc = desc', span = span', env = env', item = item'}) => 
                                     if isSmallerThan span span'
                                     then 
                                         (case printGoodPart env item span of
-                                            NONE => SOME (desc', span')
-                                          | SOME desc => SOME (desc, span))
-                                    else SOME (desc', span')
+                                             NONE => SOME prev
+                                          | SOME desc => SOME {desc = desc, span = span, env = env, item = item})
+                                    else SOME prev
                         in
                             {smallest = smallest, smallestgoodpart = smallestgoodpart}
                         end
@@ -228,8 +237,6 @@ fun getInfo env str fileName {line = row, character = col} =
                 ( L.DStr (Compiler.moduleOf "fileName", 0, (L.SgnError, ErrorMsg.dummySpan), (str, {file = fileName, first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos}))
                 , {file = fileName, first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos})
     in
-        case #smallestgoodpart result of
-            NONE => printLiterally (#smallest result)
-          | SOME (desc, span) => desc
+        result
     end
 end

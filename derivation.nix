@@ -1,6 +1,6 @@
 { stdenv, lib, fetchFromGitHub, file, openssl, mlton
 , mysql, postgresql, sqlite, gcc
-, automake, autoconf, libtool, icu
+, automake, autoconf, libtool, icu, nix-gitignore
 }:
 
 stdenv.mkDerivation rec {
@@ -18,7 +18,7 @@ stdenv.mkDerivation rec {
   #   rev = "e52ce9f542f64750941cfd84efdb6d993ee20ff0";
   #   sha256 = "19ba5n7g1dxy7q9949aakqplchsyzwrrnxv8v604vx5sg7fdfn3b";
   # };
-  src = ./.;
+  src = nix-gitignore.gitignoreSource [] ./.;
 
   buildInputs = [ openssl mlton mysql.connector-c postgresql sqlite automake autoconf libtool icu.dev openssl.dev];
 

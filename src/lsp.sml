@@ -11,13 +11,17 @@ fun joinStr (sep: string) (strs: string list): string =
     List.foldl (fn (str, acc) => if acc = "" then str else acc ^ sep ^ str) "" strs
 
 structure FromJson = struct 
+fun getO (s: string) (l: Json.json): Json.json option = 
+    case l of
+        Json.Obj pairs =>
+        (case List.find (fn tup => #1 tup = s) pairs of
+             NONE => NONE
+           | SOME tup => SOME (#2 tup))
+      | _ => raise Fail ("Expected JSON object, got: " ^ Json.print l)
 fun get (s: string) (l: Json.json): Json.json =
-      case l of
-          Json.Obj pairs =>
-          (case List.find (fn tup => #1 tup = s) pairs of
-                NONE => raise Fail ("Failed to find JSON object key " ^ s ^ " in " ^ Json.print l)
-              | SOME tup => #2 tup)
-        | _ => raise Fail ("Expected JSON object, got: " ^ Json.print l)
+        (case getO s l of
+             NONE => raise Fail ("Failed to find JSON object key " ^ s ^ " in " ^ Json.print l)
+           | SOME a => a)
 
 fun asInt (j: Json.json): int = 
     case j of
@@ -161,6 +165,10 @@ structure LspSpec (* :> LSPSPEC *) = struct
                                                   
   type range = { start: position
                , end_: position }
+  fun parseRange (j: Json.json): range =
+      { start = parsePosition (FromJson.get "start" j)
+      , end_ = parsePosition (FromJson.get "end" j)
+      }
   fun printRange (r: range): Json.json = Json.Obj [ ("start", printPosition (#start r))
                                                   , ("end", printPosition (#end_ r))]
 
@@ -194,10 +202,23 @@ structure LspSpec (* :> LSPSPEC *) = struct
   fun parseDidOpenParams (params: Json.json): didOpenParams =
       { textDocument = parseTextDocumentItem (FromJson.get "textDocument" params) }
 
-  type didChangeParams = { textDocument: versionedTextDocumentIdentifier }
+  type contentChange = { range: range option
+                       , rangeLength: int option
+                       , text: string }
+  type didChangeParams =
+       { textDocument: versionedTextDocumentIdentifier
+       , contentChanges: contentChange list
+       }
   fun parseDidChangeParams (params: Json.json): didChangeParams =
       { textDocument = parseVersionedTextDocumentIdentifier (FromJson.get "textDocument" params)
-      (* , contentChanges = ... *)
+      , contentChanges = case FromJson.get "contentChanges" params of
+                             Json.Array js =>
+                             List.map (fn j => { range = Option.map parseRange (FromJson.getO "range" j)
+                                               , rangeLength = Option.map FromJson.asInt (FromJson.getO "rangeLength" j)
+                                               , text = FromJson.asString (FromJson.get "text" j)
+                                               }
+                             ) js
+                          | j => raise Fail ("Expected JSON array, got: " ^ Json.print j) 
       }
 
   type didSaveParams = { textDocument: textDocumentIdentifier }
@@ -232,11 +253,77 @@ structure LspSpec (* :> LSPSPEC *) = struct
   fun printPublishDiagnosticsParams (p: publishDiagnosticsParams): Json.json =
       Json.Obj [ ("uri", Json.String (printDocumentUri (#uri p)))
                , ("diagnostics", Json.Array (List.map printDiagnostic (#diagnostics p)))]
-               
+
+  type completionReq =
+       { textDocument: textDocumentIdentifier
+       , position: position
+       , context: { triggerCharacter: string option
+                  , triggerKind: int (* 1 = Invoked = typing an identifier or manual invocation or API
+                                        2 = TriggerCharacter
+                                        3 = TriggerForIncompleteCompletions*)} option
+       } 
+  fun parseCompletionReq (j: Json.json): completionReq = 
+      { textDocument = parseTextDocumentIdentifier (FromJson.get "textDocument" j)
+      , position = parsePosition (FromJson.get "position" j)
+      , context = case FromJson.getO "context" j of
+                      NONE => NONE
+                    | SOME ctx => SOME { triggerCharacter = Option.map FromJson.asString (FromJson.getO "triggerCharacter" ctx)
+                                       , triggerKind = FromJson.asInt (FromJson.get "triggerKind" ctx)
+                                       }
+      }
+
+  datatype completionItemKind = Text | Method | Function | Constructor | Field | Variable | Class | Interface | Module | Property | Unit | Value | Enum | Keyword | Snippet | Color | File | Reference | Folder | EnumMember | Constant | Struct | Event | Operator | TypeParameter
+  fun completionItemKindToInt (a: completionItemKind) =
+       case a of
+	         Text => 1
+	       | Method => 2
+	       | Function => 3
+	       | Constructor => 4
+	       | Field => 5
+	       | Variable => 6
+	       | Class => 7
+	       | Interface => 8
+	       | Module => 9
+	       | Property => 10
+	       | Unit => 11
+	       | Value => 12
+	       | Enum => 13
+	       | Keyword => 14
+	       | Snippet => 15
+	       | Color => 16
+	       | File => 17
+	       | Reference => 18
+	       | Folder => 19
+	       | EnumMember => 20
+	       | Constant => 21
+	       | Struct => 22
+	       | Event => 23
+	       | Operator => 24
+	       | TypeParameter => 25
+           
+  type completionItem = { label: string
+                        , kind: completionItemKind
+                        , detail: string
+                        }
+  type completionResp = { isIncomplete: bool
+                        , items: completionItem list
+                        }
+
+  fun printCompletionItem (a: completionItem): Json.json = 
+      Json.Obj [ ("label", Json.String (#label a))
+               , ("kind", Json.Int (completionItemKindToInt (#kind a)))
+               , ("detail", Json.String (#detail a))
+               ]
+  fun printCompletionResp (a: completionResp): Json.json = 
+      Json.Obj [ ("isIncomplete", Json.Bool (#isIncomplete a))
+               , (("items", Json.Array (List.map printCompletionItem (#items a))))]
+
   type initializeResponse = { capabilities:
                               { hoverProvider: bool
+                              , completionProvider: {triggerCharacters: string list} option
                               , textDocumentSync:
                                 { openClose: bool
+                                , change: int (* 0 = None, 1 = Full, 2 = Incremental *) 
                                 , save: { includeText: bool } option
                                 }
                               }}
@@ -246,11 +333,16 @@ structure LspSpec (* :> LSPSPEC *) = struct
                      val capabilities = #capabilities res
                  in
                      Json.Obj [ ("hoverProvider", Json.Bool (#hoverProvider capabilities))
+                              , ("completionProvider", case #completionProvider capabilities of
+                                                           NONE => Json.Null
+                                                         | SOME cp => Json.Obj [("triggerCharacters", Json.Array (List.map Json.String (#triggerCharacters cp)))]
+                                )
                               , ("textDocumentSync",
                                  let
                                      val textDocumentSync = #textDocumentSync capabilities
                                  in
                                      Json.Obj [ ("openClose", Json.Bool (#openClose textDocumentSync ))
+                                              , ("change", Json.Int (#change textDocumentSync))
                                               , ("save", case #save textDocumentSync of
                                                              NONE => Json.Null
                                                            | SOME save => Json.Obj [("includeText", Json.Bool (#includeText save) )])]
@@ -273,6 +365,7 @@ structure LspSpec (* :> LSPSPEC *) = struct
        { initialize: initializeParams -> initializeResponse result
        , shutdown: unit -> unit result
        , textDocument_hover: toclient -> hoverReq -> hoverResp result
+       , textDocument_completion: completionReq -> completionResp result
        }
       
   fun showMessage str typ =
@@ -316,13 +409,19 @@ structure LspSpec (* :> LSPSPEC *) = struct
                     ((#textDocument_hover handlers)
                          toclient
                          (parseHoverReq (#params requestMessage)))
+              | "textDocument/completion" =>
+                mapResult
+                    printCompletionResp
+                    ((#textDocument_completion handlers)
+                         (parseCompletionReq (#params requestMessage)))
               | "shutdown" =>
                 mapResult
                     (fn () => Json.Null)
                     ((#shutdown handlers) ())
               | "exit" =>
                 OS.Process.exit OS.Process.success
-              | method => Error (~32601, "Method not supported: " ^ method)
+              | method => (debug ("Method not supported: " ^ method);
+                           Error (~32601, "Method not supported: " ^ method))
         (* val () = (TextIO.output (TextIO.stdErr, "Got result: " ^ (case result of Success _ => "success\n"  *)
         (*                                                                       |  Error _ => "error\n")); TextIO.flushOut TextIO.stdErr) *)
     in 
@@ -418,12 +517,20 @@ structure SM = BinaryMapFn(SK)
 
 type fileState =
      { envBeforeThisModule: ElabEnv.env
-     , decls : Elab.decl list }
+     , decls: Elab.decl list
+     , text: string}
 type state =
      { urpPath : string
      , fileStates : fileState SM.map
      }
 val stateRef = ref (NONE: state option)
+
+fun insertFileState (state: state) (fileName: string) (fs: fileState) =
+    stateRef := SOME { urpPath = #urpPath state
+                     , fileStates = SM.insert ( #fileStates state
+                                              , fileName
+                                              , fs)
+                     }
 
 fun scanDir (f: string -> bool) (path: string) =
     let
@@ -491,12 +598,12 @@ fun errorToDiagnostic (err: { span: ErrorMsg.span , message: string }): LspSpec.
 
 (* TODO FFI modules ? Check compiler.sml -> parse -> parseFfi *)
 (* TODO Optim: cache parsed urp file? *)
-fun calculateFileState (state: state) (fileName: string): (fileState option * LspSpec.diagnostic list) =
+fun elabFile (state: state) (fileName: string): ({ decls: Elab.decl list, envBeforeThisModule: ElabEnv.env} option * LspSpec.diagnostic list) =
     let
         val () = if (OS.Path.ext fileName = SOME "ur")
                  then ()
                  else raise Fail ("Can only handle .ur files for now")
-        val () = Elaborate.unifyMore := true
+        (* val () = Elaborate.unifyMore := true *)
         (* To reuse Basis and Top *)
         val () = Elaborate.incremental := true
         (* Parsing .urp *)
@@ -597,20 +704,29 @@ fun calculateFileState (state: state) (fileName: string): (fileState option * Ls
             end
     end
 
-fun handleFullDocument (state: state) (toclient: LspSpec.toclient) (documentUri: LspSpec.documentUri) =
+fun handleDocumentSavedOrOpened (state: state) (toclient: LspSpec.toclient) (documentUri: LspSpec.documentUri) (textO: string option) =
     let 
-        val path = #path documentUri
-        val res = calculateFileState state path
+        val fileName = #path documentUri
+        val res = elabFile state fileName
+        val text = case textO of
+                       NONE => (case SM.find (#fileStates state, fileName) of
+                                    NONE => ((#showMessage toclient) ("No previous state for file " ^ fileName) 2; NONE)
+                                  | SOME previousState => SOME (#text previousState))
+                     | SOME text => SOME text
     in
-        (case #1 res of 
-             NONE => ()
-           | SOME fs =>
-             stateRef := SOME { urpPath = #urpPath state
-                              , fileStates = SM.insert ( #fileStates state
-                                                       , path
-                                                       , fs)
-                              }) ;
-        #publishDiagnostics toclient { uri = documentUri , diagnostics = #2 res}
+        case text of
+            NONE => ()
+          | SOME text => 
+            (case #1 res of
+                 NONE =>
+                 insertFileState state fileName { text = text
+                                                , envBeforeThisModule = ElabEnv.empty
+                                                , decls = [] }
+               | SOME fs =>
+                 (insertFileState state fileName { text = text
+                                                 , envBeforeThisModule = #envBeforeThisModule fs
+                                                 , decls = #decls fs });
+             #publishDiagnostics toclient { uri = documentUri , diagnostics = #2 res})
     end
 
 fun scanDir (f: string -> bool) (path: string) =
@@ -640,6 +756,19 @@ fun readFile (fileName: string): string =
     end
         
 
+(* TODO I couldn't figure out how to print just to a string, so writing to a temp file, then reading it, then deleting it, ... *)
+fun ppToString (pp: Print.PD.pp_desc) (width: int): string =
+    let
+        val tempfile = OS.FileSys.tmpName ()
+        val outStr = TextIO.openOut tempfile
+        val outDev = TextIOPP.openOut {dst = outStr, wid = width}
+        val () = Print.fprint outDev pp
+        val res = readFile tempfile
+        val () = TextIO.closeOut outStr
+    in
+        res
+    end
+
 fun handleHover (state: state) (p: LspSpec.hoverReq): LspSpec.hoverResp LspSpec.result =
     let
         val fileName = #path (#uri (#textDocument p))
@@ -652,17 +781,203 @@ fun handleHover (state: state) (p: LspSpec.hoverReq): LspSpec.hoverResp LspSpec.
                 val env = #envBeforeThisModule s
                 val decls = #decls s
                 val loc = #position p
-                val pp = GetInfo.getInfo env (Elab.StrConst decls) fileName { line = #line loc + 1
-                                                                            , character = #character loc + 1} 
-                (* TODO I couldn't figure out how to print just to a string, so writing to a temp file, then reading it, then deleting it, ... *)
-                val tempfile = OS.FileSys.tmpName ()
-                val outStr = TextIO.openOut tempfile
-                val outDev = TextIOPP.openOut {dst = outStr, wid = 70}
-                val () = Print.fprint outDev pp
-                val res = readFile tempfile
-                val () = TextIO.closeOut outStr
+                val result = GetInfo.getInfo env (Elab.StrConst decls) fileName { line = #line loc + 1
+                                                                                , character = #character loc + 1} 
             in
-                LspSpec.Success (SOME {contents = res})
+                case #smallestgoodpart result of
+                    NONE => LspSpec.Success NONE
+                  | SOME {desc = desc, ...} =>
+                    LspSpec.Success (SOME {contents = ppToString desc 70})
+            end
+    end
+
+fun getCompletionsFromFields (env: ElabEnv.env) (prefix: string) (searchStr: string) (fields: (Elab.con * Elab.con) list): LspSpec.completionItem list =
+    let
+        fun mapF (c1, c2) =
+            case c1 of
+                (Elab.CName fieldName, _) =>
+                if String.isPrefix searchStr fieldName
+                then SOME { label = prefix ^ fieldName
+                          , kind = LspSpec.Field
+                          , detail = ppToString (ElabPrint.p_con env c2) 150
+                          }
+                else NONE
+              | _ => NONE
+    in
+        List.mapPartial mapF fields
+    end
+
+fun getCompletionsFromSignatureItems (env: ElabEnv.env) (prefix: string) (searchStr: string) (items: Elab.sgn_item list): LspSpec.completionItem list =
+    let
+        fun mapF item =
+            case item of
+                (Elab.SgiVal (name, _, con), _) =>
+                if String.isPrefix searchStr name
+                then [{ label = prefix ^ name
+                      , kind = LspSpec.Value
+                      , detail = ppToString (ElabPrint.p_con env con) 150
+                      }]
+                else []
+              | (Elab.SgiCon (name, _, _, con), _) =>
+                if String.isPrefix searchStr name
+                then [{ label = prefix ^ name
+                      , kind = LspSpec.Variable
+                      , detail = ppToString (ElabPrint.p_con env con) 150
+                      }]
+                else []
+              | (Elab.SgiDatatype cs, _) =>
+                (List.concat
+                  (List.map (fn (constr as (dtName, n, xs, constrs)) =>
+                                (* Copied from elab_print *)
+                                let
+                                    val k = (Elab.KType, ErrorMsg.dummySpan)
+                                    val env = ElabEnv.pushCNamedAs env dtName n k NONE
+                                    val env = List.foldl (fn (x, env) => ElabEnv.pushCRel env dtName k) env xs
+                                in
+                                    List.mapPartial (fn (constrName, _, conO) =>
+                                                        if String.isPrefix searchStr constrName
+                                                        then SOME { label = prefix ^ constrName
+                                                                  , kind = LspSpec.Function
+                                                                  , detail = case conO of
+                                                                                 NONE => "Datatype " ^ dtName
+                                                                               | SOME con => "Datatype " ^ dtName ^ " - "  ^ ppToString (ElabPrint.p_con env con) 150 
+                                                                  }
+                                                        else NONE) constrs
+                                end)
+                            cs))
+              | (Elab.SgiDatatypeImp _, _) =>
+                (* TODO ??? no idea what this is *)
+                []
+              | (Elab.SgiStr (_, name,  _, _), _) =>
+                if String.isPrefix searchStr name
+                then [{ label = prefix ^ name
+                      , kind = LspSpec.Module
+                      , detail = ""
+                      }]
+                else []
+              | (Elab.SgiClass (name, _,  _, con), _) =>
+                if String.isPrefix searchStr name
+                then [{ label = prefix ^ name
+                      , kind = LspSpec.Class
+                      , detail = ppToString (ElabPrint.p_con env con) 150
+                      }]
+                else []
+              | _ => []
+    in
+        List.concat (List.map mapF items)
+    end
+
+fun findMatchingStringInEnv (env: ElabEnv.env) (str: string): LspSpec.completionItem list =
+    let
+        val splitted = Substring.fields (fn c => c = #".") (Substring.full str)
+    in
+        case splitted of
+            (_ :: []) =>
+            if str = ""
+            then []
+            else (List.map (fn (name,con) =>
+                               { label = name
+                               , kind = LspSpec.Variable
+                               , detail = ppToString (ElabPrint.p_con env con) 150
+                               })
+              (ElabEnv.matchRelEByPrefix env str
+               @ ElabEnv.matchNamedEByPrefix env str))
+          | (r :: str :: []) =>
+            if Char.isUpper (Substring.sub (r, 0))
+            then  (* r should be a structure *)
+                let 
+                    (* TODO Perf: first match and then equal is not perfect *)
+                    val foundStrs = ElabEnv.matchStrByPrefix env (Substring.string r)
+                    val filteredStrs = List.filter (fn (name,_) => name = Substring.string r) foundStrs
+                in
+                    (case List.map (fn (name, (i, sgn)) => (name, ElabEnv.hnormSgn env sgn)) filteredStrs of
+                         [] => []
+                       | (name, (Elab.SgnConst sgis, _)) :: _ =>
+                         getCompletionsFromSignatureItems env (name ^ ".") (Substring.string str) sgis
+                       | _ => [])
+                end
+            else (* r should be a record *)
+                (* TODO is it correct to first try RelE and then NamedE? *)
+                let 
+                    (* TODO Perf: first match and then equal is not perfect *)
+                    val foundRelEs = ElabEnv.matchRelEByPrefix env (Substring.string r)
+                    val foundNamedEs = ElabEnv.matchNamedEByPrefix env (Substring.string r)
+                    val filteredEs = List.filter (fn (name,_) => name = Substring.string r) (foundRelEs @ foundNamedEs)
+                in
+                    (case List.map (fn (name, c) => (name, ElabOps.reduceCon env c)) filteredEs of
+                         [] => []
+                       | (name, (Elab.TRecord (Elab.CRecord (_, fields), _), _)) :: _ =>
+                         getCompletionsFromFields env (name ^ ".") (Substring.string str) fields
+                       | _ => [])
+                end
+          | _ => []
+    end
+
+(* TODO can we use the real parser to figure out what we're typing (exp, con, field, etc) to predict better? *)
+fun handleCompletion (state: state) (p: LspSpec.completionReq) =
+    let
+        val fileName = #path (#uri (#textDocument p))
+        val s = SM.find (#fileStates state, fileName)
+    in
+        case s of
+            NONE => LspSpec.Success { isIncomplete = false, items = []}
+          | SOME s =>
+            let 
+                val pos = #position p
+                val line = List.nth (Substring.fields (fn c => c = #"\n") (Substring.full (#text s)), #line pos)
+                val () = debug ("line" ^ Substring.string line)
+                val chars = [ (* #".", *) #"(", #")", #"{", #"}", #"[", #"]", #"<", #">", #"-", #"=", #":"
+                              , #" ", #"\n", #"#", #",", #"*", #"\"", #"|", #"&", #"$", #"^", #"+", #";"]
+                val lineUntilPos = Substring.slice (line, 0, SOME (#character pos))
+                val () = debug ("lineUntilPos: \"" ^ Substring.string lineUntilPos ^ "\"")
+                val searchStr = Substring.string (Substring.taker (fn c => not (List.exists (fn c' => c = c') chars)) lineUntilPos)
+                val () = debug ("Looking for completions for: \"" ^ searchStr ^ "\"")
+                val env = #envBeforeThisModule s
+                val decls = #decls s
+                val getInfoRes = GetInfo.getInfo env (Elab.StrConst decls) fileName { line = #line pos + 1
+                                                                                    , character = #character pos + 1} 
+                val envOfSmallest = #env (#smallest getInfoRes)
+            in
+                LspSpec.Success { isIncomplete = false
+                                , items = findMatchingStringInEnv envOfSmallest searchStr}
+            end
+    end
+
+fun applyContentChange ((c, s): LspSpec.contentChange * string): string =
+    case (#range c, #rangeLength c) of
+        (SOME range, SOME _) =>
+        let
+            val lines = Substring.fields (fn c => c = #"\n") (Substring.full s)
+            val linesBefore = List.take (lines, #line (#start range))
+            val linesAfter = List.drop (lines, #line (#end_ range) + 1)
+            val startLine = List.nth (lines, #line (#start range))
+            val startText = Substring.slice (startLine, 0, SOME (#character (#start range))) 
+            val endLine = List.nth (lines, #line (#end_ range))
+            val endText = Substring.triml (#character (#end_ range)) endLine 
+        in
+            Substring.concatWith "\n" (linesBefore
+                                       @ [Substring.full (Substring.concat [startText, Substring.full (#text c), endText])]
+                                       @ linesAfter)
+        end
+      | _ =>
+        #text c
+
+fun handleDocumentDidChange (state: state) (toclient: LspSpec.toclient) (p: LspSpec.didChangeParams): unit =
+    let
+        val fileName = #path (#uri (#textDocument p))
+        val s = SM.find (#fileStates state, fileName)
+    in
+        case s of
+            NONE =>
+            (debug ("Got change event for file that isn't open: " ^ fileName);
+             (#showMessage toclient) ("Got change event for file that isn't open: " ^ fileName) 1)
+          | SOME s =>
+            let
+                val newtext = List.foldl applyContentChange (#text s) (#contentChanges p)
+            in
+                insertFileState state fileName { text = newtext
+                                               , decls = #decls s
+                                               , envBeforeThisModule = #envBeforeThisModule s}
             end
     end
 
@@ -686,14 +1001,17 @@ fun serverLoop () =
                                            LspSpec.Success
                                                { capabilities =
                                                  { hoverProvider = true
+                                                 , completionProvider = SOME { triggerCharacters = ["."]}
                                                  , textDocumentSync = { openClose = true
+                                                                      , change = 2
                                                                       , save = SOME { includeText = false }
                                                  }}
                                                }
                                        end)
                                       handle (Fail str) => LspSpec.Error (~32602, str)
                     , shutdown = fn () => LspSpec.Error (~32002, "Server not initialized")
-                    , textDocument_hover = fn ctx => fn _ => LspSpec.Error (~32002, "Server not initialized")
+                    , textDocument_hover = fn toclient => fn _ => LspSpec.Error (~32002, "Server not initialized")
+                    , textDocument_completion = fn _ => LspSpec.Error (~32002, "Server not initialized")
                     }
                 | LspSpec.Notification n => ())
           | SOME state => 
@@ -702,9 +1020,9 @@ fun serverLoop () =
                 ((LspSpec.handleNotification
                   n
                   { initialized = fn () => ()
-                  , textDocument_didOpen = fn ctx => fn p => handleFullDocument state ctx (#uri (#textDocument p))
-                  , textDocument_didChange = fn ctx => fn didChangeParams => ()
-                  , textDocument_didSave = fn ctx => fn p => handleFullDocument state ctx (#uri (#textDocument p))
+                  , textDocument_didOpen = fn toclient => fn p => handleDocumentSavedOrOpened state toclient (#uri (#textDocument p)) (SOME (#text (#textDocument p)))
+                  , textDocument_didChange = handleDocumentDidChange state
+                  , textDocument_didSave = fn toclient => fn p => handleDocumentSavedOrOpened state toclient (#uri (#textDocument p)) NONE
                   })
                  handle LspError e => handleLspErrorInNotification e
                       | ex => handleLspErrorInNotification (InternalError (General.exnMessage ex)))
@@ -714,7 +1032,8 @@ fun serverLoop () =
                   m
                   { initialize = fn _ => LspSpec.Error (~32600, "Server already initialized")
                   , shutdown = fn () => LspSpec.Success ()
-                  , textDocument_hover = fn ctx => fn p => handleHover state p
+                  , textDocument_hover = fn toclient => handleHover state
+                  , textDocument_completion = handleCompletion state
                   })
                  handle LspError e => handleLspErrorInRequest (#id m) e
                       | ex => handleLspErrorInRequest (#id m) (InternalError (General.exnMessage ex)))

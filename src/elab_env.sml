@@ -932,6 +932,12 @@ fun lookupENamed (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
+fun matchNamedEByPrefix (env: env) (str: string) =
+    List.filter (fn (name,con) => String.isPrefix str name) (IM.listItems (#namedE env))
+
+fun matchRelEByPrefix (env: env) (str: string) =
+    List.filter (fn (name,con) => String.isPrefix str name) (#relE env)
+
 fun checkENamed (env : env) n =
     Option.isSome (IM.find (#namedE env, n))
 
@@ -985,7 +991,8 @@ fun lookupStrNamed (env : env) n =
       | SOME x => x
 
 fun lookupStr (env : env) x = SM.find (#renameStr env, x)
-
+fun matchStrByPrefix (env: env) prefix =
+    List.filter (fn (name,_) => String.isPrefix prefix name) (SM.listItemsi (#renameStr env))
 
 fun sgiSeek (sgi, (sgns, strs, cons)) =
     case sgi of
