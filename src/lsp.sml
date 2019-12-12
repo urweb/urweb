@@ -833,14 +833,15 @@ fun getCompletionsFromSignatureItems (env: ElabEnv.env) (prefix: string) (search
                                     val k = (Elab.KType, ErrorMsg.dummySpan)
                                     val env = ElabEnv.pushCNamedAs env dtName n k NONE
                                     val env = List.foldl (fn (x, env) => ElabEnv.pushCRel env x k) env xs
+                                    val typeVarsString = List.foldl (fn (x, acc) => acc ^ " " ^ x) "" xs
                                 in
                                     List.mapPartial (fn (constrName, _, conO) =>
                                                         if String.isPrefix searchStr constrName
                                                         then SOME { label = prefix ^ constrName
                                                                   , kind = LspSpec.Function
                                                                   , detail = case conO of
-                                                                                 NONE => dtName
-                                                                               | SOME con => ppToString (ElabPrint.p_con env con) 150 ^ " -> " ^ dtName
+                                                                                 NONE => dtName ^ typeVarsString
+                                                                               | SOME con => ppToString (ElabPrint.p_con env con) 150 ^ " -> " ^ dtName ^ typeVarsString
                                                                   }
                                                         else NONE) constrs
                                 end)
