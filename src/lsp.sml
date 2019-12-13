@@ -47,12 +47,17 @@ fun initState (initParams: LspSpec.initializeParams): state =
         val rootPath = case #rootUri initParams of 
                            NONE => raise Fail "No rootdir found"
                          | SOME a => #path a
+        val optsUrpFile =
+            (SOME (FromJson.asString (FromJson.get "urpfile" (FromJson.get "project" (FromJson.get "urweb" (#initializationOptions initParams))))))
+            handle ex => NONE
         val foundUrps = scanDir (fn fname => OS.Path.ext fname = SOME "urp") rootPath
     in 
         { urpPath = case foundUrps of
                         [] => raise Fail ("No .urp files found in path " ^ rootPath)
                       | one :: [] => OS.Path.base (OS.Path.file one)
-                      | many => raise Fail ("Found multiple .urp files in path " ^ rootPath)
+                      | many => case List.find (fn m => SOME (OS.Path.base (OS.Path.file m)) = optsUrpFile) many of
+                                    NONE => raise Fail ("Found multiple .urp files in path " ^ rootPath)
+                                  | SOME f => OS.Path.base (OS.Path.file f)
         , fileStates = SM.empty
         }
     end
@@ -531,8 +536,8 @@ fun serverLoop () =
                   LspSpec.RequestMessage m =>
                   LspSpec.handleMessage
                     m
-                    { initialize = fn _ => 
-                                      (let val st = initState (LspSpec.parseInitializeParams (#params m))
+                    { initialize = fn p => 
+                                      (let val st = initState p
                                        in
                                            stateRef := SOME st;
                                            LspSpec.Success

@@ -195,12 +195,14 @@ structure LspSpec = struct
       { textDocument = parseTextDocumentIdentifier (FromJson.get "textDocument" params)
       }
   type initializeParams =
-       { rootUri: documentUri option }
+       { rootUri: documentUri option
+       , initializationOptions: Json.json }
   fun parseInitializeParams (j: Json.json) =
       { rootUri =
         Option.map
           parseDocumentUri
           (FromJson.asOptionalString (FromJson.get "rootUri" j))
+      , initializationOptions = FromJson.get "initializationOptions" j
       }
   type diagnostic = { range: range
                     (* code?: number | string *)
