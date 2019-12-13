@@ -204,12 +204,14 @@ fun elabFile (state: state) (fileName: string): ({ decls: Elab.decl list, envBef
             end
     end
 
+(* TODO Bad API: text0 = NONE is Save, text0 = SOME is open *)
+(* TODO whole function isn't great, could use a refactor *)
 fun handleDocumentSavedOrOpened (state: state) (toclient: LspSpec.toclient) (documentUri: LspSpec.documentUri) (textO: string option) =
     let 
         val fileName = #path documentUri
-        val res = elabFile state fileName
+        val previousState = SM.find (#fileStates state, fileName)
         val text = case textO of
-                       NONE => (case SM.find (#fileStates state, fileName) of
+                       NONE => (case previousState of
                                     NONE => ((#showMessage toclient) ("No previous state for file " ^ fileName) 2; NONE)
                                   | SOME previousState => SOME (#text previousState))
                      | SOME text => SOME text
@@ -217,16 +219,26 @@ fun handleDocumentSavedOrOpened (state: state) (toclient: LspSpec.toclient) (doc
         case text of
             NONE => ()
           | SOME text => 
-            (case #1 res of
-                 NONE =>
-                 insertFileState state fileName { text = text
-                                                , envBeforeThisModule = ElabEnv.empty
-                                                , decls = [] }
-               | SOME fs =>
-                 (insertFileState state fileName { text = text
-                                                 , envBeforeThisModule = #envBeforeThisModule fs
-                                                 , decls = #decls fs });
-             #publishDiagnostics toclient { uri = documentUri , diagnostics = #2 res})
+            let
+                (* Insert text before elabFile since that can fail *)
+                val () = insertFileState state fileName { text = text
+                                                        , envBeforeThisModule = case previousState of
+                                                                                    NONE => ElabEnv.empty
+                                                                                  | SOME p => #envBeforeThisModule p
+                                                        , decls = case previousState of
+                                                                      NONE => []
+                                                                    | SOME p => #decls p
+                                                        }
+                val res = elabFile state fileName
+            in
+                (case #1 res of
+                    NONE => ()
+                  | SOME fs =>
+                    (insertFileState state fileName { text = text
+                                                    , envBeforeThisModule = #envBeforeThisModule fs
+                                                    , decls = #decls fs });
+                #publishDiagnostics toclient { uri = documentUri , diagnostics = #2 res})
+            end
     end
 
 fun scanDir (f: string -> bool) (path: string) =
