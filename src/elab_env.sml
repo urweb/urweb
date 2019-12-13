@@ -940,13 +940,12 @@ fun lookupENamed (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
+(* TODO Why does this work better than using #renameE? *)
 fun matchEByPrefix (env: env) (prefix: string): (string * con) list =
     List.mapPartial (fn (name, value) => if String.isPrefix prefix name
-                                        then case value of
-                                                  Rel' (_, x) => SOME (name, x)
-                                                | Named' (_, x) => SOME (name, x)
+                                        then SOME (name, value)
                                         else NONE)
-                    (SM.listItemsi (#renameE env))
+                    (#relE env @ IM.listItems (#namedE env))
 
 fun checkENamed (env : env) n =
     Option.isSome (IM.find (#namedE env, n))
