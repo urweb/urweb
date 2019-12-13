@@ -280,6 +280,11 @@ $(SRC)/getinfo.sml
 $(SRC)/json.sig
 $(SRC)/json.sml
 
+$(SRC)/fromjson.sig
+$(SRC)/fromjson.sml
+
+$(SRC)/lspspec.sml
+
 $(SRC)/lsp.sig
 $(SRC)/lsp.sml
 
