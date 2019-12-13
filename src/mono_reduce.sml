@@ -597,8 +597,7 @@ fun reduce' (file : file) =
                             ((*Print.prefaces "trySub"
                                             [("e", MonoPrint.p_exp env (e, ErrorMsg.dummySpan))];*)
                              case t of
-                                 (TFfi ("Basis", "string"), _) => doSub ()
-                               | (TSignal _, _) => e
+                                 (TSignal _, _) => e
                                | _ =>
                                  case e' of
                                      (ECase _, _) => e

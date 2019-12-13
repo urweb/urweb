@@ -509,16 +509,17 @@ fun p_decl env (dAll as (d, _) : decl) =
                                 space,
                                 p_exp env e,
                                 string "*)"]
-      | DDatabase {name, expunge, initialize} => box [string "database",
-                                                      space,
-                                                      string name,
-                                                      space,
-                                                      string "(",
-                                                      p_enamed env expunge,
-                                                      string ",",
-                                                      space,
-                                                      p_enamed env initialize,
-                                                      string ")"]
+      | DDatabase {name, expunge, initialize, ...} =>
+        box [string "database",
+             space,
+             string name,
+             space,
+             string "(",
+             p_enamed env expunge,
+             string ",",
+             space,
+             p_enamed env initialize,
+             string ")"]
       | DJavaScript s => box [string "JavaScript(",
                               string s,
                               string ")"]

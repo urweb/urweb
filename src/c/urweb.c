@@ -21,6 +21,7 @@
 #include <pthread.h>
 
 #include <unicode/utf8.h>
+#include <unicode/ustring.h>
 #include <unicode/uchar.h>
 
 #include "types.h"
@@ -2344,10 +2345,23 @@ char *uw_Basis_htmlifySpecialChar(uw_context ctx, uw_Basis_char ch) {
 
 uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, uw_Basis_char ch) {
   unsigned int n = ch;
-  int len;
+  int len = 0;
 
   uw_check(ctx, INTS_MAX+3);
-  len = sprintf(ctx->page.front, "&#%u;", n);
+
+  if(uw_Basis_isprint(ctx, ch)) {
+
+    int32_t len_written = 0;
+    UErrorCode err = U_ZERO_ERROR;
+
+    u_strToUTF8(ctx->page.front, 5, &len_written, (const UChar*)&ch, 1, &err);
+    len = len_written;
+  }
+
+  // either it's a non-printable character, or we failed to convert to UTF-8
+  if(len == 0) {
+    len = sprintf(ctx->page.front, "&#%u;", n);
+  }
   ctx->page.front += len;
 
   return uw_unit_v;
@@ -2459,7 +2473,7 @@ uw_unit uw_Basis_htmlifyString_w(uw_context ctx, uw_Basis_string s) {
     else {
       uw_Basis_htmlifySpecialChar_w(ctx, c1);
     }    
-  }  
+  }
 
   return uw_unit_v;
 }
@@ -2708,6 +2722,18 @@ uw_Basis_string uw_Basis_str1(uw_context ctx, uw_Basis_char ch) {
 
   ctx->heap.front += req + 1;
   return r; 
+}
+
+uw_Basis_string uw_Basis_ofUnicode(uw_context ctx, uw_Basis_int n) {
+  UChar buf16[] = {n};
+  uw_Basis_string out = uw_malloc(ctx, 3);
+  int32_t outLen;
+  UErrorCode pErrorCode = 0;
+
+  if (u_strToUTF8(out, 3, &outLen, buf16, 1, &pErrorCode) == NULL || outLen == 0)
+    uw_error(ctx, FATAL, "Bad Unicode string to unescape (error %s)", u_errorName(pErrorCode));
+
+  return out;
 }
 
 uw_Basis_string uw_strdup(uw_context ctx, uw_Basis_string s1) {
@@ -4915,13 +4941,13 @@ uw_Basis_postField *uw_Basis_firstFormField(uw_context ctx, uw_Basis_string s) {
 
   f = uw_malloc(ctx, sizeof(uw_Basis_postField));
   unurl = s;
-  f->name = uw_Basis_unurlifyString(ctx, &unurl);
+  f->name = uw_Basis_unurlifyString_fromClient(ctx, &unurl);
   s = strchr(s, 0);
   if (!s)
     uw_error(ctx, FATAL, "firstFormField: Missing null terminator");
   ++s;
   unurl = s;
-  f->value = uw_Basis_unurlifyString(ctx, &unurl);
+  f->value = uw_Basis_unurlifyString_fromClient(ctx, &unurl);
   s = strchr(s, 0);
   if (!s)
     uw_error(ctx, FATAL, "firstFormField: Missing null terminator");

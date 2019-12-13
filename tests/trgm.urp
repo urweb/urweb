@@ -1,0 +1,6 @@
+database dbname=trgm
+sql trgm.sql
+rewrite all Trgm/*
+
+$/list
+trgm

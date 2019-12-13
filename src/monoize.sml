@@ -50,11 +50,13 @@ structure RM = BinaryMapFn(struct
                                                                         (L'.TRecord r2, E.dummySpan))
                            end)
 
+val uses_similar = ref false
+
 local
     val url_prefixes = ref []
 in
 
-fun reset () = url_prefixes := []
+fun reset () = (url_prefixes := []; uses_similar := false)
 
 fun addPrefix prefix =
     let
@@ -354,6 +356,8 @@ fun monoType env =
                   | L.CApp ((L.CFfi ("Basis", "sql_nfunc"), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_ufunc"), _), _), _), _) =>
+                    (L'.TFfi ("Basis", "string"), loc)
+                  | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_bfunc"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
                   | L.CApp ((L.CApp ((L.CApp ((L.CFfi ("Basis", "sql_partition"), _), _), _), _), _), _) =>
                     (L'.TFfi ("Basis", "string"), loc)
@@ -2693,6 +2697,40 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
           | L.ECApp ((L.EFfi ("Basis", "sql_known"), _), _) =>
             ((L'.EFfi ("Basis", "sql_known"), loc), fm)
 
+          | L.ECApp (
+                (L.ECApp (
+                      (L.ECApp (
+                            (L.ECApp (
+                                  (L.ECApp (
+                                        (L.ECApp (
+                                              (L.EFfi ("Basis", "sql_bfunc"), _),
+                                              _), _),
+                                        _), _),
+                                  _), _),
+                            _), _),
+                      _), _),
+                _) =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("f", s, (L'.TFun (s, s), loc),
+                           (L'.EAbs ("x1", s, s,
+                                     (L'.EAbs ("x2", s, s,
+                                               strcat [(L'.ERel 2, loc),
+                                                       str "(",
+                                                       (L'.ERel 1, loc),
+                                                       str ",",
+                                                       (L'.ERel 0, loc),
+                                                       str ")"]), loc)), loc)), loc),
+                 fm)
+            end
+          | L.EFfi ("Basis", "sql_similarity") =>
+            ((case #supportsSimilar (Settings.currentDbms ()) of
+                  NONE => ErrorMsg.errorAt loc "The DBMS you've selected doesn't support SIMILAR."
+                | _ => ());
+             uses_similar := true;
+             (str "similarity", fm))
+
           | (L.ECApp (
              (L.ECApp (
               (L.ECApp (
@@ -4593,7 +4631,8 @@ fun monoize env file =
                                             in
                                                 (env, Fm.enter fm, (L'.DDatabase {name = s,
                                                                                   expunge = nExp,
-                                                                                  initialize = nIni}, loc)
+                                                                                  initialize = nIni,
+                                                                                  usesSimilar = false}, loc)
                                                                    :: (dExp, loc)
                                                                    :: (dIni, loc)
                                                                    :: ds)
@@ -4617,6 +4656,12 @@ fun monoize env file =
                                                     | _ =>
                                                       ds' @ Fm.decls fm @ (L'.DDatatype (!pvarDefs), loc) :: ds)))
                                      (env, Fm.empty mname, []) file
+        val ds = map (fn (L'.DDatabase r, loc) =>
+                         (L'.DDatabase {name = #name r,
+                                        expunge = #expunge r,
+                                        initialize = #initialize r,
+                                        usesSimilar = !uses_similar}, loc)
+                     | x => x) ds
         val monoFile = (rev ds, [])
     in
         pvars := RM.empty;

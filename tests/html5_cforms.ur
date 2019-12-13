@@ -9,8 +9,8 @@ fun main () : transaction page =
     d <- source "";
     e <- source "";
     f <- source "";
-    g <- source 1.0;
-    h <- source 1.0;
+    g <- source (Some 1.0);
+    h <- source (Some 1.0);
     i <- source "#CCCCCC";
     j <- source "2014/11/16";
     k <- source "2014/11/16 12:30:45";

@@ -115,7 +115,7 @@ datatype decl' =
        | DTable of string * (string * typ) list * string * (string * string) list
        | DSequence of string
        | DView of string * (string * typ) list * string
-       | DDatabase of {name : string, expunge : int, initialize : int}
+       | DDatabase of {name : string, expunge : int, initialize : int, usesSimilar : bool}
        | DPreparedStatements of (string * int) list
 
        | DJavaScript of string

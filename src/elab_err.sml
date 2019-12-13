@@ -40,11 +40,14 @@ val p_kind = P.p_kind
              
 datatype kind_error =
          UnboundKind of ErrorMsg.span * string
+       | KDisallowedWildcard of ErrorMsg.span
 
 fun kindError env err =
     case err of
         UnboundKind (loc, s) =>
         ErrorMsg.errorAt loc ("Unbound kind variable " ^ s)
+      | KDisallowedWildcard loc =>
+        ErrorMsg.errorAt loc "Wildcard not allowed in signature"
 
 datatype kunify_error =
          KOccursCheckFailed of kind * kind
@@ -76,6 +79,7 @@ datatype con_error =
        | DuplicateField of ErrorMsg.span * string
        | ProjBounds of con * int
        | ProjMismatch of con * kind
+       | CDisallowedWildcard of ErrorMsg.span
 
 fun conError env err =
     case err of
@@ -101,6 +105,8 @@ fun conError env err =
         (ErrorMsg.errorAt (#2 c) "Projection from non-tuple constructor";
          eprefaces' [("Constructor", p_con env c),
                      ("Kind", p_kind env k)])
+      | CDisallowedWildcard loc =>
+        ErrorMsg.errorAt loc "Wildcard not allowed in signature"
 
 datatype cunify_error =
          CKind of kind * kind * E.env * kunify_error

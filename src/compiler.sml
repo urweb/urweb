@@ -745,7 +745,7 @@ fun parseUrp' accLibs fname =
                            | "relation" => Settings.Relation
                            | "cookie" => Settings.Cookie
                            | "style" => Settings.Style
-                           | _ => (ErrorMsg.error "Bad path kind spec";
+                           | _ => (ErrorMsg.error ("Bad path kind spec \"" ^ s ^ "\"");
                                    Settings.Any)
 
                      fun parsePattern s =
@@ -1610,9 +1610,13 @@ fun compileC {cname, oname, ename, libs, profile, debug, linker, link = link'} =
         val proto = Settings.currentProtocol ()
 
         val lib = if Settings.getBootLinking () then
-                      !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a " ^ !Settings.configIcuLibs ^ " -licui18n -licuuc -licudata"
+                      !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^
+                      !Settings.configLib ^ "/liburweb.a " ^
+                      !Settings.configIcuLibs ^ " -licui18n -licuuc -licudata -licuio"
                   else if Settings.getStaticLinking () then
-                      " -static " ^ !Settings.configLib ^ "/" ^ #linkStatic proto ^ " " ^ !Settings.configLib ^ "/liburweb.a " ^ !Settings.configIcuLibs ^ " -licui18n -licuuc -licudata"
+                      " -static " ^ !Settings.configLib ^ "/" ^ #linkStatic
+                      proto ^ " " ^ !Settings.configLib ^ "/liburweb.a " ^
+                      !Settings.configIcuLibs ^ " -licui18n -licuuc -licudata -licuio"
                   else
                       "-L" ^ !Settings.configLib ^ " " ^ #linkDynamic proto ^ " -lurweb"
 

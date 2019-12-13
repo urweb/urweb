@@ -238,6 +238,10 @@ Further \cd{urweb} invocations in the same working directory will send requests 
 \begin{verbatim}
 urweb daemon stop
 \end{verbatim}
+To restart a running (or crashed) daemon, run
+\begin{verbatim}
+urweb daemon restart
+\end{verbatim}
 Communication happens via a UNIX domain socket in file \cd{.urweb\_daemon} in the working directory.
 
 \medskip
@@ -2573,6 +2577,7 @@ It is possible to write JavaScript FFI code that interacts with the functional-r
   \item \cd{sr(v)} and \cd{sb(s, f)}, the ``return'' and ``bind'' monad operators, respectively
   \item \cd{ss(s)}, to produce the signal corresponding to source \cd{s}
   \item \cd{scur(s)}, to get the current value of signal \cd{s}
+  \item \cd{listen(s, f)}, to ask that function \cd{f} be called with the current value of \cd{s}, every time it changes, including immediately upon establishing this listener
   \end{itemize}
 
 \item The behavior of the \cd{<dyn>} pseudo-tag may be mimicked by following the right convention in a piece of HTML source code with a type like $\mt{xbody}$.  Such a piece of source code may be encoded with a JavaScript string.  To insert a dynamic section, include a \cd{<script>} tag whose content is just a call \cd{dyn(pnode, s)}.  The argument \cd{pnode} specifies what the relevant enclosing parent tag is.  Use value \cd{"tr"} when the immediate parent is \cd{<tr>}, use \cd{"table"} when the immediate parent is \cd{<table>}, and use \cd{"span"} otherwise.  The argument \cd{s} is a string-valued signal giving the HTML code to be inserted at this point.  As with the usual \cd{<dyn>} tag, that HTML subtree is automatically updated as the value of \cd{s} changes.

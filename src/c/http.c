@@ -65,6 +65,7 @@ static void log_error(void *data, const char *fmt, ...) {
   va_start(ap, fmt);
 
   vfprintf(stderr, fmt, ap);
+  fflush(stderr);
 }
 
 static void log_debug(void *data, const char *fmt, ...) {
@@ -75,6 +76,7 @@ static void log_debug(void *data, const char *fmt, ...) {
     va_start(ap, fmt);
 
     vprintf(fmt, ap);
+    fflush(stdout);
   }
 }
 

@@ -54,6 +54,14 @@ val deKnown = List.filter (fn Known _ => false
                             | KnownC _ => false
                             | _ => true)
 
+fun p_env_item ei =
+    Print.PD.string (case ei of
+                         Unknown => "?"
+                       | Known _ => "K"
+                       | UnknownC => "C?"
+                       | KnownC _ => "CK"
+                       | Lift _ => "^")
+                          
 datatype result = Yes of env | No | Maybe
 
 fun match (env, p : pat, e : exp) =
@@ -124,7 +132,8 @@ fun match (env, p : pat, e : exp) =
     end
 
 fun con env (all as (c, loc)) =
-    ((*Print.prefaces "con" [("c", CorePrint.p_con CoreEnv.empty all)];*)
+    ((*Print.prefaces "con" [("c", CorePrint.p_con CoreEnv.empty all),
+                           ("env", Print.p_list p_env_item env)];*)
      case c of
          TFun (c1, c2) => (TFun (con env c1, con env c2), loc)
        | TCFun (x, k, c2) => (TCFun (x, k, con (UnknownC :: env) c2), loc)
@@ -139,7 +148,7 @@ fun con env (all as (c, loc)) =
                    | Unknown :: rest => find (n', rest, nudge, liftC)
                    | Known _ :: rest => find (n', rest, nudge, liftC)
                    | Lift (liftC', _) :: rest => find (n', rest, nudge + liftC',
-                                                               liftC + liftC')
+                                                       liftC + liftC')
                    | UnknownC :: rest =>
                      if n' = 0 then
                          (CRel (n + nudge), loc)
@@ -228,154 +237,156 @@ fun patCon pc =
                  kind = kind}
 
 fun exp env (all as (e, loc)) =
-    case e of
-        EPrim _ => all
-      | ERel n =>
-        let
-            fun find (n', env, nudge, liftC, liftE) =
-                case env of
-                    [] => (ERel (n + nudge), loc)
-                  | Lift (liftC', liftE') :: rest => find (n', rest, nudge + liftE', liftC + liftC', liftE + liftE')
-                  | UnknownC :: rest => find (n', rest, nudge, liftC + 1, liftE)
-                  | KnownC _ :: rest => find (n', rest, nudge, liftC, liftE)
-                  | Unknown :: rest =>
-                    if n' = 0 then
-                        (ERel (n + nudge), loc)
-                    else
-                        find (n' - 1, rest, nudge, liftC, liftE + 1)
-                  | Known e :: rest =>
-                    if n' = 0 then
-                        ((*print "SUBSTITUTING\n";*)
-                         exp (Lift (liftC, liftE) :: rest) e)
-                    else
-                        find (n' - 1, rest, nudge - 1, liftC, liftE)
-        in
-            find (n, env, 0, 0, 0)
-        end
-      | ENamed _ => all
-      | ECon (dk, pc, cs, eo) => (ECon (dk, patCon pc, map (con env) cs, Option.map (exp env) eo), loc)
-      | EFfi _ => all
-      | EFfiApp (m, f, es) => (EFfiApp (m, f, map (fn (e, t) => (exp env e, con env t)) es), loc)
+    ((*Print.prefaces "exp" [("e", CorePrint.p_exp CoreEnv.empty all)];*)
+     case e of
+         EPrim _ => all
+       | ERel n =>
+         let
+             fun find (n', env, nudge, liftC, liftE) =
+                 case env of
+                     [] => (ERel (n + nudge), loc)
+                   | Lift (liftC', liftE') :: rest => find (n', rest, nudge + liftE', liftC + liftC', liftE + liftE')
+                   | UnknownC :: rest => find (n', rest, nudge, liftC + 1, liftE)
+                   | KnownC _ :: rest => find (n', rest, nudge, liftC, liftE)
+                   | Unknown :: rest =>
+                     if n' = 0 then
+                         (ERel (n + nudge), loc)
+                     else
+                         find (n' - 1, rest, nudge, liftC, liftE + 1)
+                   | Known e :: rest =>
+                     if n' = 0 then
+                         ((*print "SUBSTITUTING\n";*)
+                           exp (Lift (liftC, liftE) :: rest) e)
+                     else
+                         find (n' - 1, rest, nudge - 1, liftC, liftE)
+         in
+             find (n, env, 0, 0, 0)
+         end
+       | ENamed _ => all
+       | ECon (dk, pc, cs, eo) => (ECon (dk, patCon pc, map (con env) cs, Option.map (exp env) eo), loc)
+       | EFfi _ => all
+       | EFfiApp (m, f, es) => (EFfiApp (m, f, map (fn (e, t) => (exp env e, con env t)) es), loc)
 
-      | EApp (e1, e2) =>
-        let
-            val e1 = exp env e1
-            val e2 = exp env e2
-        in
-            case #1 e1 of
-                EAbs (_, _, _, b) => exp (Known e2 :: deKnown env) b
-              | _ => (EApp (e1, e2), loc)
-        end
+       | EApp (e1, e2) =>
+         let
+             val e1 = exp env e1
+             val e2 = exp env e2
+         in
+             case #1 e1 of
+                 EAbs (_, _, _, b) => exp (Known e2 :: deKnown env) b
+               | _ => (EApp (e1, e2), loc)
+         end
 
-      | EAbs (x, dom, ran, e) => (EAbs (x, con env dom, con env ran, exp (Unknown :: env) e), loc)
+       | EAbs (x, dom, ran, e) => (EAbs (x, con env dom, con env ran, exp (Unknown :: env) e), loc)
 
-      | ECApp (e, c) =>
-        let
-            val e = exp env e
-            val c = con env c
-        in
-            case #1 e of
-                ECAbs (_, _, b) => exp (KnownC c :: deKnown env) b
-              | _ => (ECApp (e, c), loc)
-        end
+       | ECApp (e, c) =>
+         let
+             val e = exp env e
+             val c = con env c
+         in
+             case #1 e of
+                 ECAbs (_, _, b) => exp (KnownC c :: deKnown env) b
+               | _ => (ECApp (e, c), loc)
+         end
 
-      | ECAbs (x, k, e) => (ECAbs (x, k, exp (UnknownC :: env) e), loc)
+       | ECAbs (x, k, e) => (ECAbs (x, k, exp (UnknownC :: env) e), loc)
 
-      | EKApp (e, k) => (EKApp (exp env e, k), loc)
-      | EKAbs (x, e) => (EKAbs (x, exp env e), loc)
+       | EKApp (e, k) => (EKApp (exp env e, k), loc)
+       | EKAbs (x, e) => (EKAbs (x, exp env e), loc)
 
-      | ERecord xcs => (ERecord (map (fn (x, e, t) => (con env x, exp env e, con env t)) xcs), loc)
-      | EField (e, c, {field = f, rest = r}) =>
-        let
-            val e = exp env e
-            val c = con env c
+       | ERecord xcs => (ERecord (map (fn (x, e, t) => (con env x, exp env e, con env t)) xcs), loc)
+       | EField (e, c, {field = f, rest = r}) =>
+         let
+             val e = exp env e
+             val c = con env c
 
-            fun default () = (EField (e, c, {field = con env f, rest = con env r}), loc)
-        in
-            case (#1 e, #1 c) of
-                (ERecord xcs, CName x) =>
-                (case List.find (fn ((CName x', _), _, _) => x' = x | _ => false) xcs of
-                     NONE => default ()
-                   | SOME (_, e, _) => e)
-              | _ => default ()
-        end
+             fun default () = (EField (e, c, {field = con env f, rest = con env r}), loc)
+         in
+             case (#1 e, #1 c) of
+                 (ERecord xcs, CName x) =>
+                 (case List.find (fn ((CName x', _), _, _) => x' = x | _ => false) xcs of
+                      NONE => default ()
+                    | SOME (_, e, _) => e)
+               | _ => default ()
+         end
 
-      | EConcat (e1, c1, e2, c2) => (EConcat (exp env e1, con env c1, exp env e2, con env c2), loc)
-      | ECut (e, c, {field = f, rest = r}) => (ECut (exp env e,
-                                                     con env c,
-                                                     {field = con env f, rest = con env r}), loc)
-      | ECutMulti (e, c, {rest = r}) => (ECutMulti (exp env e, con env c, {rest = con env r}), loc)
+       | EConcat (e1, c1, e2, c2) => (EConcat (exp env e1, con env c1, exp env e2, con env c2), loc)
+       | ECut (e, c, {field = f, rest = r}) => (ECut (exp env e,
+                                                      con env c,
+                                                      {field = con env f, rest = con env r}), loc)
+       | ECutMulti (e, c, {rest = r}) => (ECutMulti (exp env e, con env c, {rest = con env r}), loc)
 
-      | ECase (e, pes, {disc = d, result = r}) =>
-        let
-            val others = {disc = con env d, result = con env r}
+       | ECase (e, pes, {disc = d, result = r}) =>
+         let
+             val others = {disc = con env d, result = con env r}
 
-            fun patBinds (p, _) =
-                case p of
-                    PVar _ => 1
-                  | PPrim _ => 0
-                  | PCon (_, _, _, NONE) => 0
-                  | PCon (_, _, _, SOME p) => patBinds p
-                  | PRecord xpts => foldl (fn ((_, p, _), n) => n + patBinds p) 0 xpts
+             fun patBinds (p, _) =
+                 case p of
+                     PVar _ => 1
+                   | PPrim _ => 0
+                   | PCon (_, _, _, NONE) => 0
+                   | PCon (_, _, _, SOME p) => patBinds p
+                   | PRecord xpts => foldl (fn ((_, p, _), n) => n + patBinds p) 0 xpts
 
-            fun pat (all as (p, loc)) =
-                case p of
-                    PVar (x, t) => (PVar (x, con env t), loc)
-                  | PPrim _ => all
-                  | PCon (dk, pc, cs, po) =>
-                    (PCon (dk, patCon pc, map (con env) cs, Option.map pat po), loc)
-                  | PRecord xpts => (PRecord (map (fn (x, p, t) => (x, pat p, con env t)) xpts), loc)
+             fun pat (all as (p, loc)) =
+                 case p of
+                     PVar (x, t) => (PVar (x, con env t), loc)
+                   | PPrim _ => all
+                   | PCon (dk, pc, cs, po) =>
+                     (PCon (dk, patCon pc, map (con env) cs, Option.map pat po), loc)
+                   | PRecord xpts => (PRecord (map (fn (x, p, t) => (x, pat p, con env t)) xpts), loc)
 
-            fun push () =
-                (ECase (exp env e,
-                        map (fn (p, e) => (pat p,
-                                           exp (List.tabulate (patBinds p,
-                                                            fn _ => Unknown) @ env) e))
-                            pes, others), loc)
+             fun push () =
+                 (ECase (exp env e,
+                         map (fn (p, e) => (pat p,
+                                            exp (List.tabulate (patBinds p,
+                                                                fn _ => Unknown) @ env) e))
+                             pes, others), loc)
 
-            fun search pes =
-                case pes of
-                    [] => push ()
-                  | (p, body) :: pes =>
-                    case match (env, p, e) of
-                        No => search pes
-                      | Maybe => push ()
-                      | Yes env' => exp env' body
-        in
-            search pes
-        end
+             fun search pes =
+                 case pes of
+                     [] => push ()
+                   | (p, body) :: pes =>
+                     case match (env, p, e) of
+                         No => search pes
+                       | Maybe => push ()
+                       | Yes env' => exp env' body
+         in
+             search pes
+         end
 
-      | EWrite e => (EWrite (exp env e), loc)
-      | EClosure (n, es) => (EClosure (n, map (exp env) es), loc)
+       | EWrite e => (EWrite (exp env e), loc)
+       | EClosure (n, es) => (EClosure (n, map (exp env) es), loc)
 
-      | ELet (x, t, e1, e2) => (ELet (x, con env t, exp env e1, exp (Unknown :: env) e2), loc)
+       | ELet (x, t, e1, e2) => (ELet (x, con env t, exp env e1, exp (Unknown :: env) e2), loc)
 
-      | EServerCall (n, es, t, fm) => (EServerCall (n, map (exp env) es, con env t, fm), loc)
+       | EServerCall (n, es, t, fm) => (EServerCall (n, map (exp env) es, con env t, fm), loc))
 
 fun reduce file =
     let
         fun doDecl (d as (_, loc)) =
-            case #1 d of
-                DCon _ => d
-              | DDatatype _ => d
-              | DVal (x, n, t, e, s) =>
-                let
-                    val e = exp [] e
-                in
-                    (DVal (x, n, t, e, s), loc)
-                end
-              | DValRec vis =>
-                (DValRec (map (fn (x, n, t, e, s) => (x, n, t, exp [] e, s)) vis), loc)
-              | DExport _ => d
-              | DTable _ => d
-              | DSequence _ => d
-              | DView _ => d
-              | DDatabase _ => d
-              | DCookie _ => d
-              | DStyle _ => d
-              | DTask (e1, e2) => (DTask (exp [] e1, exp [] e2), loc)
-              | DPolicy e1 => (DPolicy (exp [] e1), loc)
-              | DOnError _ => d
+            ((*Print.prefaces "decl" [("d", CorePrint.p_decl CoreEnv.empty d)];*)
+             case #1 d of
+                 DCon _ => d
+               | DDatatype _ => d
+               | DVal (x, n, t, e, s) =>
+                 let
+                     val e = exp [] e
+                 in
+                     (DVal (x, n, t, e, s), loc)
+                 end
+               | DValRec vis =>
+                 (DValRec (map (fn (x, n, t, e, s) => (x, n, t, exp [] e, s)) vis), loc)
+               | DExport _ => d
+               | DTable _ => d
+               | DSequence _ => d
+               | DView _ => d
+               | DDatabase _ => d
+               | DCookie _ => d
+               | DStyle _ => d
+               | DTask (e1, e2) => (DTask (exp [] e1, exp [] e2), loc)
+               | DPolicy e1 => (DPolicy (exp [] e1), loc)
+               | DOnError _ => d)
     in
         map doDecl file
     end

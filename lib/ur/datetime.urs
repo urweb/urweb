@@ -20,6 +20,7 @@ val show_day_of_week : show day_of_week
 val show_month : show month
 val eq_day_of_week : eq day_of_week
 val eq_month : eq month
+val ord_month : ord month
 val dayOfWeekToInt : day_of_week -> int
 val intToDayOfWeek : int -> day_of_week
 val monthToInt : month -> int
