@@ -119,7 +119,7 @@ fun elabFile (state: state) (fileName: string): ({ decls: Elab.decl list, envBef
                                         then (List.rev (#1 acc), true)
                                         else (entry :: #1 acc, false))
                 ([] (* modules before *), false (* module found *))
-                (#sources job)
+                (#ffi job @ #sources job)
         val modulesBeforeThisFile = #1 moduleSearchRes 
         val () = if #2 moduleSearchRes
                  then ()
