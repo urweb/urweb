@@ -762,7 +762,7 @@ fun readFile (fileName: string): string =
     end
         
 
-(* TODO I couldn't figure out how to print just to a string, so writing to a temp file, then reading it, then deleting it, ... *)
+(* TODO PERF BIG I couldn't figure out how to print just to a string, so writing to a temp file, then reading it, then deleting it, ... *)
 fun ppToString (pp: Print.PD.pp_desc) (width: int): string =
     let
         val tempfile = OS.FileSys.tmpName ()
@@ -827,7 +827,7 @@ fun getCompletionsFromSignatureItems (env: ElabEnv.env) (prefix: string) (search
               | (Elab.SgiCon (name, _, _, con), _) =>
                 if String.isPrefix searchStr name
                 then [{ label = prefix ^ name
-                      , kind = LspSpec.Variable
+                      , kind = LspSpec.Value
                       , detail = ppToString (ElabPrint.p_con env con) 150
                       }]
                 else []
@@ -874,6 +874,7 @@ fun getCompletionsFromSignatureItems (env: ElabEnv.env) (prefix: string) (search
         List.concat (List.map mapF items)
     end
 
+(* TODO TOCHECK look at con's to specify "kind" more accurately *)
 fun findMatchingStringInEnv (env: ElabEnv.env) (str: string): LspSpec.completionItem list =
     let
         val splitted = Substring.fields (fn c => c = #".") (Substring.full str)
@@ -882,18 +883,35 @@ fun findMatchingStringInEnv (env: ElabEnv.env) (str: string): LspSpec.completion
             (_ :: []) =>
             if str = ""
             then []
-            else (List.map (fn (name,con) =>
-                               { label = name
-                               , kind = LspSpec.Variable
-                               , detail = ppToString (ElabPrint.p_con env con) 150
-                               })
-              (ElabEnv.matchRelEByPrefix env str
-               @ ElabEnv.matchNamedEByPrefix env str))
+            else
+                let
+                    val matchingEs = ElabEnv.matchEByPrefix env str (* function params, let bindings and top-level bindings. Should we discern between Rel and Named? *)
+                    val expressionCompletions = List.map (fn (name,con) =>
+                                                             { label = name
+                                                             , kind = LspSpec.Value
+                                                             , detail = ppToString (ElabPrint.p_con env con) 150
+                                                             }) matchingEs
+                    val matchingStrs = ElabEnv.matchStrByPrefix env str
+                    val structureCompletions = List.map (fn (name,(_,sgn)) =>
+                                                            { label = name
+                                                            , kind = LspSpec.Module
+                                                            , detail = ""
+                                                            }) matchingStrs
+                    val matchingCons = ElabEnv.matchCByPrefix env str
+                    val conCompletions = List.map (fn (name,kind) =>
+                                                      { label = name
+                                                      , kind = LspSpec.Constructor (* TODO probably wrong... *)
+                                                      , detail = ppToString (ElabPrint.p_kind env kind) 150
+                                                      }) matchingCons
+                in
+                    expressionCompletions @ structureCompletions @ conCompletions
+                end
           | (r :: str :: []) =>
             if Char.isUpper (Substring.sub (r, 0))
-            then  (* r should be a structure *)
+            then
+                (* Completing STRUCTURE *)
                 let 
-                    (* TODO Perf: first match and then equal is not perfect *)
+                    (* TODO PERF SMALL: first match and then equal is not perfect *)
                     val foundStrs = ElabEnv.matchStrByPrefix env (Substring.string r)
                     val filteredStrs = List.filter (fn (name,_) => name = Substring.string r) foundStrs
                 in
@@ -903,13 +921,13 @@ fun findMatchingStringInEnv (env: ElabEnv.env) (str: string): LspSpec.completion
                          getCompletionsFromSignatureItems env (name ^ ".") (Substring.string str) sgis
                        | _ => [])
                 end
-            else (* r should be a record *)
-                (* TODO is it correct to first try RelE and then NamedE? *)
+            else
+                (* Completing RECORD *)
+                (* TODO TOCHECK is it correct to first try RelE and then NamedE? *)
                 let 
-                    (* TODO Perf: first match and then equal is not perfect *)
-                    val foundRelEs = ElabEnv.matchRelEByPrefix env (Substring.string r)
-                    val foundNamedEs = ElabEnv.matchNamedEByPrefix env (Substring.string r)
-                    val filteredEs = List.filter (fn (name,_) => name = Substring.string r) (foundRelEs @ foundNamedEs)
+                    (* TODO PERF SMALL: first match and then equal is not perfect *)
+                    val foundEs = ElabEnv.matchEByPrefix env (Substring.string r)
+                    val filteredEs = List.filter (fn (name,_) => name = Substring.string r) foundEs
                 in
                     (case List.map (fn (name, c) => (name, ElabOps.reduceCon env c)) filteredEs of
                          [] => []
@@ -917,10 +935,12 @@ fun findMatchingStringInEnv (env: ElabEnv.env) (str: string): LspSpec.completion
                          getCompletionsFromFields env (name ^ ".") (Substring.string str) fields
                        | _ => [])
                 end
-          | _ => []
+          | _ =>
+            (* TODO NOTIMPLEMENTED submodules / nested records *)
+            []
     end
 
-(* TODO can we use the real parser to figure out what we're typing (exp, con, field, etc) to predict better? *)
+(* TODO IDEA can we use the real parser to figure out what we're typing (exp, con, field, etc) to predict better? *)
 fun handleCompletion (state: state) (p: LspSpec.completionReq) =
     let
         val fileName = #path (#uri (#textDocument p))

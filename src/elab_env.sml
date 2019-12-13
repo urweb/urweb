@@ -404,6 +404,14 @@ fun lookupC (env : env) x =
       | SOME (Rel' x) => Rel x
       | SOME (Named' x) => Named x
 
+fun matchCByPrefix (env: env) (prefix: string): (string * kind) list =
+    List.mapPartial (fn (name, value) => if String.isPrefix prefix name
+                                         then case value of
+                                                  Rel' (_, x) => SOME (name, x)
+                                                | Named' (_, x) => SOME (name, x)
+                                         else NONE)
+                    (SM.listItemsi (#renameC env))
+
 fun pushDatatype (env : env) n xs xncs =
     let
         val dk = U.classifyDatatype xncs
@@ -932,11 +940,13 @@ fun lookupENamed (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
-fun matchNamedEByPrefix (env: env) (str: string) =
-    List.filter (fn (name,con) => String.isPrefix str name) (IM.listItems (#namedE env))
-
-fun matchRelEByPrefix (env: env) (str: string) =
-    List.filter (fn (name,con) => String.isPrefix str name) (#relE env)
+fun matchEByPrefix (env: env) (prefix: string): (string * con) list =
+    List.mapPartial (fn (name, value) => if String.isPrefix prefix name
+                                        then case value of
+                                                  Rel' (_, x) => SOME (name, x)
+                                                | Named' (_, x) => SOME (name, x)
+                                        else NONE)
+                    (SM.listItemsi (#renameE env))
 
 fun checkENamed (env : env) n =
     Option.isSome (IM.find (#namedE env, n))

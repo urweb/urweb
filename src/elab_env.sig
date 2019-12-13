@@ -61,6 +61,7 @@ signature ELAB_ENV = sig
     val lookupCNamed : env -> int -> string * Elab.kind * Elab.con option
 
     val lookupC : env -> string -> Elab.kind var
+    val matchCByPrefix: env -> string -> (string * Elab.kind) list
 
     val pushDatatype : env -> int -> string list -> (string * int * Elab.con option) list -> env
     type datatyp
@@ -85,8 +86,7 @@ signature ELAB_ENV = sig
     val pushENamedAs : env -> string -> int -> Elab.con -> env
     val lookupENamed : env -> int -> string * Elab.con
     val checkENamed : env -> int -> bool
-    val matchNamedEByPrefix: env -> string -> (string * Elab.con) list
-    val matchRelEByPrefix: env -> string -> (string * Elab.con) list
+    val matchEByPrefix: env -> string -> (string * Elab.con) list
 
     val lookupE : env -> string -> Elab.con var
 
