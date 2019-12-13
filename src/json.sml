@@ -121,12 +121,18 @@ struct
               if peek () = #"\\" andalso (String.sub (!inputData, 1)) = #"\""
               then (consume "\\\""; pickChars (s ^ "\""))
               else
-                  if peek () = #"\\" andalso (String.sub (!inputData, 1)) = #"n"
-                  then (consume "\\n"; pickChars (s ^ "\n"))
+                  if peek () = #"\\" andalso String.sub (!inputData, 1) = #"\\" andalso String.sub (!inputData, 2) = #"n"
+                  then (consume "\\\\n"; pickChars (s ^ "\\n"))
                   else
-                      if peek () = #"\\" andalso (String.sub (!inputData, 1)) = #"r"
-                      then (consume "\\r"; pickChars (s ^ "\r"))
-                      else pickChars (s ^ String.str (take ()))
+                      if peek () = #"\\" andalso (String.sub (!inputData, 1)) = #"n"
+                      then (consume "\\n"; pickChars (s ^ "\n"))
+                      else
+                          if peek () = #"\\" andalso String.sub (!inputData, 1) = #"\\" andalso String.sub (!inputData, 2) = #"r"
+                          then (consume "\\\\r"; pickChars (s ^ "\\r"))
+                          else
+                              if peek () = #"\\" andalso (String.sub (!inputData, 1)) = #"r"
+                              then (consume "\\r"; pickChars (s ^ "\r"))
+                              else pickChars (s ^ String.str (take ()))
    in
       pickChars ""
    end
