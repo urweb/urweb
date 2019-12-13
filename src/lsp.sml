@@ -226,6 +226,10 @@ structure LspSpec (* :> LSPSPEC *) = struct
       { textDocument = parseTextDocumentIdentifier (FromJson.get "textDocument" params)
       (* , text = ... *)
       }
+  type didCloseParams = { textDocument: textDocumentIdentifier }
+  fun parseDidCloseParams (params: Json.json): didCloseParams =
+      { textDocument = parseTextDocumentIdentifier (FromJson.get "textDocument" params)
+      }
   type initializeParams =
        { rootUri: documentUri option }
   fun parseInitializeParams (j: Json.json) =
@@ -457,6 +461,7 @@ structure LspSpec (* :> LSPSPEC *) = struct
        , textDocument_didOpen: toclient -> didOpenParams -> unit
        , textDocument_didChange: toclient -> didChangeParams -> unit
        , textDocument_didSave: toclient -> didSaveParams -> unit
+       , textDocument_didClose: toclient -> didCloseParams -> unit
        }
   fun handleNotification
           (notification: {method: string, params: Json.json})
@@ -467,6 +472,7 @@ structure LspSpec (* :> LSPSPEC *) = struct
           | "textDocument/didOpen" => (#textDocument_didOpen handlers) toclient (parseDidOpenParams (#params notification))
           | "textDocument/didChange" => (#textDocument_didChange handlers) toclient (parseDidChangeParams (#params notification))
           | "textDocument/didSave" => (#textDocument_didSave handlers) toclient (parseDidSaveParams (#params notification))
+          | "textDocument/didClose" => (#textDocument_didClose handlers) toclient (parseDidCloseParams (#params notification))
           | m => debug ("Notification method not supported: " ^ m)
       
 end
@@ -982,6 +988,16 @@ fun handleDocumentDidChange (state: state) (toclient: LspSpec.toclient) (p: LspS
             end
     end
 
+fun handleDocumentDidClose (state: state) (toclient: LspSpec.toclient) (p: LspSpec.didCloseParams): unit =
+    let
+        val fileName = #path (#uri (#textDocument p))
+        val s = SM.find (#fileStates state, fileName)
+    in
+        stateRef := SOME { urpPath = #urpPath state
+                         , fileStates = (#1 (SM.remove (#fileStates state, fileName))) handle ex => #fileStates state
+                         }
+    end
+
 fun serverLoop () =            
     let 
         val requestMessage =
@@ -1024,6 +1040,7 @@ fun serverLoop () =
                   , textDocument_didOpen = fn toclient => fn p => handleDocumentSavedOrOpened state toclient (#uri (#textDocument p)) (SOME (#text (#textDocument p)))
                   , textDocument_didChange = handleDocumentDidChange state
                   , textDocument_didSave = fn toclient => fn p => handleDocumentSavedOrOpened state toclient (#uri (#textDocument p)) NONE
+                  , textDocument_didClose = fn toclient => fn p => handleDocumentDidClose state toclient p
                   })
                  handle LspError e => handleLspErrorInNotification e
                       | ex => handleLspErrorInNotification (InternalError (General.exnMessage ex)))
