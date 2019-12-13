@@ -257,14 +257,16 @@ fun scanDir (f: string -> bool) (path: string) =
 
 fun readFile (fileName: string): string =
     let 
-        val str = TextIO.openIn fileName
+        val stream = TextIO.openIn fileName
         fun doReadFile acc = 
-            case TextIO.inputLine str of
+            case TextIO.inputLine stream of
                 NONE => acc
-              | SOME str => (str ^ "\n" ^ acc)
+              | SOME str => (if acc = ""
+                             then doReadFile str
+                             else doReadFile (acc ^ str))
         val res = doReadFile ""
     in 
-        (TextIO.closeIn str; res)
+        (TextIO.closeIn stream; res)
     end
         
 
@@ -299,7 +301,7 @@ fun handleHover (state: state) (p: LspSpec.hoverReq): LspSpec.hoverResp LspSpec.
                 case #smallestgoodpart result of
                     NONE => LspSpec.Success NONE
                   | SOME {desc = desc, ...} =>
-                    LspSpec.Success (SOME {contents = ppToString desc 70})
+                    LspSpec.Success (SOME {contents = ppToString desc 50})
             end
     end
 
@@ -311,7 +313,7 @@ fun getCompletionsFromFields (env: ElabEnv.env) (prefix: string) (searchStr: str
                 if String.isPrefix searchStr fieldName
                 then SOME { label = prefix ^ fieldName
                           , kind = LspSpec.Field
-                          , detail = ppToString (ElabPrint.p_con env c2) 150
+                          , detail = ppToString (ElabPrint.p_con env c2) 200
                           }
                 else NONE
               | _ => NONE
@@ -327,14 +329,14 @@ fun getCompletionsFromSignatureItems (env: ElabEnv.env) (prefix: string) (search
                 if String.isPrefix searchStr name
                 then [{ label = prefix ^ name
                       , kind = LspSpec.Value
-                      , detail = ppToString (ElabPrint.p_con env con) 150
+                      , detail = ppToString (ElabPrint.p_con env con) 200
                       }]
                 else []
               | (Elab.SgiCon (name, _, _, con), _) =>
                 if String.isPrefix searchStr name
                 then [{ label = prefix ^ name
                       , kind = LspSpec.Value
-                      , detail = ppToString (ElabPrint.p_con env con) 150
+                      , detail = ppToString (ElabPrint.p_con env con) 200
                       }]
                 else []
               | (Elab.SgiDatatype cs, _) =>
@@ -353,7 +355,7 @@ fun getCompletionsFromSignatureItems (env: ElabEnv.env) (prefix: string) (search
                                                                   , kind = LspSpec.Function
                                                                   , detail = case conO of
                                                                                  NONE => dtName ^ typeVarsString
-                                                                               | SOME con => ppToString (ElabPrint.p_con env con) 150 ^ " -> " ^ dtName ^ typeVarsString
+                                                                               | SOME con => ppToString (ElabPrint.p_con env con) 200 ^ " -> " ^ dtName ^ typeVarsString
                                                                   }
                                                         else NONE) constrs
                                 end)
@@ -372,7 +374,7 @@ fun getCompletionsFromSignatureItems (env: ElabEnv.env) (prefix: string) (search
                 if String.isPrefix searchStr name
                 then [{ label = prefix ^ name
                       , kind = LspSpec.Class
-                      , detail = ppToString (ElabPrint.p_con env con) 150
+                      , detail = ppToString (ElabPrint.p_con env con) 200
                       }]
                 else []
               | _ => []
@@ -395,7 +397,7 @@ fun findMatchingStringInEnv (env: ElabEnv.env) (str: string): LspSpec.completion
                     val expressionCompletions = List.map (fn (name,con) =>
                                                              { label = name
                                                              , kind = LspSpec.Value
-                                                             , detail = ppToString (ElabPrint.p_con env con) 150
+                                                             , detail = ppToString (ElabPrint.p_con env con) 200
                                                              }) matchingEs
                     val matchingStrs = ElabEnv.matchStrByPrefix env str
                     val structureCompletions = List.map (fn (name,(_,sgn)) =>
@@ -407,7 +409,7 @@ fun findMatchingStringInEnv (env: ElabEnv.env) (str: string): LspSpec.completion
                     val conCompletions = List.map (fn (name,kind) =>
                                                       { label = name
                                                       , kind = LspSpec.Constructor (* TODO probably wrong... *)
-                                                      , detail = ppToString (ElabPrint.p_kind env kind) 150
+                                                      , detail = ppToString (ElabPrint.p_kind env kind) 200
                                                       }) matchingCons
                 in
                     expressionCompletions @ structureCompletions @ conCompletions
