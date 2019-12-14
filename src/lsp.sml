@@ -18,14 +18,68 @@ type state =
      { urpPath : string
      , fileStates : fileState SM.map
      }
-val stateRef = ref (NONE: state option)
 
-fun insertFileState (state: state) (fileName: string) (fs: fileState) =
-    stateRef := SOME { urpPath = #urpPath state
-                     , fileStates = SM.insert ( #fileStates state
-                                              , fileName
-                                              , fs)
-                     }
+(* Wrapping this in structure as an attempt to not get concurrency bugs *)
+structure State :
+          sig
+              val init: state -> unit
+              val insertText: string -> string -> unit
+              val insertElabRes: string -> ElabEnv.env -> Elab.decl list -> unit
+              val removeFile: string -> unit
+              val withState: (state -> 'a) -> 'a
+          end = struct
+val stateRef = ref (NONE: state option)
+fun init (s: state) = 
+    stateRef := SOME s
+fun withState (f: state -> 'a): 'a =
+    case !stateRef of
+        NONE => raise LspSpec.LspError LspSpec.ServerNotInitialized
+      | SOME s => f s
+
+fun insertText (fileName: string) (text: string) = 
+    withState (fn oldS =>
+                  stateRef := SOME { urpPath = #urpPath oldS
+                                   , fileStates =
+                                     case SM.find (#fileStates oldS, fileName) of
+                                         NONE => SM.insert ( #fileStates oldS
+                                                           , fileName
+                                                           , { text = text
+                                                             , decls = []
+                                                             , envBeforeThisModule = ElabEnv.empty })
+                                       | SOME oldfs => 
+                                         SM.insert ( #fileStates oldS
+                                                   , fileName
+                                                   , { text = text
+                                                     , decls = #decls oldfs
+                                                     , envBeforeThisModule = #envBeforeThisModule oldfs })
+                                   }
+              )
+
+fun insertElabRes (fileName: string) (env: ElabEnv.env) decls =
+    withState (fn oldS =>
+                  stateRef := SOME { urpPath = #urpPath oldS
+                                   , fileStates =
+                                     case SM.find (#fileStates oldS, fileName) of
+                                         NONE => raise Fail ("No text found for file " ^ fileName)
+                                       | SOME oldfs => 
+                                         SM.insert ( #fileStates oldS
+                                                   , fileName
+                                                   , { text = #text oldfs
+                                                     , decls = decls
+                                                     , envBeforeThisModule = env })
+                                   }
+              )
+
+fun removeFile (fileName: string) =
+    withState (fn oldS =>
+                  stateRef := SOME { urpPath = #urpPath oldS
+                                   , fileStates = #1 (SM.remove (#fileStates oldS, fileName))
+                                   }
+              )
+
+end
+
+
 
 fun scanDir (f: string -> bool) (path: string) =
     let
@@ -204,41 +258,16 @@ fun elabFile (state: state) (fileName: string): ({ decls: Elab.decl list, envBef
             end
     end
 
-(* TODO Bad API: text0 = NONE is Save, text0 = SOME is open *)
-(* TODO whole function isn't great, could use a refactor *)
-fun handleDocumentSavedOrOpened (state: state) (toclient: LspSpec.toclient) (documentUri: LspSpec.documentUri) (textO: string option) =
+fun elabFileAndSendDiags (state: state) (toclient: LspSpec.toclient) (documentUri: LspSpec.documentUri): unit =
     let 
         val fileName = #path documentUri
-        val previousState = SM.find (#fileStates state, fileName)
-        val text = case textO of
-                       NONE => (case previousState of
-                                    NONE => ((#showMessage toclient) ("No previous state for file " ^ fileName) 2; NONE)
-                                  | SOME previousState => SOME (#text previousState))
-                     | SOME text => SOME text
+        val res = elabFile state fileName
     in
-        case text of
-            NONE => ()
-          | SOME text => 
-            let
-                (* Insert text before elabFile since that can fail *)
-                val () = insertFileState state fileName { text = text
-                                                        , envBeforeThisModule = case previousState of
-                                                                                    NONE => ElabEnv.empty
-                                                                                  | SOME p => #envBeforeThisModule p
-                                                        , decls = case previousState of
-                                                                      NONE => []
-                                                                    | SOME p => #decls p
-                                                        }
-                val res = elabFile state fileName
-            in
-                (case #1 res of
-                    NONE => ()
-                  | SOME fs =>
-                    (insertFileState state fileName { text = text
-                                                    , envBeforeThisModule = #envBeforeThisModule fs
-                                                    , decls = #decls fs });
-                #publishDiagnostics toclient { uri = documentUri , diagnostics = #2 res})
-            end
+        (case #1 res of
+             NONE => ()
+           | SOME fs =>
+             (State.insertElabRes fileName (#envBeforeThisModule fs) (#decls fs));
+         #publishDiagnostics toclient { uri = documentUri , diagnostics = #2 res})
     end
 
 fun scanDir (f: string -> bool) (path: string) =
@@ -518,79 +547,56 @@ fun handleDocumentDidChange (state: state) (toclient: LspSpec.toclient) (p: LspS
             (debug ("Got change event for file that isn't open: " ^ fileName);
              (#showMessage toclient) ("Got change event for file that isn't open: " ^ fileName) 1)
           | SOME s =>
-            let
-                val newtext = List.foldl applyContentChange (#text s) (#contentChanges p)
-            in
-                insertFileState state fileName { text = newtext
-                                               , decls = #decls s
-                                               , envBeforeThisModule = #envBeforeThisModule s}
-            end
+            State.insertText fileName (List.foldl applyContentChange (#text s) (#contentChanges p))
     end
 
-fun handleDocumentDidClose (state: state) (toclient: LspSpec.toclient) (p: LspSpec.didCloseParams): unit =
-    let
-        val fileName = #path (#uri (#textDocument p))
-        val s = SM.find (#fileStates state, fileName)
-    in
-        stateRef := SOME { urpPath = #urpPath state
-                         , fileStates = (#1 (SM.remove (#fileStates state, fileName))) handle ex => #fileStates state
-                         }
-    end
+fun handleRequest (requestMessage: LspSpec.message) =
+    case requestMessage of
+        LspSpec.Notification n =>
+        (LspSpec.matchNotification
+             n
+             { initialized = fn () => ()
+             , textDocument_didOpen =
+               fn (p, toclient) => State.withState (fn state =>
+                                                       (State.insertText (#path (#uri (#textDocument p))) (#text (#textDocument p)) ;
+                                                        elabFileAndSendDiags state toclient (#uri (#textDocument p))))
+             , textDocument_didChange =
+               fn (p, toclient) => State.withState (fn state => handleDocumentDidChange state toclient p)
+             , textDocument_didSave =
+               fn (p, toclient) => State.withState (fn state => elabFileAndSendDiags state toclient (#uri (#textDocument p)))
+             , textDocument_didClose =
+               fn (p, toclient) => State.removeFile (#path (#uri (#textDocument p)))
+        })
+      | LspSpec.RequestMessage m => 
+        (* TODO should error handling here be inside handleMessage? *)
+        (LspSpec.matchMessage
+             m
+             { initialize = fn p => 
+                               (let val st = initState p
+                                in
+                                    State.init st;
+                                    LspSpec.Success
+                                        { capabilities =
+                                          { hoverProvider = true
+                                          , completionProvider = SOME { triggerCharacters = ["."]}
+                                          , textDocumentSync = { openClose = true
+                                                               , change = 2
+                                                               , save = SOME { includeText = false }
+                                          }}
+                                        }
+                                end)
+             , shutdown = fn () => LspSpec.Success ()
+             , textDocument_hover = fn toclient => State.withState handleHover 
+             , textDocument_completion = State.withState handleCompletion
+        })
 
 fun serverLoop () =            
     let 
-        val state = !stateRef
         val requestMessage =
             LspSpec.readRequestFromStdIO ()
             handle ex => (debug (General.exnMessage ex) ; raise ex)
     in
-        case state of
-            NONE =>
-            (case requestMessage of
-                  LspSpec.RequestMessage m =>
-                  LspSpec.handleMessage
-                    m
-                    { initialize = fn p => 
-                                      (let val st = initState p
-                                       in
-                                           stateRef := SOME st;
-                                           LspSpec.Success
-                                               { capabilities =
-                                                 { hoverProvider = true
-                                                 , completionProvider = SOME { triggerCharacters = ["."]}
-                                                 , textDocumentSync = { openClose = true
-                                                                      , change = 2
-                                                                      , save = SOME { includeText = false }
-                                                 }}
-                                               }
-                                       end)
-                                      handle (Fail str) => LspSpec.Error (~32602, str)
-                    , shutdown = fn () => LspSpec.Error (~32002, "Server not initialized")
-                    , textDocument_hover = fn toclient => fn _ => LspSpec.Error (~32002, "Server not initialized")
-                    , textDocument_completion = fn _ => LspSpec.Error (~32002, "Server not initialized")
-                    }
-                | LspSpec.Notification n => ())
-          | SOME state => 
-            (case requestMessage of
-                LspSpec.Notification n =>
-                (LspSpec.handleNotification
-                  n
-                  { initialized = fn () => ()
-                  , textDocument_didOpen = fn toclient => fn p => handleDocumentSavedOrOpened state toclient (#uri (#textDocument p)) (SOME (#text (#textDocument p)))
-                  , textDocument_didChange = handleDocumentDidChange state
-                  , textDocument_didSave = fn toclient => fn p => handleDocumentSavedOrOpened state toclient (#uri (#textDocument p)) NONE
-                  , textDocument_didClose = fn toclient => fn p => handleDocumentDidClose state toclient p
-                  })
-              | LspSpec.RequestMessage m => 
-                (* TODO should error handling here be inside handleMessage? *)
-                (LspSpec.handleMessage
-                  m
-                  { initialize = fn _ => LspSpec.Error (~32600, "Server already initialized")
-                  , shutdown = fn () => LspSpec.Success ()
-                  , textDocument_hover = fn toclient => handleHover state
-                  , textDocument_completion = handleCompletion state
-                  })
-            ) 
+        handleRequest requestMessage
     end
 
 fun startServer () = while true do serverLoop ()

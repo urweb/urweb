@@ -1,6 +1,7 @@
 structure LspSpec = struct 
 
   datatype lspError = InternalError of string
+                    | ServerNotInitialized
   exception LspError of lspError
 
   fun debug (str: string): unit =
@@ -361,7 +362,7 @@ structure LspSpec = struct
       end
   val toclient: toclient = {showMessage = showMessage, publishDiagnostics = publishDiagnostics}
 
-  fun handleMessage
+  fun matchMessage
           (requestMessage: {id: Json.json, method: string, params: Json.json})
           (handlers: messageHandlers)
       : unit =
@@ -393,6 +394,7 @@ structure LspSpec = struct
               | method => (debug ("Method not supported: " ^ method);
                            Error (~32601, "Method not supported: " ^ method)))
               handle LspError (InternalError str) => Error (~32603, str)
+                   | LspError ServerNotInitialized => Error (~32002, "Server not initialized")
                    | ex => Error (~32603, (General.exnMessage ex))
             )
         (* val () = (TextIO.output (TextIO.stdErr, "Got result: " ^ (case result of Success _ => "success\n"  *)
@@ -427,23 +429,24 @@ structure LspSpec = struct
 
   type notificationHandlers =
        { initialized: unit -> unit
-       , textDocument_didOpen: toclient -> didOpenParams -> unit
-       , textDocument_didChange: toclient -> didChangeParams -> unit
-       , textDocument_didSave: toclient -> didSaveParams -> unit
-       , textDocument_didClose: toclient -> didCloseParams -> unit
+       , textDocument_didOpen: (didOpenParams * toclient) -> unit
+       , textDocument_didChange: (didChangeParams * toclient) -> unit
+       , textDocument_didSave: (didSaveParams * toclient) -> unit
+       , textDocument_didClose: (didCloseParams * toclient) -> unit
        }
-  fun handleNotification
+  fun matchNotification
           (notification: {method: string, params: Json.json})
           (handlers: notificationHandlers)
       =
       (case #method notification of
            "initialized" => (#initialized handlers) ()
-         | "textDocument/didOpen" => (#textDocument_didOpen handlers) toclient (parseDidOpenParams (#params notification))
-         | "textDocument/didChange" => (#textDocument_didChange handlers) toclient (parseDidChangeParams (#params notification))
-         | "textDocument/didSave" => (#textDocument_didSave handlers) toclient (parseDidSaveParams (#params notification))
-         | "textDocument/didClose" => (#textDocument_didClose handlers) toclient (parseDidCloseParams (#params notification))
+         | "textDocument/didOpen" => (#textDocument_didOpen handlers) (parseDidOpenParams (#params notification), toclient)
+         | "textDocument/didChange" => (#textDocument_didChange handlers) (parseDidChangeParams (#params notification), toclient)
+         | "textDocument/didSave" => (#textDocument_didSave handlers) (parseDidSaveParams (#params notification), toclient)
+         | "textDocument/didClose" => (#textDocument_didClose handlers) (parseDidCloseParams (#params notification), toclient)
          | m => debug ("Notification method not supported: " ^ m))
       handle LspError (InternalError str) => showMessage str 1
+           | LspError ServerNotInitialized => showMessage "Server not initialized" 1
            | ex => showMessage (General.exnMessage ex) 1
       
 end
