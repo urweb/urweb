@@ -480,7 +480,7 @@ fun findMatchingStringInEnv (env: ElabEnv.env) (str: string): LspSpec.completion
                                   , l2_)
                                 , _))
                             , l1_)) :: _ =>
-                         (debug "!!"; getCompletionsFromFields env (name ^ ".") (Substring.string str) fields)
+                         getCompletionsFromFields env (name ^ ".") (Substring.string str) fields
                        | _ => [])
                 end
           | _ =>
@@ -500,13 +500,10 @@ fun handleCompletion (state: state) (p: LspSpec.completionReq) =
             let 
                 val pos = #position p
                 val line = List.nth (Substring.fields (fn c => c = #"\n") (Substring.full (#text s)), #line pos)
-                val () = debug ("line" ^ Substring.string line)
                 val chars = [ (* #".", *) #"(", #")", #"{", #"}", #"[", #"]", #"<", #">", #"-", #"=", #":"
                               , #" ", #"\n", #"#", #",", #"*", #"\"", #"|", #"&", #"$", #"^", #"+", #";"]
                 val lineUntilPos = Substring.slice (line, 0, SOME (#character pos))
-                val () = debug ("lineUntilPos: \"" ^ Substring.string lineUntilPos ^ "\"")
                 val searchStr = Substring.string (Substring.taker (fn c => not (List.exists (fn c' => c = c') chars)) lineUntilPos)
-                val () = debug ("Looking for completions for: \"" ^ searchStr ^ "\"")
                 val env = #envBeforeThisModule s
                 val decls = #decls s
                 val getInfoRes = GetInfo.getInfo env (Elab.StrConst decls) fileName { line = #line pos + 1
@@ -550,54 +547,78 @@ fun handleDocumentDidChange (state: state) (toclient: LspSpec.toclient) (p: LspS
             State.insertText fileName (List.foldl applyContentChange (#text s) (#contentChanges p))
     end
 
+fun runInBackground toclient (fileName: string) (f: unit -> unit): unit =
+    BgThread.queueBgTask
+        fileName
+        ((fn () => (f ()
+                    handle LspSpec.LspError (LspSpec.InternalError str) => (#showMessage toclient) str 1
+                         | LspSpec.LspError LspSpec.ServerNotInitialized => (#showMessage toclient) "Server not initialized" 1
+                         | ex => (#showMessage toclient) (General.exnMessage ex) 1
+                   ; (#showMessage toclient) ("Done running BG job for " ^ fileName) 3
+                   )))
+
 fun handleRequest (requestMessage: LspSpec.message) =
     case requestMessage of
         LspSpec.Notification n =>
-        (LspSpec.matchNotification
-             n
-             { initialized = fn () => ()
-             , textDocument_didOpen =
-               fn (p, toclient) => State.withState (fn state =>
-                                                       (State.insertText (#path (#uri (#textDocument p))) (#text (#textDocument p)) ;
-                                                        elabFileAndSendDiags state toclient (#uri (#textDocument p))))
-             , textDocument_didChange =
-               fn (p, toclient) => State.withState (fn state => handleDocumentDidChange state toclient p)
-             , textDocument_didSave =
-               fn (p, toclient) => State.withState (fn state => elabFileAndSendDiags state toclient (#uri (#textDocument p)))
-             , textDocument_didClose =
-               fn (p, toclient) => State.removeFile (#path (#uri (#textDocument p)))
-        })
+        LspSpec.matchNotification
+            n
+            { initialized = fn () => ()
+            , textDocument_didOpen =
+              fn (p, toclient) =>
+                 (State.insertText (#path (#uri (#textDocument p))) (#text (#textDocument p));
+                  runInBackground
+                      toclient
+                      (#path (#uri (#textDocument p)))
+                      (fn () => State.withState (fn state => elabFileAndSendDiags state toclient (#uri (#textDocument p)))))
+            , textDocument_didChange =
+              fn (p, toclient) =>
+                 State.withState (fn state => handleDocumentDidChange state toclient p)
+            , textDocument_didSave =
+              fn (p, toclient) =>
+                 runInBackground
+                     toclient
+                     (#path (#uri (#textDocument p)))
+                     (fn () => State.withState (fn state => elabFileAndSendDiags state toclient (#uri (#textDocument p))))
+            , textDocument_didClose =
+              fn (p, toclient) =>
+                 State.removeFile (#path (#uri (#textDocument p)))
+            }
       | LspSpec.RequestMessage m => 
         (* TODO should error handling here be inside handleMessage? *)
-        (LspSpec.matchMessage
-             m
-             { initialize = fn p => 
-                               (let val st = initState p
-                                in
-                                    State.init st;
-                                    LspSpec.Success
-                                        { capabilities =
-                                          { hoverProvider = true
-                                          , completionProvider = SOME { triggerCharacters = ["."]}
-                                          , textDocumentSync = { openClose = true
-                                                               , change = 2
-                                                               , save = SOME { includeText = false }
-                                          }}
-                                        }
-                                end)
-             , shutdown = fn () => LspSpec.Success ()
-             , textDocument_hover = fn toclient => State.withState handleHover 
-             , textDocument_completion = State.withState handleCompletion
-        })
+        LspSpec.matchMessage
+            m
+            { initialize = fn p => 
+                              (let val st = initState p
+                               in
+                                   State.init st;
+                                   LspSpec.Success
+                                       { capabilities =
+                                         { hoverProvider = true
+                                         , completionProvider = SOME { triggerCharacters = ["."]}
+                                         , textDocumentSync = { openClose = true
+                                                              , change = 2
+                                                              , save = SOME { includeText = false }
+                                         }}
+                                       }
+                               end)
+            , shutdown = fn () => LspSpec.Success ()
+            , textDocument_hover = fn toclient => State.withState handleHover
+            , textDocument_completion = fn p => State.withState (fn s => handleCompletion s p)
+        }
 
 fun serverLoop () =            
-    let 
-        val requestMessage =
-            LspSpec.readRequestFromStdIO ()
-            handle ex => (debug (General.exnMessage ex) ; raise ex)
-    in
-        handleRequest requestMessage
-    end
+    if not (Option.isSome (TextIO.canInput (TextIO.stdIn, 1))) andalso BgThread.hasBgTasks ()
+    then 
+        (* no input waiting -> give control to lower prio thread *)
+        BgThread.runBgTaskForABit ()
+    else
+        let 
+            val requestMessage =
+                LspSpec.readRequestFromStdIO ()
+                handle ex => (debug ("Error in reading from stdIn: " ^ General.exnMessage ex) ; raise ex)
+        in
+            handleRequest requestMessage
+        end
 
 fun startServer () = while true do serverLoop ()
 end
