@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <sys/un.h>
 
 #include <pthread.h>
 
@@ -335,7 +336,7 @@ static void *worker(void *data) {
 }
 
 static void help(char *cmd) {
-  printf("Usage: %s [-p <port>] [-a <IPv4 address>] [-A <IPv6 address>] [-t <thread count>] [-m <bytes>] [-k] [-q] [-T SEC]\nThe '-k' option turns on HTTP keepalive.\nThe '-q' option turns off some chatter on stdout.\nThe '-T' option sets socket recv timeout (0 disables timeout, default is 5 sec).\nThe '-m' sets the maximum size (in bytes) for any buffer used to hold HTTP data sent by clients.  (The default is 1 MB.)\n", cmd);
+  printf("Usage: %s [-p <port>] [-a <IPv4 address>] [-A <IPv6 address>] [-u <UNIX socket>] [-t <thread count>] [-m <bytes>] [-k] [-q] [-T SEC]\nThe '-k' option turns on HTTP keepalive.\nThe '-q' option turns off some chatter on stdout.\nThe '-T' option sets socket recv timeout (0 disables timeout, default is 5 sec).\nThe '-m' sets the maximum size (in bytes) for any buffer used to hold HTTP data sent by clients.  (The default is 1 MB.)\n", cmd);
 }
 
 static void sigint(int signum) {
@@ -348,6 +349,7 @@ union uw_sockaddr {
   struct sockaddr sa;
   struct sockaddr_in ipv4;
   struct sockaddr_in6 ipv6;
+  struct sockaddr_un un;
 };
 
 int main(int argc, char *argv[]) {
@@ -367,7 +369,7 @@ int main(int argc, char *argv[]) {
   my_addr.sa.sa_family = AF_INET;
   my_addr.ipv4.sin_addr.s_addr = INADDR_ANY; // auto-fill with my IP
 
-  while ((opt = getopt(argc, argv, "hp:a:A:t:kqT:m:")) != -1) {
+  while ((opt = getopt(argc, argv, "hp:a:A:u:t:kqT:m:")) != -1) {
     switch (opt) {
     case '?':
       fprintf(stderr, "Unknown command-line option\n");
@@ -400,6 +402,15 @@ int main(int argc, char *argv[]) {
       my_addr.sa.sa_family = AF_INET6;
       if (!inet_pton(AF_INET6, optarg, &my_addr.ipv6.sin6_addr)) {
         fprintf(stderr, "Invalid IPv6 address\n");
+        help(argv[0]);
+        return 1;
+      }
+      break;
+
+    case 'u':
+      my_addr.sa.sa_family = AF_UNIX;
+      if (!strncpy(my_addr.un.sun_path, optarg, sizeof(my_addr.un.sun_path)-1)) {
+        fprintf(stderr, "Invalid UNIX socket filename\n");
         help(argv[0]);
         return 1;
       }
@@ -473,6 +484,11 @@ int main(int argc, char *argv[]) {
   case AF_INET6:
     my_size = sizeof(my_addr.ipv6);
     my_addr.ipv6.sin6_port = htons(uw_port);
+    break;
+
+  case AF_UNIX:
+    unlink(my_addr.un.sun_path);
+    my_size = sizeof(my_addr.un);
     break;
   }
 
