@@ -20,8 +20,7 @@ before_install:
   - if command -v apt-get &>/dev/null; then sudo apt-get update -qq; fi
   - if command -v apt-get &>/dev/null; then sudo apt-get install -y mlton libicu-dev; fi
   - if command -v brew &>/dev/null; then brew update; fi
-  - if command -v brew &>/dev/null; then brew uninstall libtool; fi
-  - if command -v brew &>/dev/null; then brew install libtool; fi
+  - if command -v brew &>/dev/null; then brew upgrade libtool; fi
   - if command -v brew &>/dev/null; then brew install openssl mlton icu4c; fi
   - if command -v brew &>/dev/null; then export ICU_INCLUDES=-I"`brew --prefix icu4c`/include"; fi
   - if command -v brew &>/dev/null; then export ICU_LIBS=-L"`brew --prefix icu4c`/lib"; fi
