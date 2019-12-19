@@ -3421,10 +3421,19 @@ uw_Basis_blob uw_Basis_stringToBlob_error(uw_context ctx, uw_Basis_string s, siz
     s += 2;
 
     while (*s) {
+      char a = s[0];
+      s += 1;
+      char b;
+      if (*s){
+        b = s[0];
+      } else {
+        b = 0;
+      }
       int n;
-      sscanf(s, "%02x", &n);
+      char buf[3] = {a, b, 0};
+      n = strtol(buf, NULL, 16);
       *r++ = n;
-      s += 2;
+      s += 1;
     }
   } else {
     while (*s) {
