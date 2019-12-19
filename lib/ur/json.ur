@@ -356,7 +356,7 @@ fun json_record_withOptional [ts ::: {Type}] [ots ::: {Type}] [ts ~ ots]
                                   escape name ^ ":" ^ j.ToJson v ^ (case acc of
                                                                         "" => ""
                                                                       | acc => "," ^ acc))
-                          "" ofl ojss onames (r --- _)
+                          withRequired ofl ojss onames (r --- _)
                  in
                      "{" ^ withOptional ^ "}"
                  end,
