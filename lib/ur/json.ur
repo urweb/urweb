@@ -165,6 +165,10 @@ fun rfc3339_in s =
             None => error <xml>Invalid RFC 3339 string "{[s]}"</xml>
           | Some (time, sep, rest) =>
             let
+                val time = case String.split time #"." of
+                               None => time
+                             | Some (time, _) => time
+
                 val t = case readUtc (date ^ " " ^ time) of
                             None => error <xml>Invalid RFC 3339 string "{[s]}"</xml>
                           | Some t => t
