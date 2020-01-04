@@ -102,6 +102,43 @@ fun getInfo env str fileName {line = row, character = col} =
                                       else env) env decls
                      | _ => env)
 
+        (* This isn't very precise since we use the span of the parent exp/decl/etc *)
+        (* to find the "smallest part" *)
+        fun printPat env (pat: L.pat) =
+            if isPosIn fileName row col (#2 pat)
+            then
+                case #1 pat of
+                    L.PVar (str, c) => SOME (P.box [ P.PD.string str
+                                                   , P.PD.string " : "
+                                                   , ElabPrint.p_con env c])
+                  | L.PCon (_, _, _, SOME p) => printPat env p
+                  | L.PRecord fields => (case List.mapPartial (fn field => printPat env (#2 field)) fields of
+                                             [] => NONE
+                                           | first :: _ => SOME first)
+                  | _ => NONE
+            else NONE
+
+        fun isXmlTag env c = 
+            case c of
+                L.CApp
+                    ((L.CApp
+                          ((L.CApp
+                                (( L.CApp
+                                       (( L.CApp
+                                              ((L.CNamed n, _) , _)
+                                        , _)
+                                       , _)
+                                 , _)
+                                , _)
+                           , _)
+                          , _)
+                     , _)
+                    , _) =>
+                (case E.lookupCNamed env n of
+                     ("tag", _, _) => true
+                   | _ => false)
+              | _ => false
+                         
         (* TODO We lose some really useful information, like eg. inferred parameters, *)
         (*   which we do have in the actual items (L.Decl, L.Exp, etc) *)
         (*   but not when we do a lookup into the Env *)
@@ -109,57 +146,164 @@ fun getInfo env str fileName {line = row, character = col} =
         fun printGoodPart env f span =
             (case f of
                   Exp (L.EPrim p, _) =>
-                  SOME (P.box [Prim.p_t p,
-                              P.PD.string ": ",
-                              P.PD.string (case p of
-                                                Prim.Int _ => "int"
-                                              | Prim.Float _ => "float"
-                                              | Prim.String _ => "string"
-                                              | Prim.Char _ => "char")])
+                  let
+                      val rendered = P.box [Prim.p_t p,
+                                            P.PD.string " : ",
+                                            P.PD.string (case p of
+                                                            Prim.Int _ => "int"
+                                                          | Prim.Float _ => "float"
+                                                          | Prim.String _ => "string"
+                                                          | Prim.Char _ => "char")]
+                  in
+                      case p of
+                          Prim.String (_, str) =>
+                          if Substring.foldl (fn (c, acc) => acc andalso c = #" ") true (Substring.full str)
+                          then NONE
+                          else SOME rendered
+                        | _ => SOME (rendered)
+                  end
                 | Exp (L.ERel n, _) =>
                   SOME ((let val found = E.lookupERel env n
                         in
                             P.box [ P.PD.string (#1 found)
-                                  , P.PD.string ": "
+                                  , P.PD.string " : "
                                   , ElabPrint.p_con env (#2 found)]
                         end)
                         handle E.UnboundRel _ => P.PD.string ("UNBOUND_REL" ^ Int.toString n))
-                | Exp (L.ENamed n, _) =>
-                  SOME ((let val found = E.lookupENamed env n
-                        in
-                            P.box [ P.PD.string (#1 found)
-                                  , P.PD.string ": "
-                                  , ElabPrint.p_con env (#2 found)]
-                        end)
-                        handle E.UnboundNamed _ => P.PD.string ("UNBOUND_NAMED" ^ Int.toString n))
+                | Exp (L.ENamed n, span) =>
+                  ((let
+                      val found = E.lookupENamed env n
+                      val rendered = P.box [ P.PD.string (#1 found)
+                                            , P.PD.string " : "
+                                            , ElabPrint.p_con env (#2 found)
+                                            ]
+                      (* val () = if #1 found = "body" *)
+                      (*           then Print.eprint (ElabPrint.p_con env (#2 found)) *)
+                      (*           else () *)
+                  in
+                        (* case #2 found of *)
+                        (*     (L.TFun ((L.CUnit, _), (c, _)), _) => *)
+                        (*     (if isXmlTag env c *)
+                        (*     then SOME (P.box [ P.PD.string "<" *)
+                        (*                       , P.PD.string ( #1 found) *)
+                        (*                       , P.PD.string ">" *)
+                        (*               ]) *)
+                        (*     else SOME rendered) *)
+                        (* | _ => *) SOME rendered
+                    end)
+                  handle E.UnboundNamed _ => SOME (P.PD.string ("UNBOUND_NAMED" ^ Int.toString n)))
+                | Exp (L.EAbs (varName, domain, _, _), _) => 
+                  if isPosIn fileName row col (#2 domain)
+                  then
+                      SOME (P.box [ P.PD.string (varName ^ " : ")
+                                  , ElabPrint.p_con env domain
+                           ])
+                  else NONE
+                | Exp (L.EField (e, c, {field, ...}), loc) => 
+                  SOME (P.box [ElabPrint.p_exp env e,
+                              P.PD.string ".",
+                              ElabPrint.p_con env c,
+                              P.PD.string ": ",
+                              ElabPrint.p_con env field])
                 | Exp (L.EModProj ( m1 (* number (= "name") of top level module *)
-                                , ms (* names of submodules - possibly none *)
-                                , x (* identifier *)), loc) =>
-                  SOME (let
-                          val (m1name, m1sgn) = E.lookupStrNamed env m1
-                          val (str, sgn) = foldl (fn (m, (str, sgn)) =>
-                                                      case E.projectStr env {sgn = sgn, str = str, field = m} of
-                                                          NONE => raise Fail ("Couldn't find Structure: " ^ m)
-                                                        | SOME sgn => ((L.StrProj (str, m), loc), sgn))
-                                                  ((L.StrVar m1, loc), m1sgn)
-                                                  ms
-                          val t = case E.projectVal env {sgn = sgn, str = str, field = x} of
-                                      NONE => raise Fail ("Couldn't find identifier: " ^ x)
-                                    | SOME t => t
-                      in
-                          P.box [ P.p_list_sep (P.PD.string ".") P.PD.string (m1name :: ms @ [x])
-                                , P.PD.string ": "
-                                , ElabPrint.p_con env t
-                                ]
-                      end
-                        handle E.UnboundNamed _ => P.PD.string ("Module not found: " ^ Int.toString m1))
+                                  , ms (* names of submodules - possibly none *)
+                                  , x (* identifier *)), loc) =>
+                  (let
+                      val (m1name, m1sgn) = E.lookupStrNamed env m1
+                      val (str, sgn) = foldl (fn (m, (str, sgn)) =>
+                                                case E.projectStr env {sgn = sgn, str = str, field = m} of
+                                                    NONE => raise Fail ("Couldn't find Structure: " ^ m)
+                                                  | SOME sgn => ((L.StrProj (str, m), loc), sgn))
+                                            ((L.StrVar m1, loc), m1sgn)
+                                            ms
+                      val t = case E.projectVal env {sgn = sgn, str = str, field = x} of
+                                  NONE => raise Fail ("Couldn't find identifier: " ^ x)
+                                | SOME t => t
+                  in
+                      case (m1name, x) of
+                          (* Stripping these because XML desugaring adds these with small spans and crowd out the stuff you want to see *)
+                          ("Basis", "cdata") => NONE
+                        | ("Top", "txt") => NONE
+                        | ("Basis", "join") => NONE
+                        | ("Basis", "bind") => NONE
+                        | ("Basis", "sql_subset") => NONE
+                        | ("Basis", "sql_subset_all") => NONE
+                        | ("Basis", "sql_query") => NONE
+                        | ("Basis", "sql_query1") => NONE
+                        | ("Basis", "sql_eq") => NONE
+                        | ("Basis", "sql_inner_join") => NONE
+                        (* | ("Basis", "sql_field") => NONE *)
+                        | ("Basis", "sql_binary") => NONE
+                        | _ => 
+                          SOME (P.box [ P.p_list_sep (P.PD.string ".") P.PD.string (m1name :: ms @ [x])
+                                      , P.PD.string " : "
+                                      , ElabPrint.p_con env t
+                              ])
+                  end
+                  handle E.UnboundNamed _ => SOME (P.PD.string ("Module not found: " ^ Int.toString m1)))
+                | Exp (L.ELet (edecls, _, _), _) =>
+                  let
+                      val found = List.mapPartial
+                                      (fn (edecl, loc) =>
+                                          if isPosIn fileName row col loc
+                                          then
+                                              case edecl of
+                                                  L.EDVal (pat, _, _) => printPat env pat
+                                                | L.EDValRec ((x, c, _) :: _) =>
+                                                  SOME (P.box [ P.PD.string x
+                                                              , P.PD.string " : "
+                                                              , ElabPrint.p_con env c])
+                                                | _ => NONE
+                                          else NONE)
+                                      edecls 
+                  in
+                      if List.length found > 0
+                      then SOME (List.hd found)
+                      else NONE
+                  end
+                | Exp (L.ECase (_, pats, _), _) => 
+                  (case List.find (fn ((pat', loc), exp) => isPosIn fileName row col loc) pats of
+                      NONE => NONE
+                    | SOME (pat, _) => printPat env pat)
                 | Exp e => NONE
                 | Kind k => NONE
                 | Con c => NONE
                 | Sgn_item si => NONE
                 | Sgn s => NONE
                 | Str s => NONE
-                | Decl d => NONE)
+                | Decl (L.DVal (x, _, con, _), _) =>
+                  SOME (P.box [ P.PD.string x
+                              , P.PD.string " : "
+                              , ElabPrint.p_con env con ])
+                | Decl (L.DValRec decls, _) =>
+                  (* valrecs don't have nice spans per declaration so we find the *)
+                  (* declaration for which the con starts closest *)
+                  let
+                      val res = 
+                          List.foldl (fn (decl, accO) =>
+                                         let
+                                             val distanceFromRow = Int.abs (#line (#first (#2 (#3 decl))) - row)
+                                             val accDistanceFromRow = case accO of
+                                                                          NONE => 999
+                                                                        | SOME acc => Int.abs (#line (#first (#2 (#3 acc))) - row)
+                                         in
+                                             if distanceFromRow < accDistanceFromRow andalso distanceFromRow <= 1
+                                             then SOME decl
+                                             else accO
+                                         end)
+                                    NONE
+                                    decls
+                  in
+                      case res of
+                          NONE => NONE
+                        | SOME (x, _, con, _) =>
+                          SOME (P.box [ P.PD.string x
+                                      , P.PD.string " : "
+                                      , ElabPrint.p_con env con
+                               ])
+                  end
+                | Decl d => NONE
+            )
 
         fun add (env: ElabEnv.env) (item: item) (span: ErrorMsg.span) (acc: { smallest : { span : ErrorMsg.span
                                                                                          , item : item
@@ -187,7 +331,8 @@ fun getInfo env str fileName {line = row, character = col} =
                                         NONE => NONE
                                       | SOME desc => SOME {desc = desc, span = span, env = env, item = item})
                                   | SOME (prev as {desc = desc', span = span', env = env', item = item'}) => 
-                                    if isSmallerThan span span'
+                                    if
+                                        isSmallerThan span span'
                                     then 
                                         (case printGoodPart env item span of
                                              NONE => SOME prev

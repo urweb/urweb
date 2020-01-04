@@ -465,23 +465,27 @@ fun findMatchingStringInEnv (env: ElabEnv.env) (str: string): LspSpec.completion
                     (* TODO PERF SMALL: first match and then equal is not perfect *)
                     val foundEs = ElabEnv.matchEByPrefix env (Substring.string r)
                     val filteredEs = List.filter (fn (name,_) => name = Substring.string r) foundEs
+                    val reduced = List.map (fn (name, c) =>
+                                               (name, ElabOps.reduceCon env c)
+                                               handle ex => (name, (Elab.CUnit, ErrorMsg.dummySpan)))
+                                           filteredEs
                 in
-                    (case List.map (fn (name, c) => (name, ElabOps.reduceCon env c)) filteredEs of
-                         [] => []
-                       | (name, (Elab.TRecord (Elab.CRecord (_, fields), l2_), l1_)) :: _ =>
-                         getCompletionsFromFields env (name ^ ".") (Substring.string str) fields
-                       | (name, (* TODO this doesn't always work. I've only managed to get it working for tables in a different module *)
-                          ( ( Elab.CApp
-                              ( ( (Elab.CApp
-                                  ( ( Elab.CModProj (_, _, "sql_table")
-                                      , l4_)
-                                  , ( Elab.CRecord (_, fields)
-                                    , l3_)))
-                                  , l2_)
-                                , _))
-                            , l1_)) :: _ =>
-                         getCompletionsFromFields env (name ^ ".") (Substring.string str) fields
-                       | _ => [])
+                    case reduced of
+                        [] => []
+                      | (name, (Elab.TRecord (Elab.CRecord (_, fields), l2_), l1_)) :: _ =>
+                        getCompletionsFromFields env (name ^ ".") (Substring.string str) fields
+                      | (name,
+                         ( ( Elab.CApp
+                                 ( ( (Elab.CApp
+                                          ( ( Elab.CModProj (_, _, "sql_table")
+                                            , l4_)
+                                          , ( Elab.CRecord (_, fields)
+                                            , l3_)))
+                                   , l2_)
+                                 , _))
+                         , l1_)) :: _ =>
+                        getCompletionsFromFields env (name ^ ".") (Substring.string str) fields
+                      | _ => []
                 end
           | _ =>
             (* TODO NOTIMPLEMENTED submodules / nested records *)
