@@ -6,8 +6,6 @@ structure BgThread:> BGTHREAD = struct
       open MLton
       open Itimer Signal Thread
 
-      val debug = LspSpec.debug
-
       val topLevel: Thread.Runnable.t option ref = ref NONE
       val currentRunningThreadIsForFileName: string ref = ref ""
       (* FIFO queue: Max one task per fileName *)

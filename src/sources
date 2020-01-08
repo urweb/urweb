@@ -285,10 +285,6 @@ $(SRC)/fromjson.sml
 
 $(SRC)/lspspec.sml
 
-$(SML_LIB)/basis/mlton.mlb
-$(SRC)/bg_thread.sig
-$(SRC)/bg_thread.sml
-
 $(SRC)/lsp.sig
 $(SRC)/lsp.sml
 

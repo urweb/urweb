@@ -3,5 +3,8 @@ local
   $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
   $(SML_LIB)/mlyacc-lib/mlyacc-lib.mlb
   $(SML_LIB)/smlnj-lib/PP/pp-lib.mlb
+  $(SML_LIB)/basis/mlton.mlb
+  $(SRC)/bg_thread.sig
+  $(SRC)/bg_thread.mlton.sml
 in
 

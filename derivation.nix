@@ -18,7 +18,7 @@ stdenv.mkDerivation rec {
   #   rev = "e52ce9f542f64750941cfd84efdb6d993ee20ff0";
   #   sha256 = "19ba5n7g1dxy7q9949aakqplchsyzwrrnxv8v604vx5sg7fdfn3b";
   # };
-  src = nix-gitignore.gitignoreSource [] ./.;
+  src = ./.;
 
   buildInputs = [ openssl mlton mysql.connector-c postgresql sqlite automake autoconf libtool icu.dev openssl.dev];
 
