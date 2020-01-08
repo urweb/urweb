@@ -138,6 +138,12 @@ fun getInfo env str fileName {line = row, character = col} =
                      ("tag", _, _) => true
                    | _ => false)
               | _ => false
+
+        fun formatTypeBox (a: P.PD.pp_desc, b: P.PD.pp_desc) =
+            P.PD.hvBox (P.PD.PPS.Rel 0, [a,
+                                         P.PD.string ": ",
+                                         P.PD.break {nsp = 0, offset = 2},
+                                         b])
                          
         (* TODO We lose some really useful information, like eg. inferred parameters, *)
         (*   which we do have in the actual items (L.Decl, L.Exp, etc) *)
@@ -147,13 +153,12 @@ fun getInfo env str fileName {line = row, character = col} =
             (case f of
                   Exp (L.EPrim p, _) =>
                   let
-                      val rendered = P.box [Prim.p_t p,
-                                            P.PD.string " : ",
-                                            P.PD.string (case p of
-                                                            Prim.Int _ => "int"
-                                                          | Prim.Float _ => "float"
-                                                          | Prim.String _ => "string"
-                                                          | Prim.Char _ => "char")]
+                      val rendered = formatTypeBox ( Prim.p_t p
+                                                   , P.PD.string (case p of
+                                                                      Prim.Int _ => "int"
+                                                                    | Prim.Float _ => "float"
+                                                                    | Prim.String _ => "string"
+                                                                    | Prim.Char _ => "char"))
                   in
                       case p of
                           Prim.String (_, str) =>
@@ -165,18 +170,15 @@ fun getInfo env str fileName {line = row, character = col} =
                 | Exp (L.ERel n, _) =>
                   SOME ((let val found = E.lookupERel env n
                         in
-                            P.box [ P.PD.string (#1 found)
-                                  , P.PD.string " : "
-                                  , ElabPrint.p_con env (#2 found)]
+                            formatTypeBox ( P.PD.string (#1 found)
+                                          , ElabPrint.p_con env (#2 found))
                         end)
                         handle E.UnboundRel _ => P.PD.string ("UNBOUND_REL" ^ Int.toString n))
                 | Exp (L.ENamed n, span) =>
                   ((let
                       val found = E.lookupENamed env n
-                      val rendered = P.box [ P.PD.string (#1 found)
-                                            , P.PD.string " : "
-                                            , ElabPrint.p_con env (#2 found)
-                                            ]
+                      val rendered = formatTypeBox ( P.PD.string (#1 found)
+                                                   , ElabPrint.p_con env (#2 found))
                       (* val () = if #1 found = "body" *)
                       (*           then Print.eprint (ElabPrint.p_con env (#2 found)) *)
                       (*           else () *)
@@ -195,16 +197,15 @@ fun getInfo env str fileName {line = row, character = col} =
                 | Exp (L.EAbs (varName, domain, _, _), _) => 
                   if isPosIn fileName row col (#2 domain)
                   then
-                      SOME (P.box [ P.PD.string (varName ^ " : ")
-                                  , ElabPrint.p_con env domain
-                           ])
+                      SOME (formatTypeBox ( P.PD.string varName
+                                          , ElabPrint.p_con env domain)
+                           )
                   else NONE
                 | Exp (L.EField (e, c, {field, ...}), loc) => 
-                  SOME (P.box [ElabPrint.p_exp env e,
-                              P.PD.string ".",
-                              ElabPrint.p_con env c,
-                              P.PD.string ": ",
-                              ElabPrint.p_con env field])
+                  SOME (formatTypeBox ( P.box [ElabPrint.p_exp env e,
+                                               P.PD.string ".",
+                                               ElabPrint.p_con env c]
+                                      , ElabPrint.p_con env field))
                 | Exp (L.EModProj ( m1 (* number (= "name") of top level module *)
                                   , ms (* names of submodules - possibly none *)
                                   , x (* identifier *)), loc) =>
@@ -235,10 +236,8 @@ fun getInfo env str fileName {line = row, character = col} =
                         (* | ("Basis", "sql_field") => NONE *)
                         | ("Basis", "sql_binary") => NONE
                         | _ => 
-                          SOME (P.box [ P.p_list_sep (P.PD.string ".") P.PD.string (m1name :: ms @ [x])
-                                      , P.PD.string " : "
-                                      , ElabPrint.p_con env t
-                              ])
+                          SOME (formatTypeBox ( P.p_list_sep (P.PD.string ".") P.PD.string (m1name :: ms @ [x])
+                                              , ElabPrint.p_con env t))
                   end
                   handle E.UnboundNamed _ => SOME (P.PD.string ("Module not found: " ^ Int.toString m1)))
                 | Exp (L.ELet (edecls, _, _), _) =>
@@ -250,9 +249,8 @@ fun getInfo env str fileName {line = row, character = col} =
                                               case edecl of
                                                   L.EDVal (pat, _, _) => printPat env pat
                                                 | L.EDValRec ((x, c, _) :: _) =>
-                                                  SOME (P.box [ P.PD.string x
-                                                              , P.PD.string " : "
-                                                              , ElabPrint.p_con env c])
+                                                  SOME (formatTypeBox ( P.PD.string x
+                                                                      , ElabPrint.p_con env c))
                                                 | _ => NONE
                                           else NONE)
                                       edecls 
@@ -272,9 +270,8 @@ fun getInfo env str fileName {line = row, character = col} =
                 | Sgn s => NONE
                 | Str s => NONE
                 | Decl (L.DVal (x, _, con, _), _) =>
-                  SOME (P.box [ P.PD.string x
-                              , P.PD.string " : "
-                              , ElabPrint.p_con env con ])
+                  SOME (formatTypeBox ( P.PD.string x
+                                      , ElabPrint.p_con env con ))
                 | Decl (L.DValRec decls, _) =>
                   (* valrecs don't have nice spans per declaration so we find the *)
                   (* declaration for which the con starts closest *)
@@ -297,10 +294,8 @@ fun getInfo env str fileName {line = row, character = col} =
                       case res of
                           NONE => NONE
                         | SOME (x, _, con, _) =>
-                          SOME (P.box [ P.PD.string x
-                                      , P.PD.string " : "
-                                      , ElabPrint.p_con env con
-                               ])
+                          SOME (formatTypeBox ( P.PD.string x
+                                              , ElabPrint.p_con env con))
                   end
                 | Decl d => NONE
             )

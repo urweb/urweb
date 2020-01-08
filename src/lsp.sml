@@ -258,16 +258,23 @@ fun elabFile (state: state) (fileName: string): ({ decls: Elab.decl list, envBef
             end
     end
 
+fun uniq (comp: 'b -> 'b -> bool) (bs: 'b list) =
+    case bs of
+        [] => []
+      | (l as b :: bs') => b :: uniq comp (List.filter (comp b) bs')
+
 fun elabFileAndSendDiags (state: state) (toclient: LspSpec.toclient) (documentUri: LspSpec.documentUri): unit =
     let 
         val fileName = #path documentUri
         val res = elabFile state fileName
+        fun eq_diag d1 d2 = #range d1 = #range d2 andalso #message d1 = #message d2
+        val diags = uniq eq_diag (#2 res)
     in
         (case #1 res of
              NONE => ()
            | SOME fs =>
              (State.insertElabRes fileName (#envBeforeThisModule fs) (#decls fs));
-         #publishDiagnostics toclient { uri = documentUri , diagnostics = #2 res})
+         #publishDiagnostics toclient { uri = documentUri , diagnostics = diags})
     end
 
 fun scanDir (f: string -> bool) (path: string) =
