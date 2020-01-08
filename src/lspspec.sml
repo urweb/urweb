@@ -8,9 +8,7 @@ structure LspSpec = struct
       (TextIO.output (TextIO.stdErr, str ^ "\n\n"); TextIO.flushOut TextIO.stdErr)
 
   fun trim (s: substring): substring =
-      Substring.dropr
-        (fn c => c = #" " orelse c = #"\n" orelse c = #"\r")
-        (Substring.dropl (fn c => c = #" " orelse c = #"\n" orelse c = #"\r") s)
+      Substring.dropr Char.isSpace (Substring.dropl Char.isSpace s)
 
   fun readHeader (): (string * string) option =
       let 

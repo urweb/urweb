@@ -37,7 +37,7 @@ fun isPosIn (file: string) (row: int) (col: int) (span: ErrorMsg.span) =
         val start = #first span
         val end_ = #last span
     in
-        String.isSuffix file (#file span)
+        OS.Path.base file = OS.Path.base (#file span)
         andalso
         (#line start < row orelse
          #line start = row andalso #char start <= col)
@@ -281,7 +281,7 @@ fun getInfo env str fileName {line = row, character = col} =
                                          let
                                              val distanceFromRow = Int.abs (#line (#first (#2 (#3 decl))) - row)
                                              val accDistanceFromRow = case accO of
-                                                                          NONE => 999
+                                                                          NONE => Option.getOpt (Int.maxInt, 99999)
                                                                         | SOME acc => Int.abs (#line (#first (#2 (#3 acc))) - row)
                                          in
                                              if distanceFromRow < accDistanceFromRow andalso distanceFromRow <= 1
@@ -368,10 +368,10 @@ fun getInfo env str fileName {line = row, character = col} =
                 { smallestgoodpart = NONE
                 , smallest = { item = Str (str, { file = fileName
                                                 , first = { line = 0, char = 0}
-                                                , last = { line = 99999, char = 0} })
+                                                , last = { line = Option.getOpt (Int.maxInt, 99999), char = 0} })
                              , span = { file = fileName
                                       , first = { line = 0, char = 0}
-                                      , last = { line = 99999, char = 0} }
+                                      , last = { line = Option.getOpt (Int.maxInt, 99999), char = 0} }
                              , env = env }
                 }
                 ( L.DStr (Compiler.moduleOf "fileName", 0, (L.SgnError, ErrorMsg.dummySpan), (str, {file = fileName, first = ErrorMsg.dummyPos, last = ErrorMsg.dummyPos}))
