@@ -180,18 +180,16 @@ fun elabFile (state: state) (fileName: string): ({ decls: Elab.decl list, envBef
                  else raise LspSpec.LspError (LspSpec.InternalError ("Couldn't find file " ^ fileName ^ " referenced in .urp file at " ^ (#urpPath state)))
         (* Parsing .urs files of previous modules *)
         val parsedUrss = List.map (fn entry =>
-                                      let
-                                          val fileName = entry ^ ".urs"
-                                      in
-                                          { fileName = fileName
-                                          , parsed =
-                                            if OS.FileSys.access (fileName, [])
-                                            then case C.run (C.transform C.parseUrs "parseUrs") fileName of
-                                                     NONE => raise LspSpec.LspError (LspSpec.InternalError ("Failed to parse .urs file at " ^ fileName))
-                                                   | SOME a => a
-                                            else raise LspSpec.LspError (LspSpec.InternalError ("Couldn't find an .urs file for " ^ fileName))
-                                          }
-                                      end)
+                                      if OS.FileSys.access (entry ^ ".urs", [])
+                                      then case C.run (C.transform C.parseUrs "parseUrs") (entry ^ ".urs") of
+                                                NONE => raise LspSpec.LspError (LspSpec.InternalError ("Failed to parse .urs file at " ^ entry))
+                                              | SOME a => { fileName = entry ^ ".urs", parsed = a}
+                                      else
+                                          if OS.FileSys.access (entry ^ ".ur", [])
+                                          then case C.run (C.transform C.parseUrs "parseUrs") (entry ^ ".ur") of
+                                                   NONE => raise LspSpec.LspError (LspSpec.InternalError ("No .urs file found for " ^ entry ^ " and couldn't parse .ur as .urs file"))
+                                                 | SOME a => { fileName = entry ^ ".ur" , parsed = a}
+                                          else raise LspSpec.LspError (LspSpec.InternalError ("Couldn't find an .ur or .urs file for " ^ entry)))
                                   modulesBeforeThisFile
         (* Parsing Basis and Top *)
         val basisF = Settings.libFile "basis.urs"
