@@ -267,7 +267,7 @@ fun elabFileAndSendDiags (state: state) (toclient: LspSpec.toclient) (documentUr
     let 
         val fileName = #path documentUri
         val res = elabFile state fileName
-        fun eq_diag d1 d2 = #range d1 = #range d2 andalso #message d1 = #message d2
+        fun eq_diag (d1: LspSpec.diagnostic) (d2: LspSpec.diagnostic) = #range d1 = #range d2 andalso #message d1 = #message d2
         val diags = uniq eq_diag (#2 res)
     in
         (case #1 res of
@@ -558,7 +558,7 @@ fun handleDocumentDidChange (state: state) (toclient: LspSpec.toclient) (p: LspS
             State.insertText fileName (List.foldl applyContentChange (#text s) (#contentChanges p))
     end
 
-fun runInBackground toclient (fileName: string) (f: unit -> unit): unit =
+fun runInBackground (toclient: LspSpec.toclient) (fileName: string) (f: unit -> unit): unit =
     BgThread.queueBgTask
         fileName
         ((fn () => (f ()

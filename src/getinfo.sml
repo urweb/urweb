@@ -32,7 +32,7 @@ structure E = ElabEnv
 structure L = Elab
 structure P = Print
 
-fun isPosIn file row col span =
+fun isPosIn (file: string) (row: int) (col: int) (span: ErrorMsg.span) =
     let
         val start = #first span
         val end_ = #last span
