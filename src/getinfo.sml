@@ -117,15 +117,24 @@ fun findInStr (f: ElabEnv.env -> item (* curr *) -> item (* prev *) -> bool)
         {item = #1 result, env = #2 result}
     end
 
-fun findSmallestSpan env str fileName {line = line, char = char} =
+fun findClosestSpan env str fileName {line = line, char = char} =
     let
-        fun fitsAndIsSmaller (env: ElabEnv.env) (curr: item) (prev: item) =
-            isPosIn fileName line char (getSpan curr) andalso isSmallerThan (getSpan curr) (getSpan prev)
+        fun getDistance (i: item): int =
+            let
+                val {first, last, file} = getSpan i
+            in
+                Int.abs (#char first - char)
+                + Int.abs (#char last - char)
+                + Int.abs (#line first - line) * 25
+                + Int.abs (#line last - line) * 25
+            end
+        fun isCloser (env: ElabEnv.env) (curr: item) (prev: item) =
+            getDistance curr < getDistance prev
         val init = Str (str, { file = fileName
                              , first = { line = 0, char = 0}
-                             , last = { line = Option.getOpt (Int.maxInt, 99999), char = 0} })
+                             , last = { line = 0, char = 0} })
     in
-        findInStr fitsAndIsSmaller init env str fileName {line = line, char = char}
+        findInStr isCloser init env str fileName {line = line, char = char}
     end
 
 fun findFirstExpAfter env str fileName {line = line, char = char} =
@@ -260,7 +269,7 @@ fun getDesc item =
 
 fun matchStringInEnv env str fileName pos query: (ElabEnv.env * string (* prefix *) * foundInEnv list) = 
     let
-        val {item = _, env} = findSmallestSpan env str fileName pos
+        val {item = _, env} = findClosestSpan env str fileName pos
         val (prefix, matches) = matchStringInEnv' env query
     in
         (env, prefix, matches)
@@ -268,7 +277,7 @@ fun matchStringInEnv env str fileName pos query: (ElabEnv.env * string (* prefix
 
 fun findStringInEnv env str fileName pos (query: string): (ElabEnv.env * string (* prefix *) * foundInEnv option) =
     let
-        val {item, env} = findSmallestSpan env str fileName pos
+        val {item, env} = findClosestSpan env str fileName pos
         val env = case item of
                       Exp (L.ECase _, _) => #env (findFirstExpAfter env str fileName pos)
                     | Exp (L.ELet _, _)  => #env (findFirstExpAfter env str fileName pos)
