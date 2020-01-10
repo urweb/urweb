@@ -27,28 +27,24 @@
 
 signature GET_INFO = sig 
 
-    datatype item =
-             Kind of Elab.kind
-             | Con of Elab.con
-             | Exp of Elab.exp
-             | Sgn_item of Elab.sgn_item
-             | Sgn of Elab.sgn
-             | Str of Elab.str
-             | Decl of Elab.decl
+    datatype foundInEnv = FoundStr of (string * Elab.sgn)
+                        | FoundCon of (string * Elab.kind)
+                        | FoundExp of (string * Elab.con)
 
-    val getInfo:
+    val findStringInEnv:
         ElabEnv.env ->
         Elab.str' ->
         string (* fileName *) ->
-        { line: int , character: int} ->
-        { smallest : { span : ErrorMsg.span
-                     , item : item
-                     , env : ElabEnv.env }
-        , smallestgoodpart : { span : ErrorMsg.span
-                             , desc : Print.PD.pp_desc
-                             , env : ElabEnv.env
-                             , item : item
-                             } option
-}
+        {line: int, char: int} ->
+        string (* query *) ->
+        (ElabEnv.env * string (* prefix *) * foundInEnv option)
+
+    val matchStringInEnv: 
+        ElabEnv.env ->
+        Elab.str' ->
+        string (* fileName *) ->
+        {line: int, char: int} ->
+        string (* query *) ->
+        (ElabEnv.env * string (* prefix *) * foundInEnv list)
 end
     

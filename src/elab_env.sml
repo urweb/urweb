@@ -404,14 +404,6 @@ fun lookupC (env : env) x =
       | SOME (Rel' x) => Rel x
       | SOME (Named' x) => Named x
 
-fun matchCByPrefix (env: env) (prefix: string): (string * kind) list =
-    List.mapPartial (fn (name, value) => if String.isPrefix prefix name
-                                         then case value of
-                                                  Rel' (_, x) => SOME (name, x)
-                                                | Named' (_, x) => SOME (name, x)
-                                         else NONE)
-                    (SM.listItemsi (#renameC env))
-
 fun pushDatatype (env : env) n xs xncs =
     let
         val dk = U.classifyDatatype xncs
@@ -940,13 +932,6 @@ fun lookupENamed (env : env) n =
         NONE => raise UnboundNamed n
       | SOME x => x
 
-(* TODO Why does this work better than using #renameE? *)
-fun matchEByPrefix (env: env) (prefix: string): (string * con) list =
-    List.mapPartial (fn (name, value) => if String.isPrefix prefix name
-                                        then SOME (name, value)
-                                        else NONE)
-                    (#relE env @ IM.listItems (#namedE env))
-
 fun checkENamed (env : env) n =
     Option.isSome (IM.find (#namedE env, n))
 
@@ -1000,8 +985,17 @@ fun lookupStrNamed (env : env) n =
       | SOME x => x
 
 fun lookupStr (env : env) x = SM.find (#renameStr env, x)
-fun matchStrByPrefix (env: env) prefix =
-    List.filter (fn (name,_) => String.isPrefix prefix name) (SM.listItemsi (#renameStr env))
+
+fun dumpCs (env: env): (string * kind) list = 
+    List.map (fn (name, value) => case value of
+                                      Rel' (_, x) => (name, x)
+                                    | Named' (_, x) => (name, x))
+             (SM.listItemsi (#renameC env))
+(* TODO try again with #renameE *)
+fun dumpEs (env: env): (string * con) list = 
+    #relE env @ IM.listItems (#namedE env)
+fun dumpStrs (env: env) =
+    SM.listItemsi (#renameStr env)
 
 fun sgiSeek (sgi, (sgns, strs, cons)) =
     case sgi of

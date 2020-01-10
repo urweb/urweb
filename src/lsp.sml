@@ -1,6 +1,7 @@
-structure C = Compiler
-
 structure Lsp :> LSP = struct 
+
+structure C = Compiler
+structure P = Print
 
 val debug = LspSpec.debug
 
@@ -317,6 +318,35 @@ fun ppToString (pp: Print.PD.pp_desc) (width: int): string =
         res
     end
 
+fun getStringAtCursor
+    (stopAtCursor: bool)
+    (text: string)
+    (pos: LspSpec.position)
+    : string
+    = 
+    let
+        val line = List.nth (Substring.fields (fn c => c = #"\n") (Substring.full text), #line pos)
+        val chars = [ (* #".", *) #"(", #")", #"{", #"}", #"[", #"]", #"<", #">", #"-", #"=", #":"
+                      , #" ", #"\n", #"#", #",", #"*", #"\"", #"|", #"&", #"$", #"^", #"+", #";"]
+        val lineUntilCursor = Substring.slice (line, 0, SOME (#character pos))
+        val beforeCursor = Substring.string (Substring.taker (fn c => not (List.exists (fn c' => c = c') chars)) lineUntilCursor)
+        val afterCursor = if stopAtCursor
+                          then ""
+                          else let
+                              val lineAfterCursor = Substring.slice (line, #character pos, NONE)
+                          in
+                              Substring.string (Substring.takel (fn c => not (List.exists (fn c' => c = c') (#"." :: chars))) lineAfterCursor)
+                          end
+    in
+        beforeCursor ^ afterCursor
+    end
+
+fun formatTypeBox (a: P.PD.pp_desc, b: P.PD.pp_desc) =
+    P.PD.hvBox (P.PD.PPS.Rel 0, [a,
+                                 P.PD.string ": ",
+                                 P.PD.break {nsp = 0, offset = 2},
+                                 b])
+
 fun handleHover (state: state) (p: LspSpec.hoverReq): LspSpec.hoverResp LspSpec.result =
     let
         val fileName = #path (#uri (#textDocument p))
@@ -326,175 +356,25 @@ fun handleHover (state: state) (p: LspSpec.hoverReq): LspSpec.hoverResp LspSpec.
             NONE => LspSpec.Success NONE
           | SOME s =>
             let 
+                val searchString = getStringAtCursor false (#text s) (#position p)
                 val env = #envBeforeThisModule s
                 val decls = #decls s
                 val loc = #position p
-                val result = GetInfo.getInfo env (Elab.StrConst decls) fileName { line = #line loc + 1
-                                                                                , character = #character loc + 1} 
+                val (env, prefix, found) = GetInfo.findStringInEnv env (Elab.StrConst decls) fileName { line = #line loc + 1
+                                                                                                      , char = #character loc + 1} searchString
             in
-                case #smallestgoodpart result of
+                case found of
                     NONE => LspSpec.Success NONE
-                  | SOME {desc = desc, ...} =>
-                    LspSpec.Success (SOME {contents = ppToString desc 50})
+                  | SOME f =>
+                    let
+                        val desc = case f of
+                                       GetInfo.FoundStr (x, (_, sgn)) => formatTypeBox (P.PD.string (prefix ^ x), P.PD.string "module")
+                                     | GetInfo.FoundCon (x, kind) => formatTypeBox (P.PD.string (prefix ^ x), ElabPrint.p_kind env kind)
+                                     | GetInfo.FoundExp (x, con) => formatTypeBox (P.PD.string (prefix ^ x), ElabPrint.p_con env con)
+                    in
+                        LspSpec.Success (SOME {contents = ppToString desc 50})
+                    end
             end
-    end
-
-fun getCompletionsFromFields (env: ElabEnv.env) (prefix: string) (searchStr: string) (fields: (Elab.con * Elab.con) list): LspSpec.completionItem list =
-    let
-        fun mapF (c1, c2) =
-            case c1 of
-                (Elab.CName fieldName, _) =>
-                if String.isPrefix searchStr fieldName
-                then SOME { label = prefix ^ fieldName
-                          , kind = LspSpec.Field
-                          , detail = ppToString (ElabPrint.p_con env c2) 200
-                          }
-                else NONE
-              | _ => NONE
-    in
-        List.mapPartial mapF fields
-    end
-
-fun getCompletionsFromSignatureItems (env: ElabEnv.env) (prefix: string) (searchStr: string) (items: Elab.sgn_item list): LspSpec.completionItem list =
-    let
-        fun mapF item =
-            case item of
-                (Elab.SgiVal (name, _, con), _) =>
-                if String.isPrefix searchStr name
-                then [{ label = prefix ^ name
-                      , kind = LspSpec.Value
-                      , detail = ppToString (ElabPrint.p_con env con) 200
-                      }]
-                else []
-              | (Elab.SgiCon (name, _, _, con), _) =>
-                if String.isPrefix searchStr name
-                then [{ label = prefix ^ name
-                      , kind = LspSpec.Value
-                      , detail = ppToString (ElabPrint.p_con env con) 200
-                      }]
-                else []
-              | (Elab.SgiDatatype cs, _) =>
-                (List.concat
-                  (List.map (fn (constr as (dtName, n, xs, constrs)) =>
-                                (* Copied from elab_print *)
-                                let
-                                    val k = (Elab.KType, ErrorMsg.dummySpan)
-                                    val env = ElabEnv.pushCNamedAs env dtName n k NONE
-                                    val env = List.foldl (fn (x, env) => ElabEnv.pushCRel env x k) env xs
-                                    val typeVarsString = List.foldl (fn (x, acc) => acc ^ " " ^ x) "" xs
-                                in
-                                    List.mapPartial (fn (constrName, _, conO) =>
-                                                        if String.isPrefix searchStr constrName
-                                                        then SOME { label = prefix ^ constrName
-                                                                  , kind = LspSpec.Function
-                                                                  , detail = case conO of
-                                                                                 NONE => dtName ^ typeVarsString
-                                                                               | SOME con => ppToString (ElabPrint.p_con env con) 200 ^ " -> " ^ dtName ^ typeVarsString
-                                                                  }
-                                                        else NONE) constrs
-                                end)
-                            cs))
-              | (Elab.SgiDatatypeImp _, _) =>
-                (* TODO ??? no idea what this is *)
-                []
-              | (Elab.SgiStr (_, name,  _, _), _) =>
-                if String.isPrefix searchStr name
-                then [{ label = prefix ^ name
-                      , kind = LspSpec.Module
-                      , detail = ""
-                      }]
-                else []
-              | (Elab.SgiClass (name, _,  _, con), _) =>
-                if String.isPrefix searchStr name
-                then [{ label = prefix ^ name
-                      , kind = LspSpec.Class
-                      , detail = ppToString (ElabPrint.p_con env con) 200
-                      }]
-                else []
-              | _ => []
-    in
-        List.concat (List.map mapF items)
-    end
-
-(* TODO TOCHECK look at con's to specify "kind" more accurately *)
-fun findMatchingStringInEnv (env: ElabEnv.env) (str: string): LspSpec.completionItem list =
-    let
-        val splitted = Substring.fields (fn c => c = #".") (Substring.full str)
-    in
-        case splitted of
-            (_ :: []) =>
-            if str = ""
-            then []
-            else
-                let
-                    val matchingEs = ElabEnv.matchEByPrefix env str (* function params, let bindings and top-level bindings. Should we discern between Rel and Named? *)
-                    val expressionCompletions = List.map (fn (name,con) =>
-                                                             { label = name
-                                                             , kind = LspSpec.Value
-                                                             , detail = ppToString (ElabPrint.p_con env con) 200
-                                                             }) matchingEs
-                    val matchingStrs = ElabEnv.matchStrByPrefix env str
-                    val structureCompletions = List.map (fn (name,(_,sgn)) =>
-                                                            { label = name
-                                                            , kind = LspSpec.Module
-                                                            , detail = ""
-                                                            }) matchingStrs
-                    val matchingCons = ElabEnv.matchCByPrefix env str
-                    val conCompletions = List.map (fn (name,kind) =>
-                                                      { label = name
-                                                      , kind = LspSpec.Constructor (* TODO probably wrong... *)
-                                                      , detail = ppToString (ElabPrint.p_kind env kind) 200
-                                                      }) matchingCons
-                in
-                    expressionCompletions @ structureCompletions @ conCompletions
-                end
-          | (r :: str :: []) =>
-            if Char.isUpper (Substring.sub (r, 0))
-            then
-                (* Completing STRUCTURE *)
-                let 
-                    (* TODO PERF SMALL: first match and then equal is not perfect *)
-                    val foundStrs = ElabEnv.matchStrByPrefix env (Substring.string r)
-                    val filteredStrs = List.filter (fn (name,_) => name = Substring.string r) foundStrs
-                in
-                    (case List.map (fn (name, (i, sgn)) => (name, ElabEnv.hnormSgn env sgn)) filteredStrs of
-                         [] => []
-                       | (name, (Elab.SgnConst sgis, _)) :: _ =>
-                         getCompletionsFromSignatureItems env (name ^ ".") (Substring.string str) sgis
-                       | _ => [])
-                end
-            else
-                (* Completing RECORD *)
-                (* TODO TOCHECK is it correct to first try RelE and then NamedE? *)
-                let 
-                    (* TODO PERF SMALL: first match and then equal is not perfect *)
-                    val foundEs = ElabEnv.matchEByPrefix env (Substring.string r)
-                    val filteredEs = List.filter (fn (name,_) => name = Substring.string r) foundEs
-                    val reduced = List.map (fn (name, c) =>
-                                               (name, ElabOps.reduceCon env c)
-                                               handle ex => (name, (Elab.CUnit, ErrorMsg.dummySpan)))
-                                           filteredEs
-                in
-                    case reduced of
-                        [] => []
-                      | (name, (Elab.TRecord (Elab.CRecord (_, fields), l2_), l1_)) :: _ =>
-                        getCompletionsFromFields env (name ^ ".") (Substring.string str) fields
-                      | (name,
-                         ( ( Elab.CApp
-                                 ( ( (Elab.CApp
-                                          ( ( Elab.CModProj (_, _, "sql_table")
-                                            , l4_)
-                                          , ( Elab.CRecord (_, fields)
-                                            , l3_)))
-                                   , l2_)
-                                 , _))
-                         , l1_)) :: _ =>
-                        getCompletionsFromFields env (name ^ ".") (Substring.string str) fields
-                      | _ => []
-                end
-          | _ =>
-            (* TODO NOTIMPLEMENTED submodules / nested records *)
-            []
     end
 
 (* TODO IDEA can we use the real parser to figure out what we're typing (exp, con, field, etc) to predict better? *)
@@ -508,19 +388,20 @@ fun handleCompletion (state: state) (p: LspSpec.completionReq) =
           | SOME s =>
             let 
                 val pos = #position p
-                val line = List.nth (Substring.fields (fn c => c = #"\n") (Substring.full (#text s)), #line pos)
-                val chars = [ (* #".", *) #"(", #")", #"{", #"}", #"[", #"]", #"<", #">", #"-", #"=", #":"
-                              , #" ", #"\n", #"#", #",", #"*", #"\"", #"|", #"&", #"$", #"^", #"+", #";"]
-                val lineUntilPos = Substring.slice (line, 0, SOME (#character pos))
-                val searchStr = Substring.string (Substring.taker (fn c => not (List.exists (fn c' => c = c') chars)) lineUntilPos)
+                val searchStr = getStringAtCursor true (#text s) pos
                 val env = #envBeforeThisModule s
                 val decls = #decls s
-                val getInfoRes = GetInfo.getInfo env (Elab.StrConst decls) fileName { line = #line pos + 1
-                                                                                    , character = #character pos + 1} 
-                val envOfSmallest = #env (#smallest getInfoRes)
+                val (env, prefix, foundItems) = GetInfo.matchStringInEnv env (Elab.StrConst decls) fileName { line = #line pos + 1, char = #character pos + 1} searchStr
+                val completions = List.map
+                                    (fn f => case f of
+                                                GetInfo.FoundStr (x, _) => {label = prefix ^ x, kind = LspSpec.Module, detail = ""}
+                                              | GetInfo.FoundCon (x, k) => {label = prefix ^ x, kind = LspSpec.Constructor, detail = ppToString (ElabPrint.p_kind env k) 200}
+                                              | GetInfo.FoundExp (x, c) => {label = prefix ^ x, kind = LspSpec.Value, detail = ppToString (ElabPrint.p_con env c) 200}
+                                    )
+                                    foundItems
             in
                 LspSpec.Success { isIncomplete = false
-                                , items = findMatchingStringInEnv envOfSmallest searchStr}
+                                , items = completions }
             end
     end
 
