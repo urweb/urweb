@@ -161,7 +161,7 @@ fun unAs s =
         doChars (String.explode s, [])
     end
 
-fun checkUrl s = CharVector.all Char.isGraph s andalso Settings.checkUrl s
+fun checkUrl s = CharVector.all Char.isGraph s andalso (s = "#" orelse Settings.checkUrl s)
 val checkData = CharVector.all (fn ch => Char.isAlphaNum ch
                                          orelse ch = #"_"
                                          orelse ch = #"-")
