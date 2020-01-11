@@ -257,10 +257,10 @@ fun elabFile (state: state) (fileName: string): ({ decls: Elab.decl list, envBef
             end
     end
 
-fun uniq (comp: 'b -> 'b -> bool) (bs: 'b list) =
+fun uniq (eq: 'b -> 'b -> bool) (bs: 'b list) =
     case bs of
         [] => []
-      | (l as b :: bs') => b :: uniq comp (List.filter (comp b) bs')
+      | (l as b :: bs') => b :: uniq eq (List.filter (fn a => not (eq a b)) bs')
 
 fun elabFileAndSendDiags (state: state) (toclient: LspSpec.toclient) (documentUri: LspSpec.documentUri): unit =
     let 
@@ -326,7 +326,7 @@ fun getStringAtCursor
     = 
     let
         val line = List.nth (Substring.fields (fn c => c = #"\n") (Substring.full text), #line pos)
-        val chars = [ (* #".", *) #"(", #")", #"{", #"}", #"[", #"]", #"<", #">", #"-", #"=", #":"
+        val chars = [ (* #".", *) #"(", #")", #"{", #"}", #"[", #"]", #"<", #">", #"-", #"=", #":", #"@"
                       , #" ", #"\n", #"#", #",", #"*", #"\"", #"|", #"&", #"$", #"^", #"+", #";"]
         val lineUntilCursor = Substring.slice (line, 0, SOME (#character pos))
         val beforeCursor = Substring.string (Substring.taker (fn c => not (List.exists (fn c' => c = c') chars)) lineUntilCursor)
@@ -369,8 +369,8 @@ fun handleHover (state: state) (p: LspSpec.hoverReq): LspSpec.hoverResp LspSpec.
                     let
                         val desc = case f of
                                        GetInfo.FoundStr (x, (_, sgn)) => formatTypeBox (P.PD.string (prefix ^ x), P.PD.string "module")
-                                     | GetInfo.FoundCon (x, kind) => formatTypeBox (P.PD.string (prefix ^ x), ElabPrint.p_kind env kind)
-                                     | GetInfo.FoundExp (x, con) => formatTypeBox (P.PD.string (prefix ^ x), ElabPrint.p_con env con)
+                                     | GetInfo.FoundKind (x, kind) => formatTypeBox (P.PD.string (prefix ^ x), ElabPrint.p_kind env kind)
+                                     | GetInfo.FoundCon (x, con) => formatTypeBox (P.PD.string (prefix ^ x), ElabPrint.p_con env con)
                     in
                         LspSpec.Success (SOME {contents = ppToString desc 50})
                     end
@@ -395,8 +395,8 @@ fun handleCompletion (state: state) (p: LspSpec.completionReq) =
                 val completions = List.map
                                     (fn f => case f of
                                                 GetInfo.FoundStr (x, _) => {label = prefix ^ x, kind = LspSpec.Module, detail = ""}
-                                              | GetInfo.FoundCon (x, k) => {label = prefix ^ x, kind = LspSpec.Constructor, detail = ppToString (ElabPrint.p_kind env k) 200}
-                                              | GetInfo.FoundExp (x, c) => {label = prefix ^ x, kind = LspSpec.Value, detail = ppToString (ElabPrint.p_con env c) 200}
+                                              | GetInfo.FoundKind (x, k) => {label = prefix ^ x, kind = LspSpec.Constructor, detail = ppToString (ElabPrint.p_kind env k) 200}
+                                              | GetInfo.FoundCon (x, c) => {label = prefix ^ x, kind = LspSpec.Value, detail = ppToString (ElabPrint.p_con env c) 200}
                                     )
                                     foundItems
             in

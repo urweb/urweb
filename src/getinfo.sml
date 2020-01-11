@@ -163,32 +163,31 @@ fun findFirstExpAfter env str fileName {line = line, char = char} =
 
 
 datatype foundInEnv = FoundStr of (string * Elab.sgn)
-                    | FoundCon of (string * Elab.kind)
-                    | FoundExp of (string * Elab.con)
+                    | FoundKind of (string * Elab.kind)
+                    | FoundCon of (string * Elab.con)
 
 fun getNameOfFoundInEnv (f: foundInEnv) =
     case f of
         FoundStr (x, _) => x
+      | FoundKind (x, _) => x
       | FoundCon (x, _) => x
-      | FoundExp (x, _) => x
 
 fun filterSgiItems (items: Elab.sgn_item list) : foundInEnv list =
     let
         fun mapF item =
             case item of
-                (Elab.SgiVal (name, _, c), _) => [FoundExp (name, c)]
-              | (Elab.SgiCon (name, _, k, _), _) => [FoundCon (name, k)]
+                (Elab.SgiVal (name, _, c), _) => [FoundCon (name, c)]
+              | (Elab.SgiCon (name, _, k, _), _) => [FoundKind (name, k)]
               | (Elab.SgiDatatype ds, loc) =>
                 List.concat (List.map (fn (dtx, i, _, cs) =>
-                                          FoundExp (dtx, (Elab.CNamed i, loc))
-                                          :: List.map (fn (x, i, _) => FoundExp (x, (Elab.CRel i, loc))) cs) ds)
+                                          FoundCon (dtx, (Elab.CNamed i, loc))
+                                          :: List.map (fn (x, i, _) => FoundCon (x, (Elab.CRel i, loc))) cs) ds)
               | (Elab.SgiDatatypeImp (x, i, _, _, _, _, cs), loc) =>
-                FoundExp (x, (Elab.CNamed i, loc))
-                :: List.map (fn (x, i, _) => FoundExp (x, (Elab.CRel i, loc))) cs
+                FoundCon (x, (Elab.CNamed i, loc))
+                :: List.map (fn (x, i, _) => FoundCon (x, (Elab.CRel i, loc))) cs
               | (Elab.SgiStr (_, name,  _, sgn), _) =>
                 [FoundStr (name, sgn)]
-              | (Elab.SgiSgn (name,  _, sgn), _) =>
-                [FoundStr (name, sgn)]
+              | (Elab.SgiSgn (name,  _, sgn), _) => []
               | _ => []
     in
         List.concat (List.map mapF items)
@@ -208,7 +207,7 @@ fun resolvePrefixes
            | SOME (FoundStr (name, sgn)) => (case ElabEnv.hnormSgn env sgn of
                                                  (Elab.SgnConst sgis, _) => resolvePrefixes env rest (filterSgiItems sgis)
                                                | _ => [])
-           | SOME (FoundExp (name, c)) =>
+           | SOME (FoundCon (name, c)) =>
              let
                  val fields = case ElabOps.reduceCon env c of
                                   (Elab.TRecord (Elab.CRecord (_, fields), l2_), l1_) =>
@@ -223,12 +222,12 @@ fun resolvePrefixes
                                 | _ => []
                  val items = 
                      List.mapPartial (fn (c1, c2) => case c1 of
-                                                         (Elab.CName fieldName, _) => SOME (FoundExp (fieldName, c2))
+                                                         (Elab.CName fieldName, _) => SOME (FoundCon (fieldName, c2))
                                                        | _  => NONE) fields
              in
                  resolvePrefixes env rest items
              end
-           | SOME (FoundCon (_, _)) => [])
+           | SOME (FoundKind (_, _)) => [])
                                          
 
 fun findStringInEnv' (env: ElabEnv.env) (preferCon: bool) (str: string): (string (* prefix *) * foundInEnv option) =
@@ -236,8 +235,8 @@ fun findStringInEnv' (env: ElabEnv.env) (preferCon: bool) (str: string): (string
         val splitted = List.map Substring.string (Substring.fields (fn c => c = #".") (Substring.full str))
         val afterResolve = resolvePrefixes env (List.take (splitted, List.length splitted - 1))
                                                 ( List.map (fn (name, (_, sgn)) => FoundStr (name, sgn)) (ElabEnv.dumpStrs env)
-                                                @ List.map FoundCon (ElabEnv.dumpCs env)
-                                                @ List.map FoundExp (ElabEnv.dumpEs env))
+                                                @ List.map FoundKind (ElabEnv.dumpCs env)
+                                                @ List.map FoundCon (ElabEnv.dumpEs env))
         val query = List.last splitted 
         val prefix = String.extract (str, 0, SOME (String.size str - String.size query))
     in
@@ -249,8 +248,8 @@ fun matchStringInEnv' (env: ElabEnv.env) (str: string): (string (* prefix *) * f
         val splitted = List.map Substring.string (Substring.fields (fn c => c = #".") (Substring.full str))
         val afterResolve = resolvePrefixes env (List.take (splitted, List.length splitted - 1))
                                                 ( List.map (fn (name, (_, sgn)) => FoundStr (name, sgn)) (ElabEnv.dumpStrs env)
-                                                  @ List.map FoundCon (ElabEnv.dumpCs env)
-                                                  @ List.map FoundExp (ElabEnv.dumpEs env))
+                                                  @ List.map FoundKind (ElabEnv.dumpCs env)
+                                                  @ List.map FoundCon (ElabEnv.dumpEs env))
         val query = List.last splitted 
         val prefix = String.extract (str, 0, SOME (String.size str - String.size query))
     in

@@ -28,8 +28,8 @@
 signature GET_INFO = sig 
 
     datatype foundInEnv = FoundStr of (string * Elab.sgn)
-                        | FoundCon of (string * Elab.kind)
-                        | FoundExp of (string * Elab.con)
+                        | FoundKind of (string * Elab.kind)
+                        | FoundCon of (string * Elab.con)
 
     val findStringInEnv:
         ElabEnv.env ->
