@@ -45,7 +45,7 @@ datatype kind_error =
 fun kindError env err =
     case err of
         UnboundKind (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound kind variable " ^ s)
+        ErrorMsg.errorAt loc ("Unbound kind variable:  " ^ s)
       | KDisallowedWildcard loc =>
         ErrorMsg.errorAt loc "Wildcard not allowed in signature"
 
@@ -84,11 +84,11 @@ datatype con_error =
 fun conError env err =
     case err of
         UnboundCon (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound constructor variable " ^ s)
+        ErrorMsg.errorAt loc ("Unbound constructor variable:  " ^ s)
       | UnboundDatatype (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound datatype " ^ s)
+        ErrorMsg.errorAt loc ("Unbound datatype:  " ^ s)
       | UnboundStrInCon (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound structure " ^ s)
+        ErrorMsg.errorAt loc ("Unbound structure:  " ^ s)
       | WrongKind (c, k1, k2, env', kerr) =>
         (ErrorMsg.errorAt (#2 c) "Wrong kind";
          eprefaces' [("Constructor", p_con env c),
@@ -96,7 +96,7 @@ fun conError env err =
                      ("Need kind", p_kind env k2)];
          kunifyError env' kerr)
       | DuplicateField (loc, s) =>
-        ErrorMsg.errorAt loc ("Duplicate record field " ^ s)
+        ErrorMsg.errorAt loc ("Duplicate record field:  " ^ s)
       | ProjBounds (c, n) =>
         (ErrorMsg.errorAt (#2 c) "Out of bounds constructor projection";
          eprefaces' [("Constructor", p_con env c),
@@ -201,9 +201,9 @@ val p_pat = P.p_pat
 fun expError env err =
     case err of
         UnboundExp (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound expression variable " ^ s)
+        ErrorMsg.errorAt loc ("Unbound expression variable:  " ^ s)
       | UnboundStrInExp (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound structure " ^ s)
+        ErrorMsg.errorAt loc ("Unbound structure:  " ^ s)
       | Unify (e, c1, c2, env', uerr) =>
         (ErrorMsg.errorAt (#2 e) "Unification failure";
          eprefaces' [("Expression", p_exp env e),
@@ -222,7 +222,7 @@ fun expError env err =
          eprefaces' [("Have", p_con env c1),
                      ("Need", p_con env c2)])
       | DuplicatePatternVariable (loc, s) =>
-        ErrorMsg.errorAt loc ("Duplicate pattern variable " ^ s)
+        ErrorMsg.errorAt loc ("Duplicate pattern variable:  " ^ s)
       | PatUnify (p, c1, c2, env', uerr) =>
         (ErrorMsg.errorAt (#2 p) "Unification failure for pattern";
          eprefaces' [("Pattern", p_pat env p),
@@ -356,7 +356,7 @@ val p_sgn = P.p_sgn
 fun sgnError env err =
     case err of
         UnboundSgn (loc, s) =>
-        ErrorMsg.errorAt loc ("Unbound signature variable " ^ s)
+        ErrorMsg.errorAt loc ("Unbound signature variable:  " ^ s)
       | UnmatchedSgi (loc, sgi) =>
         (ErrorMsg.errorAt loc "Unmatched signature item";
          eprefaces' [("Item", p_sgn_item env sgi)])
