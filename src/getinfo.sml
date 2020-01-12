@@ -174,17 +174,28 @@ fun getNameOfFoundInEnv (f: foundInEnv) =
 
 fun filterSgiItems (items: Elab.sgn_item list) : foundInEnv list =
     let
+        fun processDatatype loc (dtx, i, ks, cs) =
+            let
+                val k' = (Elab.KType, loc)
+                val k = FoundKind (dtx, foldl (fn (_, k) => (Elab.KArrow (k', k), loc)) k' ks)
+                val foundCs = List.map (fn (x, j, co) =>
+                                           let
+                                               val c = case co of
+                                                           NONE => (Elab.CNamed i, loc)
+                                                         | SOME c => (Elab.TFun (c, (Elab.CNamed i, loc)), loc)
+                                           in
+                                               FoundCon (x, c)
+                                           end) cs
+            in
+                k :: foundCs
+            end
         fun mapF item =
             case item of
                 (Elab.SgiVal (name, _, c), _) => [FoundCon (name, c)]
               | (Elab.SgiCon (name, _, k, _), _) => [FoundKind (name, k)]
               | (Elab.SgiDatatype ds, loc) =>
-                List.concat (List.map (fn (dtx, i, _, cs) =>
-                                          FoundCon (dtx, (Elab.CNamed i, loc))
-                                          :: List.map (fn (x, i, _) => FoundCon (x, (Elab.CRel i, loc))) cs) ds)
-              | (Elab.SgiDatatypeImp (x, i, _, _, _, _, cs), loc) =>
-                FoundCon (x, (Elab.CNamed i, loc))
-                :: List.map (fn (x, i, _) => FoundCon (x, (Elab.CRel i, loc))) cs
+                List.concat (List.map (processDatatype loc) ds)
+              | (Elab.SgiDatatypeImp (dtx, i, _, ks, _, _, cs), loc) => processDatatype loc (dtx, i, ks, cs)
               | (Elab.SgiStr (_, name,  _, sgn), _) =>
                 [FoundStr (name, sgn)]
               | (Elab.SgiSgn (name,  _, sgn), _) => []
