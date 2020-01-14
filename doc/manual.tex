@@ -244,6 +244,21 @@ urweb daemon restart
 \end{verbatim}
 Communication happens via a UNIX domain socket in file \cd{.urweb\_daemon} in the working directory.
 
+Bundled with the compiler is an LSP or Language Server Protocol server. This is a program that allows various editors to request information about Ur/Web code via a standardized messaging protocol. The Ur/Web LSP server currently provides basic implementations for autocompletion, hover and compiler errors. The server is started by running
+\begin{verbatim}
+urweb -startLspServer
+\end{verbatim}
+Currently there are no prebuilt editor plugins to register this server with your editor of choice but it should be fairly simple to do so. For example in Emacs using the lsp-mode, all you need to make this work is the following configuration (assuming you use the urweb-mode bundled with the compiler):
+\begin{verbatim}
+(require 'lsp)
+(setq lsp-language-id-configuration '((urweb-mode . "urweb")))
+(lsp-register-client
+  (make-lsp-client :new-connection (lsp-stdio-connection '("urweb" "-startLspServer"))
+                    :major-modes '(urweb-mode)
+                    :server-id 'urweb-lsp))
+\end{verbatim}
+Note that to keep the server responsive we don't compile Ur/Web code in the traditional way. Rather, we use only the .urs files (or if applicable .ur files that only contain valid .urs statements) for modules that are not currently being edited. That's why the LSP server requires .urs files for all of your modules.
+
 \medskip
 
 Some other command-line parameters are accepted:
