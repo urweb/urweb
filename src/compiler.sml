@@ -1283,7 +1283,7 @@ val elaborate = {
               in
                   Elaborate.elabFile basis (OS.FileSys.modTime basisF)
                                      topStr topSgn (if Time.< (tm1, tm2) then tm2 else tm1)
-                                     ElabEnv.empty file
+                                     ElabEnv.empty (fn env => env) file
               end,
     print = ElabPrint.p_file ElabEnv.empty
 }

@@ -247,6 +247,7 @@ fun oneRun args =
                     NONE),
               ("moduleOf", ONE ("<file>", printModuleOf),
                     SOME "print module name of <file> and exit"),
+              ("startLspServer", ZERO Lsp.startServer, SOME "Start Language Server Protocol server"),
               ("noEmacs", set_true Demo.noEmacs,
                     NONE),
               ("limit", TWO ("<class>", "<num>", add_class),

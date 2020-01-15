@@ -1,4 +1,4 @@
-(* Copyright (c) 2008, Adam Chlipala
+(* Copyright (c) 2012, Adam Chlipala
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,40 +25,26 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *)
 
-signature ERROR_MSG = sig
+signature GET_INFO = sig 
 
-    type pos = {line : int,
-                char : int}
-           
-    type span = {file : string,
-                 first : pos,
-                 last : pos}
+    datatype foundInEnv = FoundStr of (string * Elab.sgn)
+                        | FoundKind of (string * Elab.kind)
+                        | FoundCon of (string * Elab.con)
 
-    type 'a located = 'a * span
+    val findStringInEnv:
+        ElabEnv.env ->
+        Elab.str' ->
+        string (* fileName *) ->
+        {line: int, char: int} ->
+        string (* query *) ->
+        (ElabEnv.env * string (* prefix *) * foundInEnv option)
 
-    val posToString : pos -> string
-    val spanToString : span -> string
-
-    val dummyPos : pos
-    val dummySpan : span
-
-    val resetPositioning : string -> unit
-    val newline : int -> unit
-    val lastLineStart : unit -> int
-    val posOf : int -> pos
-    val spanOf : int * int -> span
-
-    (* To monitor in which modules the elaboration phase finds errors *)
-    val startElabStructure : string -> unit
-    val stopElabStructureAndGetErrored : string -> bool (* Did the module elab encounter errors? *)
-
-    val resetStructureTracker: unit -> unit
-    val resetErrors : unit -> unit
-    val anyErrors : unit -> bool
-    val error : string -> unit
-    val errorAt : span -> string -> unit
-    val errorAt' : int * int -> string -> unit
-    val readErrorLog: unit ->
-                      { span: span
-                      , message: string } list
+    val matchStringInEnv: 
+        ElabEnv.env ->
+        Elab.str' ->
+        string (* fileName *) ->
+        {line: int, char: int} ->
+        string (* query *) ->
+        (ElabEnv.env * string (* prefix *) * foundInEnv list)
 end
+    

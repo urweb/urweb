@@ -29,7 +29,10 @@ signature ELABORATE = sig
 
     val elabFile : Source.sgn_item list -> Time.time
                    -> Source.decl list -> Source.sgn_item list -> Time.time
-                   -> ElabEnv.env -> Source.file -> Elab.file
+                   -> ElabEnv.env
+                   -> (ElabEnv.env -> ElabEnv.env) (* Adapt env after stdlib but before elaborate *)
+                   -> Source.file
+                   -> Elab.file
 
     val resolveClass : ElabEnv.env -> Elab.con -> Elab.exp option
 
@@ -46,5 +49,25 @@ signature ELABORATE = sig
 
     val incremental : bool ref
     val verbose : bool ref
+
+    val dopen: ElabEnv.env
+               -> { str: int
+                  , strs: string list
+                  , sgn: Elab.sgn }
+               -> (Elab.decl list * ElabEnv.env)
+
+    val elabSgn: (ElabEnv.env * Disjoint.env)
+                 -> Source.sgn
+                 -> (Elab.sgn * Disjoint.goal list)
+
+    datatype constraint =
+             Disjoint of Disjoint.goal
+             | TypeClass of ElabEnv.env * Elab.con * Elab.exp option ref * ErrorMsg.span
+                  
+    val elabStr: (ElabEnv.env * Disjoint.env)
+                 -> Source.str
+                 -> (Elab.str * Elab.sgn * constraint list)
+
+    val subSgn: ElabEnv.env -> ErrorMsg.span -> Elab.sgn -> Elab.sgn -> unit
 
 end

@@ -30,11 +30,14 @@
 signature MOD_DB = sig
     val reset : unit -> unit
 
-    val insert : Elab.decl * Time.time -> unit
+    val insert : Elab.decl * Time.time * bool (* hasErrors *) -> unit
     (* Here's a declaration, including the modification timestamp of the file it came from.
      * We might invalidate other declarations that depend on this one, if the timestamp has changed. *)
 
     val lookup : Source.decl -> Elab.decl option
+
+    val lookupModAndDepsIncludingErrored:
+        string -> (Elab.decl * Elab.decl list) option
 
     (* Allow undoing to snapshots after failed compilations. *)
     val snapshot : unit -> unit

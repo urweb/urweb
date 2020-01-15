@@ -69,6 +69,9 @@ $(SRC)/elab.sml
 $(SRC)/elab_util.sig
 $(SRC)/elab_util.sml
 
+$(SRC)/elab_util_pos.sig
+$(SRC)/elab_util_pos.sml
+
 $(SRC)/elab_env.sig
 $(SRC)/elab_env.sml
 
@@ -270,6 +273,20 @@ $(SRC)/checknest.sml
 
 $(SRC)/compiler.sig
 $(SRC)/compiler.sml
+
+$(SRC)/getinfo.sig
+$(SRC)/getinfo.sml
+
+$(SRC)/json.sig
+$(SRC)/json.sml
+
+$(SRC)/fromjson.sig
+$(SRC)/fromjson.sml
+
+$(SRC)/lspspec.sml
+
+$(SRC)/lsp.sig
+$(SRC)/lsp.sml
 
 $(SRC)/demo.sig
 $(SRC)/demo.sml

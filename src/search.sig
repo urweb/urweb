@@ -59,4 +59,9 @@ signature SEARCH = sig
                 * ('state11 -> 'state2 -> ('state11 * 'state2, 'abort) result)
                 -> (('state11 * 'state12) * 'state2, 'abort) result
 
+    val bindPWithPos :
+        (('state11 * 'state12) * 'state2, 'abort) result
+        * (('state11 * 'state12) -> 'state2 -> ('state11 * 'state2, 'abort) result)
+        -> (('state11 * 'state12) * 'state2, 'abort) result
+
 end

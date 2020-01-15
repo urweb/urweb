@@ -925,6 +925,33 @@ Optional argument STYLE is currently ignored."
 	(urweb-skip-siblings))
       fullname)))
 
+(defun urweb-get-proj-dir (bfn)
+  (locate-dominating-file
+   bfn
+   (lambda (dir)
+     (some (lambda (f) (s-suffix? ".urp" f))
+           (if (f-dir? dir)
+               (directory-files dir)
+             (list '(dir)))))))
+
+(defun urweb-get-info ()
+  (interactive)
+  (let*
+      ((row (line-number-at-pos))
+       (col (evil-column))
+       (bfn (buffer-file-name))
+       (proj-dir (urweb-get-proj-dir bfn))
+       (filename (file-relative-name bfn proj-dir))
+       (loc (concat filename ":" (number-to-string row) ":" (number-to-string col)))
+       )
+    (require 's)
+    (require 'f)
+    (require 'simple)
+    (message (let
+                 ((default-directory proj-dir))
+               (shell-command-to-string (concat "urweb -getInfo " loc)))))
+  )
+
 (provide 'urweb-mode)
 
 ;;; urweb-mode.el ends here

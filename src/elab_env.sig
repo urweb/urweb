@@ -100,6 +100,10 @@ signature ELAB_ENV = sig
     val lookupStrNamed : env -> int -> string * Elab.sgn
 
     val lookupStr : env -> string -> (int * Elab.sgn) option
+         
+    val dumpCs: env -> (string * Elab.kind) list
+    val dumpEs: env -> (string * Elab.con) list
+    val dumpStrs: env -> (string * (int * Elab.sgn)) list
 
     val edeclBinds : env -> Elab.edecl -> env
     val declBinds : env -> Elab.decl -> env

@@ -986,6 +986,16 @@ fun lookupStrNamed (env : env) n =
 
 fun lookupStr (env : env) x = SM.find (#renameStr env, x)
 
+fun dumpCs (env: env): (string * kind) list = 
+    List.map (fn (name, value) => case value of
+                                      Rel' (_, x) => (name, x)
+                                    | Named' (_, x) => (name, x))
+             (SM.listItemsi (#renameC env))
+(* TODO try again with #renameE *)
+fun dumpEs (env: env): (string * con) list = 
+    #relE env @ IM.listItems (#namedE env)
+fun dumpStrs (env: env) =
+    SM.listItemsi (#renameStr env)
 
 fun sgiSeek (sgi, (sgns, strs, cons)) =
     case sgi of

@@ -88,12 +88,34 @@ fun spanOf (pos1, pos2) = {file = !file,
 
 
 val errors = ref false
+val errorLog = ref ([]: { span: span
+                        , message: string } list)
+fun readErrorLog () = !errorLog
+val structuresCurrentlyElaborating: ((string * bool) list) ref = ref nil
 
-fun resetErrors () = errors := false
+fun startElabStructure s =
+    structuresCurrentlyElaborating := ((s, false) :: !structuresCurrentlyElaborating)
+fun stopElabStructureAndGetErrored s =
+    let 
+        val errored =
+            case List.find (fn x => #1 x = s) (!structuresCurrentlyElaborating) of
+                NONE => false
+              | SOME tup => #2 tup
+        val () = structuresCurrentlyElaborating :=
+                 (List.filter (fn x => #1 x <> s) (!structuresCurrentlyElaborating))
+    in 
+        errored
+    end
+fun resetStructureTracker () =
+    structuresCurrentlyElaborating := []
+
+fun resetErrors () = (errors := false; errorLog := [])
 fun anyErrors () = !errors
 fun error s = (TextIO.output (TextIO.stdErr, s);
                TextIO.output1 (TextIO.stdErr, #"\n");
-               errors := true)
+               errors := true;
+               structuresCurrentlyElaborating :=
+                 List.map (fn (s, e) => (s, true)) (!structuresCurrentlyElaborating))
 
 fun errorAt (span : span) s = (TextIO.output (TextIO.stdErr, #file span);
                                TextIO.output (TextIO.stdErr, ":");
@@ -101,6 +123,9 @@ fun errorAt (span : span) s = (TextIO.output (TextIO.stdErr, #file span);
                                TextIO.output (TextIO.stdErr, ": (to ");
                                TextIO.output (TextIO.stdErr, posToString (#last span));
                                TextIO.output (TextIO.stdErr, ") ");
+                               errorLog := ({ span = span
+                                            , message = s
+                                            } :: !errorLog);
                                error s)
 fun errorAt' span s = errorAt (spanOf span) s
 
