@@ -245,6 +245,7 @@ uw_Basis_string uw_Basis_blessEnvVar(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_blessMeta(struct uw_context *, uw_Basis_string);
 
 uw_Basis_string uw_Basis_checkUrl(struct uw_context *, uw_Basis_string);
+uw_Basis_string uw_Basis_anchorUrl(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_checkMime(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_checkRequestHeader(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_checkResponseHeader(struct uw_context *, uw_Basis_string);

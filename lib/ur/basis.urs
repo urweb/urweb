@@ -816,6 +816,7 @@ type id
 val fresh : transaction id
 val giveFocus : id -> transaction unit
 val show_id : show id
+val anchorUrl : id -> url
 
 val dyn : ctx ::: {Unit} -> use ::: {Type} -> bind ::: {Type} -> [ctx ~ [Dyn]] => unit
           -> tag [Signal = signal (xml ([Dyn] ++ ctx) use bind)] ([Dyn] ++ ctx) [] use bind

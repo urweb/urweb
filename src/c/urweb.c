@@ -4638,6 +4638,10 @@ uw_Basis_string uw_Basis_currentUrl(uw_context ctx) {
   return ctx->current_url;
 }
 
+uw_Basis_string uw_Basis_anchorUrl(uw_context ctx, uw_Basis_string s) {
+  return uw_Basis_strcat(ctx, uw_Basis_strcat(ctx, ctx->current_url, "#"), s);
+}
+
 void uw_set_currentUrl(uw_context ctx, char *s) {
   ctx->current_url = s;
 }
