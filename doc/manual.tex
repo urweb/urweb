@@ -1473,7 +1473,7 @@ Some operations are only allowed in server-side code or only in client-side code
 The Ur Basis defines the monad constructor class from Haskell.
 
 $$\begin{array}{l}
-  \mt{class} \; \mt{monad} :: \mt{Type} \to \mt{Type} \\
+  \mt{class} \; \mt{monad} :: (\mt{Type} \to \mt{Type}) \to \mt{Type} \\
   \mt{val} \; \mt{return} : \mt{m} ::: (\mt{Type} \to \mt{Type}) \to \mt{t} ::: \mt{Type} \\
   \hspace{.1in} \to \mt{monad} \; \mt{m} \\
   \hspace{.1in} \to \mt{t} \to \mt{m} \; \mt{t} \\
