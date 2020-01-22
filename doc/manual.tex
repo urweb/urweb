@@ -486,8 +486,8 @@ $$\begin{array}{rrcll}
   &&& c \; c & \textrm{type-level function application} \\
   &&& \lambda x \; :: \; \kappa \Rightarrow c & \textrm{type-level function abstraction} \\
   \\
-  &&& X \Longrightarrow c & \textrm{type-level kind-polymorphic function abstraction} \\
   &&& c [\kappa] & \textrm{type-level kind-polymorphic function application} \\
+  &&& X \Longrightarrow c & \textrm{type-level kind-polymorphic function abstraction} \\
   \\
   &&& () & \textrm{type-level unit} \\
   &&& \#X & \textrm{field name} \\
@@ -574,8 +574,8 @@ $$\begin{array}{rrcll}
   \\
   &&& \mt{case} \; e \; \mt{of} \; (p \Rightarrow e|)^+ & \textrm{pattern matching} \\
   \\
-  &&& \lambda [c \sim c] \Rightarrow e & \textrm{guarded expression abstraction} \\
   &&& e \; ! & \textrm{guarded expression application} \\
+  &&& \lambda [c \sim c] \Rightarrow e & \textrm{guarded expression abstraction} \\
   \\
   &&& \_ & \textrm{wildcard} \\
   &&& (e) & \textrm{explicit precedence} \\
