@@ -443,7 +443,7 @@ We give the Ur language definition in \LaTeX $\;$ math mode, since that is prett
   \end{tabular}
 \end{center}
 
-We often write syntax like $e^*$ to indicate zero or more copies of $e$, $e^+$ to indicate one or more copies, and $e,^*$ and $e,^+$ to indicate multiple copies separated by commas.  Another separator may be used in place of a comma.  The $e$ term may be surrounded by parentheses to indicate grouping; those parentheses should not be included in the actual ASCII.
+We often write syntax like $e^*$ to indicate zero or more copies of $e$, $e^+$ to indicate one or more copies, and $e,^*$ and $e,^+$ to indicate multiple copies separated by commas.  Another separator may be used in place of a comma.  When $e$ consists of multiple symbols, the $e$ term and separator (if any) are surrounded by parentheses to indicate grouping; those parentheses should not be included in the actual ASCII.
 
 We write $\ell$ for literals of the primitive types, for the most part following C conventions.  There are $\mt{int}$, $\mt{float}$, $\mt{char}$, and $\mt{string}$ literals.  Character literals follow the SML convention instead of the C convention, written like \texttt{\#"a"} instead of \texttt{'a'}.
 
@@ -492,7 +492,7 @@ $$\begin{array}{rrcll}
   &&& () & \textrm{type-level unit} \\
   &&& \#X & \textrm{field name} \\
   \\
-  &&& [(c = c)^*] & \textrm{known-length type-level record} \\
+  &&& [(c = c,)^*] & \textrm{known-length type-level record} \\
   &&& c \rc c & \textrm{type-level record concatenation} \\
   &&& \mt{map} & \textrm{type-level record map} \\
   \\
@@ -572,7 +572,7 @@ $$\begin{array}{rrcll}
   \\
   &&& \mt{let} \; ed^* \; \mt{in} \; e \; \mt{end} & \textrm{local definitions} \\
   \\
-  &&& \mt{case} \; e \; \mt{of} \; (p \Rightarrow e|)^+ & \textrm{pattern matching} \\
+  &&& \mt{case} \; e \; \mt{of} \; (p \Rightarrow e\mid)^+ & \textrm{pattern matching} \\
   \\
   &&& e \; ! & \textrm{guarded expression application} \\
   &&& \lambda [c \sim c] \Rightarrow e & \textrm{guarded expression abstraction} \\
