@@ -443,7 +443,7 @@ We give the Ur language definition in \LaTeX $\;$ math mode, since that is prett
   \end{tabular}
 \end{center}
 
-We often write syntax like $e^*$ to indicate zero or more copies of $e$, $e^+$ to indicate one or more copies, and $e,^*$ and $e,^+$ to indicate multiple copies separated by commas.  Another separator may be used in place of a comma.  The $e$ term may be surrounded by parentheses to indicate grouping; those parentheses should not be included in the actual ASCII.
+We often write syntax like $e^*$ to indicate zero or more copies of $e$, $e^+$ to indicate one or more copies, and $e,^*$ and $e,^+$ to indicate multiple copies separated by commas.  Another separator may be used in place of a comma.  When $e$ consists of multiple symbols, the $e$ term and separator (if any) are surrounded by parentheses to indicate grouping; those parentheses should not be included in the actual ASCII.
 
 We write $\ell$ for literals of the primitive types, for the most part following C conventions.  There are $\mt{int}$, $\mt{float}$, $\mt{char}$, and $\mt{string}$ literals.  Character literals follow the SML convention instead of the C convention, written like \texttt{\#"a"} instead of \texttt{'a'}.
 
@@ -486,13 +486,13 @@ $$\begin{array}{rrcll}
   &&& c \; c & \textrm{type-level function application} \\
   &&& \lambda x \; :: \; \kappa \Rightarrow c & \textrm{type-level function abstraction} \\
   \\
-  &&& X \Longrightarrow c & \textrm{type-level kind-polymorphic function abstraction} \\
   &&& c [\kappa] & \textrm{type-level kind-polymorphic function application} \\
+  &&& X \Longrightarrow c & \textrm{type-level kind-polymorphic function abstraction} \\
   \\
   &&& () & \textrm{type-level unit} \\
   &&& \#X & \textrm{field name} \\
   \\
-  &&& [(c = c)^*] & \textrm{known-length type-level record} \\
+  &&& [(c = c,)^*] & \textrm{known-length type-level record} \\
   &&& c \rc c & \textrm{type-level record concatenation} \\
   &&& \mt{map} & \textrm{type-level record map} \\
   \\
@@ -572,10 +572,10 @@ $$\begin{array}{rrcll}
   \\
   &&& \mt{let} \; ed^* \; \mt{in} \; e \; \mt{end} & \textrm{local definitions} \\
   \\
-  &&& \mt{case} \; e \; \mt{of} \; (p \Rightarrow e|)^+ & \textrm{pattern matching} \\
+  &&& \mt{case} \; e \; \mt{of} \; (p \Rightarrow e\mid)^+ & \textrm{pattern matching} \\
   \\
-  &&& \lambda [c \sim c] \Rightarrow e & \textrm{guarded expression abstraction} \\
   &&& e \; ! & \textrm{guarded expression application} \\
+  &&& \lambda [c \sim c] \Rightarrow e & \textrm{guarded expression abstraction} \\
   \\
   &&& \_ & \textrm{wildcard} \\
   &&& (e) & \textrm{explicit precedence} \\
@@ -644,7 +644,7 @@ A signature item or declaration $\mt{class} \; x = \lambda y \Rightarrow c$ may 
 
 Handling of implicit and explicit constructor arguments may be tweaked with some prefixes to variable references.  An expression $@x$ is a version of $x$ where all type class instance and disjointness arguments have been made explicit.  (For the purposes of this paragraph, the type family $\mt{Top.folder}$ is a type class, though it isn't marked as one by the usual means; and any record type is considered to be a type class instance type when every field's type is a type class instance type.)  An expression $@@x$ achieves the same effect, additionally making explicit all implicit constructor arguments.  The default is that implicit arguments are inserted automatically after any reference to a variable, or after any application of a variable to one or more arguments.  For such an expression, implicit wildcard arguments are added for the longest prefix of the expression's type consisting only of implicit polymorphism, type class instances, and disjointness obligations.  The same syntax works for variables projected out of modules and for capitalized variables (datatype constructors).
 
-At the expression level, an analogue is available of the composite $\lambda$ form for constructors.  We define the language of binders as $b ::= p \mid [x] \mid [x \; ? \; \kappa] \mid X \mid [c \sim c]$.  A lone variable $[x]$ stands for an implicit constructor variable of unspecified kind.  The standard value-level function binder is recovered as the type-annotated pattern form $x : \tau$.  It is a compile-time error to include a pattern $p$ that does not match every value of the appropriate type.
+At the expression level, an analogue is available of the composite $\lambda$ form for constructors.  We define the language of binders as $b ::= p \mid [x] \mid [x \; ? \; \kappa] \mid [X] \mid [c \sim c]$.  A lone variable $[x]$ stands for an implicit constructor variable of unspecified kind.  The standard value-level function binder is recovered as the type-annotated pattern form $x : \tau$.  It is a compile-time error to include a pattern $p$ that does not match every value of the appropriate type.
 
 A local $\mt{val}$ declaration may bind a pattern instead of just a plain variable.  As for function arguments, only irrefutable patterns are legal.
 
