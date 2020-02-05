@@ -797,7 +797,7 @@ $$\infer{\Gamma \vdash (\overline c) :: (\kappa_1 \times \ldots \times \kappa_n)
   \Gamma \vdash c :: (\kappa_1 \times \ldots \times \kappa_n)
 }$$
 
-$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow \tau :: \mt{Type}}{
+$$\infer{\Gamma \vdash [c_1 \sim c_2] \Rightarrow \tau :: \mt{Type}}{
   \Gamma \vdash c_1 :: \{\kappa\}
   & \Gamma \vdash c_2 :: \{\kappa'\}
   & \Gamma, c_1 \sim c_2 \vdash \tau :: \mt{Type}
@@ -963,7 +963,7 @@ $$\infer{\Gamma \vdash \mt{let} \; \overline{ed} \; \mt{in} \; e \; \mt{end} : \
   & \Gamma_i \vdash e_i : \tau
 }$$
 
-$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow e : \lambda [c_1 \sim c_2] \Rightarrow \tau}{
+$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow e : [c_1 \sim c_2] \Rightarrow \tau}{
   \Gamma \vdash c_1 :: \{\kappa\}
   & \Gamma \vdash c_2 :: \{\kappa'\}
   & \Gamma, c_1 \sim c_2 \vdash e : \tau
