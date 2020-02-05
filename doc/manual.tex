@@ -622,7 +622,7 @@ There are a variety of derived syntactic forms that elaborate into the core synt
 
 In many contexts where record fields are expected, like in a projection $e.c$, a constant field may be written as simply $X$, rather than $\#X$.
 
-A record type may be written $\{(c = c,)^*\}$, which elaborates to $\$[(c = c,)^*]$.
+A record type may be written $\{(c : c,)^*\}$, which elaborates to $\$[(c = c,)^*]$.
 
 The notation $[c_1, \ldots, c_n]$ is shorthand for $[c_1 = (), \ldots, c_n = ()]$.
 
@@ -933,7 +933,7 @@ $$\infer{\Gamma \vdash e [\kappa] : [X \mapsto \kappa]\tau}{
   \Gamma, X \vdash e : \tau
 }$$
 
-$$\infer{\Gamma \vdash \{\overline{c = e}\} : \{\overline{c : \tau}\}}{
+$$\infer{\Gamma \vdash \{\overline{c = e}\} : \$[\overline{c = \tau}]}{
   \forall i: \Gamma \vdash c_i :: \mt{Name}
   & \Gamma \vdash e_i : \tau_i
   & \forall i \neq j: \Gamma \vdash c_i \sim c_j
@@ -1000,7 +1000,7 @@ $$\infer{\Gamma \vdash M.X \; p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i
   & \Gamma \vdash p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i]}\tau''
 }$$
 
-$$\infer{\Gamma \vdash \{\overline{X = p}\} \leadsto \Gamma_n; \{\overline{X = \tau}\}}{
+$$\infer{\Gamma \vdash \{\overline{X = p}\} \leadsto \Gamma_n; \$[\overline{X = \tau}]}{
   \Gamma_0 = \Gamma
   & \forall i: \Gamma_i \vdash p_i \leadsto \Gamma_{i+1}; \tau_i
 }
