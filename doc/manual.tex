@@ -767,10 +767,10 @@ $$\infer{\Gamma \vdash c_1 \; c_2 :: \kappa_2}{
 }$$
 
 $$\infer{\Gamma \vdash c[\kappa'] :: [X \mapsto \kappa']\kappa}{
-  \Gamma \vdash c :: X \to \kappa
+  \Gamma \vdash c :: X \longrightarrow \kappa
   & \Gamma \vdash \kappa'
 }
-\quad \infer{\Gamma \vdash X \Longrightarrow c :: X \to \kappa}{
+\quad \infer{\Gamma \vdash X \Longrightarrow c :: X \longrightarrow \kappa}{
   \Gamma, X \vdash c :: \kappa
 }$$
 
