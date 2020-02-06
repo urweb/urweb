@@ -622,7 +622,7 @@ There are a variety of derived syntactic forms that elaborate into the core synt
 
 In many contexts where record fields are expected, like in a projection $e.c$, a constant field may be written as simply $X$, rather than $\#X$.
 
-A record type may be written $\{(c = c,)^*\}$, which elaborates to $\$[(c = c,)^*]$.
+A record type may be written $\{(c : c,)^*\}$, which elaborates to $\$[(c = c,)^*]$.
 
 The notation $[c_1, \ldots, c_n]$ is shorthand for $[c_1 = (), \ldots, c_n = ()]$.
 
@@ -767,10 +767,10 @@ $$\infer{\Gamma \vdash c_1 \; c_2 :: \kappa_2}{
 }$$
 
 $$\infer{\Gamma \vdash c[\kappa'] :: [X \mapsto \kappa']\kappa}{
-  \Gamma \vdash c :: X \to \kappa
+  \Gamma \vdash c :: X \longrightarrow \kappa
   & \Gamma \vdash \kappa'
 }
-\quad \infer{\Gamma \vdash X \Longrightarrow c :: X \to \kappa}{
+\quad \infer{\Gamma \vdash X \Longrightarrow c :: X \longrightarrow \kappa}{
   \Gamma, X \vdash c :: \kappa
 }$$
 
@@ -797,7 +797,7 @@ $$\infer{\Gamma \vdash (\overline c) :: (\kappa_1 \times \ldots \times \kappa_n)
   \Gamma \vdash c :: (\kappa_1 \times \ldots \times \kappa_n)
 }$$
 
-$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow \tau :: \mt{Type}}{
+$$\infer{\Gamma \vdash [c_1 \sim c_2] \Rightarrow \tau :: \mt{Type}}{
   \Gamma \vdash c_1 :: \{\kappa\}
   & \Gamma \vdash c_2 :: \{\kappa'\}
   & \Gamma, c_1 \sim c_2 \vdash \tau :: \mt{Type}
@@ -933,7 +933,7 @@ $$\infer{\Gamma \vdash e [\kappa] : [X \mapsto \kappa]\tau}{
   \Gamma, X \vdash e : \tau
 }$$
 
-$$\infer{\Gamma \vdash \{\overline{c = e}\} : \{\overline{c : \tau}\}}{
+$$\infer{\Gamma \vdash \{\overline{c = e}\} : \$[\overline{c = \tau}]}{
   \forall i: \Gamma \vdash c_i :: \mt{Name}
   & \Gamma \vdash e_i : \tau_i
   & \forall i \neq j: \Gamma \vdash c_i \sim c_j
@@ -963,7 +963,7 @@ $$\infer{\Gamma \vdash \mt{let} \; \overline{ed} \; \mt{in} \; e \; \mt{end} : \
   & \Gamma_i \vdash e_i : \tau
 }$$
 
-$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow e : \lambda [c_1 \sim c_2] \Rightarrow \tau}{
+$$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow e : [c_1 \sim c_2] \Rightarrow \tau}{
   \Gamma \vdash c_1 :: \{\kappa\}
   & \Gamma \vdash c_2 :: \{\kappa'\}
   & \Gamma, c_1 \sim c_2 \vdash e : \tau
@@ -1000,7 +1000,7 @@ $$\infer{\Gamma \vdash M.X \; p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i
   & \Gamma \vdash p \leadsto \Gamma'; \overline{[x_i \mapsto \tau'_i]}\tau''
 }$$
 
-$$\infer{\Gamma \vdash \{\overline{X = p}\} \leadsto \Gamma_n; \{\overline{X = \tau}\}}{
+$$\infer{\Gamma \vdash \{\overline{X = p}\} \leadsto \Gamma_n; \$[\overline{X = \tau}]}{
   \Gamma_0 = \Gamma
   & \forall i: \Gamma_i \vdash p_i \leadsto \Gamma_{i+1}; \tau_i
 }
