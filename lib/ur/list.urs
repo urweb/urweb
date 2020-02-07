@@ -7,6 +7,8 @@ val foldl : a ::: Type -> b ::: Type -> (a -> b -> b) -> b -> t a -> b
 val foldlAbort : a ::: Type -> b ::: Type -> (a -> b -> option b) -> b -> t a -> option b
 val foldlMapAbort : a ::: Type -> b ::: Type -> c ::: Type
                     -> (a -> b -> option (c * b)) -> b -> t a -> option (t c * b)
+val foldli : a ::: Type -> b ::: Type
+             -> (int -> a -> b -> b) -> b -> t a -> b
 
 val foldr : a ::: Type -> b ::: Type -> (a -> b -> b) -> b -> t a -> b
 

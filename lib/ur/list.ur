@@ -31,6 +31,16 @@ fun foldl [a] [b] (f : a -> b -> b) =
         foldl'
     end
 
+fun foldli [a] [b] (f : int -> a -> b -> b) =
+    let
+        fun foldli' i acc ls =
+            case ls of
+                [] => acc
+              | x :: ls => foldli' (i + 1) (f i x acc) ls
+    in
+        foldli' 0
+    end
+
 val rev = fn [a] =>
              let
                  fun rev' acc (ls : list a) =
