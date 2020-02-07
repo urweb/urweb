@@ -3325,8 +3325,14 @@ and subSgn' counterparts env strLoc sgn1 (sgn2 as (_, loc2)) =
                                              |  _ => env
                                         val env = case #1 sgi1All of
                                                       L'.SgiDatatype dts1 => dt_pusher (dts1, dts2, env)
-                                                    | _ => env
-                                                         
+                                                    | _ => foldl (fn ((x2, n2, xs2, _), env) =>
+                                                                     let
+                                                                         val k = (L'.KType, loc)
+                                                                         val k' = foldl (fn (_, k') => (L'.KArrow (k, k'), loc)) k xs2
+                                                                     in
+                                                                         E.pushCNamedAs env x2 n2 k' NONE
+                                                                     end) env dts2
+
                                         val env = foldl (fn (x, env) => E.pushCRel env x k) env xs1
                                         fun xncBad ((x1, _, t1), (x2, _, t2)) =
                                             String.compare (x1, x2) <> EQUAL
@@ -4229,7 +4235,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                   L'.StrFun _ => ()
                                 | _ => strError env (FunctorRebind loc))
                            | _ => ();
-                         Option.map (fn tm => ModDb.insert (dNew,
+                         Option.app (fn tm => ModDb.insert (dNew,
                                                             tm,
                                                             ErrorMsg.stopElabStructureAndGetErrored x
                                                             )) tmo;

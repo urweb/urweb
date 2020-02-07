@@ -546,7 +546,10 @@ fun p_datatype env (x, n, xs, cons) =
         val env = E.pushCNamedAs env x n k NONE
         val env = foldl (fn (x, env) => E.pushCRel env x k) env xs
     in
-        box [string x,
+        box [(if !debug then
+                  string (x ^ "_" ^ Int.toString n)
+              else
+                  string x),
              p_list_sep (box []) (fn x => box [space, string x]) xs,
              space,
              string "=",
