@@ -1,4 +1,21 @@
 ========
+20200209
+========
+
+- New invocation mode 'urweb daemon restart'
+- Disallow wildcards in signatures
+- At compile time, start allowing "#" as a URL
+- New option '-u' for generated HTTP servers, to use UNIX sockets
+- New HTML tag attribute: 'step' (for <crange>)
+- New SQL function: 'similar' (via pg_trgm)
+- New List function: foldli
+- New Json functions: json_record_withOptional, json_time, rfc3339_in, rfc3339_out
+- New Datetime member: ord_month
+- New JavaScript FFI function 'listen'
+- Experimental support for the Language Server Protocol (helpful for IDEs)
+- Bug fixes and improvements to documentation, error messages, performance, and compatibility
+
+========
 20190217
 ========
 
