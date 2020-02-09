@@ -112,9 +112,16 @@ uninstall-local-main:
 
 uninstall-local: uninstall-local-main uninstall-emacs
 
-EXTRA_DIST = demo doc lib/js lib/ur xml \
+EXTRA_DIST = demo/prose demo/*.urs demo/*.ur demo/*.urp demo/more/prose demo/more/*.urs demo/more/*.ur demo/more/*.urp \
+	doc/Makefile doc/*.tex doc/*.ur doc/LICENSE lib/js \
+	lib/ur/*.urs lib/ur/*.ur xml/parse.sml xml/*.ent \
 	src/coq src/*.sig src/*.sml src/*.mlb src/config.sml.in src/elisp src/*.cm src/sources src/*.grm src/*.lex \
-	CHANGELOG LICENSE urweb.ebuild include/urweb/*.h bin
+	CHANGELOG LICENSE urweb.ebuild include/urweb/*.h tests/*.html
+
+dist-hook:
+	cd src; rm -f urweb.mlton.lex urweb.mlton.grm *.lex.* *.grm.*
+	cd demo; rm -f demo.ur*
+	cd demo/more; rm -f demo.ur*
 
 TESTDB = /tmp/urweb.db
 TESTPID = /tmp/urweb.pid
