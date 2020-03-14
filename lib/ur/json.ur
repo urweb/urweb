@@ -212,10 +212,35 @@ fun numIn [a] (_ : read a) s : a * string =
                     else
                         i
                 end
-
-        val last = findEnd 0
     in
-        (readError (String.substring s {Start = 0, Len = last}), String.substring s {Start = last, Len = len-last})
+        if len > 0 && String.sub s 0 = #"\"" then
+            let
+                val last = findEnd 1
+                val rest = String.substring s {Start = last, Len = len-last}
+            in
+                if String.length rest > 0 && String.sub rest 0 = #"\"" then
+                    (readError (String.substring s {Start = 1, Len = last-1}),
+                     String.suffix rest 1)
+                else
+                    error <xml>Unbalanced quotes for JSON number</xml>
+            end
+        else if len > 0 && String.sub s 0 = #"'" then
+            let
+                val last = findEnd 1
+                val rest = String.substring s {Start = last, Len = len-last}
+            in
+                if String.length rest > 0 && String.sub rest 0 = #"'" then
+                    (readError (String.substring s {Start = 1, Len = last-1}),
+                     String.suffix rest 1)
+                else
+                    error <xml>Unbalanced quotes for JSON number</xml>
+            end
+        else
+            let
+                val last = findEnd 0
+            in
+                (readError (String.substring s {Start = 0, Len = last}), String.substring s {Start = last, Len = len-last})
+            end
     end
 
 fun json_num [a] (_ : show a) (_ : read a) : json a = {ToJson = show,
