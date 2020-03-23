@@ -222,7 +222,7 @@ fun numIn [a] (_ : read a) s : a * string =
                     (readError (String.substring s {Start = 1, Len = last-1}),
                      String.suffix rest 1)
                 else
-                    error <xml>Unbalanced quotes for JSON number</xml>
+                    error <xml>Unbalanced quotes for JSON number {[s]}</xml>
             end
         else if len > 0 && String.sub s 0 = #"'" then
             let
@@ -233,7 +233,7 @@ fun numIn [a] (_ : read a) s : a * string =
                     (readError (String.substring s {Start = 1, Len = last-1}),
                      String.suffix rest 1)
                 else
-                    error <xml>Unbalanced quotes for JSON number</xml>
+                    error <xml>Unbalanced quotes for JSON number {[s]}</xml>
             end
         else
             let
