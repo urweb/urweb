@@ -31,6 +31,11 @@ val json_variant : ts ::: {Type} -> folder ts -> $(map json ts) -> $(map (fn _ =
 
 val json_unit : json unit
 
+val json_derived : base ::: Type -> derived ::: Type
+                   -> (base -> derived)
+                   -> (derived -> base)
+                   -> json base -> json derived
+
 functor Recursive (M : sig
                        con t :: Type -> Type
                        val json_t : a ::: Type -> json a -> json (t a)

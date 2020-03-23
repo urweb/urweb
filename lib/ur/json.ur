@@ -567,6 +567,15 @@ fun json_variant [ts ::: {Type}] (fl : folder ts) (jss : $(map json ts)) (names 
 
 val json_unit : json unit = json_record {} {}
 
+fun json_derived [base] [derived] (f1 : base -> derived) (f2 : derived -> base) (j : json base) =
+    {ToJson = fn x => j.ToJson (f2 x),
+     FromJson = fn s =>
+                   let
+                       val (x, s') = j.FromJson s
+                   in
+                       (f1 x, s')
+                   end}
+
 functor Recursive (M : sig
                        con t :: Type -> Type
                        val json_t : a ::: Type -> json a -> json (t a)
