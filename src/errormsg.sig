@@ -61,4 +61,5 @@ signature ERROR_MSG = sig
     val readErrorLog: unit ->
                       { span: span
                       , message: string } list
+    val withOnError : (unit -> unit) -> (unit -> 'a) -> 'a
 end

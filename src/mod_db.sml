@@ -43,7 +43,7 @@ structure IM = IntBinaryMap
 type oneMod = {Decl : decl,
                When : Time.time,
                Deps : SS.set,
-               HasErrors: bool (* We're saving modules with errors so tooling can find them *)
+               HasErrors: bool ref (* We're saving modules with errors so tooling can find them *)
               }
 
 val byName = ref (SM.empty : oneMod SM.map)
@@ -64,7 +64,7 @@ fun printByName (bn: oneMod SM.map): unit =
                       val renderedMod =
                           "  " ^ name
                           ^ ". Stored at : " ^ Time.toString (#When m)
-                          ^", HasErrors: " ^ Bool.toString (#HasErrors m)
+                          ^", HasErrors: " ^ Bool.toString (!(#HasErrors m))
                           ^". Deps: " ^ renderedDeps ^"\n"
                   in
                       TextIO.print renderedMod
@@ -101,7 +101,7 @@ fun insert (d, tm, hasErrors) =
                     case SM.find (!byName, x) of
                         NONE => false
                       | SOME r => #When r = tm
-                                  andalso not (#HasErrors r)
+                                  andalso not (!(#HasErrors r))
                                   (* We save results of error'd compiler passes *)
                                   (* so modules that still have undetermined unif variables *)
                                   (* should not be reused since those are unsuccessfully compiled *)
@@ -185,7 +185,7 @@ fun lookup (d : Source.decl) =
         (case SM.find (!byName, x) of
              NONE => NONE
            | SOME r =>
-             if tm = #When r andalso not (#HasErrors r) andalso not (dContainsUndeterminedUnif (#Decl r)) then
+             if tm = #When r andalso not (!(#HasErrors r)) andalso not (dContainsUndeterminedUnif (#Decl r)) then
                  SOME (#Decl r)
              else
                  NONE)
@@ -193,7 +193,7 @@ fun lookup (d : Source.decl) =
         (case SM.find (!byName, x) of
              NONE => NONE
            | SOME r =>
-             if tm = #When r andalso not (#HasErrors r) andalso not (dContainsUndeterminedUnif (#Decl r)) then
+             if tm = #When r andalso not (!(#HasErrors r)) andalso not (dContainsUndeterminedUnif (#Decl r)) then
                  SOME (#Decl r)
              else
                  NONE)

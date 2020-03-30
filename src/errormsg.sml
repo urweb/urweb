@@ -111,9 +111,11 @@ fun resetStructureTracker () =
 
 fun resetErrors () = (errors := false; errorLog := [])
 fun anyErrors () = !errors
+val callOnError = ref (fn () => ())
 fun error s = (TextIO.output (TextIO.stdErr, s);
                TextIO.output1 (TextIO.stdErr, #"\n");
                errors := true;
+               !callOnError();
                structuresCurrentlyElaborating :=
                  List.map (fn (s, e) => (s, true)) (!structuresCurrentlyElaborating))
 
@@ -129,4 +131,12 @@ fun errorAt (span : span) s = (TextIO.output (TextIO.stdErr, #file span);
                                error s)
 fun errorAt' span s = errorAt (spanOf span) s
 
+fun withOnError onError cont =
+    let
+        val f = !callOnError
+    in
+        callOnError := onError;
+        (cont () before callOnError := f)
+        handle ex => (callOnError := f; raise ex)
+    end
 end

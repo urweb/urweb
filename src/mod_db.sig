@@ -30,7 +30,7 @@
 signature MOD_DB = sig
     val reset : unit -> unit
 
-    val insert : Elab.decl * Time.time * bool (* hasErrors *) -> unit
+    val insert : Elab.decl * Time.time * bool ref (* hasErrors *) -> unit
     (* Here's a declaration, including the modification timestamp of the file it came from.
      * We might invalidate other declarations that depend on this one, if the timestamp has changed. *)
 

@@ -260,6 +260,30 @@
 
  end
 
+ (* Tracking which modules to blame for delayed errors *)
+ structure Blames :> sig
+               type t
+               val push : bool ref -> t
+               val pop : unit -> unit
+               val snapshot : unit -> t
+               val blameAll : t -> unit
+           end = struct
+     type t = bool ref list
+     val blames : t ref = ref []
+
+     fun push r =
+         let
+             val bls = r :: !blames
+         in
+             blames := bls; bls
+         end
+     fun pop () = case !blames of
+                      [] => raise Fail "Blame stack underflow"
+                    | _ :: ls => blames := ls
+     fun snapshot () = !blames
+     val blameAll = List.app (fn r => r := true)
+ end
+
  (* Wildcards are disallowed inside signatures.
   * We use a flag to indicate when we are in a signature,
   * with a helper function for entering this mode and properly backing out afterward. *)
@@ -748,9 +772,9 @@
  val recdCounter = ref 0
 
  val mayDelay = ref false
- val delayedUnifs = ref ([] : (ErrorMsg.span * E.env * L'.kind * record_summary * record_summary) list)
+ val delayedUnifs = ref ([] : (Blames.t * ErrorMsg.span * E.env * L'.kind * record_summary * record_summary) list)
 
- val delayedExhaustives = ref ([] : (E.env * L'.con * L'.pat list * ErrorMsg.span) list)
+ val delayedExhaustives = ref ([] : (Blames.t * E.env * L'.con * L'.pat list * ErrorMsg.span) list)
 
  exception CantSquish
 
@@ -1023,7 +1047,7 @@
              end
 
          fun default () = if !mayDelay then
-                              delayedUnifs := (loc, env, k, s1, s2) :: !delayedUnifs
+                              delayedUnifs := (Blames.snapshot (), loc, env, k, s1, s2) :: !delayedUnifs
                           else
                               failure ()
      in
@@ -1431,15 +1455,15 @@
        | P.Char _ => !char
                            
  datatype constraint =
-          Disjoint of D.goal
-        | TypeClass of E.env * L'.con * L'.exp option ref * ErrorMsg.span
+          Disjoint of Blames.t * D.goal
+        | TypeClass of Blames.t * E.env * L'.con * L'.exp option ref * ErrorMsg.span
 
  fun relocConstraint loc c =
      case c of
-         Disjoint (_, a, b, c, d) => Disjoint (loc, a, b, c, d)
-       | TypeClass (a, b, c, _) => TypeClass (a, b, c, loc)
+         Disjoint (bs, (_, a, b, c, d)) => Disjoint (bs, (loc, a, b, c, d))
+       | TypeClass (bs, a, b, c, _) => TypeClass (bs, a, b, c, loc)
 
- val enD = map Disjoint
+ val enD = map (fn x => Disjoint (Blames.snapshot (), x))
 
  fun isClassOrFolder env cl =
      E.isClass env cl
@@ -1497,7 +1521,7 @@
                                  val r = ref NONE
                                  val (e, t, gs) = unravel (ran, (L'.EApp (e, (L'.EUnif r, loc)), loc))
                              in
-                                 (e, t, TypeClass (env, dom, r, loc) :: gs)
+                                 (e, t, TypeClass (Blames.snapshot (), env, dom, r, loc) :: gs)
                              end
                          else
                              default ()
@@ -2152,7 +2176,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 val r = ref NONE
                 val c = cunif env (loc, (L'.KType, loc))
             in
-                ((L'.EUnif r, loc), c, [TypeClass (env, c, r, loc)])
+                ((L'.EUnif r, loc), c, [TypeClass (Blames.snapshot (), env, c, r, loc)])
             end
 
           | L.EApp (e1, e2) =>
@@ -2319,7 +2343,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                             prove (rest, gs)
                         end
 
-                val gsD = List.mapPartial (fn Disjoint d => SOME d | _ => NONE) gs
+                val gsD = List.mapPartial (fn Disjoint (_, d) => SOME d | _ => NONE) gs
                 val gsO = List.filter (fn Disjoint _ => false | _ => true) gs
             in
                 (*TextIO.print ("|gsO| = " ^ Int.toString (length gsO) ^ "\n");*)
@@ -2415,7 +2439,7 @@ fun elabExp (env, denv) (eAll as (e, loc)) =
                 case exhaustive (env, et, map #1 pes', loc) of
                     NONE => ()
                   | SOME p => if !mayDelay then
-                                  delayedExhaustives := (env, et, map #1 pes', loc) :: !delayedExhaustives
+                                  delayedExhaustives := (Blames.snapshot (), env, et, map #1 pes', loc) :: !delayedExhaustives
                               else
                                   expError env (Inexhaustive (loc, p));
 
@@ -2453,7 +2477,7 @@ and elabEdecl denv (dAll as (d, loc), (env, gs)) =
                     case exhaustive (env, et, [p'], loc) of
                         NONE => ()
                       | SOME p => if !mayDelay then
-                                      delayedExhaustives := (env, et, [p'], loc) :: !delayedExhaustives
+                                      delayedExhaustives := (Blames.snapshot (), env, et, [p'], loc) :: !delayedExhaustives
                                   else
                                       expError env (Inexhaustive (loc, p));
 
@@ -2735,7 +2759,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
              val ct = (L'.CApp (ct, (L'.CConcat (pkey, uniques), loc)), loc)
 
              val (pe', pet, gs'') = exitSignature (fn () => elabExp (env', denv) pe)
-             val gs'' = List.mapPartial (fn Disjoint x => SOME x
+             val gs'' = List.mapPartial (fn Disjoint (_, x) => SOME x
                                           | _ => NONE) gs''
 
              val pst = (L'.CModProj (!basis_r, [], "primary_key"), loc)
@@ -2743,7 +2767,7 @@ fun elabSgn_item ((sgi, loc), (env, denv, gs)) =
              val pst = (L'.CApp (pst, pkey), loc)
 
              val (ce', cet, gs''') = exitSignature (fn () => elabExp (env', denv) ce)
-             val gs''' = List.mapPartial (fn Disjoint x => SOME x
+             val gs''' = List.mapPartial (fn Disjoint (_, x) => SOME x
                                            | _ => NONE) gs'''
 
              val cst = (L'.CModProj (!basis_r, [], "sql_constraints"), loc)
@@ -4095,7 +4119,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     (case exhaustive (env, et, [p'], loc) of
                          NONE => ()
                        | SOME p => if !mayDelay then
-                                       delayedExhaustives := (env, et, [p'], loc) :: !delayedExhaustives
+                                       delayedExhaustives := (Blames.snapshot (), env, et, [p'], loc) :: !delayedExhaustives
                                    else
                                        expError env (Inexhaustive (loc, p)));
 
@@ -4200,6 +4224,8 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                   else
                                       ()
 
+                         val blame = ref false
+                         val blames = Blames.push blame
                          val formal = enterSignature (fn () => Option.map (elabSgn (env, denv)) sgno)
 
                          val (str', sgn', gs') =
@@ -4235,9 +4261,10 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                   L'.StrFun _ => ()
                                 | _ => strError env (FunctorRebind loc))
                            | _ => ();
+                         Blames.pop ();
                          Option.app (fn tm => ModDb.insert (dNew,
                                                             tm,
-                                                            ErrorMsg.stopElabStructureAndGetErrored x
+                                                            if ErrorMsg.stopElabStructureAndGetErrored x then ref true else blame
                                                             )) tmo;
                          ([dNew], (env', denv', gs' @ gs))
                      end)
@@ -4255,6 +4282,8 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                      let
                          val () = ErrorMsg.startElabStructure x
 
+                         val blame = ref false
+                         val blames = Blames.push blame
                          val (sgn', gs') = enterSignature (fn () => elabSgn (env, denv) sgn)
                                            
                          val (env', n) = E.pushStrNamed env x sgn'
@@ -4273,7 +4302,8 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                                                epreface ("item", p_sgn_item env sgi)))
                            | _ => raise Fail "FFI signature isn't SgnConst";
 
-                         Option.map (fn tm => ModDb.insert (dNew, tm, ErrorMsg.stopElabStructureAndGetErrored x)) tmo;
+                         Blames.pop ();
+                         Option.map (fn tm => ModDb.insert (dNew, tm, if ErrorMsg.stopElabStructureAndGetErrored x then ref true else blame)) tmo;
                          ([dNew], (env', denv, enD gs' @ gs))
                      end)
 
@@ -4793,7 +4823,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
 
                     val (env', basis_n) = E.pushStrNamed env "Basis" sgn
                 in
-                    ModDb.insert ((L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan), basis_tm, false); (* TODO: also check for errors? *)
+                    ModDb.insert ((L'.DFfiStr ("Basis", basis_n, sgn), ErrorMsg.dummySpan), basis_tm, ref false); (* TODO: also check for errors? *)
                     (basis_n, env', sgn)
                 end
               | SOME (d' as (L'.DFfiStr (_, basis_n, sgn), _)) =>
@@ -4830,7 +4860,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
 
                     val () = case gs of
                                  [] => ()
-                               | _ => app (fn Disjoint (loc, env, denv, c1, c2) =>
+                               | _ => app (fn Disjoint (_, (loc, env, denv, c1, c2)) =>
                                               (case D.prove env denv (c1, c2, loc) of
                                                    [] => ()
                                                  | _ =>
@@ -4839,7 +4869,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
                                                               ("c1", p_con env c1),
                                                               ("c2", p_con env c2)];
                                                     raise Fail "Unresolved constraint in top.ur"))
-                                            | TypeClass (env, c, r, loc) =>
+                                            | TypeClass (_, env, c, r, loc) =>
                                               let
                                                   val c = normClassKey env c
                                               in
@@ -4852,7 +4882,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
 
                     val (env', top_n) = E.pushStrNamed env' "Top" topSgn
                 in
-                    ModDb.insert ((L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan), top_tm, false); (* TODO: also check for errors? *)
+                    ModDb.insert ((L'.DStr ("Top", top_n, topSgn, topStr), ErrorMsg.dummySpan), top_tm, ref false); (* TODO: also check for errors? *)
                     (top_n, env', topSgn, topStr)
                 end
               | SOME (d' as (L'.DStr (_, top_n, topSgn, topStr), _)) =>
@@ -4880,8 +4910,10 @@ fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
                     val delayed = !delayedUnifs
                 in
                     delayedUnifs := [];
-                    app (fn (loc, env, k, s1, s2) =>
-                            unifySummaries env (loc, k, normalizeRecordSummary env s1, normalizeRecordSummary env s2))
+                    app (fn (bls, loc, env, k, s1, s2) =>
+                            ErrorMsg.withOnError (fn () => Blames.blameAll bls)
+                              (fn () =>
+                                  unifySummaries env (loc, k, normalizeRecordSummary env s1, normalizeRecordSummary env s2)))
                         delayed
                 end
 
@@ -4900,11 +4932,11 @@ fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
                             ListUtil.foldlMapPartial
                             (fn (g : constraint, solved) =>
                                 case g of
-                                    Disjoint (loc, env, denv, c1, c2) =>
+                                    Disjoint (_, (loc, env, denv, c1, c2)) =>
                                     (case D.prove env denv (c1, c2, loc) of
                                          [] => (NONE, true)
                                        | _ => (SOME g, solved))
-                                  | TypeClass (env, c, r, loc) =>
+                                  | TypeClass (_, env, c, r, loc) =>
                                     let
                                         fun default () = (SOME g, solved)
                                                          
@@ -4989,7 +5021,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
                           | (_, true) => (oneSummaryRound (); solver gs)
                           | _ =>
                             checkConstraintErrors :=
-                            (fn () => app (fn Disjoint (loc, env, denv, c1, c2) =>
+                            (fn () => app (fn Disjoint (bs, (loc, env, denv, c1, c2)) =>
                                               let
                                                   val c1' = ElabOps.hnormCon env c1
                                                   val c2' = ElabOps.hnormCon env c2
@@ -5004,6 +5036,7 @@ fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
                                                           L'.CRecord ((L'.KType, _), xts) => true
                                                         | _ => false
                                               in
+                                                  Blames.blameAll bs;
                                                   ErrorMsg.errorAt loc "Couldn't prove field name disjointness";
                                                   eprefaces' [("Con 1", p_con env c1),
                                                               ("Con 2", p_con env c2),
@@ -5015,13 +5048,13 @@ fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
                                                                     ("s2", p_summary env (normalizeRecordSummary env s2))])
                                                     (!delayedUnifs);*)
                                               end
-                                            | TypeClass (env, c, r, loc) =>
+                                            | TypeClass (bs, env, c, r, loc) =>
                                               let
                                                   val c = normClassKey env c
                                               in
                                                   case resolveClass env c of
                                                       SOME e => r := SOME e
-                                                    | NONE => expError env (Unresolvable (loc, c))
+                                                    | NONE => (Blames.blameAll bs; expError env (Unresolvable (loc, c)))
                                               end)
                                           gs)
                     end
@@ -5034,16 +5067,17 @@ fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
         if stopHere () then
             ()
         else
-            (app (fn (loc, env, k, s1, s2) =>
-                     unifySummaries env (loc, k, normalizeRecordSummary env s1, normalizeRecordSummary env s2)
-                     handle CUnify' (env', err) => (ErrorMsg.errorAt loc "Error in final record unification";
-                                                    cunifyError env' err;
-                                                    case !reducedSummaries of
-                                                        NONE => ()
-                                                      | SOME (s1, s2) =>
-                                                        (ErrorMsg.errorAt loc "Stuck unifying these records after canceling matching pieces:";
-                                                         eprefaces' [("Have", s1),
-                                                                     ("Need", s2)])))
+            (app (fn (bls, loc, env, k, s1, s2) =>
+                     ErrorMsg.withOnError (fn () => Blames.blameAll bls)
+                     (fn () =>unifySummaries env (loc, k, normalizeRecordSummary env s1, normalizeRecordSummary env s2)
+                              handle CUnify' (env', err) => (ErrorMsg.errorAt loc "Error in final record unification";
+                                                             cunifyError env' err;
+                                                             case !reducedSummaries of
+                                                                 NONE => ()
+                                                               | SOME (s1, s2) =>
+                                                                 (ErrorMsg.errorAt loc "Stuck unifying these records after canceling matching pieces:";
+                                                                  eprefaces' [("Have", s1),
+                                                                              ("Need", s2)]))))
                  (!delayedUnifs);
              delayedUnifs := []);
 
@@ -5070,10 +5104,10 @@ fun elabFile basis basis_tm topStr topSgn top_tm env changeEnv file =
         if stopHere () then
             ()
         else
-            app (fn all as (env, _, _, loc) =>
-                    case exhaustive all of
+            app (fn (bls, env, a, b, loc) =>
+                    case exhaustive (env, a, b, loc) of
                         NONE => ()
-                      | SOME p => expError env (Inexhaustive (loc, p)))
+                      | SOME p => (Blames.blameAll bls; expError env (Inexhaustive (loc, p))))
                 (!delayedExhaustives);
 
         if stopHere () then

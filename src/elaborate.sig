@@ -60,9 +60,13 @@ signature ELABORATE = sig
                  -> Source.sgn
                  -> (Elab.sgn * Disjoint.goal list)
 
+    structure Blames : sig
+                  type t
+              end
+
     datatype constraint =
-             Disjoint of Disjoint.goal
-             | TypeClass of ElabEnv.env * Elab.con * Elab.exp option ref * ErrorMsg.span
+             Disjoint of Blames.t * Disjoint.goal
+             | TypeClass of Blames.t * ElabEnv.env * Elab.con * Elab.exp option ref * ErrorMsg.span
                   
     val elabStr: (ElabEnv.env * Disjoint.env)
                  -> Source.str
