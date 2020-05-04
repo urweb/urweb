@@ -2309,12 +2309,12 @@ A signature item $\mt{table} \; \mt{x} : \mt{c}$ is actually elaborated into two
 
 \subsubsection{Queries}
 
-Queries $Q$ are added to the rules for expressions $e$.
+Parenthesized queries $(Q)$ are added to the rules for expressions $e$.
 
 $$\begin{array}{rrcll}
-  \textrm{Queries} & Q &::=& (q \; [\mt{ORDER} \; \mt{BY} \; O] \; [\mt{LIMIT} \; N] \; [\mt{OFFSET} \; N]) \\
+  \textrm{Queries} & Q &::=& q \; [\mt{ORDER} \; \mt{BY} \; O] \; [\mt{LIMIT} \; N] \; [\mt{OFFSET} \; N] \\
   \textrm{Pre-queries} & q &::=& \mt{SELECT} \; [\mt{DISTINCT}] \; P \; \mt{FROM} \; F,^+ \; [\mt{WHERE} \; E] \; [\mt{GROUP} \; \mt{BY} \; p,^+] \; [\mt{HAVING} \; E] \\
-  &&& \mid q \; R \; q \mid \{\{\{e\}\}\} \\
+  &&& \mid q \; R \; [\mt{ALL}] \; q \mid \{\{\{e\}\}\} \\
   \textrm{Relational operators} & R &::=& \mt{UNION} \mid \mt{INTERSECT} \mid \mt{EXCEPT} \\
   \textrm{$\mt{ORDER \; BY}$ items} & O &::=& \mt{RANDOM} [()] \mid \hat{E} \; [o] \mid \hat{E} \; [o], O \mid \{\{\{e\}\}\}
 \end{array}$$
