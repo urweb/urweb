@@ -958,9 +958,10 @@ $$\infer{\Gamma \vdash \mt{let} \; \overline{ed} \; \mt{in} \; e \; \mt{end} : \
   \Gamma \vdash \overline{ed} \leadsto \Gamma'
   & \Gamma' \vdash e : \tau
 }
-\quad \infer{\Gamma \vdash \mt{case} \; e \; \mt{of} \; \overline{p \Rightarrow e} : \tau}{
-  \forall i: \Gamma \vdash p_i \leadsto \Gamma_i, \tau'
-  & \Gamma_i \vdash e_i : \tau
+\quad \infer{\Gamma \vdash \mt{case} \; e \; \mt{of} \; \overline{p \Rightarrow e'} : \tau'}{
+  \Gamma \vdash e : \tau
+  & \forall i: \Gamma \vdash p_i \leadsto \Gamma_i; \tau
+  & \Gamma_i \vdash e_i' : \tau'
 }$$
 
 $$\infer{\Gamma \vdash \lambda [c_1 \sim c_2] \Rightarrow e : [c_1 \sim c_2] \Rightarrow \tau}{
