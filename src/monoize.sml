@@ -2108,21 +2108,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                            ((L'.PRecord [("2", (L'.PPrim (Prim.String (Prim.Normal, "")), loc), s)], loc),
                                                             (L'.ERel 2, loc)),
                                                            ((L'.PVar ("_", disc), loc),
-                                                            strcat ((if #nestedRelops
-                                                                                      (Settings.currentDbms ()) then
-                                                                                   [str "("]
-                                                                               else
-                                                                                   [])
-                                                                    @ [(L'.ERel 3, loc),
-                                                                       str " JOIN ",
-                                                                       (L'.ERel 2, loc),
-                                                                       str " ON ",
-                                                                       (L'.ERel 1, loc)]
-                                                                    @ (if #nestedRelops
-                                                                              (Settings.currentDbms ()) then
-                                                                           [str ")"]
-                                                                       else
-                                                                           [])))],
+                                                            strcat [(L'.ERel 3, loc),
+                                                                    str " JOIN ",
+                                                                    (L'.ERel 2, loc),
+                                                                    str " ON ",
+                                                                    (L'.ERel 1, loc)])],
                                                           {disc = disc,
                                                            result = s}), loc)), loc)), loc)), loc),
                  fm)
@@ -2147,21 +2137,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 2, loc)),
                                                                      ((L'.PVar ("_", disc), loc),
-                                                                      strcat ((if #nestedRelops
-                                                                                      (Settings.currentDbms ()) then
-                                                                                   [str "("]
-                                                                               else
-                                                                                   [])
-                                                                              @ [(L'.ERel 3, loc),
-                                                                                 str " LEFT JOIN ",
-                                                                                 (L'.ERel 2, loc),
-                                                                                 str " ON ",
-                                                                                 (L'.ERel 1, loc)]
-                                                                              @ (if #nestedRelops
-                                                                                        (Settings.currentDbms ()) then
-                                                                                     [str ")"]
-                                                                                 else
-                                                                                     [])))],
+                                                                      strcat [(L'.ERel 3, loc),
+                                                                              str " LEFT JOIN ",
+                                                                              (L'.ERel 2, loc),
+                                                                              str " ON ",
+                                                                              (L'.ERel 1, loc)])],
                                                                     {disc = disc,
                                                                      result = s}), loc)), loc)), loc)), loc)), loc),
                  fm)
@@ -2186,21 +2166,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 2, loc)),
                                                                      ((L'.PVar ("_", disc), loc),
-                                                                      strcat ((if #nestedRelops
-                                                                                      (Settings.currentDbms ()) then
-                                                                                   [str "("]
-                                                                               else
-                                                                                   [])
-                                                                              @ [(L'.ERel 3, loc),
-                                                                                 str " RIGHT JOIN ",
-                                                                                 (L'.ERel 2, loc),
-                                                                                 str " ON ",
-                                                                                 (L'.ERel 1, loc)]
-                                                                              @ (if #nestedRelops
-                                                                                        (Settings.currentDbms ()) then
-                                                                                     [str ")"]
-                                                                                 else
-                                                                                     [])))],
+                                                                      strcat [(L'.ERel 3, loc),
+                                                                              str " RIGHT JOIN ",
+                                                                              (L'.ERel 2, loc),
+                                                                              str " ON ",
+                                                                              (L'.ERel 1, loc)])],
                                                                     {disc = disc,
                                                                      result = s}), loc)), loc)), loc)), loc)), loc),
                  fm)
@@ -2225,21 +2195,11 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                                           loc), s)], loc),
                                                                       (L'.ERel 2, loc)),
                                                                      ((L'.PVar ("_", disc), loc),
-                                                                      strcat ((if #nestedRelops
-                                                                                      (Settings.currentDbms ()) then
-                                                                                   [str "("]
-                                                                               else
-                                                                                   [])
-                                                                              @ [(L'.ERel 3, loc),
-                                                                                 str " FULL JOIN ",
-                                                                                 (L'.ERel 2, loc),
-                                                                                 str " ON ",
-                                                                                 (L'.ERel 1, loc)]
-                                                                              @ (if #nestedRelops
-                                                                                        (Settings.currentDbms ()) then
-                                                                                     [str ")"]
-                                                                                 else
-                                                                                     [])))],
+                                                                      strcat [(L'.ERel 3, loc),
+                                                                              str " FULL JOIN ",
+                                                                              (L'.ERel 2, loc),
+                                                                              str " ON ",
+                                                                              (L'.ERel 1, loc)])],
                                                                     {disc = disc,
                                                                      result = s}), loc)), loc)), loc)), loc)), loc),
                  fm)
