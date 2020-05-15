@@ -1046,7 +1046,7 @@ val radio : formTag (option string) radio [Data = data_attr, Id = id]
 val radioOption : unit -> tag ([Value = string, Checked = bool] ++ boxAttrs ++ inputAttrs') radio [] [] []
 
 con select = [Select]
-val select : formTag string select (boxAttrs ++ inputAttrs')
+val select : formTag string select (boxAttrs ++ inputAttrs' ++ [Multiple = bool])
 val option : unit -> tag [Data = data_attr, Value = string, Selected = bool] select [] [] []
 
 val submit : ctx ::: {Unit} -> use ::: {Type}
@@ -1099,7 +1099,7 @@ val ccheckbox : cformTag ([Size = int, Source = source bool] ++ boxAttrs ++ inpu
 
 val cradio : cformTag ([Source = source (option string), Value = string] ++ boxAttrs ++ inputAttrs') []
 
-val cselect : cformTag ([Source = source string] ++ boxAttrs ++ inputAttrs') [Cselect]
+val cselect : cformTag ([Source = source string, Multiple = bool] ++ boxAttrs ++ inputAttrs') [Cselect]
 val coption : unit -> tag [Value = string, Selected = bool] [Cselect, Body] [] [] []
 
 val ctextarea : cformTag ([Rows = int, Cols = int, Placeholder = string, Source = source string,
