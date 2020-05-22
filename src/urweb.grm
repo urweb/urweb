@@ -565,8 +565,8 @@ fun patternOut (e : exp) =
 %nonassoc LARROW
 %nonassoc IF THEN ELSE
 %nonassoc DARROW
-%left ANDALSO
 %left ORELSE
+%left ANDALSO
 %nonassoc COLON
 %nonassoc DCOLON TCOLON DCOLONWILD TCOLONWILD
 %left UNION INTERSECT EXCEPT ALL
