@@ -7,7 +7,7 @@ coq: Makefile.coq
 	make -f Makefile.coq
 
 Makefile.coq: Makefile $(VS)
-	coq_makefile -impredicative-set $(VS) -o Makefile.coq
+	coq_makefile -arg -impredicative-set $(VS) -o Makefile.coq
 
 clean:: Makefile.coq
 	make -f Makefile.coq clean
