@@ -345,6 +345,7 @@ static uw_Basis_channel new_channel(client *c) {
 static void client_send(client *c, uw_buffer *msg, const char *script, int script_len) {
   pthread_mutex_lock(&c->lock);
 
+  if (c->mode != USED) { }
   if (c->sock != -1) {
     c->send(c->sock, on_success, strlen(on_success));
     c->send(c->sock, begin_msgs, sizeof(begin_msgs) - 1);
@@ -3746,7 +3747,6 @@ int uw_commit(uw_context ctx) {
     client *c = find_client(d->client);
 
     assert (c != NULL);
-    assert(c->mode == USED);
 
     client_send(c, &d->msgs, ctx->script.start, uw_buffer_used(&ctx->script));
   }

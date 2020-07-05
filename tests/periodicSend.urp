@@ -1,0 +1,7 @@
+database dbname=/tmp/periodicSend.db
+sql periodicSend.sql
+safeGetDefault
+rewrite url PeriodicSend/main
+timeout 10
+
+periodicSend
