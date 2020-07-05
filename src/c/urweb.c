@@ -346,7 +346,7 @@ static void client_send(client *c, uw_buffer *msg, const char *script, int scrip
   pthread_mutex_lock(&c->lock);
 
   if (c->mode != USED) { }
-  if (c->sock != -1) {
+  else if (c->sock != -1) {
     c->send(c->sock, on_success, strlen(on_success));
     c->send(c->sock, begin_msgs, sizeof(begin_msgs) - 1);
     if (script_len > 0) {
