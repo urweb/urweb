@@ -104,6 +104,8 @@ static void *periodic_loop(void *data) {
   while (1) {
     int retries_left = MAX_RETRIES;
 
+    uw_transaction_arrives();
+    
     failure_kind r;
     do {
       uw_reset(ctx);
@@ -117,14 +119,18 @@ static void *periodic_loop(void *data) {
       else if (r == FATAL)
         p->ls->log_error(p->ls->logger_data, "Fatal error: %s\n", uw_error_message(ctx));
       if (r == FATAL || r == BOUNDED_RETRY || r == UNLIMITED_RETRY)
-        if (try_rollback(ctx, 0, p->ls->logger_data, p->ls->log_error))
+        if (try_rollback(ctx, 0, p->ls->logger_data, p->ls->log_error)) {
+          uw_transaction_departs();
           return NULL;
+        }
     } while (r == UNLIMITED_RETRY || (r == BOUNDED_RETRY && retries_left > 0));
 
     if (r != FATAL && r != BOUNDED_RETRY) {
       if (uw_commit(ctx))
 	r = UNLIMITED_RETRY;
     }
+
+    uw_transaction_departs();
 
     sleep(p->pdic.period);
   };
@@ -504,9 +510,11 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       strcpy(rc->path_copy, path);
 
       uw_set_deadline(ctx, uw_time + uw_time_max);
+      uw_transaction_arrives();
       fk = uw_begin(ctx, rc->path_copy);
     } else {
       uw_set_deadline(ctx, uw_time + uw_time_max);
+      uw_transaction_arrives();
       fk = uw_begin_onError(ctx, errmsg);
     }
 
@@ -520,8 +528,10 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         if (uw_get_app(ctx)->on_error) {
           had_error = 1;
           strcpy(errmsg, uw_error_message(ctx));
+          uw_transaction_departs();
         } else {
           try_rollback(ctx, 0, logger_data, log_error);
+          uw_transaction_departs();
 
           uw_write_header(ctx, "Content-type: text/html\r\n");
           uw_write(ctx, "<html><head><title>Fatal Error</title></head><body>");
@@ -531,8 +541,10 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         
           return FAILED;
         }
-      } else
+      } else {
+        uw_transaction_departs();
         return had_error ? FAILED : SERVED;
+      }
     } else if (fk == BOUNDED_RETRY) {
       if (retries_left) {
         log_debug(logger_data, "Error triggers bounded retry: %s\n", uw_error_message(ctx));
@@ -546,6 +558,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
           strcpy(errmsg, uw_error_message(ctx));
         } else {
           try_rollback(ctx, 0, logger_data, log_error);
+          uw_transaction_departs();
 
           uw_reset_keep_error_message(ctx);
           on_failure(ctx);
@@ -567,6 +580,7 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         strcpy(errmsg, uw_error_message(ctx));
       } else {
         try_rollback(ctx, 0, logger_data, log_error);
+        uw_transaction_departs();
 
         uw_reset_keep_error_message(ctx);
         on_failure(ctx);
@@ -586,7 +600,8 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
         strcpy(errmsg, "Unknown uw_handle return code");
       } else {
         try_rollback(ctx, 0, logger_data, log_error);
-
+        uw_transaction_departs();
+        
         uw_reset_keep_request(ctx);
         on_failure(ctx);
         uw_write_header(ctx, "Content-type: text/plain\r\n");
@@ -596,8 +611,11 @@ request_result uw_request(uw_request_context rc, uw_context ctx,
       }
     }
 
-    if (try_rollback(ctx, 1, logger_data, log_error))
+    if (try_rollback(ctx, 1, logger_data, log_error)) {
+      uw_transaction_departs();
       return FAILED;
+    }
+    uw_transaction_departs();
 
     uw_reset_keep_request(ctx);
   }

@@ -440,4 +440,8 @@ uw_unit uw_Basis_cache_file(struct uw_context *, uw_Basis_blob contents);
 uw_Basis_blob uw_Basis_check_filecache(struct uw_context *, uw_Basis_string hash);
 uw_Basis_bool uw_Basis_filecache_missed(struct uw_context *);
 
+// Call at start and end of transaction.
+void uw_transaction_arrives();
+void uw_transaction_departs();
+
 #endif
