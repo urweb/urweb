@@ -851,51 +851,22 @@ void uw_login(uw_context ctx) {
 // can be reused.  To save ourselves from needing to deal with those anomalies,
 // we enforce that the expunger never runs simultaneously with other transactions.
 
-static int running_transactions = 0;
-// How many expunge-blocking transactions are running now?
-// Negative values indicate expunger is running.
-
-static pthread_mutex_t expunge_mutex = PTHREAD_MUTEX_INITIALIZER;
-// Take this mutex before examining running_transactions.
-
-static pthread_cond_t expunge_cond = PTHREAD_COND_INITIALIZER;
-// Used to signal when interesting transitions have happened in the value of
-// running_transactions, between negative, zero, and positive.
+static pthread_rwlock_t expunge_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 void uw_transaction_arrives() {
-  pthread_mutex_lock(&expunge_mutex);
-
-  // Wait for expunger to finish.
-  while (running_transactions < 0)
-    pthread_cond_wait(&expunge_cond, &expunge_mutex);
-
-  ++running_transactions;
-  pthread_mutex_unlock(&expunge_mutex);
+  pthread_rwlock_rdlock(&expunge_lock);
 }
 
 void uw_transaction_departs() {
-  pthread_mutex_lock(&expunge_mutex);
-  if (--running_transactions == 0)
-    pthread_cond_broadcast(&expunge_cond);
-  pthread_mutex_unlock(&expunge_mutex);
+  pthread_rwlock_unlock(&expunge_lock);
 }
 
 static void uw_expunger_arrives() {
-  pthread_mutex_lock(&expunge_mutex);
-
-  // Wait for other transactions to finish.
-  while (running_transactions > 0)
-    pthread_cond_wait(&expunge_cond, &expunge_mutex);
-
-  running_transactions = -1;
-  pthread_mutex_unlock(&expunge_mutex);
+  pthread_rwlock_wrlock(&expunge_lock);
 }
 
 static void uw_expunger_departs() {
-  pthread_mutex_lock(&expunge_mutex);
-  running_transactions = 0;
-  pthread_cond_broadcast(&expunge_cond);
-  pthread_mutex_unlock(&expunge_mutex);
+  pthread_rwlock_unlock(&expunge_lock);
 }
 
 failure_kind uw_begin(uw_context ctx, char *path) {
