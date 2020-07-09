@@ -4624,7 +4624,7 @@ uw_Basis_int uw_Basis_ord(uw_context ctx, uw_Basis_char c) {
 
 uw_Basis_bool uw_Basis_iscodepoint(uw_context ctx, uw_Basis_int n) {
   (void)ctx;
-  return !!(n <= 0x10FFFF);
+  return !!(0 <= n && n <= 0x10FFFF);
 }
 
 uw_Basis_bool uw_Basis_issingle(uw_context ctx, uw_Basis_char c) {
@@ -4633,14 +4633,10 @@ uw_Basis_bool uw_Basis_issingle(uw_context ctx, uw_Basis_char c) {
 }
 
 uw_Basis_char uw_Basis_chr(uw_context ctx, uw_Basis_int n) {
-  (void)ctx;
-  uw_Basis_char ch = (uw_Basis_char)n;
-
-  if (n < 0 || n > 0x10FFFF) {
+  if (!uw_Basis_iscodepoint(ctx, n)) {
     uw_error(ctx, FATAL, "The integer %lld is not a valid char codepoint", n);
   }
-
-  return ch;
+  return (uw_Basis_char)n;
 }
 
 uw_Basis_string uw_Basis_currentUrl(uw_context ctx) {
