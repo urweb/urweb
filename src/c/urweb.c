@@ -2374,12 +2374,7 @@ uw_unit uw_Basis_htmlifySpecialChar_w(uw_context ctx, uw_Basis_char ch) {
   uw_check(ctx, INTS_MAX+3);
 
   if(uw_Basis_isprint(ctx, ch)) {
-
-    int32_t len_written = 0;
-    UErrorCode err = U_ZERO_ERROR;
-
-    u_strToUTF8(ctx->page.front, 5, &len_written, (const UChar*)&ch, 1, &err);
-    len = len_written;
+    U8_APPEND_UNSAFE(ctx->page.front, len, ch);
   }
 
   // either it's a non-printable character, or we failed to convert to UTF-8
@@ -2746,18 +2741,6 @@ uw_Basis_string uw_Basis_str1(uw_context ctx, uw_Basis_char ch) {
 
   ctx->heap.front += req + 1;
   return r; 
-}
-
-uw_Basis_string uw_Basis_ofUnicode(uw_context ctx, uw_Basis_int n) {
-  UChar buf16[] = {n};
-  uw_Basis_string out = uw_malloc(ctx, 3);
-  int32_t outLen;
-  UErrorCode pErrorCode = 0;
-
-  if (u_strToUTF8(out, 3, &outLen, buf16, 1, &pErrorCode) == NULL || outLen == 0)
-    uw_error(ctx, FATAL, "Bad Unicode string to unescape (error %s)", u_errorName(pErrorCode));
-
-  return out;
 }
 
 uw_Basis_string uw_strdup(uw_context ctx, uw_Basis_string s1) {
@@ -4654,7 +4637,7 @@ uw_Basis_char uw_Basis_chr(uw_context ctx, uw_Basis_int n) {
   (void)ctx;
   uw_Basis_char ch = (uw_Basis_char)n;
 
-  if (n > 0x10FFFF) {
+  if (n < 0 || n > 0x10FFFF) {
     uw_error(ctx, FATAL, "The integer %lld is not a valid char codepoint", n);
   }
 

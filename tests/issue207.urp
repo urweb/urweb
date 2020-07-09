@@ -1,0 +1,6 @@
+rewrite url Issue207/main
+
+$/char
+$/string
+$/json
+issue207
