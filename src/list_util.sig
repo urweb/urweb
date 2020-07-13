@@ -56,4 +56,5 @@ signature LIST_UTIL = sig
 
     val appn : (int -> unit) -> int -> unit
 
+    val join : 'a list -> 'a list -> 'a list
 end
