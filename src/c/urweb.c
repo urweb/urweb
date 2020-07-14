@@ -2558,6 +2558,13 @@ uw_unit uw_Basis_htmlifySource_w(uw_context ctx, uw_Basis_source src) {
   return uw_unit_v;
 }
 
+uw_Basis_char uw_Basis_strsubUtf8(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
+  if (n < 0 || n >= strlen(s))
+    uw_error(ctx, FATAL, "Out-of-bounds strsubUtf8");
+
+  return s[n];
+}
+
 uw_Basis_char uw_Basis_strsub(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
   uw_Basis_char c;
   int offset = 0;
@@ -2578,6 +2585,19 @@ uw_Basis_char uw_Basis_strsub(uw_context ctx, uw_Basis_string s, uw_Basis_int n)
   uw_error(ctx, FATAL, "Negative strsub bound");
 }
 
+uw_Basis_string uw_Basis_strsuffixUtf8(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
+  int offset = 0;
+  while (n >= 0) {
+    if (s[offset] == 0 || n == 0)
+      return s + offset;
+
+    ++s;
+    --n;
+  }
+
+  uw_error(ctx, FATAL, "Negative strsuffixUtf8 bound");
+}
+
 uw_Basis_string uw_Basis_strsuffix(uw_context ctx, uw_Basis_string s, uw_Basis_int n) {
   int offset = 0;
   while (n >= 0) {
@@ -2589,6 +2609,11 @@ uw_Basis_string uw_Basis_strsuffix(uw_context ctx, uw_Basis_string s, uw_Basis_i
   }
 
   uw_error(ctx, FATAL, "Negative strsuffix bound");
+}
+
+uw_Basis_int uw_Basis_strlenUtf8(uw_context ctx, uw_Basis_string s) {
+  (void)ctx;
+  return strlen(s);
 }
 
 uw_Basis_int uw_Basis_strlen(uw_context ctx, uw_Basis_string s) {

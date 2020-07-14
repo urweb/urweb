@@ -97,6 +97,12 @@ val substring : string -> int -> int -> string
 val str1 : char -> string
 val ofUnicode : int -> string
 
+(* These last three reveal the Unicode encoding,
+ * into sequences of 8-bit bytes. *)
+val strlenUtf8 : string -> int
+val strsubUtf8 : string -> int -> char
+val strsuffixUtf8 : string -> int -> string
+
 class show
 val show : t ::: Type -> show t -> t -> string
 val show_int : show int
