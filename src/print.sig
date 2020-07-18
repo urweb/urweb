@@ -35,10 +35,13 @@ signature PRINT = sig
 
     type 'a printer = 'a -> PD.pp_desc
 
+    val vbox0 : PD.pp_desc list -> PD.pp_desc
+    val vbox : PD.pp_desc list -> PD.pp_desc
     val box : PD.pp_desc list -> PD.pp_desc
     val parenIf : bool -> PD.pp_desc -> PD.pp_desc
     val space : PD.pp_desc
 
+    val p_lists_sep : PD.pp_desc list -> ('a -> PD.pp_desc list) -> 'a list -> PD.pp_desc list
     val p_list_sep : PD.pp_desc -> 'a printer -> 'a list printer
     val p_list : 'a printer -> 'a list printer
 

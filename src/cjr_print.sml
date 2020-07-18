@@ -3308,32 +3308,34 @@ fun p_file env (ds, ps) =
                          cookieCode (SideCheck.readEnvVars ())
 
         fun makeChecker (name, rules : Settings.rule list) =
-            box [string "static int ",
-                 string name,
-                 string "(const char *s) {",
-                 newline,
-                 box [p_list_sep (box [])
-                      (fn rule =>
-                          box [string "if (!str",
-                               case #kind rule of
-                                   Settings.Exact => box [string "cmp(s, \"",
+            [string "static int ",
+             string name,
+             string "(const char *s) {",
+             newline,
+             box (newline ::
+                  p_lists_sep []
+                              (fn rule =>
+                                  string "if (!str" ::
+                                  (case #kind rule of
+                                       Settings.Exact => [string "cmp(s, \"",
                                                           string (Prim.toCString (#pattern rule)),
                                                           string "\"))"]
-                                 | Settings.Prefix => box [string "ncmp(s, \"",
+                                     | Settings.Prefix => [string "ncmp(s, \"",
                                                            string (Prim.toCString (#pattern rule)),
                                                            string "\", ",
                                                            string (Int.toString (size (#pattern rule))),
-                                                           string "))"],
-                               string " return ",
-                               string (case #action rule of
-                                           Settings.Allow => "1"
-                                         | Settings.Deny => "0"),
-                               string ";",
-                               newline]) rules,
-                      string "return 0;",
-                      newline],
-                 string "}",
-                 newline]
+                                                           string "))"]) @
+                                  [string " return ",
+                                   string (case #action rule of
+                                               Settings.Allow => "1"
+                                             | Settings.Deny => "0"),
+                                   string ";",
+                                   newline]) rules @
+                  [string "return 0;"]
+                 ),
+             newline,
+             string "}",
+             newline]
 
         val initializers = List.mapPartial (fn (DTask (Initialize, x1, x2, e), _) =>
                                                SOME (x1, x2, p_exp (E.pushERel (E.pushERel env x1 dummyt) x2 dummyt) e)
@@ -3366,10 +3368,10 @@ fun p_file env (ds, ps) =
             String.concat (Word8Vector.foldr (fn (b, ls) =>
                                                  hexifyByte b :: ls) [] v)
     in
-        box [string "#include \"",
-             string (OS.Path.joinDirFile {dir = !Settings.configInclude,
-                                          file = "config.h"}),
-             string "\"",
+        vbox0 (List.concat [
+            [string ("#include \"" ^
+                     (OS.Path.joinDirFile {dir = !Settings.configInclude,
+                                           file = "config.h"}) ^ "\""),
              newline,
              string "#include <stdio.h>",
              newline,
@@ -3380,157 +3382,158 @@ fun p_file env (ds, ps) =
              string "#include <math.h>",
              newline,
              string "#include <time.h>",
-             newline,
-             (case Settings.getFileCache () of
-                  NONE => box []
-                | SOME _ => box [string "#include <sys/types.h>",
+             newline],
+            (case Settings.getFileCache () of
+                  NONE => []
+                | SOME _ => [string "#include <sys/types.h>",
                                  newline,
                                  string "#include <sys/stat.h>",
                                  newline,
                                  string "#include <unistd.h>",
                                  newline]),
-             if hasDb then
-                 box [string ("#include <" ^ #header (Settings.currentDbms ()) ^ ">"),
-                      newline]
-             else
-                 box [],
-             p_list_sep (box []) (fn s => box [string "#include \"",
-                                               string s,
-                                               string "\"",
+            if hasDb then
+                 [string ("#include <" ^ #header (Settings.currentDbms ()) ^ ">"),
+                  newline]
+            else
+                 [],
+            List.map (fn s => box [string ("#include \"" ^
+                                                       s ^
+                                                       "\""),
                                                newline]) (Settings.getHeaders ()),
-             string "#include \"",
-             string (OS.Path.joinDirFile {dir = !Settings.configInclude,
-                                          file = "urweb.h"}),
-             string "\"",
+            [string ("#include \"" ^
+                     (OS.Path.joinDirFile {dir = !Settings.configInclude,
+                                           file = "urweb.h"}) ^
+                     "\""),
              newline,
+             newline],
+
+            [string "static void uw_setup_limits() {",
              newline,
+             vbox (List.concat [
+                        (case Settings.getMinHeap () of
+                             0 => []
+                           | n => [string "uw_min_heap = ",
+                                   string (Int.toString n),
+                                   string ";",
+                                   newline]),
+                        (List.map (fn (class, num) =>
+                                      let
+                                          val num = case class of
+                                                        "page" => Int.max (2048, num)
+                                                      | _ => num
+                                      in
+                                          box [string ("uw_" ^ class ^ "_max"),
+                                               string " = ",
+                                               string (Int.toString num),
+                                               string ";",
+                                               newline]
+                                      end) (Settings.limits ())),
+                        [string "}",
+                         newline,
+                         newline]
+                  ])
+            ],
 
-             box [string "static void uw_setup_limits() {",
-                  newline,
-                  case Settings.getMinHeap () of
-                      0 => box []
-                    | n => box [string "uw_min_heap",
-                                space,
-                                string "=",
-                                space,
-                                string (Int.toString n),
-                                string ";",
-                                newline,
-                                newline],
-                  box [p_list_sep (box []) (fn (class, num) =>
-                                               let
-                                                   val num = case class of
-                                                                 "page" => Int.max (2048, num)
-                                                               | _ => num
-                                               in
-                                                   box [string ("uw_" ^ class ^ "_max"),
-                                                        space,
-                                                        string "=",
-                                                        space,
-                                                        string (Int.toString num),
-                                                        string ";",
-                                                        newline]
-                                               end) (Settings.limits ())],
-                  string "}",
-                  newline,
-                  newline],
+            [#code (Settings.currentProtocol ()) ()],
 
-             #code (Settings.currentProtocol ()) (),
-
-             if hasDb then
-                 #init (Settings.currentDbms ()) {dbstring = !dbstring,
+            if hasDb then
+                 [#init (Settings.currentDbms ()) {dbstring = !dbstring,
                                                   prepared = !prepped,
                                                   tables = !tables,
                                                   views = !views,
-                                                  sequences = !sequences}
+                                                  sequences = !sequences}]
              else
-                 box [string "static void uw_client_init(void) { };",
-                      newline,
-                      string "static void uw_db_init(uw_context ctx) { };",
-                      newline,
-                      string "static int uw_db_begin(uw_context ctx, int could_write) { return 0; };",
-                      newline,
-                      string "static void uw_db_close(uw_context ctx) { };",
-                      newline,
-                      string "static int uw_db_commit(uw_context ctx) { return 0; };",
-                      newline,
-                      string "static int uw_db_rollback(uw_context ctx) { return 0; };"],
-             newline,
-             newline,
+                 [string "static void uw_client_init(void) { };",
+                  newline,
+                  string "static void uw_db_init(uw_context ctx) { };",
+                  newline,
+                  string "static int uw_db_begin(uw_context ctx, int could_write) { return 0; };",
+                  newline,
+                  string "static void uw_db_close(uw_context ctx) { };",
+                  newline,
+                  string "static int uw_db_commit(uw_context ctx) { return 0; };",
+                  newline,
+                  string "static int uw_db_rollback(uw_context ctx) { return 0; };"],
+
+            [newline,
+             newline],
 
              (* For sqlcache. *)
              let
                  val {setupGlobal, setupQuery, ...} = Sqlcache.getCache ()
              in
-                 box (setupGlobal :: newline :: List.map setupQuery (Sqlcache.getFfiInfo ()))
-             end,
-             newline,
+                 (setupGlobal :: newline :: List.map setupQuery (Sqlcache.getFfiInfo ()))
+             end @
+             [newline],
 
-             p_list_sep newline (fn x => x) pds,
-             newline,
+             p_lists_sep [newline] (fn x => [x]) pds,
+             [newline,
              newline,
              string "static int uw_input_num(const char *name) {",
+             box [newline,
+                  makeSwitch (fnums, 0)],
              newline,
-             makeSwitch (fnums, 0),
              string "}",
              newline,
-             newline,
+             newline],
 
-             box (ListUtil.mapi (fn (i, (_, x1, x2, pe)) =>
-                                    box [string "static void uw_periodic",
-                                         string (Int.toString i),
-                                         string "(uw_context ctx) {",
-                                         newline,
-                                         box [string "uw_unit __uwr_",
-                                              string x1,
-                                              string "_0 = 0, __uwr_",
-                                              string x2,
-                                              string "_1 = 0;",
-                                              newline,
-                                              pe,
-                                              string ";",
-                                              newline],
-                                         string "}",
-                                         newline,
-                                         newline]) periodics),
+             List.concat (ListUtil.mapi (fn (i, (_, x1, x2, pe)) =>
+                                            [string "static void uw_periodic",
+                                             string (Int.toString i),
+                                             string "(uw_context ctx) {",
+                                             box [newline,
+                                                  string "uw_unit __uwr_",
+                                                  string x1,
+                                                  string "_0 = 0, __uwr_",
+                                                  string x2,
+                                                  string "_1 = 0;",
+                                                  newline,
+                                                  pe,
+                                                  string ";"],
+                                             newline,
+                                             string "}",
+                                             newline,
+                                             newline]) periodics),
 
-             string "static uw_periodic my_periodics[] = {",
-             box (ListUtil.mapi (fn (i, (n, _, _, _)) =>
+             [string "static uw_periodic my_periodics[] = {",
+              box (newline :: ListUtil.mapi (fn (i, (n, _, _, _)) =>
                                     box [string "{uw_periodic",
                                          string (Int.toString i),
                                          string ",",
                                          space,
                                          string (Int64.toString n),
-                                         string "},"]) periodics),
-             string "{NULL}};",
+                                         string "},"]) periodics @
+                  [string "{NULL}"]),
              newline,
+             string "};",
              newline,
+             newline],
 
-             makeChecker ("uw_check_url", Settings.getUrlRules ()),
-             newline,
+             makeChecker ("uw_check_url", Settings.getUrlRules ()) @
+             [newline],
 
-             makeChecker ("uw_check_mime", Settings.getMimeRules ()),
-             newline,
+             makeChecker ("uw_check_mime", Settings.getMimeRules ()) @
+             [newline],
 
-             makeChecker ("uw_check_requestHeader", Settings.getRequestHeaderRules ()),
-             newline,
+             makeChecker ("uw_check_requestHeader", Settings.getRequestHeaderRules ()) @
+             [newline],
 
-             makeChecker ("uw_check_responseHeader", Settings.getResponseHeaderRules ()),
-             newline,
+             makeChecker ("uw_check_responseHeader", Settings.getResponseHeaderRules ()) @
+             [newline],
 
-             makeChecker ("uw_check_envVar", Settings.getEnvVarRules ()),
-             newline,
+             makeChecker ("uw_check_envVar", Settings.getEnvVarRules ()) @
+             [newline],
 
-             makeChecker ("uw_check_meta", Settings.getMetaRules ()),
-             newline,
+             makeChecker ("uw_check_meta", Settings.getMetaRules ()) @
+             [newline],
 
-             string "extern void uw_sign(const char *in, char *out);",
+             [string "extern void uw_sign(const char *in, char *out);",
              newline,
              string "extern int uw_hash_blocksize;",
              newline,
              string "static uw_Basis_string uw_cookie_sig(uw_context ctx) {",
-             newline,
-             box [string "uw_Basis_string r = uw_malloc(ctx, uw_hash_blocksize);",
+             box [newline,
+                  string "uw_Basis_string r = uw_malloc(ctx, uw_hash_blocksize);",
                   newline,
                   string "uw_sign(",
                   case cookieCode of
@@ -3538,124 +3541,127 @@ fun p_file env (ds, ps) =
                     | SOME code => code,
                   string ", r);",
                   newline,
-                  string "return uw_Basis_makeSigString(ctx, r);",
-                  newline],
-             string "}",
-             newline,
-             newline,
-
-             box (rev protos),
-             box (rev defs),
-
-             string "static void uw_handle(uw_context ctx, char *request) {",
-             newline,
-             string "uw_Basis_string ims = uw_Basis_requestHeader(ctx, \"If-modified-since\");",
-             newline,
-             string ("if (ims && !strcmp(ims, \"" ^ Date.fmt rfcFmt lastMod ^ "\")) {"),
-             newline,
-             box [string "uw_clear_headers(ctx);",
-                  newline,
-                  string "uw_write_header(ctx, uw_supports_direct_status ? \"HTTP/1.1 304 Not Modified\\r\\n\" : \"Status: 304 Not Modified\\r\\n\");",
-                  newline,
-                  string "return;",
-                  newline],
-             string "}",
-             newline,
-             newline,
-             string "if (!strcmp(request, \"",
-             string (!app_js),
-             string "\")) {",
-             newline,
-             box [string "uw_write_header(ctx, \"Content-Type: text/javascript\\r\\n\");",
-                  newline,
-                  string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt lastMod ^ "\\r\\n\");"),
-                  newline,
-                  string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),
-                  newline,
-                  string "uw_write(ctx, jslib);",
-                  newline,
-                  string "return;",
-                  newline],
-             string "}",
-             newline,
-             newline,
-
-             p_list_sep newline (fn r =>
-                                    box [string "if (!strcmp(request, \"",
-                                         string (String.toCString (#Uri r)),
-                                         string "\")) {",
-                                         newline,
-                                         box [(case #ContentType r of
-                                                   NONE => box []
-                                                 | SOME ct => box [string "uw_write_header(ctx, \"Content-Type: ",
-                                                                   string (String.toCString ct),
-                                                                   string "\\r\\n\");",
-                                                                   newline]),
-                                              string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt lastMod ^ "\\r\\n\");"),
-                                              newline,
-                                              string ("uw_write_header(ctx, \"Content-Length: " ^ Int.toString (Word8Vector.length (#Bytes r)) ^ "\\r\\n\");"),
-                                              newline,
-                                              string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),
-                                              newline,
-                                              string "uw_replace_page(ctx, \"",
-                                              string (hexify (#Bytes r)),
-                                              string "\", ",
-                                              string (Int.toString (Word8Vector.length (#Bytes r))),
-                                              string ");",
-                                              newline,
-                                              string "return;",
-                                              newline],
-                                         string "};",
-                                         newline]) (Settings.listFiles ()),
-
-             newline,
-             p_list_sep newline (fn x => x) pds',
-             newline,
-             string "uw_clear_headers(ctx);",
-             newline,
-             string "uw_write_header(ctx, uw_supports_direct_status ? \"HTTP/1.1 404 Not Found\\r\\n\" : \"Status: 404 Not Found\\r\\n\");",
-             newline,
-             string "uw_write_header(ctx, \"Content-type: text/plain\\r\\n\");",
-             newline,
-             string "uw_write(ctx, \"Not Found\");",
+                  string "return uw_Basis_makeSigString(ctx, r);"],
              newline,
              string "}",
              newline,
-             newline,
+             newline],
 
-             box [string "static void uw_expunger(uw_context ctx, uw_Basis_client cli) {",
+             rev protos,
+             rev defs,
+
+             [string "static void uw_handle(uw_context ctx, char *request) {",
+              box ([
+                  newline,                      
+                  string "uw_Basis_string ims = ", box [string "uw_Basis_requestHeader(ctx, \"If-modified-since\");"],
                   newline,
+                  string ("if (ims && !strcmp(ims, \"" ^ Date.fmt rfcFmt lastMod ^ "\")) {"),
+                  box [newline,
+                       string "uw_clear_headers(ctx);",
+                       newline,
+                       string "uw_write_header(ctx, uw_supports_direct_status ? \"HTTP/1.1 304 Not Modified\\r\\n\" : \"Status: 304 Not Modified\\r\\n\");",
+                       newline,
+                       string "return;"
+                      ],
+                  newline,
+                  string "}",
+                  newline,
+                  newline,
+                  string "if (!strcmp(request, \"",
+                  string (!app_js),
+                  string "\")) {",
+                  box [
+                      newline,
+                      string "uw_write_header(ctx, \"Content-Type: text/javascript\\r\\n\");",
+                      newline,
+                      string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt lastMod ^ "\\r\\n\");"),
+                      newline,
+                      string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),
+                      newline,
+                      string "uw_write(ctx, jslib);",
+                      newline,
+                      string "return;"
+                  ],
+                  newline,
+                  string "}",
+                  newline,
+                  newline] @
 
-                  p_list_sep (box []) (fn (x1, x2, pe) => box [string "({",
-                                                               newline,
-                                                               string "uw_Basis_client __uwr_",
-                                                               string x1,
-                                                               string "_0 = cli;",
-                                                               newline,
-                                                               string "uw_unit __uwr_",
-                                                               string x2,
-                                                               string "_1 = 0;",
-                                                               newline,
-                                                               pe,
-                                                               string ";",
-                                                               newline,
-                                                               string "});",
-                                                               newline]) expungers,
+                  p_lists_sep [newline] (fn r =>
+                                         [string "if (!strcmp(request, \"",
+                                          string (String.toCString (#Uri r)),
+                                          string "\")) {",
+                                          box (newline :: (case #ContentType r of
+                                                     NONE => []
+                                                   | SOME ct => [string "uw_write_header(ctx, \"Content-Type: ",
+                                                                 string (String.toCString ct),
+                                                                 string "\\r\\n\");",
+                                                                 newline]) @
+                                                   [string ("uw_write_header(ctx, \"Last-Modified: " ^ Date.fmt rfcFmt lastMod ^ "\\r\\n\");"),
+                                                    newline,
+                                                    string ("uw_write_header(ctx, \"Content-Length: " ^ Int.toString (Word8Vector.length (#Bytes r)) ^ "\\r\\n\");"),
+                                                    newline,
+                                                    string ("uw_write_header(ctx, \"Cache-Control: max-age=31536000, public\\r\\n\");"),
+                                                    newline,
+                                                    string "uw_replace_page(ctx, \"",
+                                                    string (hexify (#Bytes r)),
+                                                    string "\", ",
+                                                    string (Int.toString (Word8Vector.length (#Bytes r))),
+                                                    string ");",
+                                                    newline,
+                                                    string "return;"
+                                              ]),
+                                          newline,
+                                          string "};",
+                                          newline]) (Settings.listFiles ()) @
 
+                  (newline ::
+                   p_lists_sep [newline] (fn x => [x]) pds') @
+                  [newline,
+                   string "uw_clear_headers(ctx);",
+                   newline,
+                   string "uw_write_header(ctx, uw_supports_direct_status ? \"HTTP/1.1 404 Not Found\\r\\n\" : \"Status: 404 Not Found\\r\\n\");",
+                   newline,
+                   string "uw_write_header(ctx, \"Content-type: text/plain\\r\\n\");",
+                   newline,
+                   string "uw_write(ctx, \"Not Found\");"
+                  ]),
+              newline,
+              string "}",
+              newline],
+
+             [newline,
+              string "static void uw_expunger(uw_context ctx, uw_Basis_client cli) {",
+              box (newline :: List.concat [
+                  p_lists_sep [] (fn (x1, x2, pe) => [string "({",
+                                                             newline,
+                                                             string "uw_Basis_client __uwr_",
+                                                             string x1,
+                                                             string "_0 = cli;",
+                                                             newline,
+                                                             string "uw_unit __uwr_",
+                                                             string x2,
+                                                             string "_1 = 0;",
+                                                             newline,
+                                                             pe,
+                                                             string ";",
+                                                             newline,
+                                                             string "});",
+                                                             newline]) expungers,
                   if hasDb then
-                      box [p_enamed env (!expunge),
-                           string "(ctx, cli);",
-                           newline]
+                      [p_enamed env (!expunge),
+                       string "(ctx, cli);"]
                   else
-                      box [],
-                  string "}"],
+                      []]),
+              newline,
+              string "}"],
 
-             newline,
+             [newline,
              string "static void uw_initializer(uw_context ctx) {",
-             newline,
-             box [(case Settings.getFileCache () of
-                       NONE => box []
-                     | SOME dir => box [newline,
+             box (newline :: List.concat [
+                       case Settings.getFileCache () of
+                       NONE => []
+                     | SOME dir => [newline,
                                         string "struct stat st = {0};",
                                         newline,
                                         newline,
@@ -3666,70 +3672,80 @@ fun p_file env (ds, ps) =
                                         box [string "mkdir(\"",
                                              string (Prim.toCString dir),
                                              string "\", 0700);",
-                                             newline]]),
-                  string "uw_begin_initializing(ctx);",
-                  newline,
-                  p_list_sep newline (fn x => x) (rev (!global_initializers)),
-                  string "uw_end_initializing(ctx);",
-                  newline,
-                  p_list_sep (box []) (fn (x1, x2, pe) => box [string "({",
-                                                               newline,
-                                                               string "uw_unit __uwr_",
-                                                               string x1,
-                                                               string "_0 = 0, __uwr_",
-                                                               string x2,
-                                                               string "_1 = 0;",
-                                                               newline,
-                                                               pe,
-                                                               string ";",
-                                                               newline,
-                                                               string "});",
-                                                               newline]) initializers,
+                                             newline]],
+                  [string "uw_begin_initializing(ctx);",
+                   newline],
+                  p_lists_sep [newline] (fn x => [x]) (rev (!global_initializers)),
+                  [string "uw_end_initializing(ctx);",
+                   newline],
+                  p_lists_sep [newline] (fn (x1, x2, pe) => [string "({",
+                                                             newline,
+                                                             string "uw_unit __uwr_",
+                                                             string x1,
+                                                             string "_0 = 0, __uwr_",
+                                                             string x2,
+                                                             string "_1 = 0;",
+                                                             newline,
+                                                             pe,
+                                                             string ";",
+                                                             newline,
+                                                             string "});"]) initializers,
+                  [newline],
                   if hasDb then
-                      box [p_enamed env (!initialize),
-                           string "(ctx, 0);",
-                           newline]
+                      [p_enamed env (!initialize),
+                       string "(ctx, 0);",
+                       newline]
                   else
-                      box []],
+                      []]),
              string "}",
-             newline,
-
+             newline
+             ],
+            
              case onError of
-                 NONE => box []
-               | SOME n => box [string "static void uw_onError(uw_context ctx, char *msg) {",
+                 NONE => []
+               | SOME n => [string "static void uw_onError(uw_context ctx, char *msg) {",
                                 newline,
-                                if !hasJs then
-                                    box [string "uw_set_script_header(ctx, \"",
-                                         string (allScripts ()),
-                                         string "\");",
-                                         newline]
-                                else
-                                    box [],
-                                box [string "uw_write(ctx, ",
-                                     p_enamed env n,
-                                     string "(ctx, msg, 0));",
-                                     newline],
+                                box (List.concat [
+                                          if !hasJs then
+                                              [string "uw_set_script_header(ctx, \"",
+                                               string (allScripts ()),
+                                               string "\");",
+                                               newline]
+                                          else
+                                              [],
+                                          [
+                                            string "uw_write(ctx, ",
+                                            p_enamed env n,
+                                            string "(ctx, msg, 0));",
+                                            newline
+                                          ]
+                                    ]),
                                 string "}",
                                 newline,
                                 newline],
-
-             string "uw_app uw_application = {",
-             p_list_sep (box [string ",", newline]) string
-                        [Int.toString (SM.foldl Int.max 0 fnums + 1),
-                         Int.toString (Settings.getTimeout ()),
-                         "\"" ^ Settings.getUrlPrefix () ^ "\"",
-                         "uw_client_init", "uw_initializer", "uw_expunger",
-                         "uw_db_init", "uw_db_begin", "uw_db_commit", "uw_db_rollback", "uw_db_close",
-                         "uw_handle",
-                         "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime", "uw_check_requestHeader", "uw_check_responseHeader", "uw_check_envVar", "uw_check_meta",
-                         case onError of NONE => "NULL" | SOME _ => "uw_onError", "my_periodics",
-                         "\"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\"",
-                         if Settings.getIsHtml5 () then "1" else "0",
-                         (case Settings.getFileCache () of
-                              NONE => "NULL"
-                            | SOME s => "\"" ^ Prim.toCString s ^ "\"")],
+             
+            [string "uw_app uw_application = {",
+             box (newline ::
+                  p_lists_sep
+                      [string ",", newline]
+                      (fn x => [string x])
+                      [Int.toString (SM.foldl Int.max 0 fnums + 1),
+                       Int.toString (Settings.getTimeout ()),
+                       "\"" ^ Settings.getUrlPrefix () ^ "\"",
+                       "uw_client_init", "uw_initializer", "uw_expunger",
+                       "uw_db_init", "uw_db_begin", "uw_db_commit", "uw_db_rollback", "uw_db_close",
+                       "uw_handle",
+                       "uw_input_num", "uw_cookie_sig", "uw_check_url", "uw_check_mime", "uw_check_requestHeader", "uw_check_responseHeader", "uw_check_envVar", "uw_check_meta",
+                       case onError of NONE => "NULL" | SOME _ => "uw_onError", "my_periodics",
+                       "\"" ^ Prim.toCString (Settings.getTimeFormat ()) ^ "\"",
+                       if Settings.getIsHtml5 () then "1" else "0",
+                       (case Settings.getFileCache () of
+                            NONE => "NULL"
+                          | SOME s => "\"" ^ Prim.toCString s ^ "\"")]),
+             newline,
              string "};",
              newline]
+           ])
     end
 
 fun isText t =

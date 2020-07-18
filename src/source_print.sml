@@ -529,14 +529,14 @@ and p_sgn (sgn, _) =
 
 fun p_decl ((d, _) : decl) =
     case d of
-        DCon (x, NONE, c) => box [string "con",
+        DCon (x, NONE, c) => vbox [string "con",
                                   space,
                                   string x,
                                   space,
                                   string "=",
                                   space,
                                   p_con c]
-      | DCon (x, SOME k, c) => box [string "con",
+      | DCon (x, SOME k, c) => vbox [string "con",
                                     space,
                                     string x,
                                     space,
@@ -547,11 +547,11 @@ fun p_decl ((d, _) : decl) =
                                     string "=",
                                     space,
                                     p_con c]
-      | DDatatype x => box [string "datatype",
+      | DDatatype x => vbox [string "datatype",
                             space,
-                            p_list_sep (box [space, string "and", space]) p_datatype x]
+                            p_list_sep (vbox [space, string "and", space]) p_datatype x]
       | DDatatypeImp (x, ms, x') =>
-        box [string "datatype",
+        vbox [string "datatype",
              space,
              string x,
              space,
@@ -560,34 +560,34 @@ fun p_decl ((d, _) : decl) =
              string "datatype",
              space,
              p_list_sep (string ".") string (ms @ [x'])]
-      | DVal (p, e) => box [string "val",
+      | DVal (p, e) => vbox [string "val",
                             space,
                             p_pat p,
                             space,
                             string "=",
                             space,
                             p_exp e]
-      | DValRec vis => box [string "val",
+      | DValRec vis => vbox [string "val",
                             space,
                             string "rec",
                             space,
                             p_list_sep (box [newline, string "and", space]) p_vali vis]
 
-      | DSgn (x, sgn) => box [string "signature",
+      | DSgn (x, sgn) => vbox [string "signature",
                               space,
                               string x,
                               space,
                               string "=",
                               space,
                               p_sgn sgn]
-      | DStr (x, NONE, _, str, _) => box [string "structure",
+      | DStr (x, NONE, _, str, _) => vbox [string "structure",
                                           space,
                                           string x,
                                           space,
                                           string "=",
                                           space,
                                           p_str str]
-      | DStr (x, SOME sgn, _, str, _) => box [string "structure",
+      | DStr (x, SOME sgn, _, str, _) => vbox [string "structure",
                                               space,
                                               string x,
                                               space,
@@ -598,7 +598,7 @@ fun p_decl ((d, _) : decl) =
                                               string "=",
                                               space,
                                               p_str str]
-      | DFfiStr (x, sgn, _) => box [string "extern",
+      | DFfiStr (x, sgn, _) => vbox [string "extern",
                                     space,
                                     string "structure",
                                     space,
@@ -607,26 +607,26 @@ fun p_decl ((d, _) : decl) =
                                     string ":",
                                     space,
                                     p_sgn sgn]
-      | DOpen (m, ms) => box [string "open",
+      | DOpen (m, ms) => vbox [string "open",
                               space,
                               p_list_sep (string ".") string (m :: ms)]
-      | DConstraint (c1, c2) => box [string "constraint",
+      | DConstraint (c1, c2) => vbox [string "constraint",
                                      space,
                                      p_con c1,
                                      space,
                                      string "~",
                                      space,
                                      p_con c2]
-      | DOpenConstraints (m, ms) => box [string "open",
+      | DOpenConstraints (m, ms) => vbox [string "open",
                                          space,
                                          string "constraints",
                                          space,
                                          p_list_sep (string ".") string (m :: ms)]
 
-      | DExport str => box [string "export",
+      | DExport str => vbox [string "export",
                             space,
                             p_str str]
-      | DTable (x, c, pe, ce) => box [string "table",
+      | DTable (x, c, pe, ce) => vbox [string "table",
                                       space,
                                       string x,
                                       space,
@@ -641,10 +641,10 @@ fun p_decl ((d, _) : decl) =
                                       string "constraints",
                                       space,
                                       p_exp ce]
-      | DSequence x => box [string "sequence",
+      | DSequence x => vbox [string "sequence",
                             space,
                             string x]
-      | DView (x, e) => box [string "view",
+      | DView (x, e) => vbox [string "view",
                              space,
                              string x,
                              space,
@@ -652,28 +652,28 @@ fun p_decl ((d, _) : decl) =
                              space,
                              p_exp e]
 
-      | DDatabase s => box [string "database",
+      | DDatabase s => vbox [string "database",
                             space,
                             string s]
 
-      | DCookie (x, c) => box [string "cookie",
+      | DCookie (x, c) => vbox [string "cookie",
                                space,
                                string x,
                                space,
                                string ":",
                                space,
                                p_con c]
-      | DStyle x => box [string "style",
+      | DStyle x => vbox [string "style",
                          space,
                          string x]
-      | DTask (e1, e2) => box [string "task",
+      | DTask (e1, e2) => vbox [string "task",
                                space,
                                p_exp e1,
                                space,
                                string "=",
                                space,
                                p_exp e2]
-      | DPolicy e1 => box [string "policy",
+      | DPolicy e1 => vbox [string "policy",
                            space,
                            p_exp e1]
       | DOnError _ => string "ONERROR"
@@ -681,7 +681,7 @@ fun p_decl ((d, _) : decl) =
 
 and p_str (str, _) =
     case str of
-        StrConst ds => box [string "struct",
+        StrConst ds => vbox [string "struct",
                             newline,
                             p_list_sep newline p_decl ds,
                             newline,
@@ -690,7 +690,7 @@ and p_str (str, _) =
       | StrProj (str, x) => box [p_str str,
                                  string ".",
                                  string x]
-      | StrFun (x, sgn, NONE, str) => box [string "functor",
+      | StrFun (x, sgn, NONE, str) => vbox [string "functor",
                                            space,
                                            string "(",
                                            string x,
@@ -702,7 +702,7 @@ and p_str (str, _) =
                                            string "=>",
                                            space,
                                            p_str str]
-      | StrFun (x, sgn, SOME sgn', str) => box [string "functor",
+      | StrFun (x, sgn, SOME sgn', str) => vbox [string "functor",
                                                 space,
                                                 string "(",
                                                 string x,
@@ -723,6 +723,6 @@ and p_str (str, _) =
                                     p_str str2,
                                     string ")"]
 
-val p_file = p_list_sep newline p_decl
+fun p_file ls = vbox (p_lists_sep [newline] (fn x => [p_decl x]) ls)
 
 end

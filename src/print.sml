@@ -36,6 +36,8 @@ val openOut = SM.openOut
 
 type 'a printer = 'a -> PD.pp_desc
 
+fun vbox0 ds = PD.vBox (PD.PPS.Abs 0, ds)
+fun vbox ds = PD.vBox (PD.PPS.Abs 1, ds)
 fun box ds = PD.hovBox (PD.PPS.Abs 1, ds)
 fun parenIf b d =
     if b then
@@ -46,6 +48,23 @@ val space = PD.space 1
 
 val out = SM.openOut {dst = TextIO.stdOut, wid = 70}
 val err = SM.openOut {dst = TextIO.stdErr, wid = 70}
+
+fun p_lists_sep sep f ls =
+    let
+        fun iter ls =
+            case ls of
+                [] => []
+              | [x] => f x
+              | x :: ls =>
+                let
+                    val r = iter ls
+                in
+                    if List.null r then f x
+                    else f x @ sep @ r
+                end
+    in
+        iter ls
+    end
 
 fun p_list_sep sep f ls =
     case ls of
