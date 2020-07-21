@@ -1,4 +1,4 @@
-fun isNil (t ::: Type) (ls : list t) =
+fun isNil [t ::: Type] (ls : list t) =
     case ls of
         [] => True
       | _ => False

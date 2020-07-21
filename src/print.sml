@@ -37,12 +37,14 @@ val openOut = SM.openOut
 type 'a printer = 'a -> PD.pp_desc
 
 fun box ds = PD.hovBox (PD.PPS.Rel 1, ds)
+fun vbox ds = PD.vBox (PD.PPS.Rel 0, ds)
 fun parenIf b d =
     if b then
         box [PD.string "(", d, PD.string ")"]
     else
         d
 val space = PD.space 1
+fun indent n = PD.break { nsp = 1, offset = n }
 
 val out = SM.openOut {dst = TextIO.stdOut, wid = 70}
 val err = SM.openOut {dst = TextIO.stdErr, wid = 70}

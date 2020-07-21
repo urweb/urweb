@@ -19,10 +19,10 @@ structure Ma : sig type t end = M
 
 structure Magain : sig datatype t = A | B end = M
 
-val page : M.t -> page = fn x => <html><body>
+val page : M.t -> page = fn x => <xml><html><body>
         Hi.
-</body></html>
+</body></html></xml>
 
-val main : unit -> page = fn () => <html><body>
-        <a link={page a2}>Link</a>
-</body></html>
+val main : unit -> page = fn () => <xml><html><body>
+        <a link={return (page a2)}>Link</a>
+</body></html></xml>
