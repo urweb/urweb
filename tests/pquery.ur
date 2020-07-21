@@ -4,17 +4,17 @@ fun display (q : sql_query [T1 = [A = int, B = string, C = float, D = bool]] [])
         s <- query q
                 (fn fs _ => return (Some fs.T1))
                 None;
-        return <html><body>
+        return <xml><html><body>
                 {case s of
                   None => cdata "Row not found."
                 | Some s =>
-                        <body>
+                        <xml><body>
                                 A: {cdata (show _ s.A)}<br/>
                                 B: {cdata (show _ s.B)}<br/>
                                 C: {cdata (show _ s.C)}<br/>
                                 D: {cdata (show _ s.D)}<br/>
-                        </body>}
-        </body></html>
+                        </body></xml>}
+        </body></html></xml>
 
 fun lookupA (inp : {A : string}) =
         display (SELECT * FROM t1 WHERE t1.A = {readError _ inp.A})
@@ -28,7 +28,7 @@ fun lookupC (inp : {C : string}) =
 fun lookupD (inp : {D : string}) =
         display (SELECT * FROM t1 WHERE t1.D = {readError _ inp.D})
 
-fun main () : transaction page = return <html><body>
+fun main () : transaction page = return <xml><html><body>
         <lform>
                 A: <textbox{#A}/>
                 <submit action={lookupA}/>
@@ -48,4 +48,4 @@ fun main () : transaction page = return <html><body>
                 D: <textbox{#D}/>
                 <submit action={lookupD}/>
         </lform>
-</body></html>
+</body></html></xml>

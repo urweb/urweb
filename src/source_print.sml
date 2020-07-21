@@ -308,30 +308,34 @@ fun p_exp' par (e, _) =
                                               string "---",
                                               space,
                                               p_con' true c])
-      | ECase (e, pes) => parenIf par (box [string "case",
-                                            space,
-                                            p_exp e,
-                                            space,
-                                            string "of",
-                                            space,
-                                            p_list_sep (box [space, string "|", space])
-                                            (fn (p, e) => box [p_pat p,
-                                                               space,
-                                                               string "=>",
-                                                               space,
-                                                               p_exp e]) pes])
+      | ECase (e, pes) => parenIf par (vbox(
+                                            box [string "case",
+                                                 space,
+                                                 p_exp e,
+                                                 space,
+                                                 string "of"] ::
+                                            newline ::
+                                            ListUtil.join [newline]
+                                                          (ListUtil.mapi
+                                                               (fn (i, (p, e)) =>
+                                                                   box [(if i > 0 then string "|" else space), space,
+                                                                        box [box [p_pat p],
+                                                                        space,
+                                                                        string "=>"],
+                                                                        newline,
+                                                                        box [space, p_exp e]]) pes)))
 
       | EWild => string "_"
 
-      | ELet (ds, e) => box [string "let",
-                             newline,
-                             box [p_list_sep newline p_edecl ds],
-                             newline,
-                             string "in",
-                             newline,
-                             box [p_exp e],
-                             newline,
-                             string "end"]
+      | ELet (ds, e) => vbox [string "let",
+                              indent 1,
+                              vbox (ListUtil.join [newline] (List.map p_edecl ds)),
+                              newline,
+                              string "in",
+                              indent 1,
+                              vbox [p_exp e],
+                              newline,
+                              string "end"]
 
       | EKAbs (x, e) => box [string x,
                              space,
@@ -414,7 +418,7 @@ fun p_sgn_item (sgi, _) =
                                       p_con c]
       | SgiDatatype x => box [string "datatype",
                               space,
-                              p_list_sep (box [space, string "and", space]) p_datatype x]
+                              vbox (ListUtil.join [newline, string "and", space] (List.map p_datatype x))]
       | SgiDatatypeImp (x, ms, x') =>
         box [string "datatype",
              space,
@@ -494,7 +498,7 @@ and p_sgn (sgn, _) =
     case sgn of
         SgnConst sgis => box [string "sig",
                               newline,
-                              p_list_sep newline p_sgn_item sgis,
+                              vbox (ListUtil.join [newline] (List.map p_sgn_item sgis)),
                               newline,
                               string "end"]
       | SgnVar x => string x
@@ -504,6 +508,7 @@ and p_sgn (sgn, _) =
                                       string x,
                                       space,
                                       string ":",
+                                      space,
                                       p_sgn sgn,
                                       string ")",
                                       space,
@@ -549,7 +554,7 @@ fun p_decl ((d, _) : decl) =
                                     p_con c]
       | DDatatype x => box [string "datatype",
                             space,
-                            p_list_sep (box [space, string "and", space]) p_datatype x]
+                            vbox (ListUtil.join [newline, string "and", space] (List.map p_datatype x))]
       | DDatatypeImp (x, ms, x') =>
         box [string "datatype",
              space,
@@ -571,7 +576,7 @@ fun p_decl ((d, _) : decl) =
                             space,
                             string "rec",
                             space,
-                            p_list_sep (box [newline, string "and", space]) p_vali vis]
+                            vbox (ListUtil.join [newline, string "and", space] (List.map p_vali vis))]
 
       | DSgn (x, sgn) => box [string "signature",
                               space,
@@ -683,7 +688,7 @@ and p_str (str, _) =
     case str of
         StrConst ds => box [string "struct",
                             newline,
-                            p_list_sep newline p_decl ds,
+                            vbox (ListUtil.join [newline] (List.map p_decl ds)),
                             newline,
                             string "end"]
       | StrVar x => string x
@@ -696,6 +701,7 @@ and p_str (str, _) =
                                            string x,
                                            space,
                                            string ":",
+                                           space,
                                            p_sgn sgn,
                                            string ")",
                                            space,
@@ -708,6 +714,7 @@ and p_str (str, _) =
                                                 string x,
                                                 space,
                                                 string ":",
+                                                space,
                                                 p_sgn sgn,
                                                 string ")",
                                                 space,
@@ -723,6 +730,6 @@ and p_str (str, _) =
                                     p_str str2,
                                     string ")"]
 
-val p_file = p_list_sep newline p_decl
+fun p_file decls = vbox (ListUtil.join [newline] (List.map p_decl decls))
 
 end
