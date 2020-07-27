@@ -1,5 +1,5 @@
 con colMeta = fn (db :: Type, widget :: Type) =>
-                 {Nam : string,
+                 {Name : string,
                   Show : db -> xbody,
                   Widget : nm :: Name -> xml form [] [nm = widget],
                   WidgetPopulated : nm :: Name -> db -> xml form [] [nm = widget],
@@ -9,7 +9,7 @@ con colsMeta = fn cols => $(map colMeta cols)
 
 fun default [t] (sh : show t) (rd : read t) (inj : sql_injectable t)
             name : colMeta (t, string) =
-    {Nam = name,
+    {Name = name,
      Show = txt,
      Widget = fn [nm :: Name] => <xml><textbox{nm}/></xml>,
      WidgetPopulated = fn [nm :: Name] n =>
@@ -21,7 +21,7 @@ val int = default
 val float = default
 val string = default
 
-fun bool name = {Nam = name,
+fun bool name = {Name = name,
                  Show = txt,
                  Widget = fn [nm :: Name] => <xml><checkbox{nm}/></xml>,
                  WidgetPopulated = fn [nm :: Name] b =>
@@ -67,7 +67,7 @@ functor Make(M : sig
               <th>ID</th>
               {@mapX [colMeta] [tr]
                 (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] col => <xml>
-                  <th>{cdata col.Nam}</th>
+                  <th>{cdata col.Name}</th>
                 </xml>)
                 M.fl M.cols}
             </tr>
@@ -79,7 +79,7 @@ functor Make(M : sig
           <form>
             {@foldR [colMeta] [fn cols => xml form [] (map snd cols)]
               (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] (col : colMeta t) acc => <xml>
-                <li> {cdata col.Nam}: {col.Widget [nm]}</li>
+                <li> {cdata col.Name}: {col.Widget [nm]}</li>
                 {useMore acc}
               </xml>)
               <xml/>
@@ -131,7 +131,7 @@ functor Make(M : sig
                   (fn [nm :: Name] [t ::_] [rest ::_] [[nm] ~ rest] v (col : colMeta t)
                                    (acc : xml form [] (map snd rest)) =>
                       <xml>
-                        <li> {cdata col.Nam}: {col.WidgetPopulated [nm] v}</li>
+                        <li> {cdata col.Name}: {col.WidgetPopulated [nm] v}</li>
                         {useMore acc}
                       </xml>)
                   <xml/>

@@ -310,9 +310,11 @@
        | L.KWild => if !inSignature then (kindError env (KDisallowedWildcard loc); kerror) else kunif env loc
 
        | L.KVar s => (case E.lookupK env s of
-                          NONE =>
-                          (kindError env (UnboundKind (loc, s));
-                           kerror)
+                          NONE => (case s of
+                                       "Name" => (L'.KName, loc)
+                                     | "Type" => (L'.KType, loc)
+                                     | "Unit" => (L'.KUnit, loc)
+                                     | _ => (kindError env (UnboundKind (loc, s)); kerror))
                         | SOME n => (L'.KRel n, loc))
        | L.KFun (x, k) => (L'.KFun (x, elabKind (E.pushKRel env x) k), loc)
 
