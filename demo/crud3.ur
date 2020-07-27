@@ -6,7 +6,7 @@ open Crud.Make(struct
                              
                    val title = "Crud3"
 
-                   val cols = {Text = {Nam = "Text",
+                   val cols = {Text = {Name = "Text",
                                        Show = txt,
                                        Widget = (fn [nm :: Name] => <xml>
                                          <subform{nm}>
