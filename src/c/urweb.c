@@ -2802,6 +2802,111 @@ char *uw_memdup(uw_context ctx, const char *p, size_t len) {
   return r;
 }
 
+// hexval returns the value of hexadecimal digit c,
+// or -1 if c is invalid.
+static int hexval(char c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  return -1;
+}
+
+uw_Basis_string uw_Basis_decodeURIComponent(uw_context ctx, uw_Basis_string s1) {
+  if (!s1)
+    return NULL;
+
+  size_t len = strlen(s1);
+
+  // Fast path: no decoding required.
+  if (!memchr(s1, '%', len))
+    return s1;
+
+  uw_check_heap(ctx, len + 1);
+  char *s = ctx->heap.front;
+
+  size_t j = 0;
+  for (size_t i = 0; i < len; i++) {
+    char c = s1[i];
+    if (c != '%')
+      s[j++] = c;
+    else {
+      if (len - i < 3)
+	return NULL; // too short
+      int v = 16*hexval(s1[i+1]) | hexval(s1[i+2]);
+      if (v < 0)
+        return NULL; // not hexadecimal digits
+      s[j++] = v;
+      i += 2;
+    }
+  }
+  s[j++] = 0;
+
+  // Check that the resulting string is valid UTF-8.
+  for (size_t i = 0; i < j - 1; ) {
+    UChar32 c = 0;
+    U8_NEXT(s, i, j - 1, c);
+    if (c < 0)
+      return NULL; // illegal UTF-8 sequence
+  }
+
+  ctx->heap.front += j;
+  return s;
+}
+
+// uriUnescaped reports whether c is a member of ECMAScript's uriUnescaped.
+static int uriUnescaped(char c) {
+  // uriAlpha
+  if (c >= 'a' && c <= 'z') return 1;
+  if (c >= 'A' && c <= 'Z') return 1;
+
+  // DecimalDigit
+  if (c >= '0' && c <= '9') return 1;
+
+  // uriMark
+  switch (c) {
+    case '-':
+    case '_':
+    case '.':
+    case '!':
+    case '~':
+    case '*':
+    case '\'':
+    case '(':
+    case ')':
+      return 1;
+  }
+
+  return 0;
+}
+
+uw_Basis_string uw_Basis_encodeURIComponent(uw_context ctx, uw_Basis_string s1) {
+  if (!s1)
+    return NULL;
+
+  size_t len = strlen(s1);
+  uw_check_heap(ctx, 3 * len + 1);
+  char *s = ctx->heap.front;
+
+  size_t j = 0;
+  for (size_t i = 0; i < len; i++) {
+    char c = s1[i];
+    if (uriUnescaped(c))
+      s[j++] = c;
+    else {
+      sprintf(s + j, "%%%02X", (unsigned char)c);
+      j += 3;
+    }
+  }
+  s[j++] = 0;
+
+  // Space optimization: reuse s1 if it didn't require escaping.
+  if (j == len + 1)
+    return s1;
+
+  ctx->heap.front += j;
+  return s;
+}
+
 char *uw_sqlfmtInt = "%lld::int8%n";
 
 char *uw_Basis_sqlifyInt(uw_context ctx, uw_Basis_int n) {
