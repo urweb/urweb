@@ -459,10 +459,6 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> "policy"    => (Tokens.POLICY (pos yypos, pos yypos + size yytext));
 <INITIAL> "ffi"       => (Tokens.FFI (pos yypos, pos yypos + size yytext));
 
-<INITIAL> "Type"      => (Tokens.TYPE (pos yypos, pos yypos + size yytext));
-<INITIAL> "Name"      => (Tokens.NAME (pos yypos, pos yypos + size yytext));
-<INITIAL> "Unit"      => (Tokens.KUNIT (pos yypos, pos yypos + size yytext));
-
 <INITIAL> "SELECT"    => (Tokens.SELECT (pos yypos, pos yypos + size yytext));
 <INITIAL> "DISTINCT"  => (Tokens.DISTINCT (pos yypos, pos yypos + size yytext));
 <INITIAL> "FROM"      => (Tokens.FROM (pos yypos, pos yypos + size yytext));
