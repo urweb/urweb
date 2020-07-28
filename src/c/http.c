@@ -83,7 +83,7 @@ static void log_debug(void *data, const char *fmt, ...) {
 
 static uw_loggers ls = {NULL, log_error, log_debug};
 
-static unsigned max_buf_size = 10 * 1024 * 1024; // That's 10MB.
+static unsigned max_buf_size = 200 * 1024 * 1024; // That's 200MB.
 
 static void *worker(void *data) {
   int me = *(int *)data;
