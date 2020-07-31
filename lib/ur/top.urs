@@ -317,3 +317,5 @@ val assert : t ::: Type
              -> string (* Source location of the bad thing *)
              -> t      (* Return this value if all went well. *)
              -> t
+
+val ofUnicode : int -> string

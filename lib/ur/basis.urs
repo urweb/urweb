@@ -95,7 +95,6 @@ val strsindex : string -> string -> option int
 val strcspn : string -> string -> int
 val substring : string -> int -> int -> string
 val str1 : char -> string
-val ofUnicode : int -> string
 
 (* These last three reveal the Unicode encoding,
  * into sequences of 8-bit bytes. *)
