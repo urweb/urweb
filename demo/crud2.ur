@@ -1,4 +1,4 @@
-table t : {Id : int, Nam : string, Ready : bool}
+table t : {Id : int, Name : string, Ready : bool}
   PRIMARY KEY Id
 
 open Crud.Make(struct
@@ -6,8 +6,8 @@ open Crud.Make(struct
                              
                    val title = "Are you ready?"
 
-                   val cols = {Nam = Crud.string "Name",
-                               Ready = {Nam = "Ready",
+                   val cols = {Name = Crud.string "Name",
+                               Ready = {Name = "Ready",
                                         Show = (fn b => if b then
                                                             <xml>Ready!</xml>
                                                         else
