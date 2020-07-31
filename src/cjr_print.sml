@@ -3756,113 +3756,107 @@ fun p_sql env (ds, _) =
     let
         val usesSimilar = ref false
 
-        val (pps, _) = ListUtil.foldlMap
-                       (fn (dAll as (d, _), env) =>
-                           let
-                               val pp = case d of
-                                            DTable (s, xts, pk, csts) =>
-                                            box [string "CREATE TABLE ",
-                                                 string s,
-                                                 string "(",
-                                                 p_list (fn (x, t) =>
-                                                            let
-                                                                val xs = Settings.mangleSql (CharVector.map Char.toLower x)
-                                                                val t = sql_type_in env t
+        fun p_ddl d env =
+            case d of
+                DTable (s, xts, pk, csts) =>
+                let
+                    val elts =
+                        map (fn (x, t) =>
+                                let
+                                    val xs = Settings.mangleSql (CharVector.map Char.toLower x)
+                                    val t = sql_type_in env t
 
-                                                                val ts = if #textKeysNeedLengths (Settings.currentDbms ()) andalso isText t
-                                                                            andalso (List.exists (declaresAsForeignKey xs o #2) csts
-                                                                                     orelse List.exists (String.isSubstring (xs ^ "(255)")) (pk :: map #2 csts)) then
-                                                                             "varchar(255)"
-                                                                         else
-                                                                             #p_sql_type (Settings.currentDbms ()) t
-                                                            in
-                                                                box [string xs,
-                                                                     space,
-                                                                     string ts,
-                                                                     case t of
-                                                                         Nullable _ => box []
-                                                                       | _ => string " NOT NULL",
-                                                                     case t of
-                                                                         Time => if #requiresTimestampDefaults (Settings.currentDbms ()) then
-                                                                                     string " DEFAULT CURRENT_TIMESTAMP"
-                                                                                 else
-                                                                                     box []
-                                                                       | _ => box []]
-                                                            end) xts,
-                                                 case (pk, csts) of
-                                                     ("", []) => box []
-                                                   | _ => string ",",
-                                                 cut,
-                                                 case pk of
-                                                     "" => box []
-                                                   | _ => box [string "CONSTRAINT",
-                                                               space,
-                                                               string s,
-                                                               string "_pkey",
-                                                               space,
-                                                               string "PRIMARY",
-                                                               space,
-                                                               string "KEY",
-                                                               space,
-                                                               string "(",
-                                                               string pk,
-                                                               string ")",
-                                                               case csts of
-                                                                   [] => box []
-                                                                 | _ => string ",",
-                                                               newline],
-                                                 p_list_sep (box [string ",", newline])
-                                                            (fn (x, c) =>
-                                                                box [string "CONSTRAINT",
-                                                                     space,
-                                                                     string s,
-                                                                     string "_",
-                                                                     string x,
-                                                                     space,
-                                                                     string c]) csts,
-                                                 newline,
-                                                 string ");",
-                                                 newline,
-                                                 newline]
-                                          | DSequence s =>
-                                            box [string (#createSequence (Settings.currentDbms ()) s),
-                                                 string ";",
-                                                 newline,
-                                                 newline]
-                                          | DView (s, xts, q) =>
-                                            box [string "CREATE VIEW",
-                                                 space,
-                                                 string s,
-                                                 space,
-                                                 string "AS",
-                                                 space,
-                                                 string q,
-                                                 string ";",
-                                                 newline,
-                                                 newline]
-                                          | DDatabase {usesSimilar = s, ...} =>
-                                            (usesSimilar := s;
-                                             box [])
-                                          | _ => box []
-                           in
-                               (pp, E.declBinds env dAll)
-                           end)
-                       env ds
+                                    val ts = if #textKeysNeedLengths (Settings.currentDbms ()) andalso isText t
+                                                andalso (List.exists (declaresAsForeignKey xs o #2) csts
+                                                         orelse List.exists (String.isSubstring (xs ^ "(255)")) (pk :: map #2 csts)) then
+                                                 "varchar(255)"
+                                             else
+                                                 #p_sql_type (Settings.currentDbms ()) t
+                                in
+                                    box [string xs,
+                                         space,
+                                         string ts,
+                                         case t of
+                                             Nullable _ => box []
+                                           | _ => string " NOT NULL",
+                                         case t of
+                                             Time => if #requiresTimestampDefaults (Settings.currentDbms ()) then
+                                                         string " DEFAULT CURRENT_TIMESTAMP"
+                                                     else
+                                                         box []
+                                           | _ => box []]
+                                end) xts
+                        @ (case pk of
+                               "" => []
+                             | _ => [box [string "CONSTRAINT",
+                                          space,
+                                          string s,
+                                          string "_pkey",
+                                          space,
+                                          string "PRIMARY",
+                                          space,
+                                          string "KEY",
+                                          space,
+                                          string "(",
+                                          string pk,
+                                          string ")"]])
+                        @ map (fn (x, c) =>
+                                  box [string "CONSTRAINT",
+                                       space,
+                                       string s,
+                                       string "_",
+                                       string x,
+                                       space,
+                                       string c]) csts
+                in
+                    [string "CREATE TABLE ",
+                     string s,
+                     string "(",
+                     indent 4,
+                     vbox (ListUtil.join [string ",", newline] elts),
+                     string ");",
+                     newline,
+                     newline]
+                end
+              | DSequence s =>
+                [string (#createSequence (Settings.currentDbms ()) s),
+                 string ";",
+                 newline,
+                 newline]
+              | DView (s, xts, q) =>
+                [string "CREATE VIEW",
+                 space,
+                 string s,
+                 space,
+                 string "AS",
+                 space,
+                 string q,
+                 string ";",
+                 newline,
+                 newline]
+              | DDatabase {usesSimilar = s, ...} =>
+                (usesSimilar := s;
+                 [])
+              | _ =>  []
+
+        val (pps, _) = ListUtil.foldlMap
+                           (fn (dAll as (d, _), env) => (p_ddl d env, E.declBinds env dAll))
+                           env ds
     in
-        box ((case Settings.getFileCache () of
-                  NONE => []
-                | SOME _ => case #supportsSHA512 (Settings.currentDbms ()) of
-                                NONE => (ErrorMsg.error "Using file cache with database that doesn't support SHA512";
-                                         [])
-                              | SOME r => [string (#InitializeDb r), newline, newline])
-             @ (if !usesSimilar then
-                    case #supportsSimilar (Settings.currentDbms ()) of
-                        NONE => (ErrorMsg.error "Using SIMILAR with database that doesn't support it";
-                                 [])
-                      | SOME r => [string (#InitializeDb r), newline, newline]
-                else
-                    [])
-             @ string (#sqlPrefix (Settings.currentDbms ())) :: pps)
+        vbox ((case Settings.getFileCache () of
+                   NONE => []
+                 | SOME _ => case #supportsSHA512 (Settings.currentDbms ()) of
+                                 NONE => (ErrorMsg.error "Using file cache with database that doesn't support SHA512";
+                                          [])
+                               | SOME r => [string (#InitializeDb r), newline, newline])
+              @ (if !usesSimilar then
+                     case #supportsSimilar (Settings.currentDbms ()) of
+                         NONE => (ErrorMsg.error "Using SIMILAR with database that doesn't support it";
+                                  [])
+                       | SOME r => [string (#InitializeDb r), newline, newline]
+                 else
+                     [])
+              @ string (#sqlPrefix (Settings.currentDbms ())) :: (List.concat pps))
     end
 
 end
