@@ -449,3 +449,5 @@ fun min [t] ( _ : ord t) (x : t) (y : t) : t =
 
 fun assert [a] (cond: bool) (msg: string) (loc: string) (x:a): a =
   if cond then x else error <xml>{txt msg} at {txt loc}</xml>
+
+val ofUnicode = compose str1 chr

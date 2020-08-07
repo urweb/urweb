@@ -257,4 +257,18 @@ fun appn f n =
         iter 0
     end
 
+fun join (sep : 'a list) (ls : 'a list) =
+    let
+	val sep = rev sep
+	fun iter (acc : 'a list) (ls : 'a list) =
+	    case ls of
+		nil => rev acc
+	      | h :: t =>
+		iter (h :: (sep @ acc)) t
+    in
+	case ls of
+	    nil => []
+	  | h :: t => iter [h] t
+    end
+
 end
