@@ -2294,6 +2294,12 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "sql_like") =>
             (str "LIKE", fm)
+          | L.EFfi ("Basis", "sql_distance") =>
+            ((case #supportsSimilar (Settings.currentDbms ()) of
+                  NONE => ErrorMsg.errorAt loc "The DBMS you've selected doesn't support <->."
+                | _ => ());
+             uses_similar := true;
+             (str "<->", fm))
 
           | L.ECApp (
             (L.ECApp (

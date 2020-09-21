@@ -519,6 +519,7 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> "IS"        => (Tokens.IS (pos yypos, pos yypos + size yytext));
 <INITIAL> "COALESCE"  => (Tokens.COALESCE (pos yypos, pos yypos + size yytext));
 <INITIAL> "LIKE"      => (Tokens.LIKE (pos yypos, pos yypos + size yytext));
+<INITIAL> "<->"       => (Tokens.DISTANCE (pos yypos, pos yypos + size yytext));
 
 <INITIAL> "CONSTRAINT"=> (Tokens.CCONSTRAINT (pos yypos, pos yypos + size yytext));
 <INITIAL> "UNIQUE"    => (Tokens.UNIQUE (pos yypos, pos yypos + size yytext));
