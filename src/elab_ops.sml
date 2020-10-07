@@ -514,4 +514,43 @@ fun reduceCon env (cAll as (c, loc)) =
       | CUnif (nl, _, _, _, ref (Known c)) => reduceCon env (E.mliftConInCon nl c)
       | CUnif _ => cAll
 
+val consEqSimple =
+    let
+        fun ces env (c1 : con, c2 : con) =
+            let
+                val c1 = hnormCon env c1
+                val c2 = hnormCon env c2
+            in
+                case (#1 c1, #1 c2) of
+                    (CRel n1, CRel n2) => n1 = n2
+                  | (CNamed n1, CNamed n2) =>
+                    n1 = n2 orelse
+                    (case #3 (E.lookupCNamed env n1) of
+                         SOME (CNamed n2', _) => n2' = n1
+                       | _ => false)
+                  | (CModProj n1, CModProj n2) => n1 = n2
+                  | (CApp (f1, x1), CApp (f2, x2)) => ces env (f1, f2) andalso ces env (x1, x2)
+                  | (CAbs (x1, k1, c1), CAbs (_, _, c2)) => ces (E.pushCRel env x1 k1) (c1, c2)
+                  | (CName x1, CName x2) => x1 = x2
+                  | (CRecord (_, xts1), CRecord (_, xts2)) =>
+                    ListPair.all (fn ((x1, t1), (x2, t2)) =>
+                                     ces env (x1, x2) andalso ces env (t2, t2)) (xts1, xts2)
+                  | (CConcat (x1, y1), CConcat (x2, y2)) =>
+                    ces env (x1, x2) andalso ces env (y1, y2)
+                  | (CMap _, CMap _) => true
+                  | (CUnit, CUnit) => true
+                  | (CTuple cs1, CTuple cs2) => ListPair.all (ces env) (cs1, cs2)
+                  | (CProj (c1, n1), CProj (c2, n2)) => ces env (c1, c2) andalso n1 = n2
+                  | (CUnif (_, _, _, _, r1), CUnif (_, _, _, _, r2)) => r1 = r2
+
+                  | (TFun (d1, r1), TFun (d2, r2)) => ces env (d1, d2) andalso ces env (r1, r2)
+                  | (TRecord c1, TRecord c2) => ces env (c1, c2)
+                  
+                  | _ => false
+            end
+    in
+        ces
+    end
+    
+
 end
