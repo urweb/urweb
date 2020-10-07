@@ -488,15 +488,34 @@ fun reduceCon env (cAll as (c, loc)) =
       | CRecord (k, xcs) => (CRecord (k, map (fn (x, c) => (reduceCon env x, reduceCon env c)) xcs), loc)
       | CConcat (c1, c2) =>
         let
+            (* Important to first reduce the underlying parts so we can add all records together *)
+            (* High level "strategy" is to push CRecords "to the left" and then have some rules that add records on the left *)
             val c1 = reduceCon env c1
             val c2 = reduceCon env c2
         in
             case (c1, c2) of
+              (* 1. Adding two records together *)
                 ((CRecord (k, xcs1), loc), (CRecord (_, xcs2), _)) => (CRecord (k, xcs1 @ xcs2), loc)
+              (* 2. Removing empty records *)
               | ((CRecord (_, []), _), _) => c2
-              | ((CConcat (c11, c12), loc), _) => reduceCon env (CConcat (c11, (CConcat (c12, c2), loc)), loc)
               | (_, (CRecord (_, []), _)) => c1
+              (* 3. Adding two records together, one is one level lower *)
               | ((CRecord (k, xcs1), loc), (CConcat ((CRecord (_, xcs2), _), c2'), _)) => (CConcat ((CRecord (k, xcs1 @ xcs2), loc), c2'), loc)
+              (* 4. Adding two records, both are one level lower *)
+              | ((CConcat ((CRecord (k, xcs1), _), c1'), _), (CConcat ((CRecord (_, xcs2), _), c2'), _)) => (CConcat ((CConcat ((CRecord (k, xcs1 @ xcs2), loc), c1'), loc), c2'), loc)
+              (* 5. Splitting up the "left" part of nested concats to hit rules 1 and 3 *)
+              | ((CConcat (c11, c12), loc), _) => reduceCon env (CConcat (c11, (CConcat (c12, c2), loc)), loc)
+              (* 6. Swapping to hit rule 4, moving records "to the left" *)
+              (*    Can't loop: if other side is a record -> hits rule 3  *)
+              (*                if other side is a cconcat (crecord, _) -> hits rule 5  *)
+              | (_, (CConcat ((CRecord (_, xcs2), _), c2'), _)) =>
+                reduceCon env (CConcat (c2, c1), loc)
+              (* 7. Swapping so we can add more records together through the previous rules, moving records "to the left"*)
+              (*    Can't loop: if other side is a record -> hits rule 1  *)
+              (*                if other side is a cconcat (crecord, _) -> hits rule 3  *)
+              | (_, (CRecord (_, _), _)) =>
+                reduceCon env (CConcat (c2, c1), loc)
+              (* Nothing left *)
               | _ => (CConcat (c1, c2), loc)
         end
       | CMap _ => cAll
