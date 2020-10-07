@@ -333,11 +333,11 @@ fun p_diffRows (env: ElabEnv.env) (diffs: rowdiffresult list): PD.pp_desc =
         p_list_sep PD.newline (fn r => case r of
                                            MissingLeft (n, con) => p_fieldMissing (n, con)
                                          | MissingRight (n, con) => p_fieldMissing (n, con)
-                                         | Mismatch (n, c1, c2) => box [ PD.string "Type mismatch in field #", PD.string n, PD.newline
-                                                                         , PD.string "Expected: ", PD.newline
-                                                                         , p_con env c1, PD.newline
-                                                                         , PD.string "Actual: ", PD.newline
-                                                                         , p_con env c2, PD.newline ]
+                                         | Mismatch (n, c1, c2) => vbox [ vbox [PD.string "Type mismatch in field #", PD.string n, PD.newline]
+                                                                        , vbox [PD.string "Have: ", PD.newline]
+                                                                        , vbox [indent 2, p_con env c1, PD.newline, PD.newline]
+                                                                        , vbox [PD.string "Need: ", PD.newline]
+                                                                        , vbox [indent 2, p_con env c2, PD.newline, PD.newline] ]
                               ) diffs
     end
 
@@ -443,8 +443,7 @@ fun findTableForCunifsError (env: ElabEnv.env) (ds: Elab.decl list) =
         print
             (p_list
                   (fn (tablename, rows) =>
-                      box [ PD.string ("Found problem in table " ^ tablename)
-                          , PD.newline
+                      box [ vbox [PD.string ("Found problem in table " ^ tablename) , PD.newline]
                           , p_diffRows env rows
                           ]
                       )
