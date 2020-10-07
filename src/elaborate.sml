@@ -1157,6 +1157,32 @@
            | _ => raise ex
      end
 
+ and findMissingWrappingCon env loc (c1All, c2All, ex) =
+     case (#1 c1All, #1 c2All) of
+             (_, L'.CApp (c2, c2')) =>
+             (let
+                 val argumentAndOthersideUnify = ((unifyCons' env loc c2' c1All;
+                                                   true)
+                                                  handle _ => false)
+             in
+                 if argumentAndOthersideUnify
+                 then raise CUnify' (env, CMissingCApp (c2, c2'))
+                 else raise ex
+             end
+             )
+           | (L'.CApp (c1, c1'), _) =>
+             (let
+                 val argumentAndOthersideUnify = ((unifyCons' env loc c1' c2All;
+                                                   true)
+                                                  handle _ => false)
+             in
+                 if argumentAndOthersideUnify
+                 then raise CUnify' (env, CMissingCApp (c1, c1'))
+                 else raise ex
+             end
+             )
+           | _ => raise ex
+
  and unifyCons' env loc c1 c2 =
      if isUnitCon env c1 andalso isUnitCon env c2 then
          ()
@@ -1169,7 +1195,10 @@
              val c2 = hnormCon env c2
          in
              unifyCons'' env loc c1 c2
-             handle ex => guessMap env loc (c1, c2, ex)
+             handle ex =>
+                    guessMap env loc (c1, c2, ex)
+                    handle ex =>
+                           findMissingWrappingCon env loc (c1, c2, ex)
          end
 
  and unifyCons'' env loc (c1All as (c1, _)) (c2All as (c2, _)) =
@@ -1426,7 +1455,6 @@
               unifyCons' env loc c1 c2)
            | (L'.TKFun (x, c1), L'.TKFun (_, c2)) =>
              unifyCons' (E.pushKRel env x) loc c1 c2
-
            | _ => err CIncompatible)(*;
         eprefaces "/unifyCons''" [("c1", p_con env c1All),
                                   ("c2", p_con env c2All)]*)

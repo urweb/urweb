@@ -56,6 +56,7 @@ signature ELAB_ERR = sig
              CKind of Elab.kind * Elab.kind * ElabEnv.env * kunify_error
            | COccursCheckFailed of Elab.con * Elab.con
            | CIncompatible of Elab.con * Elab.con
+           | CMissingCApp of Elab.con (* Missing applied con *) * Elab.con (* Wrapped *)
            | CExplicitness of Elab.con * Elab.con
            | CKindof of Elab.kind * Elab.con * string
            | CRecordFailure of Elab.con * Elab.con * (Elab.con * Elab.con * Elab.con * (ElabEnv.env * cunify_error) option) option
