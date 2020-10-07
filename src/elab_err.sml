@@ -138,10 +138,10 @@ fun cunifyError env err : unit =
                    ("Need", p_con env c2)]
       | CMissingCApp (c1, c2) =>
         print
-            (box
-                 [ box [PD.string "Missing a constructor application:", PD.newline]
+            (vbox
+                 [ PD.string "Missing a constructor application:", PD.newline
                  , vbox [indent 2, p_con env c1, PD.newline, PD.newline]
-                 , box [PD.string "On: ", PD.newline]
+                 , PD.string "On: ", PD.newline
                  , vbox [indent 2, p_con env c2, PD.newline, PD.newline]])
       | CExplicitness (c1, c2) =>
         eprefaces "Differing constructor function explicitness"
