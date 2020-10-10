@@ -818,7 +818,7 @@ fun unurlify fromClient env (t, loc) =
                                      string ("__uwd_" ^ ident x ^ "_" ^ Int.toString i),
                                      space,
                                      string "*tmp = uw_malloc(ctx, sizeof(struct __uwd_",
-                                     string x,
+                                     string (ident x),
                                      string "_",
                                      string (Int.toString i),
                                      string "));",
