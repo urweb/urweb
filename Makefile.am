@@ -23,7 +23,8 @@ mlton-tc: bin/urwebtc
 
 clean-local:
 	rm -f bin/urweb src/urweb.mlton.* \
-		src/urweb.cm src/urweb.mlb xml/parse xml/entities.sml
+		src/urweb.cm src/urweb.mlb xml/parse xml/entities.sml \
+		mlb-path-map
 	rm -rf .cm src/.cm
 
 src/urweb.cm: src/prefix.cm src/sources
@@ -55,18 +56,25 @@ MLTON = mlton
 #	MLTON += -profile $(PROFILE)
 #endif
 
+mlb-path-map: Makefile
+	echo SRC $(abs_srcdir)/src > $@
+	echo BUILD $(abs_builddir)/src >> $@
+
 bin/urweb: src/compiler.mlb xml/entities.sml \
 		src/urweb.mlb $(srcdir)/src/*.sig $(srcdir)/src/*.sml src/config.sml \
 		src/urweb.mlton.lex.sml \
-		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml
+		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml \
+		mlb-path-map
 	mkdir -p bin
-	$(MLTON) $(MLTONARGS) -mlb-path-var 'SRC $(abs_srcdir)/src' -mlb-path-var 'BUILD $(abs_builddir)/src' -output $@ $<
+	$(MLTON) $(MLTONARGS) -mlb-path-map mlb-path-map -output $@ $<
+
 bin/urwebtc: src/compiler.mlb xml/entities.sml \
 		src/urweb.mlb $(srcdir)/src/*.sig $(srcdir)/src/*.sml src/config.sml \
 		src/urweb.mlton.lex.sml \
-		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml
+		src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml \
+		mlb-path-map
 	mkdir -p bin
-	$(MLTON) $(MLTONARGS) -prefer-abs-paths true -show-def-use compiler.du -stop tc -mlb-path-var 'SRC $(abs_srcdir)/src' -mlb-path-var 'BUILD $(abs_builddir)/src' -output $@ $<
+	$(MLTON) $(MLTONARGS) -prefer-abs-paths true -show-def-use compiler.du -stop tc -mlb-path-map mlb-path-map -output $@ $<
 
 xml/entities.sml: xml/parse xml/xhtml-lat1.ent xml/xhtml-special.ent xml/xhtml-symbol.ent
 	$^ > $@
