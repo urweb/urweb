@@ -113,7 +113,7 @@ fun subConInCon' rep =
                                                  EQUAL => #1 (liftConInCon by 0 rep)
                                                | GREATER => CRel (xn' - 1)
                                                | LESS => c)
-                                          | CUnif (0, _, _, _, _) => raise SubUnif
+                                          | CUnif (~1, _, _, _, _) => raise SubUnif
                                           | CUnif (n, loc, k, s, r) => CUnif (n-1, loc, k, s, r)
                                           | _ => c,
                 bind = fn ((by, xn), U.Con.RelC _) => (by+1, xn+1)
