@@ -604,7 +604,7 @@ fun parseUrp' accLibs fname =
                      val jsModule = ref NONE
                      val jsFuncs = ref []
                      val rewrites = ref []
-                     val url = ref []
+                     val url = ref [{action = Settings.Allow, kind = Settings.Prefix, pattern = "#"}] (* always allow pure-fragment URLs *)
                      val mime = ref []
                      val request = ref []
                      val response = ref []
