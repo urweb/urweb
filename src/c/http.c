@@ -336,7 +336,7 @@ static void *worker(void *data) {
 }
 
 static void help(char *cmd) {
-  printf("Usage: %s [-p <port>] [-a <IPv4 address>] [-A <IPv6 address>] [-u <UNIX socket>] [-t <thread count>] [-m <bytes>] [-k] [-q] [-T SEC]\nThe '-k' option turns on HTTP keepalive.\nThe '-q' option turns off some chatter on stdout.\nThe '-T' option sets socket recv timeout (0 disables timeout, default is 5 sec).\nThe '-m' sets the maximum size (in bytes) for any buffer used to hold HTTP data sent by clients.  (The default is 1 MB.)\n", cmd);
+  printf("Usage: %s [-p <port>] [-a <IPv4 address>] [-A <IPv6 address>] [-u <UNIX socket>] [-t <thread count>] [-m <bytes>] [-k] [-q] [-c] [-T SEC]\nThe '-k' option turns on HTTP keepalive.\nThe '-q' option turns off some chatter on stdout.\nThe '-T' option sets socket recv timeout (0 disables timeout, default is 5 sec).\nThe '-m' sets the maximum size (in bytes) for any buffer used to hold HTTP data sent by clients.  (The default is 1 MB.)\nThe -c option disables the client pruner thread.", cmd);
 }
 
 static void sigint(int signum) {
@@ -360,6 +360,7 @@ int main(int argc, char *argv[]) {
   socklen_t my_size = 0, sin_size;
   int yes = 1, uw_port = 8080, nthreads = 1, i, *names, opt;
   int recv_timeout_sec = 5;
+  int run_client_pruner = 1;
  
   signal(SIGINT, sigint);
   signal(SIGPIPE, SIG_IGN); 
@@ -369,7 +370,7 @@ int main(int argc, char *argv[]) {
   my_addr.sa.sa_family = AF_INET;
   my_addr.ipv4.sin_addr.s_addr = INADDR_ANY; // auto-fill with my IP
 
-  while ((opt = getopt(argc, argv, "hp:a:A:u:t:kqT:m:")) != -1) {
+  while ((opt = getopt(argc, argv, "hp:a:A:u:t:ckqT:m:")) != -1) {
     switch (opt) {
     case '?':
       fprintf(stderr, "Unknown command-line option\n");
@@ -405,6 +406,10 @@ int main(int argc, char *argv[]) {
         help(argv[0]);
         return 1;
       }
+      break;
+
+    case 'c':
+      run_client_pruner = 0;
       break;
 
     case 'u':
@@ -510,7 +515,8 @@ int main(int argc, char *argv[]) {
 
   qprintf("Listening on port %d....\n", uw_port);
 
-  {
+  if (run_client_pruner == 1) {
+    qprintf("Starting client_pruner thread\n");
     pthread_t thread;
 
     pruner_data *pd = (pruner_data *)malloc(sizeof(pruner_data));
@@ -524,6 +530,7 @@ int main(int argc, char *argv[]) {
   }
 
   for (i = 0; i < nthreads; ++i) {
+    qprintf("Starting worker thread #%d\n", i);
     pthread_t thread;    
     names[i] = i;
     if (pthread_create_big(&thread, NULL, worker, &names[i])) {

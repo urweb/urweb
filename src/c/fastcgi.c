@@ -552,7 +552,7 @@ static void *worker(void *data) {
 }
 
 static void help(char *cmd) {
-  printf("Usage: %s [-t <thread-count>]\n", cmd);
+  printf("Usage: %s [-t <thread-count>] [-c]\nThe -c option disables the client pruner thread.", cmd);
 }
 
 static void sigint(int signum) {
@@ -568,6 +568,8 @@ int main(int argc, char *argv[]) {
   struct sockaddr_in their_addr; // connector's address information
   socklen_t sin_size;
   int nthreads = 1, i, *names, opt;
+  int run_client_pruner = 1;
+
   char *fwsa = getenv("FCGI_WEB_SERVER_ADDRS"), *nthreads_s = getenv("URWEB_NUM_THREADS");
  
   if (nthreads_s) {
@@ -583,12 +585,16 @@ int main(int argc, char *argv[]) {
   signal(SIGUSR1, sigint);
   signal(SIGTERM, sigint);
 
-  while ((opt = getopt(argc, argv, "ht:")) != -1) {
+  while ((opt = getopt(argc, argv, "htc:")) != -1) {
     switch (opt) {
     case '?':
       fprintf(stderr, "Unknown command-line option");
       help(argv[0]);
       return 1;
+
+    case 'c':
+      run_client_pruner = 0;
+      break;
 
     case 'h':
       help(argv[0]);
@@ -603,6 +609,7 @@ int main(int argc, char *argv[]) {
       }
       break;
 
+
     default:
       fprintf(stderr, "Unexpected getopt() behavior\n");
       return 1;
@@ -616,7 +623,7 @@ int main(int argc, char *argv[]) {
 
   sin_size = sizeof their_addr;
 
-  {
+  if (run_client_pruner == 1) {
     pthread_t thread;
 
     pruner_data *pd = (pruner_data *)malloc(sizeof(pruner_data));

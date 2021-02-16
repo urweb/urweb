@@ -96,13 +96,18 @@ typedef struct {
 
 static void *periodic_loop(void *data) {
   periodic *p = (periodic *)data;
-  uw_context ctx = uw_request_new_context(p->id, p->app, p->ls);
 
-  if (!ctx)
-    exit(1);
+  // runs less than once a minute -> keep context (and DB connection!) open
+  uw_context ctx_global = (p->pdic.period < 60) ? uw_request_new_context(p->id, p->app, p->ls) : NULL;
 
   while (1) {
     int retries_left = MAX_RETRIES;
+
+    p->ls->log_debug(p->ls->logger_data, "Running period task.\n");
+    uw_context ctx = (ctx_global) ? ctx_global : uw_request_new_context(p->id, p->app, p->ls);
+
+    if (!ctx)
+      exit(1);
 
     uw_transaction_arrives();
     
@@ -131,6 +136,12 @@ static void *periodic_loop(void *data) {
     }
 
     uw_transaction_departs();
+
+    if (!ctx_global){
+      uw_close(ctx);
+      p->ls->log_debug(p->ls->logger_data, "Database connection freed.\n");
+      uw_free(ctx);
+    }
 
     sleep(p->pdic.period);
   };
@@ -207,10 +218,13 @@ void uw_request_init(uw_app *app, uw_loggers* ls) {
     exit(1);
   }
 
+  uw_close(ctx);
+  log_debug(logger_data, "Database connection freed.\n");
   uw_free(ctx);
 
   id = 1;
   for (ps = app->periodics; ps->callback; ++ps) {
+    log_debug(logger_data, "Creating periodic thread #%d\n", id);
     pthread_t thread;
     periodic *arg = malloc(sizeof(periodic));
     arg->id = id++;

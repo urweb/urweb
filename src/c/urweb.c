@@ -654,6 +654,9 @@ void *uw_get_db(uw_context ctx) {
   return ctx->db;
 }
 
+void uw_close(uw_context ctx) {
+  ctx->app->db_close(ctx);
+}
 
 uw_loggers* uw_get_loggers(struct uw_context *ctx) {
   return ctx->loggers;
@@ -735,9 +738,6 @@ failure_kind uw_begin_init(uw_context ctx) {
   return r;
 }
 
-void uw_close(uw_context ctx) {
-  ctx->app->db_close(ctx);
-}
 
 uw_Basis_string uw_Basis_requestHeader(uw_context ctx, uw_Basis_string h) {
   if (ctx->get_header)
