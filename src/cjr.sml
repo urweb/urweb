@@ -104,6 +104,8 @@ withtype exp = exp' located
 
 datatype task = Initialize | ClientLeaves | Periodic of Int64.int
 
+datatype index_mode = datatype Mono.index_mode
+
 datatype decl' =
          DStruct of int * (string * typ) list
        | DDatatype of (datatype_kind * string * int * (string * int * typ option) list) list
@@ -115,6 +117,7 @@ datatype decl' =
        | DTable of string * (string * typ) list * string * (string * string) list
        | DSequence of string
        | DView of string * (string * typ) list * string
+       | DIndex of string (* table name *) * (string * index_mode) list
        | DDatabase of {name : string, expunge : int, initialize : int, usesSimilar : bool}
        | DPreparedStatements of (string * int) list
 

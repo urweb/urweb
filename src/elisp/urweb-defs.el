@@ -108,7 +108,7 @@ notion of \"the end of an outline\".")
                  "datatype" "type" "open" "include"
                  urweb-module-head-syms
                  "con" "map" "where" "extern" "constraint" "constraints"
-                 "table" "sequence" "class" "cookie" "style" "task" "policy")
+                 "table" "sequence" "ensure_index" "class" "cookie" "style" "task" "policy")
   "Symbols starting an sexp.")
 
 ;; (defconst urweb-not-arg-start-re
@@ -134,7 +134,7 @@ notion of \"the end of an outline\".")
      (,urweb-=-starter-syms nil)
      (("case" "datatype" "if" "then" "else"
        "let" "open" "sig" "struct" "type" "val"
-       "con" "constraint" "table" "sequence" "class" "cookie"
+       "con" "constraint" "table" "sequence" "ensure_index" "class" "cookie"
        "style" "task" "policy")))))
 
 (defconst urweb-starters-indent-after
@@ -189,7 +189,7 @@ for all symbols and in all lines starting with the given symbol."
   (append urweb-module-head-syms
 	  '("datatype" "fun"
 	    "open" "type" "val" "and"
-	    "con" "constraint" "table" "sequence" "class" "cookie"
+	    "con" "constraint" "table" "sequence" "ensure_index" "class" "cookie"
             "style" "task" "policy"))
   "The starters of new expressions.")
 

@@ -265,7 +265,7 @@ fun declBinds env (d, loc) =
                                                        ((CApp (tb, (CRel (nxs - i - 1), loc)), loc),
                                                         (KArrow (k, kb), loc)))
                                                    ((CNamed n, loc), k) xs
-                                   
+
                     val env = pushCNamed env x n kb NONE
                 in
                     foldl (fn ((x', n', to), env) =>
@@ -330,6 +330,7 @@ fun declBinds env (d, loc) =
         in
             pushENamed env x n ct
         end
+      | DIndex _ => env
       | DDatabase _ => env
       | DCookie (tn, x, n, c) =>
         let

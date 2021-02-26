@@ -677,6 +677,7 @@ fun cifyDecl ((d, loc), sm) =
         in
             (SOME (L'.DView (s, xts, e), loc), NONE, sm)
         end
+      | L.DIndex vs => (SOME (L'.DIndex vs, loc), NONE, sm)
       | L.DDatabase s => (SOME (L'.DDatabase s, loc), NONE, sm)
       | L.DJavaScript s => (SOME (L'.DJavaScript s, loc), NONE, sm)
       | L.DCookie args => (SOME (L'.DCookie args, loc), NONE, sm)

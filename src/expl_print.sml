@@ -583,7 +583,7 @@ and p_sgn env (sgn, loc) =
         let
             val (m1x, sgn) = E.lookupStrNamed env m1
                 handle E.UnboundNamed _ => ("UNBOUND" ^ Int.toString m1, (SgnConst [], loc))
-                             
+
             val m1s = if !debug then
                           m1x ^ "__" ^ Int.toString m1
                       else
@@ -706,6 +706,14 @@ fun p_decl env (dAll as (d, _) : decl) =
                                       string "as",
                                       space,
                                       p_exp env e]
+      | DIndex (e1, e2) => box [string "ensure_index",
+                                space,
+                                p_exp env e1,
+                                space,
+                                string ":",
+                                space,
+                                p_exp env e2]
+
       | DDatabase s => box [string "database",
                             space,
                             string s]

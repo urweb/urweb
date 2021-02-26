@@ -169,6 +169,7 @@ datatype decl' =
        | DTable of string * con * exp * exp
        | DSequence of string
        | DView of string * exp
+       | DIndex of exp (* table *) * exp (* record assigning columns to their indexing modes *)
        | DDatabase of string
        | DCookie of string * con
        | DStyle of string

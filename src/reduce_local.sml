@@ -381,6 +381,7 @@ fun reduce file =
                | DTable _ => d
                | DSequence _ => d
                | DView _ => d
+               | DIndex _ => d
                | DDatabase _ => d
                | DCookie _ => d
                | DStyle _ => d

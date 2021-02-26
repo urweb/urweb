@@ -442,6 +442,11 @@ fun p_policy env pol =
                               space,
                               p_exp env e]
 
+fun p_index_mode m =
+    string (case m of
+                Equality => "equality"
+              | Trigram => "trigram")
+
 fun p_decl env (dAll as (d, _) : decl) =
     case d of
         DDatatype x => box [string "datatype",
@@ -509,6 +514,19 @@ fun p_decl env (dAll as (d, _) : decl) =
                                 space,
                                 p_exp env e,
                                 string "*)"]
+      | DIndex (tab, cols) => box [string "(* SQL index ",
+                                   string tab,
+                                   space,
+                                   string ":",
+                                   space,
+                                   p_list (fn (f, m) =>
+                                              box [string f,
+                                                   space,
+                                                   string ":",
+                                                   space,
+                                                   p_index_mode m]) cols,
+                                   space,
+                                   string "*)"]
       | DDatabase {name, expunge, initialize, ...} =>
         box [string "database",
              space,

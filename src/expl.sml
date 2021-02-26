@@ -143,6 +143,7 @@ datatype decl' =
        | DTable of int * string * int * con * exp * con * exp * con
        | DSequence of int * string * int
        | DView of int * string * int * exp * con
+       | DIndex of exp * exp
        | DDatabase of string
        | DCookie of int * string * int * con
        | DStyle of int * string * int

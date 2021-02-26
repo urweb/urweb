@@ -597,6 +597,14 @@ fun p_decl env (dAll as (d, _) : decl) =
                                       string "as",
                                       space,
                                       p_exp env e]
+      | DIndex (e1, e2) => box [string "ensure_index",
+                                space,
+                                p_exp env e1,
+                                space,
+                                string ":",
+                                space,
+                                p_exp env e2]
+
       | DDatabase s => box [string "database",
                             space,
                             string s]

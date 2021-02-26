@@ -2533,6 +2533,7 @@ fun viewOf () = (L'.CModProj (!basis_r, [], "sql_view"), ErrorMsg.dummySpan)
 fun queryOf () = (L'.CModProj (!basis_r, [], "sql_query"), ErrorMsg.dummySpan)
 fun cookieOf () = (L'.CModProj (!basis_r, [], "http_cookie"), ErrorMsg.dummySpan)
 fun styleOf () = (L'.CModProj (!basis_r, [], "css_class"), ErrorMsg.dummySpan)
+fun indexModeOf () = (L'.CModProj (!basis_r, [], "index_mode"), ErrorMsg.dummySpan)
 
 fun patVarsOf (p : L.pat) =
     case #1 p of
@@ -3141,6 +3142,7 @@ and sgiOfDecl (d, loc) =
       | L'.DSequence (tn, x, n) => [(L'.SgiVal (x, n, sequenceOf ()), loc)]
       | L'.DView (tn, x, n, _, c) =>
         [(L'.SgiVal (x, n, (L'.CApp (viewOf (), c), loc)), loc)]
+      | L'.DIndex _ => []
       | L'.DDatabase _ => []
       | L'.DCookie (tn, x, n, c) => [(L'.SgiVal (x, n, (L'.CApp (cookieOf (), c), loc)), loc)]
       | L'.DStyle (tn, x, n) => [(L'.SgiVal (x, n, styleOf ()), loc)]
@@ -4484,6 +4486,30 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     checkCon env e' t ct;
                     ([(L'.DView (!basis_r, x, n, e', fs), loc)],
                      (env', denv, gs' @ gs))
+                end
+              | L.DIndex (table, cols) =>
+                let
+                    val (table', tableT', gs') = elabExp (env, denv) table
+                    val (cols', colsT', gs'') = elabExp (env, denv) cols
+
+                    val k = (L'.KRecord (L'.KType, loc), loc)
+                    val fsUsed = cunif env (loc, k)
+                    val fsUnused = cunif env (loc, k)
+                    val ks = cunif env (loc, (L'.KRecord (L'.KRecord (L'.KUnit, loc), loc), loc))
+
+                    val tableT = tableOf ()
+                    val tableT = (L'.CApp (tableT, (L'.CConcat (fsUsed, fsUnused), loc)), loc)
+                    val tableT = (L'.CApp (tableT, ks), loc)
+
+                    val colsT = (L'.CMap ((L'.KType, loc), (L'.KType, loc)), loc)
+                    val colsT = (L'.CApp (colsT, indexModeOf ()), loc)
+                    val colsT = (L'.CApp (colsT, fsUsed), loc)
+                    val colsT = (L'.TRecord colsT, loc)
+                in
+                    checkCon env cols' colsT' colsT;
+                    checkCon env table' tableT' tableT;
+                    ([(L'.DIndex (table', cols'), loc)],
+                     (env, denv, gs'' @ gs' @ gs))
                 end
 
               | L.DDatabase s => ([(L'.DDatabase s, loc)], (env, denv, gs))

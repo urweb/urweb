@@ -1097,7 +1097,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
                          val mst = foldl St.lookupStrByName mst ms
                          val (ds, {inner, outer}) = corifyStr (St.name mst) (wrapper, st)
                          val st = St.bindStr outer "wrapper" en inner
-                                  
+
                          val ds = ds @ map (fn f => f st) eds
                      in
                          (ds, st)
@@ -1128,6 +1128,7 @@ fun corifyDecl mods (all as (d, loc : EM.span), st) =
         in
             ([(L'.DView (x, n, s, corifyExp st e, corifyCon st c), loc)], st)
         end
+      | L.DIndex (e1, e2) => ([(L'.DIndex (corifyExp st e1, corifyExp st e2), loc)], st)
 
       | L.DDatabase s => ([(L'.DDatabase s, loc)], st)
 
@@ -1301,6 +1302,7 @@ fun maxName ds = foldl (fn ((d, _), n) =>
                              | L.DTable (_, _, n', _, _, _, _, _) => Int.max (n, n')
                              | L.DSequence (_, _, n') => Int.max (n, n')
                              | L.DView (_, _, n', _, _) => Int.max (n, n')
+                             | L.DIndex _ => n
                              | L.DDatabase _ => n
                              | L.DCookie (_, _, n', _) => Int.max (n, n')
                              | L.DStyle (_, _, n') => Int.max (n, n')

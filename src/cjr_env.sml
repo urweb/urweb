@@ -166,6 +166,7 @@ fun declBinds env (d, loc) =
       | DTable _ => env
       | DSequence _ => env
       | DView _ => env
+      | DIndex _ => env
       | DDatabase _ => env
       | DPreparedStatements _ => env
       | DJavaScript _ => env

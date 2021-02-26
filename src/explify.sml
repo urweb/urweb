@@ -190,6 +190,8 @@ fun explifyDecl (d, loc : EM.span) =
                          explifyExp ce, explifyCon cc), loc)
       | L.DView (nt, x, n, e, c) =>
         SOME (L'.DView (nt, x, n, explifyExp e, explifyCon c), loc)
+      | L.DIndex (e1, e2) =>
+        SOME (L'.DIndex (explifyExp e1, explifyExp e2), loc)
       | L.DSequence (nt, x, n) => SOME (L'.DSequence (nt, x, n), loc)
       | L.DDatabase s => SOME (L'.DDatabase s, loc)
       | L.DCookie (nt, x, n, c) => SOME (L'.DCookie (nt, x, n, explifyCon c), loc)

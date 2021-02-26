@@ -452,6 +452,7 @@ xint = x[0-9a-fA-F][0-9a-fA-F];
 <INITIAL> "table"     => (Tokens.TABLE (pos yypos, pos yypos + size yytext));
 <INITIAL> "sequence"  => (Tokens.SEQUENCE (pos yypos, pos yypos + size yytext));
 <INITIAL> "view"      => (Tokens.VIEW (pos yypos, pos yypos + size yytext));
+<INITIAL> "ensure_index" => (Tokens.INDEX (pos yypos, pos yypos + size yytext));
 <INITIAL> "class"     => (Tokens.CLASS (pos yypos, pos yypos + size yytext));
 <INITIAL> "cookie"    => (Tokens.COOKIE (pos yypos, pos yypos + size yytext));
 <INITIAL> "style"     => (Tokens.STYLE (pos yypos, pos yypos + size yytext));

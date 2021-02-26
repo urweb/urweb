@@ -2373,6 +2373,11 @@ fun p_fun isRec env (fx, n, args, ran, e) =
 
 val global_initializers : Print.PD.pp_desc list ref = ref []
 
+fun p_index_mode m =
+    string (case m of
+                Equality => "equality"
+              | Trigram => "trigram")
+
 fun p_decl env (dAll as (d, loc) : decl) =
     case d of
         DStruct (n, xts) =>
@@ -2528,6 +2533,19 @@ fun p_decl env (dAll as (d, loc) : decl) =
                                 space,
                                 string " */",
                                 newline]
+      | DIndex (tab, cols) => box [string "/* SQL index ",
+                                   string tab,
+                                   space,
+                                   string ":",
+                                   space,
+                                   p_list (fn (f, m) =>
+                                              box [string f,
+                                                   space,
+                                                   string ":",
+                                                   space,
+                                                   p_index_mode m]) cols,
+                                   space,
+                                   string "*/"]
       | DDatabase _ => box []
       | DPreparedStatements _ => box []
 
@@ -3751,10 +3769,44 @@ fun declaresAsForeignKey xs s =
             consume rest
         end
      |  _ => false
-             
+
 fun p_sql env (ds, _) =
     let
         val usesSimilar = ref false
+
+        val (ds, _) = ListUtil.foldlMapPartial
+                          (fn (d, idxs) =>
+                              case #1 d of
+                                  DTable (s, _, pk, _) =>
+                                  let
+                                      val idxs =
+                                          case pk of
+                                              "" => idxs
+                                            | _ =>
+                                              let
+                                                  val pk = String.tokens (fn ch => ch = #"," orelse Char.isSpace ch) pk
+                                                  val pk = map (fn s => case String.tokens (fn ch => ch = #"(") s of
+                                                                            first :: _ => (first, Equality)
+                                                                          | [] => raise Fail "Almost-empty primary key") pk
+                                              in
+                                                  (s, pk) :: idxs
+                                              end
+                                  in
+                                      (SOME d, idxs)
+                                  end
+                                | DIndex (tab, cols) =>
+                                  let
+                                      val idx = (tab, map (fn (col, m) =>
+                                                              (Settings.mangleSql (CharVector.map Char.toLower col), m)) cols)
+                                  in
+                                      if List.exists (fn x => x = idx) idxs then
+                                          (* Duplicate index!  Forget about it. *)
+                                          (NONE, idxs)
+                                      else
+                                          (SOME d, idx :: idxs)
+                                  end
+                                | _ => (SOME d, idxs))
+                          [] ds
 
         fun p_ddl d env =
             case d of
@@ -3832,6 +3884,46 @@ fun p_sql env (ds, _) =
                  space,
                  string q,
                  string ";",
+                 newline,
+                 newline]
+              | DIndex (tab, cols) =>
+                [string "CREATE INDEX",
+                 space,
+                 string (List.foldl (fn ((col, m), s) =>
+                                        s ^ "_"
+                                        ^ Settings.mangleSql (CharVector.map Char.toLower col)
+                                        ^ (case m of
+                                               Equality => ""
+                                             | Trigram => "_trigram")) tab cols),
+                 space,
+                 string "ON",
+                 space,
+                 string tab,
+                 if List.exists (fn (_, Trigram) => true
+                                  | _ => false) cols then
+                     box [space,
+                          string "USING",
+                          space,
+                          string "gist"]
+                 else
+                     box [],
+                 space,
+                 string "(",
+                 p_list (fn (col, m) =>
+                            let
+                                val col = Settings.mangleSql (CharVector.map Char.toLower col)
+                            in
+                                case m of
+                                    Equality => string col
+                                  | Trigram => if Option.isSome (#supportsSimilar (Settings.currentDbms ())) then
+                                                   box [string col,
+                                                        space,
+                                                        string "gist_trgm_ops"]
+                                               else
+                                                   (ErrorMsg.error "Index uses trigrams with database that doesn't support them";
+                                                    box [])
+                            end) cols,
+                 string ");",
                  newline,
                  newline]
               | DDatabase {usesSimilar = s, ...} =>

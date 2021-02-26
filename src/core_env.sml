@@ -335,6 +335,7 @@ fun declBinds env (d, loc) =
         in
             pushENamed env x n ct NONE s
         end
+      | DIndex _ => env
       | DDatabase _ => env
       | DCookie (x, n, c, s) =>
         let

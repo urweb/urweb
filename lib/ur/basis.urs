@@ -358,6 +358,11 @@ val check : fs ::: {Type}
             -> sql_exp [] [] fs bool
             -> sql_constraint fs []
 
+(*** Indices *)
+
+con index_mode :: Type -> Type
+val equality : t ::: Type -> index_mode t
+val trigram : index_mode string (* only in Postgres, for now *)
 
 (*** Queries *)
 

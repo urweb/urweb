@@ -209,6 +209,7 @@ fun renameDecl st (all as (d, loc)) =
                  renameExp st e2, renameCon st c3), loc)
       | DSequence _ => all
       | DView (n, x, n', e, c) => (DView (n, x, n', renameExp st e, renameCon st c), loc)
+      | DIndex (e1, e2) => (DIndex (renameExp st e1, renameExp st e2), loc)
       | DDatabase _ => all
       | DCookie (n, x, n', c) => (DCookie (n, x, n', renameCon st c), loc)
       | DStyle _ => all
@@ -387,6 +388,13 @@ fun dupDecl (all as (d, loc), st) =
             val env = E.declBinds E.empty d
         in
             ([d, (DVal (x, m', #2 (E.lookupENamed env m), (ENamed m, loc)), loc)], st)
+        end
+      | DIndex (e1, e2) =>
+        let
+            val d = (DIndex (renameExp st e1, renameExp st e2), loc)
+
+        in
+            ([d], st)
         end
       | DDatabase _ => ([all], st)
       | DCookie (n, x, m, c) =>

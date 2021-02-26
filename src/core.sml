@@ -132,6 +132,7 @@ datatype decl' =
        | DTable of string * int * con * string * exp * con * exp * con
        | DSequence of string * int * string
        | DView of string * int * string * exp * con
+       | DIndex of exp * exp
        | DDatabase of string
        | DCookie of string * int * con * string
        | DStyle of string * int * string

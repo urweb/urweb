@@ -297,6 +297,7 @@ fun summarize file =
                   | DTable _ => st
                   | DSequence _ => st
                   | DView _ => st
+                  | DIndex _ => st
                   | DDatabase _ => st
                   | DCookie _ => st
                   | DStyle (_, n, s) => (IM.insert (globals, n, (SOME s, [])), classes)

@@ -91,6 +91,9 @@ fun shake file =
                     in
                         usedVars (usedE, usedC) e
                     end
+                  | ((DIndex (e1, e2), _), st) =>
+                    usedVars (usedVars st e1) e2
+
                   | ((DTask (e1, e2), _), st) =>
                     if !sliceDb then
                         st
@@ -127,6 +130,7 @@ fun shake file =
                                      (cdef, IM.insert (edef, n, ([], dummyt, dummye)))
                                    | ((DView (_, n, _, _, c), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], c, dummye)))
+                                   | ((DIndex _, _), acc) => acc
                                    | ((DDatabase _, _), acc) => acc
                                    | ((DCookie (_, n, c, _), _), (cdef, edef)) =>
                                      (cdef, IM.insert (edef, n, ([], c, dummye)))
@@ -216,6 +220,7 @@ fun shake file =
                       | (DValRec vis, _) => List.exists (fn (_, n, _, _, _) => IS.member (#exp s, n)) vis
                       | (DExport _, _) => not (!sliceDb)
                       | (DView _, _) => true
+                      | (DIndex _, _) => true
                       | (DSequence _, _) => true
                       | (DTable _, _) => true
                       | (DDatabase _, _) => not (!sliceDb)

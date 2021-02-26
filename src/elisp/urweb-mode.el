@@ -137,7 +137,7 @@ See doc for the variable `urweb-mode-info'."
 	       "datatype" "else" "end" "extern" "fn" "map"
 	       "fun" "functor" "if" "include"
 	       "of" "open" "let" "in"
-	       "rec" "sequence" "sig" "signature" "cookie" "style" "task" "policy"
+	       "rec" "sequence" "ensure_index" "sig" "signature" "cookie" "style" "task" "policy"
 	       "struct" "structure" "table" "view" "then" "type" "val" "where"
 	       "with" "ffi"
 
@@ -237,7 +237,7 @@ See doc for the variable `urweb-mode-info'."
     ("\\<\\(\\(data\\)?type\\|con\\|class\\)\\s-+\\(\\sw+\\)"
      (1 font-lock-keyword-face)
      (3 (amAttribute font-lock-type-def-face)))
-    ("\\<\\(val\\|table\\|sequence\\|cookie\\|style\\|task\\|policy\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*[=:]"
+    ("\\<\\(val\\|table\\|sequence\\|ensure_index\\|cookie\\|style\\|task\\|policy\\)\\s-+\\(\\sw+\\>\\s-*\\)?\\(\\sw+\\)\\s-*[=:]"
      (1 font-lock-keyword-face)
      (3 (amAttribute font-lock-variable-name-face)))
     ("\\<\\(structure\\|functor\\)\\s-+\\(\\sw+\\)"

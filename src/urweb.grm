@@ -369,7 +369,7 @@ fun patternOut (e : exp) =
 %%
 %header (functor UrwebLrValsFn(structure Token : TOKEN))
 
-%term 
+%term
    EOF
  | STRING of string | INT of Int64.int | FLOAT of Real64.real | CHAR of char
  | SYMBOL of string | CSYMBOL of string
@@ -382,12 +382,12 @@ fun patternOut (e : exp) =
  | FN | PLUSPLUS | MINUSMINUS | MINUSMINUSMINUS | DOLLAR | TWIDDLE | CARET
  | LET | IN
  | STRUCTURE | SIGNATURE | STRUCT | SIG | END | FUNCTOR | WHERE | SQL | SELECT1
- | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE | VIEW
+ | INCLUDE | OPEN | CONSTRAINT | CONSTRAINTS | EXPORT | TABLE | SEQUENCE | VIEW | INDEX
  | COOKIE | STYLE | TASK | POLICY
  | CASE | IF | THEN | ELSE | ANDALSO | ORELSE
 
  | XML_BEGIN of string | XML_END | XML_BEGIN_END of string
- | NOTAGS of string 
+ | NOTAGS of string
  | BEGIN_TAG of string | END_TAG of string
 
  | SELECT | DISTINCT | FROM | AS | CWHERE | GROUP | ORDER | BY | HAVING
@@ -691,7 +691,9 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
        | CONSTRAINT cterm TWIDDLE cterm ([(DConstraint (cterm1, cterm2), s (CONSTRAINTleft, ctermright))])
        | EXPORT spath                   ([(DExport spath, s (EXPORTleft, spathright))])
        | TABLE SYMBOL COLON cterm pkopt commaOpt cstopt([(DTable (SYMBOL, entable cterm, pkopt, cstopt),
-                                                 s (TABLEleft, cstoptright))])
+                                                          s (TABLEleft, cstoptright))])
+       | INDEX eterm COLON eterm        ([(DIndex (eterm1, eterm2),
+                                           s (INDEXleft, eterm2right))])
        | SEQUENCE SYMBOL                ([(DSequence SYMBOL, s (SEQUENCEleft, SYMBOLright))])
        | VIEW SYMBOL EQ query           ([(DView (SYMBOL, query),
                                            s (VIEWleft, queryright))])

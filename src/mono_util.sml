@@ -582,6 +582,7 @@ fun mapfoldB {typ = fc, exp = fe, decl = fd, bind} =
                 S.map2 (mfe ctx e,
                      fn e' =>
                         (DView (s, xts, e'), loc))
+              | DIndex _ => S.return2 dAll
               | DDatabase _ => S.return2 dAll
               | DJavaScript _ => S.return2 dAll
               | DCookie _ => S.return2 dAll
@@ -723,6 +724,7 @@ fun mapfoldB (all as {bind, ...}) =
                                       | DTable _ => ctx
                                       | DSequence _ => ctx
                                       | DView _ => ctx
+                                      | DIndex _ => ctx
                                       | DDatabase _ => ctx
                                       | DJavaScript _ => ctx
                                       | DCookie _ => ctx
@@ -780,6 +782,7 @@ fun maxName (f : file) =
                 | DTable _ => count
                 | DSequence _ => count
                 | DView _ => count
+                | DIndex _ => count
                 | DDatabase _ => count
                 | DJavaScript _ => count
                 | DCookie _ => count
@@ -801,6 +804,7 @@ fun appLoc f (fl : file) =
               | DTable (_, _, e1, e2) => (eal e1; eal e2)
               | DSequence _ => ()
               | DView (_, _, e1) => eal e1
+              | DIndex _ => ()
               | DDatabase _ => ()
               | DJavaScript _ => ()
               | DCookie _ => ()

@@ -133,6 +133,8 @@ datatype policy =
        | PolUpdate of exp
        | PolSequence of exp
 
+datatype index_mode = Equality | Trigram
+
 datatype decl' =
          DDatatype of (string * int * (string * int * typ option) list) list
        | DVal of string * int * typ * exp * string
@@ -142,6 +144,7 @@ datatype decl' =
        | DTable of string * (string * typ) list * exp * exp
        | DSequence of string
        | DView of string * (string * typ) list * exp
+       | DIndex of string * (string * index_mode) list
        | DDatabase of {name : string, expunge : int, initialize : int, usesSimilar : bool}
 
        | DJavaScript of string

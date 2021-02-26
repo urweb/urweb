@@ -1627,7 +1627,7 @@ fun declBinds env (d, loc) =
                                                        ((CApp (tb, (CRel (nxs - i - 1), loc)), loc),
                                                         (KArrow (k, kb), loc)))
                                                    ((CNamed n, loc), k) xs
-                                   
+
                     val env = pushCNamedAs env x n kb NONE
                     val env = pushDatatype env n xs xncs
                 in
@@ -1699,6 +1699,7 @@ fun declBinds env (d, loc) =
         in
             pushENamedAs env x n ct
         end
+      | DIndex _ => env
       | DDatabase _ => env
       | DCookie (tn, x, n, c) =>
         let
