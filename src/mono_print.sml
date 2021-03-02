@@ -445,7 +445,8 @@ fun p_policy env pol =
 fun p_index_mode m =
     string (case m of
                 Equality => "equality"
-              | Trigram => "trigram")
+              | Trigram => "trigram"
+              | Skipped => "skipped")
 
 fun p_decl env (dAll as (d, _) : decl) =
     case d of

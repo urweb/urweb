@@ -2376,7 +2376,8 @@ val global_initializers : Print.PD.pp_desc list ref = ref []
 fun p_index_mode m =
     string (case m of
                 Equality => "equality"
-              | Trigram => "trigram")
+              | Trigram => "trigram"
+              | Skipped => "skipped")
 
 fun p_decl env (dAll as (d, loc) : decl) =
     case d of
@@ -3796,14 +3797,16 @@ fun p_sql env (ds, _) =
                                   end
                                 | DIndex (tab, cols) =>
                                   let
+                                      val cols = List.filter (fn (_, Skipped) => false
+                                                             | _ => true) cols
                                       val idx = (tab, map (fn (col, m) =>
                                                               (Settings.mangleSql (CharVector.map Char.toLower col), m)) cols)
                                   in
-                                      if List.exists (fn x => x = idx) idxs then
+                                      if List.null cols orelse List.exists (fn x => x = idx) idxs then
                                           (* Duplicate index!  Forget about it. *)
                                           (NONE, idxs)
                                       else
-                                          (SOME d, idx :: idxs)
+                                          (SOME (DIndex (tab, cols), #2 d), idx :: idxs)
                                   end
                                 | _ => (SOME d, idxs))
                           [] ds
@@ -3894,7 +3897,8 @@ fun p_sql env (ds, _) =
                                         ^ Settings.mangleSql (CharVector.map Char.toLower col)
                                         ^ (case m of
                                                Equality => ""
-                                             | Trigram => "_trigram")) tab cols),
+                                             | Trigram => "_trigram"
+                                             | Skipped => raise Fail "Found Skipped")) tab cols),
                  space,
                  string "ON",
                  space,
@@ -3922,6 +3926,7 @@ fun p_sql env (ds, _) =
                                                else
                                                    (ErrorMsg.error "Index uses trigrams with database that doesn't support them";
                                                     box [])
+                                  | Skipped => raise Fail "Found Skipped"
                             end) cols,
                  string ");",
                  newline,

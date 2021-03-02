@@ -692,8 +692,10 @@ decl   : CON SYMBOL cargl2 kopt EQ cexp (let
        | EXPORT spath                   ([(DExport spath, s (EXPORTleft, spathright))])
        | TABLE SYMBOL COLON cterm pkopt commaOpt cstopt([(DTable (SYMBOL, entable cterm, pkopt, cstopt),
                                                           s (TABLEleft, cstoptright))])
-       | INDEX eterm COLON eterm        ([(DIndex (eterm1, eterm2),
+       | INDEX eterm COLON eterm        ([(DIndex (eterm1, eterm2, NONE),
                                            s (INDEXleft, eterm2right))])
+       | INDEX eterm COLON eterm IN cterm ([(DIndex (eterm1, eterm2, SOME cterm),
+                                           s (INDEXleft, ctermright))])
        | SEQUENCE SYMBOL                ([(DSequence SYMBOL, s (SEQUENCEleft, SYMBOLright))])
        | VIEW SYMBOL EQ query           ([(DView (SYMBOL, query),
                                            s (VIEWleft, queryright))])

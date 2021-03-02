@@ -4487,13 +4487,22 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     ([(L'.DView (!basis_r, x, n, e', fs), loc)],
                      (env', denv, gs' @ gs))
                 end
-              | L.DIndex (table, cols) =>
+              | L.DIndex (table, cols, copt) =>
                 let
                     val (table', tableT', gs') = elabExp (env, denv) table
                     val (cols', colsT', gs'') = elabExp (env, denv) cols
 
                     val k = (L'.KRecord (L'.KType, loc), loc)
-                    val fsUsed = cunif env (loc, k)
+                    val (fsUsed, gs''') =
+                        case copt of
+                            NONE => (cunif env (loc, k), [])
+                          | SOME c =>
+                            let
+                                val (c', k', gs''') = elabCon (env, denv) c
+                            in
+                                checkKind env c' k' k;
+                                (c', enD gs''')
+                            end
                     val fsUnused = cunif env (loc, k)
                     val ks = cunif env (loc, (L'.KRecord (L'.KRecord (L'.KUnit, loc), loc), loc))
 
@@ -4509,7 +4518,7 @@ and elabDecl (dAll as (d, loc), (env, denv, gs)) =
                     checkCon env cols' colsT' colsT;
                     checkCon env table' tableT' tableT;
                     ([(L'.DIndex (table', cols'), loc)],
-                     (env, denv, gs'' @ gs' @ gs))
+                     (env, denv, gs''' @ gs'' @ gs' @ gs))
                 end
 
               | L.DDatabase s => ([(L'.DDatabase s, loc)], (env, denv, gs))

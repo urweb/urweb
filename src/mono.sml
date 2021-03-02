@@ -133,7 +133,7 @@ datatype policy =
        | PolUpdate of exp
        | PolSequence of exp
 
-datatype index_mode = Equality | Trigram
+datatype index_mode = Equality | Trigram | Skipped
 
 datatype decl' =
          DDatatype of (string * int * (string * int * typ option) list) list
