@@ -183,9 +183,16 @@ val checkCssUrl = CharVector.all (fn ch => Char.isAlphaNum ch
                                            orelse ch = #"&"
                                            orelse ch = #"="
                                            orelse ch = #"#")
-fun checkProperty s = size s > 0
-                      andalso (Char.isLower (String.sub (s, 0)) orelse String.sub (s, 0) = #"_")
-                      andalso CharVector.all (fn ch => Char.isLower ch orelse Char.isDigit ch orelse ch = #"_" orelse ch = #"-") s
+fun checkProperty s =
+  (* See https://www.w3.org/TR/CSS21/grammar.html#scanner, rule `ident` *)
+  let
+    fun nmstart ch = Char.isAlpha ch orelse ch = #"_"
+    fun nmchar ch = nmstart ch orelse Char.isDigit ch orelse ch = #"-"
+  in
+    size s > 0
+    andalso (nmstart (String.sub (s, 0)) orelse size s > 1 andalso String.sub (s, 0) = #"-" andalso nmstart (String.sub (s, 1)))
+    andalso CharVector.all nmchar s
+  end
 
 fun exp e =
     case e of
