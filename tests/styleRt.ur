@@ -16,14 +16,16 @@ fun main () =
       Property: <ctextbox source={prop}/><br/>
       Value: <ctextbox source={valu}/><br/>
       URL: <ctextbox source={url}/><br/>
-      <button value="Go!" onclick={prop <- get prop;
-                                   valu <- get valu;
-                                   url <- get url;
-                                   set xm <xml><span style={oneProperty
-                                                                (oneProperty noStyle (value (property prop) (atom valu)))
-                                                                (value (property "background") (css_url (bless url)))}>
-                                     Teeeest
-                                   </span></xml>}/>
+      <button value="Go!" onclick={fn _ =>
+	prop <- get prop;
+        valu <- get valu;
+        url <- get url;
+        set xm <xml><span style={
+	  oneProperty
+            (oneProperty noStyle (value (property prop) (atom valu)))
+            (value (property "background") (css_url (bless url)))}>
+          Teeeest
+        </span></xml>}/>
       <hr/>
       <dyn signal={signal xm}/>
       <hr/>

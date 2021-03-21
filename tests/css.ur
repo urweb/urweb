@@ -13,4 +13,5 @@ fun main () = return <xml><body>
   <span style="background: url(http://www.google.com/image.png)">C</span>
   <span style="background: url('http://www.google.com/image.png') red 10% 66px">D</span>
   <span style="color: red; width: 90 green; background: url(http://www.google.com/foo.jpg);">C</span>
+  <span style="-moz-hyphens: auto">Properties with dashes</span>
 </body></xml>
