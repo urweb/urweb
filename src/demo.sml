@@ -397,17 +397,21 @@ fun make' {prefix, dirname, guided} =
 
                 fun filters kind =
                     app (fn rule : Settings.rule =>
-                            (TextIO.output (outf, case #action rule of
-                                                      Settings.Allow => "allow"
-                                                    | Settings.Deny => "deny");
-                             TextIO.output (outf, " ");
-                             TextIO.output (outf, kind);
-                             TextIO.output (outf, " ");
-                             TextIO.output (outf, #pattern rule);
-                             case #kind rule of
-                                 Settings.Exact => ()
-                               | Settings.Prefix => TextIO.output (outf, "*");
-                             TextIO.output (outf, "\n")))
+                            if CharVector.exists (fn ch => ch = #"#") (#pattern rule) then
+                                () (* Don't reproduce fragment patterns,
+                                    * since they clash with comment syntax. *)
+                            else
+                                (TextIO.output (outf, case #action rule of
+                                                          Settings.Allow => "allow"
+                                                        | Settings.Deny => "deny");
+                                 TextIO.output (outf, " ");
+                                 TextIO.output (outf, kind);
+                                 TextIO.output (outf, " ");
+                                 TextIO.output (outf, #pattern rule);
+                                 case #kind rule of
+                                     Settings.Exact => ()
+                                   | Settings.Prefix => TextIO.output (outf, "*");
+                                 TextIO.output (outf, "\n")))
             in
                 Option.app (fn db => (TextIO.output (outf, "database ");
                                       TextIO.output (outf, db);
