@@ -3362,16 +3362,29 @@ uw_Basis_bool uw_Basis_stringToBool_error(uw_context ctx, uw_Basis_string s) {
 
 uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
   char *dot = strchr(s, '.'), *end = strchr(s, 0);
+  int dot_is_not_really_dot = 0;
   struct tm stm = {};
   stm.tm_isdst = -1;
+
+  // Extra logic to skip Postgres content that we want to ignore
+  if (!dot) {
+    dot = strchr(s, ' ');
+    if (dot) {
+      dot = strchr(dot, '-');
+      if (dot)
+        dot_is_not_really_dot = 1;
+    }
+  }
 
   if (dot) {
     *dot = 0;
     if (strptime(s, TIME_FMT_PG, &stm)) {
-      *dot = '.';
+      *dot = dot_is_not_really_dot ? '-' : '.';
       char usec[] = "000000";
-      int len = strlen(dot+1);
-      memcpy(usec, dot+1, len < 6 ? len : 6);
+      if (!dot_is_not_really_dot) {
+        int len = strlen(dot+1);
+        memcpy(usec, dot+1, len < 6 ? len : 6);
+      }
       uw_Basis_time r = { mktime(&stm), atoi(usec) };
       return r;
     }
