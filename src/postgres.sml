@@ -60,206 +60,175 @@ fun p_sql_type_base t =
       | Client => "integer"
       | Nullable t => p_sql_type_base t
 
-fun checkRel (table, checkNullable) (s, xts) =
+fun checkTablesAndViews tables views = 
     let
-        val sl = CharVector.map Char.toLower s
-        val sl = if size sl > 1 andalso String.sub (sl, 0) = #"\"" then
-                     String.substring (sl, 1, size sl - 2)
-                 else
-                     sl
-
-        val q = "SELECT COUNT(*) FROM information_schema." ^ table ^ " WHERE table_name = '"
-                ^ sl ^ "'"
-
-        val q' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '",
-                                sl,
-                                "' AND (",
-                                case String.concatWith " OR "
-                                                       (map (fn (x, t) =>
-                                                                String.concat ["(LOWER(column_name) = '",
-                                                                               Settings.mangleSqlCatalog
-                                                                                   (CharVector.map
-                                                                                        Char.toLower (ident x)),
-                                                                               (case p_sql_type_base t of
-                                                                                    "bigint" =>
-                                                                                    "' AND data_type IN ('bigint', 'numeric', 'integer')"
-                                                                                  | "text" =>
-                                                                                    "' AND data_type IN ('text', 'character varying')"                                                                          
-                                                                                  | t =>
-                                                                                    String.concat ["' AND data_type = '",
-                                                                                                   t,
-                                                                                                   "'"]),
-                                                                               if checkNullable then
-                                                                                   (" AND is_nullable = '"
-                                                                                    ^ (if isNotNull t then
-                                                                                           "NO"
-                                                                                       else
-                                                                                           "YES")
-                                                                                    ^ "'")
-                                                                               else
-                                                                                   "",
-                                                                               ")"]) xts) of
-                                    "" => "FALSE"
-                                  | s => s,
-                                ")"]
-
-        val q'' = String.concat ["SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '",
-                                 sl,
-                                 "' AND LOWER(column_name) LIKE '", Settings.mangleSqlCatalog "%'"]
+        fun getTableName (name: string): string = 
+            let
+                val sl = CharVector.map Char.toLower name
+            in
+                if size sl > 1 andalso String.sub (sl, 0) = #"\"" then
+                    String.substring (sl, 1, size sl - 2)
+                else
+                    sl
+            end
+        fun getColumnName (name: string): string =
+            Settings.mangleSqlCatalog
+                (CharVector.map
+                      Char.toLower (ident name))
+        fun getDatatype t = 
+            case p_sql_type_base t of
+                "bigint" => "ARRAY['bigint', 'numeric', 'integer']"
+              | "text" => "ARRAY['text', 'character varying']"
+              | t => "ARRAY['" ^ t ^ "']"
+        fun getIsNullable (t) : string =
+            (if isNotNull t then
+                 "'NO'"
+             else
+                 "'YES'")
+        fun createInsertStatements (isTable: bool) (table_name: string) (xts): string = 
+            let
+                val table_name = getTableName table_name
+            in
+                String.concat
+                    (List.map
+                         (fn (x, t) =>
+                             String.concat [
+                                 "INSERT INTO urweb_compiler_" ^ (if isTable then "tablespecs" else "viewspecs"),
+                                 " VALUES(",
+                                 "LOWER('" ^ table_name ^ "'),",
+                                 "LOWER('" ^ getColumnName x ^ "'),",
+                                 getDatatype t,
+                                 (if isTable
+                                  then "," ^ getIsNullable t
+                                  else ""),
+                                 ");"
+                             ]
+                         )
+                         xts)
+            end
+        val createtemptables  =
+            String.concat
+                [
+                  "CREATE TEMPORARY TABLE urweb_compiler_tablespecs",
+                  "    ( table_name text not null,",
+                  "      column_name text not null,",
+                  "      data_type text[],",
+                  "      is_nullable text not null )",
+                  "    ON COMMIT DROP;",
+                  "CREATE TEMPORARY TABLE urweb_compiler_viewspecs",
+                  "    ( table_name text not null,",
+                  "      column_name text not null,",
+                  "      data_type text[])",
+                  "    ON COMMIT DROP;",
+                  "CREATE TEMPORARY TABLE urweb_compiler_errors",
+                  "    ( error text not null )",
+                  "    ON COMMIT DROP;"
+                ]
+        fun checkRelationsQuery (isTable: bool) =
+            String.concat [
+                "  INSERT INTO urweb_compiler_errors",
+                "  SELECT (CASE WHEN actual.table_name IS NULL THEN 'Missing table/view: ' || needed.table_name",
+                "          WHEN actual.count > needed.count THEN 'Table/view has too many columns: ' || needed.table_name",
+                "          ELSE NULL",
+                "          END)",
+                "    FROM",
+                "        (SELECT table_name as table_name, count(*) as count",
+                "          FROM urweb_compiler_" ^ (if isTable then "tablespecs" else "viewspecs"),
+                "          GROUP BY table_name) as needed",
+                "    LEFT OUTER JOIN",
+                "        (SELECT t.table_name as table_name, count(*) as count",
+                "          FROM information_schema." ^ (if isTable then "tables" else "views") ^ " t",
+                "            JOIN information_schema.columns c ON t.table_name = c.table_name ",
+                "            AND LOWER(c.column_name) LIKE '" ^ (Settings.mangleSqlCatalog "") ^ "%%'",
+                "          GROUP BY t.table_name) as actual",
+                "        ON LOWER(actual.table_name) = needed.table_name",
+                "  WHERE actual.table_name IS NULL",
+                "      OR actual.count > needed.count;"
+            ]
+        fun checkColumnsQuery (isTable: bool) = 
+            String.concat
+                [
+                  "  INSERT INTO urweb_compiler_errors",
+                  "  SELECT 'Column ' || ts.table_name || '.' || ts.column_name || ' has the wrong type.'",
+                  "    FROM urweb_compiler_" ^ (if isTable then "tablespecs" else "viewspecs") ^ " ts", 
+                  "    LEFT OUTER JOIN information_schema.columns c",
+                  "        ON (LOWER(c.table_name) = ts.table_name",
+                  "            AND LOWER(c.column_name) = ts.column_name",
+                  if isTable then
+                  "            AND c.is_nullable = ts.is_nullable"
+                  else "" ,
+                  "            AND c.data_type = ANY(ts.data_type)",
+                  "        )",
+                  "  WHERE c.column_name IS NULL;"
+                ]
+        val query = 
+            String.concat
+                [
+                  createtemptables,
+                  String.concat (List.map (fn (n, xts) => createInsertStatements true n xts) tables),
+                  String.concat (List.map (fn (n, xts) => createInsertStatements false n xts) views),
+                  checkRelationsQuery true,
+                  checkRelationsQuery false,
+                  checkColumnsQuery true,
+                  checkColumnsQuery false,
+                  "SELECT COALESCE(string_agg(urweb_compiler_errors.error, '\\n'), '') FROM urweb_compiler_errors;"
+                ]
     in
-        box [string "res = PQexec(conn, \"",
-             string q,
-             string "\");",
-             newline,
-             newline,
-             string "if (res == NULL) {",
-             newline,
-             box [string "PQfinish(conn);",
-                  newline,
-                  string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
-                  newline],
-             string "}",
-             newline,
-             newline,
-             string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
-             newline,
-             box [string "char msg[1024];",
-                  newline,
-                  string "strncpy(msg, PQerrorMessage(conn), 1024);",
-                  newline,
-                  string "msg[1023] = 0;",
-                  newline,
-                  string "PQclear(res);",
-                  newline,
-                  string "PQfinish(conn);",
-                  newline,
-                  string "uw_error(ctx, FATAL, \"Query failed:\\n",
-                  string q,
-                  string "\\n%s\", msg);",
-                  newline],
-             string "}",
-             newline,
-             newline,
-             string "if (strcmp(PQgetvalue(res, 0, 0), \"1\")) {",
-             newline,
-             box [string "PQclear(res);",
-                  newline,
-                  string "PQfinish(conn);",
-                  newline,
-                  string "uw_error(ctx, FATAL, \"Table '",
-                  string sl,
-                  string "' does not exist.\");",
-                  newline],
-             string "}",
-             newline,
-             newline,
-             string "PQclear(res);",
-             newline,
-
-             string "res = PQexec(conn, \"",
-             string q',
-             string "\");",
-             newline,
-             newline,
-             string "if (res == NULL) {",
-             newline,
-             box [string "PQfinish(conn);",
-                  newline,
-                  string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
-                  newline],
-             string "}",
-             newline,
-             newline,
-             string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
-             newline,
-             box [string "char msg[1024];",
-                  newline,
-                  string "strncpy(msg, PQerrorMessage(conn), 1024);",
-                  newline,
-                  string "msg[1023] = 0;",
-                  newline,
-                  string "PQclear(res);",
-                  newline,
-                  string "PQfinish(conn);",
-                  newline,
-                  string "uw_error(ctx, FATAL, \"Query failed:\\n",
-                  string q',
-                  string "\\n%s\", msg);",
-                  newline],
-             string "}",
-             newline,
-             newline,
-             string "if (strcmp(PQgetvalue(res, 0, 0), \"",
-             string (Int.toString (length xts)),
-             string "\")) {",
-             newline,
-             box [string "PQclear(res);",
-                  newline,
-                  string "PQfinish(conn);",
-                  newline,
-                  string "uw_error(ctx, FATAL, \"Table '",
-                  string sl,
-                  string "' has the wrong column types.\");",
-                  newline],
-             string "}",
-             newline,
-             newline,
-             string "PQclear(res);",
-             newline,
-             newline,
-
-             string "res = PQexec(conn, \"",
-             string q'',
-             string "\");",
-             newline,
-             newline,
-             string "if (res == NULL) {",
-             newline,
-             box [string "PQfinish(conn);",
-                  newline,
-                  string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
-                  newline],
-             string "}",
-             newline,
-             newline,
-             string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
-             newline,
-             box [string "char msg[1024];",
-                  newline,
-                  string "strncpy(msg, PQerrorMessage(conn), 1024);",
-                  newline,
-                  string "msg[1023] = 0;",
-                  newline,
-                  string "PQclear(res);",
-                  newline,
-                  string "PQfinish(conn);",
-                  newline,
-                  string "uw_error(ctx, FATAL, \"Query failed:\\n",
-                  string q'',
-                  string "\\n%s\", msg);",
-                  newline],
-             string "}",
-             newline,
-             newline,
-             string "if (strcmp(PQgetvalue(res, 0, 0), \"",
-             string (Int.toString (length xts)),
-             string "\")) {",
-             newline,
-             box [string "PQclear(res);",
-                  newline,
-                  string "PQfinish(conn);",
-                  newline,
-                  string "uw_error(ctx, FATAL, \"Table '",
-                  string sl,
-                  string "' has extra columns.\");",
-                  newline],
-             string "}",
-             newline,
-             newline,
-             string "PQclear(res);",
-             newline]
+        box [
+            string "res = PQexec(conn, \"",
+            string query,
+            string "\");",
+            newline,
+            newline,
+            string "if (res == NULL) {",
+            newline,
+            box [string "PQfinish(conn);",
+                 newline,
+                 string "uw_error(ctx, FATAL, \"Out of memory allocating query result.\");",
+                 newline],
+            string "}",
+            newline,
+            newline,
+            string "if (PQresultStatus(res) != PGRES_TUPLES_OK) {",
+            newline,
+            box [string "char msg[1024];",
+                 newline,
+                 string "strncpy(msg, PQerrorMessage(conn), 1024);",
+                 newline,
+                 string "msg[1023] = 0;",
+                 newline,
+                 string "PQclear(res);",
+                 newline,
+                 string "PQfinish(conn);",
+                 newline,
+                 string "uw_error(ctx, FATAL, \"Query failed:\\n",
+                 string query,
+                 string "\\n%s\", msg);",
+                 newline],
+            string "}",
+            newline,
+            newline,
+            string "if (strcmp(PQgetvalue(res, 0, 0), \"\") != 0) {",
+            newline,
+            box [string "char msg[1024];",
+                 newline,
+                 string "strncpy(msg, PQgetvalue(res, 0, 0), 1024);",
+                 newline,
+                 string "PQclear(res);",
+                 newline,
+                 string "PQfinish(conn);",
+                 newline,
+                 string "uw_error(ctx, FATAL, \"Database structure problem:\\n%s\", msg);",
+                 newline],
+            string "}",
+            newline,
+            newline,
+            string "PQclear(res);",
+            newline,
+            newline
+        ]
     end
-
+                                      
 fun init {dbstring, prepared = ss, tables, views, sequences} =
     box [if #persistent (currentProtocol ()) then
              box [string "static void uw_db_validate(uw_context ctx) {",
@@ -269,8 +238,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
                   string "PGresult *res;",
                   newline,
                   newline,
-                  p_list_sep newline (checkRel ("tables", true)) tables,
-                  p_list_sep newline (checkRel ("views", false)) views,
+                  checkTablesAndViews tables views,
 
                   p_list_sep newline
                              (fn s =>
