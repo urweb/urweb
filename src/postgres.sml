@@ -85,26 +85,25 @@ fun checkTablesAndViews tables views =
                  "'NO'"
              else
                  "'YES'")
-        fun createInsertStatements (isTable: bool) (table_name: string) (xts): string = 
+        fun createValues (isTable: bool) (table_name: string) (xts): string = 
             let
                 val table_name = getTableName table_name
             in
-                String.concat
-                    (List.map
-                         (fn (x, t) =>
-                             String.concat [
-                                 "INSERT INTO urweb_compiler_" ^ (if isTable then "tablespecs" else "viewspecs"),
-                                 " VALUES(",
-                                 "LOWER('" ^ table_name ^ "'),",
-                                 "LOWER('" ^ getColumnName x ^ "'),",
-                                 getDatatype t,
-                                 (if isTable
-                                  then "," ^ getIsNullable t
-                                  else ""),
-                                 ");"
-                             ]
-                         )
-                         xts)
+                String.concatWith
+                    ","
+                    (List.map (fn (x, t) =>
+                                  String.concat [
+                                      "(",
+                                      "LOWER('" ^ table_name ^ "'),",
+                                      "LOWER('" ^ getColumnName x ^ "'),",
+                                      getDatatype t,
+                                      (if isTable
+                                       then "," ^ getIsNullable t
+                                       else ""),
+                                      ")"
+                                  ]
+                              )
+                              xts)
             end
         val createtemptables  =
             String.concat
@@ -165,8 +164,12 @@ fun checkTablesAndViews tables views =
             String.concat
                 [
                   createtemptables,
-                  String.concat (List.map (fn (n, xts) => createInsertStatements true n xts) tables),
-                  String.concat (List.map (fn (n, xts) => createInsertStatements false n xts) views),
+                  if List.length tables > 0 then "INSERT INTO urweb_compiler_tablespecs VALUES" else "",
+                  String.concatWith "," (List.map (fn (n, xts) => createValues true n xts) tables),
+                  ";",
+                  if List.length views > 0 then "INSERT INTO urweb_compiler_viewspecs VALUES" else "",
+                  String.concatWith "," (List.map (fn (n, xts) => createValues false n xts) views),
+                  ";",
                   checkRelationsQuery true,
                   checkRelationsQuery false,
                   checkColumnsQuery true,
