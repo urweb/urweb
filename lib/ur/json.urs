@@ -1,10 +1,13 @@
-(** The JSON text-based serialization format *)
+(** The JSON text-based serialization format (with YAML as a bonus) *)
 
 class json
 
 val toJson : a ::: Type -> json a -> a -> string
 val fromJson : a ::: Type -> json a -> string -> a
 val fromJson' : a ::: Type -> json a -> string -> a * string
+
+val toYaml : a ::: Type -> json a -> a -> string
+val fromYaml : a ::: Type -> json a -> string -> a
 
 val mkJson : a ::: Type -> {ToJson : a -> string,
                             FromJson : string -> a * string} -> json a
@@ -30,6 +33,9 @@ val json_record_withOptional : ts ::: {Type} -> ots ::: {Type} -> [ts ~ ots]
 val json_variant : ts ::: {Type} -> folder ts -> $(map json ts) -> $(map (fn _ => string) ts) -> json (variant ts)
 
 val json_unit : json unit
+
+val json_dict : a ::: Type -> json a -> json (list (string * a))
+(* Simple key-value list, encoded in YAML with keys as labels on lines *)
 
 val json_derived : base ::: Type -> derived ::: Type
                    -> (base -> derived)
