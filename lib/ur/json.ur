@@ -156,19 +156,108 @@ fun unescape s =
             end
     end
 
-fun stringIn s =
+fun readYamlLine (minIndent : option int) (* set if we come right after a list bullet and should fake some indent *)
+                 (s : string) : int (* indent level *) * string (* remaining code *) =
+    let
+        fun read s acc =
+            if s = "" then
+                (acc, "")
+            else
+                let
+                    val ch = String.sub s 0
+                in
+                    if ch = #"\n" || ch = #"\r" then
+                        read (String.suffix s 1) 0
+                    else if ch = #"#" then
+                        (* Comment *)
+                        case String.split s #"\n" of
+                            None => (acc, s)
+                          | Some (_, rest) => read rest 0
+                    else if ch = #" " then
+                        read (String.suffix s 1) (acc + 1)
+                    else
+                        (acc, s)
+                end
+
+        val (i, s) = read s 0
+    in
+        (case minIndent of
+             None => i
+           | Some i' => max i' i, s)
+    end
+
+datatype block_style = ToSpaces | KeepNewlines
+datatype chomp_style = SingleNewline | NoNewline | AllNewlines
+
+fun newlines i =
+    if i <= 0 then
+        ""
+    else
+        newlines (i-1) ^ "\n"
+
+fun readMultilineString block chomp i s =
+    let
+        fun read s acc onl (* length of longest suffix of acc that is only newline characters *) =
+            let
+                val (i', s') = readYamlLine None s
+            in
+                if i' < i then
+                    (case chomp of
+                         SingleNewline => String.substring acc {Start = 0, Len = String.length acc - onl} ^ "\n"
+                       | NoNewline => String.substring acc {Start = 0, Len = String.length acc - onl}
+                       | AllNewlines =>
+                         case block of
+                             KeepNewlines => acc
+                           | ToSpaces => String.substring acc {Start = 0, Len = String.length acc - onl} ^ newlines onl, s)
+                else
+                    case String.split s' #"\n" of
+                        None => error <xml>Multiline YAML string ends without newline.</xml>
+                      | Some (line, s') => read s' (acc ^ line ^ (case block of ToSpaces => " " | KeepNewlines => "\n"))
+                                                (if String.all (fn ch => ch = #"\r") line then
+                                                     onl + String.length line + 1
+                                                 else if line <> "" && String.sub line (String.length line - 1) = #"\r" then
+                                                     2
+                                                 else
+                                                     1)
+            end
+    in
+        case String.split s #"\n" of
+            None => error <xml>Multiline YAML string ends too early.</xml>
+          | Some (_, s') => read s' "" 0
+    end
+
+fun readMultiline block i s =
+    let
+        val s = String.suffix s 1
+        val (chomp, s) = if s = "" then
+                             error <xml>Multiline YAML string ends too early.</xml>
+                         else if String.sub s 0 = #"-" then
+                             (NoNewline, String.suffix s 1)
+                         else if String.sub s 0 = #"+" then
+                             (AllNewlines, String.suffix s 1)
+                         else
+                             (SingleNewline, s)
+    in
+        readMultilineString block chomp i s
+    end
+
+fun stringIn i s =
     if s = "" then
         ("", "")
     else if String.sub s 0 = #"\"" || String.sub s 0 = #"'" then
         unescape s
-    else case String.msplit {Haystack = s, Needle = "\r\n"} of
+    else if String.sub s 0 = #">" then
+        readMultiline ToSpaces i s
+    else if String.sub s 0 = #"|" then
+        readMultiline KeepNewlines i s
+   else case String.msplit {Haystack = s, Needle = "\r\n"} of
              None => (s, "")
            | Some (v, _, rest) => (v, rest)
 
 val json_string = {ToJson = escape,
                    FromJson = unescape,
                    ToYaml = fn _ => escape,
-                   FromYaml = fn _ _ => stringIn}
+                   FromYaml = fn _ => stringIn}
 
 fun rfc3339_out s =
     let
@@ -334,36 +423,6 @@ fun indent i =
         ""
     else
         " " ^ indent (i - 1)
-
-fun readYamlLine (minIndent : option int) (* set if we come right after a list bullet and should fake some indent *)
-                 (s : string) : int (* indent level *) * string (* remaining code *) =
-    let
-        fun read s acc =
-            if s = "" then
-                (acc, "")
-            else
-                let
-                    val ch = String.sub s 0
-                in
-                    if ch = #"\n" || ch = #"\r" then
-                        read (String.suffix s 1) 0
-                    else if ch = #"#" then
-                        (* Comment *)
-                        case String.split s #"\n" of
-                            None => (acc, s)
-                          | Some (_, rest) => read rest 0
-                    else if ch = #" " then
-                        read (String.suffix s 1) (acc + 1)
-                    else
-                        (acc, s)
-                end
-
-        val (i, s) = read s 0
-    in
-        (case minIndent of
-             None => i
-           | Some i' => max i' i, s)
-    end
 
 fun json_list [a] (j : json a) : json (list a) =
     let
@@ -884,7 +943,7 @@ fun json_dict [a] (j : json a) : json (list (string * a)) =
                                        None => error <xml>Couldn't find colon reading key-value list from YAML.</xml>
                                      | Some (name, s') =>
                                        let
-                                           val (name', rest) = stringIn name
+                                           val (name', rest) = stringIn 0 name
                                            val (v, s') = j.FromYaml False (i'+1) (skipRealSpaces s')
                                        in
                                            if String.all Char.isSpace rest then
