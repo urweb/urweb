@@ -496,7 +496,10 @@ fun json_list [a] (j : json a) : json (list a) =
         {ToJson = toJ,
          FromJson = fromJ,
          ToYaml = toY,
-         FromYaml = fromY}
+         FromYaml = fn b i s => if String.isPrefix {Full = s, Prefix = "[]"} then
+                                    ([], String.suffix s 2)
+                                else
+                                    fromY b i s}
     end
 
 fun skipOne s =
