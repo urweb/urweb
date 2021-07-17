@@ -930,7 +930,37 @@ fun json_dict [a] (j : json a) : json (list (string * a)) =
                                    "{" => "{" ^ this
                                  | _ => acc ^ "," ^ this
                            end) "{" ls ^ "}",
-     FromJson = fn _ => error <xml>Dict doesn't support JSON yet.</xml>,
+     FromJson = fn s =>
+                   let
+                       fun fromJ (s : string) (acc : list (string * a)) : list (string * a) * string =
+                           if s = "" then
+                               error <xml>JSON object doesn't end in brace</xml>
+                           else if String.sub s 0 = #"}" then
+                               (rev acc, String.suffix s 1)
+                           else let
+                                   val (name, s') = unescape s
+                                   val s' = skipSpaces s'
+                                   val s' = if s' = "" || String.sub s' 0 <> #":" then
+                                                error <xml>No colon after JSON object field name</xml>
+                                            else
+                                                skipSpaces (String.suffix s' 1)
+
+                                   val (v, s') = j.FromJson s'
+
+                                   val s' = skipSpaces s'
+                                   val s' = if s' <> "" && String.sub s' 0 = #"," then
+                                                skipSpaces (String.suffix s' 1)
+                                            else
+                                                s'
+                               in
+                                   fromJ s' ((name, v) :: acc)
+                               end
+                   in
+                       if s = "" || String.sub s 0 <> #"{" then
+                           error <xml>JSON dictionary doesn't begin with brace</xml>
+                       else
+                           fromJ (skipSpaces (String.suffix s 1)) []
+                   end,
      ToYaml = fn i ls =>
                  foldl (fn (k, v) acc => indent i ^ k ^ ": " ^ j.ToYaml (i+1) v ^ acc) "" ls,
      FromYaml = fn b i s =>
