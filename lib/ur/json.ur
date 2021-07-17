@@ -613,14 +613,22 @@ fun json_record_withOptional [ts ::: {Type}] [ots ::: {Type}] [ts ~ ots]
                                             else
                                                 skipSpaces (String.suffix s' 1)
 
-                                   val (r, s') = @foldR2 [json] [fn _ => string] [fn ts => $(map option ts) -> $(map option ts) * string]
-                                                  (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] (j : json t) name' acc r =>
+                                   val (r, s') = @foldR3 [fn _ => bool] [json] [fn _ => string] [fn ts => $(map option ts) -> $(map option ts) * string]
+                                                  (fn [nm ::_] [t ::_] [r ::_] [[nm] ~ r] skipNull (j : json t) name' acc r =>
                                                       if name = name' then
-                                                          let
-                                                              val (v, s') = j.FromJson s'
-                                                          in
-                                                              (r -- nm ++ {nm = Some v}, s')
-                                                          end
+                                                          if skipNull
+                                                             && String.lengthGe s' 5
+                                                             && String.isPrefix {Prefix = "null", Full = s'}
+                                                             && (Char.isSpace (String.sub s' 4)
+                                                                 || String.sub s' 4 = #","
+                                                                 || String.sub s' 4 = #"}") then
+                                                              (r, String.suffix s' 4)
+                                                          else
+                                                              let
+                                                                  val (v, s') = j.FromJson s'
+                                                              in
+                                                                  (r -- nm ++ {nm = Some v}, s')
+                                                              end
                                                       else
                                                           let
                                                               val (r', s') = acc (r -- nm)
@@ -628,7 +636,10 @@ fun json_record_withOptional [ts ::: {Type}] [ots ::: {Type}] [ts ~ ots]
                                                               (r' ++ {nm = r.nm}, s')
                                                           end)
                                                   (fn r => (r, skipOne s'))
-                                                  (@Folder.concat ! fl ofl) (jss ++ ojss) (names ++ onames) r
+                                                  (@Folder.concat ! fl ofl)
+                                                  (@map0 [fn _ => bool] (fn [t ::_] => False) fl
+                                                    ++ @map0 [fn _ => bool] (fn [t ::_] => True) ofl)
+                                                  (jss ++ ojss) (names ++ onames) r
 
                                    val s' = skipSpaces s'
                                    val s' = if s' <> "" && String.sub s' 0 = #"," then
