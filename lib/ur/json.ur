@@ -652,7 +652,7 @@ fun json_record_withOptional [ts ::: {Type}] [ots ::: {Type}] [ts ~ ots]
                                end
                    in
                        if s = "" || String.sub s 0 <> #"{" then
-                           error <xml>JSON record doesn't begin with brace</xml>
+                           error <xml>JSON record doesn't begin with brace: {[if String.lengthGe s 10 then String.substring s {Start = 0, Len = 10} else s]}</xml>
                        else
                            let
                                val (r, s') = fromJ (skipSpaces (String.suffix s 1))
@@ -787,7 +787,7 @@ fun json_record [ts ::: {Type}] (fl : folder ts) (jss : $(map json ts)) (names :
                                end
                    in
                        if s = "" || String.sub s 0 <> #"{" then
-                           error <xml>JSON record doesn't begin with brace</xml>
+                           error <xml>JSON record doesn't begin with brace: {[if String.lengthGe s 10 then String.substring s {Start = 0, Len = 10} else s]}</xml>
                        else
                            let
                                val (r, s') = fromJ (skipSpaces (String.suffix s 1))
@@ -969,7 +969,7 @@ fun json_dict [a] (j : json a) : json (list (string * a)) =
                                end
                    in
                        if s = "" || String.sub s 0 <> #"{" then
-                           error <xml>JSON dictionary doesn't begin with brace</xml>
+                           error <xml>JSON dictionary doesn't begin with brace: {[if String.lengthGe s 10 then String.substring s {Start = 0, Len = 10} else s]}</xml>
                        else
                            fromJ (skipSpaces (String.suffix s 1)) []
                    end,
