@@ -171,9 +171,9 @@ fun readYamlLine (minIndent : option int) (* set if we come right after a list b
                         read (String.suffix s 1) 0
                     else if ch = #"#" then
                         (* Comment *)
-                        case String.split s #"\n" of
+                        case String.seek s #"\n" of
                             None => (acc, s)
-                          | Some (_, rest) => read rest 0
+                          | Some rest => read rest 0
                     else if ch = #" " then
                         read (String.suffix s 1) (acc + 1)
                     else
@@ -222,9 +222,9 @@ fun readMultilineString block chomp i s =
                                                      1)
             end
     in
-        case String.split s #"\n" of
+        case String.seek s #"\n" of
             None => error <xml>Multiline YAML string ends too early.</xml>
-          | Some (_, s') => read s' "" 0
+          | Some s' => read s' "" 0
     end
 
 fun readMultiline block i s =
@@ -545,6 +545,14 @@ fun skipOne s =
         skipOne s False False 0 0
     end
 
+fun truncAtNewline s =
+    case String.split s #"\n" of
+        None => s
+      | Some (s', _) => s'
+
+fun firstTen s =
+    if String.lengthGe s 10 then String.substring s {Start = 0, Len = 10} else s
+
 fun skipUntilIndentLowEnough target s =
     let
         fun skip s =
@@ -554,24 +562,19 @@ fun skipUntilIndentLowEnough target s =
                 if i <= target then
                     s
                 else
-                    case String.split s' #"\n" of
+                    case String.seek s' #"\n" of
                         None => s'
-                      | Some (_, s') => skip s'
+                      | Some s' => skip s'
             end
 
         (* Don't look for indentation in the first line,
          * as indeed it may not come at an actual line beginning. *)
-        val s' = case String.split s #"\n" of
+        val s' = case String.seek s #"\n" of
                      None => s
-                   | Some (_, s) => skip s
+                   | Some s => skip s
     in
         s'
     end
-
-fun truncAtNewline s =
-    case String.split s #"\n" of
-        None => s
-      | Some (s', _) => s'
 
 fun json_record_withOptional [ts ::: {Type}] [ots ::: {Type}] [ts ~ ots]
                              (fl : folder ts) (jss : $(map json ts)) (names : $(map (fn _ => string) ts))
@@ -652,7 +655,7 @@ fun json_record_withOptional [ts ::: {Type}] [ots ::: {Type}] [ts ~ ots]
                                end
                    in
                        if s = "" || String.sub s 0 <> #"{" then
-                           error <xml>JSON record doesn't begin with brace: {[if String.lengthGe s 10 then String.substring s {Start = 0, Len = 10} else s]}</xml>
+                           error <xml>JSON record doesn't begin with brace: {[firstTen s]}</xml>
                        else
                            let
                                val (r, s') = fromJ (skipSpaces (String.suffix s 1))
@@ -726,7 +729,12 @@ fun json_record_withOptional [ts ::: {Type}] [ots ::: {Type}] [ts ~ ots]
                                            end
                                end
 
-                       val (r, s') = fromY b s (@map0 [option] (fn [t ::_] => None) (@Folder.concat ! fl ofl))
+                       val r = @map0 [option] (fn [t ::_] => None) (@Folder.concat ! fl ofl)
+                       val (r, s') =
+                           if String.isPrefix {Full = s, Prefix = "{}"} then
+                               (r, String.suffix s 2)
+                           else
+                               fromY b s r
                    in
                        (@map2 [option] [fn _ => string] [ident] (fn [t] (v : option t) name =>
                                                                     case v of
@@ -787,7 +795,7 @@ fun json_record [ts ::: {Type}] (fl : folder ts) (jss : $(map json ts)) (names :
                                end
                    in
                        if s = "" || String.sub s 0 <> #"{" then
-                           error <xml>JSON record doesn't begin with brace: {[if String.lengthGe s 10 then String.substring s {Start = 0, Len = 10} else s]}</xml>
+                           error <xml>JSON record doesn't begin with brace: {[firstTen s]}</xml>
                        else
                            let
                                val (r, s') = fromJ (skipSpaces (String.suffix s 1))
@@ -846,7 +854,12 @@ fun json_record [ts ::: {Type}] (fl : folder ts) (jss : $(map json ts)) (names :
                                            end
                                end
 
-                       val (r, s') = fromY b s (@map0 [option] (fn [t ::_] => None) fl)
+                       val r = @map0 [option] (fn [t ::_] => None) fl
+                       val (r, s') =
+                           if String.isPrefix {Full = s, Prefix = "{}"} then
+                               (r, String.suffix s 2)
+                           else
+                               fromY b s r
                    in
                        (@map2 [option] [fn _ => string] [ident] (fn [t] (v : option t) name =>
                                                                     case v of
@@ -969,7 +982,7 @@ fun json_dict [a] (j : json a) : json (list (string * a)) =
                                end
                    in
                        if s = "" || String.sub s 0 <> #"{" then
-                           error <xml>JSON dictionary doesn't begin with brace: {[if String.lengthGe s 10 then String.substring s {Start = 0, Len = 10} else s]}</xml>
+                           error <xml>JSON dictionary doesn't begin with brace: {[firstTen s]}</xml>
                        else
                            fromJ (skipSpaces (String.suffix s 1)) []
                    end,
@@ -998,7 +1011,10 @@ fun json_dict [a] (j : json a) : json (list (string * a)) =
                                        end
                            end
                    in
-                       fromY b s []
+                       if String.isPrefix {Full = s, Prefix = "{}"} then
+                           ([], String.suffix s 2)
+                       else
+                           fromY b s []
                    end}
 
 fun json_derived [base] [derived] (f1 : base -> derived) (f2 : derived -> base) (j : json base) =
