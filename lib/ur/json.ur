@@ -140,6 +140,7 @@ fun unescape s =
                                | #"'" => "'"
 			       | #"\\" => "\\"
 			       | #"/" => "/"
+                               | #" " => " "
                                | x => error <xml>JSON unescape: Bad escape char: {[x]}</xml>)
 			    ^
 			    unesc last (i+2) (String.suffix s 2)
