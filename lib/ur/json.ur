@@ -425,6 +425,11 @@ fun indent i =
     else
         " " ^ indent (i - 1)
 
+fun truncAtNewline s =
+    case String.split s #"\n" of
+        None => s
+      | Some (s', _) => s'
+
 fun json_list [a] (j : json a) : json (list a) =
     let
         fun toJ' (ls : list a) : string =
@@ -475,7 +480,7 @@ fun json_list [a] (j : json a) : json (list a) =
         fun toY (i : int) (ls : list a) : string =
             case ls of
                 [] => ""
-              | x :: ls' => indent (i + 1) ^ "- " ^ j.ToYaml (i + 1) x ^ toY i ls'
+              | x :: ls' => indent (i + 1) ^ "- " ^ j.ToYaml (i + 3) x ^ toY i ls'
 
         fun fromY (b : bool) (i : int) (s : string) : list a * string =
             let
@@ -485,7 +490,12 @@ fun json_list [a] (j : json a) : json (list a) =
                     ([], s)
                 else if String.sub s' 0 = #"-" then
                     let
-                        val (v, s) = j.FromYaml True (i'+1) (skipRealSpaces (String.suffix s' 1))
+                        val s' = String.suffix s' 1
+                        val (s', i') = if s' <> "" && String.sub s' 0 = #" " then
+                                           (String.suffix s' 1, i' + 2)
+                                       else
+                                           (s', i' + 1)
+                        val (v, s) = j.FromYaml True i' s'
                         val (ls, s) = fromY False i s
                     in
                         (v :: ls, s)
@@ -544,11 +554,6 @@ fun skipOne s =
     in
         skipOne s False False 0 0
     end
-
-fun truncAtNewline s =
-    case String.split s #"\n" of
-        None => s
-      | Some (s', _) => s'
 
 fun firstTen s =
     if String.lengthGe s 10 then String.substring s {Start = 0, Len = 10} else s
