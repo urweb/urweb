@@ -515,7 +515,26 @@ fun json_list [a] (j : json a) : json (list a) =
 
 fun skipOne s =
     let
-        fun skipOne s dquote squote brace bracket =
+        fun skipStringLiteral s delimiter =
+            if s = "" then
+                s
+            else
+                let
+                    val ch = String.sub s 0
+                    val rest = String.suffix s 1
+                in
+                    if ch = delimiter then
+                        rest
+                    else if ch = #"\\" then
+                        if rest <> "" then
+                            skipStringLiteral (String.suffix s 2) delimiter
+                        else
+                            ""
+                    else
+                        skipStringLiteral rest delimiter
+                end
+
+        fun skipOne s brace bracket =
             if s = "" then
                 s
             else
@@ -524,35 +543,31 @@ fun skipOne s =
                     val rest = String.suffix s 1
                 in
                     case ch of
-                        #"\"" => skipOne rest (not dquote) squote brace bracket
-                      | #"'" => skipOne rest dquote (not squote) brace bracket
-                      | #"\\" => if rest <> "" then
-                                     skipOne (String.suffix s 2) dquote squote brace bracket
-                                 else
-                                     ""
-                      | #"{" => skipOne rest dquote squote (brace + 1) bracket
+                        #"\"" => skipOne (skipStringLiteral rest #"\"") brace bracket
+                      | #"'" => skipOne (skipStringLiteral rest #"'") brace bracket
+                      | #"{" => skipOne rest (brace + 1) bracket
                       | #"}" => if brace = 0 then
                                     s
                                 else
-                                    skipOne rest dquote squote (brace - 1) bracket
+                                    skipOne rest (brace - 1) bracket
 
-                      | #"[" => skipOne rest dquote squote brace (bracket + 1)
+                      | #"[" => skipOne rest brace (bracket + 1)
                       | #"]" =>
                         if bracket = 0 then
                             s
                         else
-                            skipOne rest dquote squote brace (bracket - 1)
+                            skipOne rest brace (bracket - 1)
 
                       | #"," =>
-                        if not dquote && not squote && brace = 0 && bracket = 0 then
+                        if brace = 0 && bracket = 0 then
                             s
                         else
-                            skipOne rest dquote squote brace bracket
+                            skipOne rest brace bracket
 
-                      | _ => skipOne rest dquote squote brace bracket
+                      | _ => skipOne rest brace bracket
                 end
     in
-        skipOne s False False 0 0
+        skipOne s 0 0
     end
 
 fun firstTen s =
