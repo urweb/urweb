@@ -128,6 +128,8 @@ fun process (file : file) =
               | TFfi ("Basis", "float") => ((EFfiApp ("Basis", "htmlifyFloat", [(e, t)]), loc), st)
               | TFfi ("Basis", "channel") => ((EFfiApp ("Basis", "jsifyChannel", [(e, t)]), loc), st)
               | TFfi ("Basis", "time") => ((EFfiApp ("Basis", "jsifyTime", [(e, t)]), loc), st)
+              | TFfi ("Basis", "clocktime") => ((EFfiApp ("Basis", "jsifyClocktime", [(e, t)]), loc), st)
+              | TFfi ("Basis", "calendardate") => ((EFfiApp ("Basis", "jsifyCalendardate", [(e, t)]), loc), st)
 
               | TFfi ("Basis", "bool") => ((ECase (e,
                                                    [((PCon (Enum, PConFfi {mod = "Basis",

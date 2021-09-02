@@ -277,6 +277,8 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("urlifyInt", "ts"),
                           ("urlifyFloat", "ts"),
                           ("urlifyTime", "ts"),
+                          ("urlifyClocktime", "ts"),
+                          ("urlifyCalendardate", "ts"),
                           ("urlifyString", "uf"),
                           ("urlifyChar", "uf"),
                           ("urlifyBool", "ub"),
@@ -578,6 +580,8 @@ datatype sql_type =
        | Char
        | Bool
        | Time
+       | Clocktime
+       | Calendardate
        | Blob
        | Channel
        | Client
@@ -595,6 +599,8 @@ fun p_sql_ctype t =
           | Char => "uw_Basis_char"
           | Bool => "uw_Basis_bool"
           | Time => "uw_Basis_time"
+          | Clocktime => "uw_Basis_clocktime"
+          | Calendardate => "uw_Basis_calendardate"
           | Blob => "uw_Basis_blob"
           | Channel => "uw_Basis_channel"
           | Client => "uw_Basis_client"

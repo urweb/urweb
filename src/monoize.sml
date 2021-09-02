@@ -1958,6 +1958,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyTime", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "time"), loc))]), loc)), loc),
              fm)
+          | L.EFfi ("Basis", "sql_clocktime") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "clocktime"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyClocktime", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "clocktime"), loc))]), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "sql_calendardate") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "calendardate"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyCalendardate", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "calendardate"), loc))]), loc)), loc),
+             fm)
           | L.EFfi ("Basis", "sql_blob") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "blob"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyBlob", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "blob"), loc))]), loc)), loc),

@@ -2104,6 +2104,22 @@ uw_unit uw_Basis_urlifyTime_w(uw_context ctx, uw_Basis_time t) {
   return uw_Basis_urlifyInt_w(ctx, (uw_Basis_int)t.seconds * 1000000 + t.microseconds);
 }
 
+uw_Basis_string uw_Basis_urlifyClocktime(uw_context ctx, uw_Basis_clocktime t) {
+  return uw_Basis_urlifyInt(ctx, (uw_Basis_int)t.hour * 100 + t.minute);
+}
+
+uw_unit uw_Basis_urlifyClocktime_w(uw_context ctx, uw_Basis_clocktime t) {
+  return uw_Basis_urlifyInt_w(ctx, (uw_Basis_int)t.hour * 100 + t.minute);
+}
+
+uw_Basis_string uw_Basis_urlifyCalendardate(uw_context ctx, uw_Basis_calendardate t) {
+  return uw_Basis_urlifyInt(ctx, (uw_Basis_int)t.year * 10000 + (uw_Basis_int)t.month * 100 + t.day);
+}
+
+uw_unit uw_Basis_urlifyCalendardate_w(uw_context ctx, uw_Basis_calendardate t) {
+  return uw_Basis_urlifyInt_w(ctx, (uw_Basis_int)t.year * 10000 + (uw_Basis_int)t.month * 100 + t.day);
+}
+
 uw_unit uw_Basis_urlifyChar_w(uw_context ctx, uw_Basis_char c) {
   if (c == '\0') {
     uw_check(ctx, 1);
@@ -2213,6 +2229,18 @@ uw_Basis_float uw_Basis_unurlifyFloat(uw_context ctx, char **s) {
 uw_Basis_time uw_Basis_unurlifyTime(uw_context ctx, char **s) {
   uw_Basis_int n = uw_Basis_unurlifyInt(ctx, s);
   uw_Basis_time r = {n / 1000000, n % 1000000};
+  return r;
+}
+
+uw_Basis_clocktime uw_Basis_unurlifyClocktime(uw_context ctx, char **s) {
+  uw_Basis_int n = uw_Basis_unurlifyInt(ctx, s);
+  uw_Basis_clocktime r = {n / 100, n % 100};
+  return r;
+}
+
+uw_Basis_calendardate uw_Basis_unurlifyCalendardate(uw_context ctx, char **s) {
+  uw_Basis_int n = uw_Basis_unurlifyInt(ctx, s);
+  uw_Basis_calendardate r = {n / 10000, (n % 10000) / 100, n % 100};
   return r;
 }
 
@@ -2412,6 +2440,28 @@ char *uw_Basis_jsifyTime(uw_context ctx, uw_Basis_time t) {
   uw_check_heap(ctx, INTS_MAX);
   r = ctx->heap.front;
   sprintf(r, "%lld%n", (uw_Basis_int)t.seconds * 1000000 + t.microseconds, &len);
+  ctx->heap.front += len+1;
+  return r;
+}
+
+char *uw_Basis_jsifyClocktime(uw_context ctx, uw_Basis_clocktime t) {
+  int len;
+  char *r;
+
+  uw_check_heap(ctx, INTS_MAX);
+  r = ctx->heap.front;
+  sprintf(r, "%lld%n", (uw_Basis_int)t.hour * 100 + t.minute, &len);
+  ctx->heap.front += len+1;
+  return r;
+}
+
+char *uw_Basis_jsifyCalendardate(uw_context ctx, uw_Basis_calendardate t) {
+  int len;
+  char *r;
+
+  uw_check_heap(ctx, INTS_MAX);
+  r = ctx->heap.front;
+  sprintf(r, "%lld%n", (uw_Basis_int)t.year * 10000 + (uw_Basis_int)t.month * 100 + t.day, &len);
   ctx->heap.front += len+1;
   return r;
 }
@@ -3077,6 +3127,44 @@ char *uw_Basis_sqlifyTime(uw_context ctx, uw_Basis_time t) {
     return "<Invalid time>";
 }
 
+char *uw_Basis_sqlifyClocktime(uw_context ctx, uw_Basis_clocktime t) {
+  size_t len;
+  char *r, *s;
+
+  if (t.hour < 24 && t.minute < 60) {
+    s = uw_malloc(ctx, CLOCKTIMES_MAX);
+    len = sprintf(s, "%i:%i:00", t.hour, t.minute);
+    if (uw_sql_type_annotations) {
+      r = uw_malloc(ctx, len + 9);
+      sprintf(r, "'%s'::time", s);
+    } else {
+      r = uw_malloc(ctx, len + 3);
+      sprintf(r, "'%s'", s);
+    }
+    return r;
+  } else
+    return "<Invalid clocktime>";
+}
+
+char *uw_Basis_sqlifyCalendardate(uw_context ctx, uw_Basis_calendardate t) {
+  size_t len;
+  char *r, *s;
+
+  if (t.month < 12 && t.day < 32) {
+    s = uw_malloc(ctx, CALENDARDATE_MAX);
+    len = sprintf(s, "%i-%i-%i", t.year, t.month + 1, t.day);
+    if (uw_sql_type_annotations) {
+      r = uw_malloc(ctx, len + 9);
+      sprintf(r, "'%s'::date", s);
+    } else {
+      r = uw_malloc(ctx, len + 3);
+      sprintf(r, "'%s'", s);
+    }
+    return r;
+  } else
+    return "<Invalid calendardate>";
+}
+
 char *uw_Basis_attrifyTime(uw_context ctx, uw_Basis_time t) {
   size_t len;
   char *r;
@@ -3092,6 +3180,9 @@ char *uw_Basis_attrifyTime(uw_context ctx, uw_Basis_time t) {
   } else
     return "<Invalid time>";
 }
+
+// uw_Basis_attrifyClocktime - unnecessary?
+// uw_Basis_attrifyCalendardate - unnecessary?
 
 char *uw_Basis_ensqlTime(uw_context ctx, uw_Basis_time t) {
   size_t len;
@@ -3111,12 +3202,57 @@ char *uw_Basis_ensqlTime(uw_context ctx, uw_Basis_time t) {
     return "<Invalid time>";
 }
 
+char *uw_Basis_ensqlClocktime(uw_context ctx, uw_Basis_clocktime t) {
+  size_t len;
+  char *r;
+
+  if (t.hour < 24 && t.minute < 60) {
+    uw_check_heap(ctx, CLOCKTIMES_MAX);
+    r = ctx->heap.front;
+    len = sprintf(r, "%i:%i:00", t.hour, t.minute);
+    ctx->heap.front += len + 1;
+    return r;
+  } else
+    return "<Invalid clocktime>";
+}
+
+char *uw_Basis_ensqlCalendardate(uw_context ctx, uw_Basis_calendardate t) {
+  size_t len;
+  char *r;
+
+  if (t.month < 12 && t.day < 32) {
+    uw_check_heap(ctx, CLOCKTIMES_MAX);
+    r = ctx->heap.front;
+    len = sprintf(r, "%i-%i-%i", t.year, t.month + 1, t.day);
+    ctx->heap.front += len + 1;
+    return r;
+  } else
+    return "<Invalid calendardate>";
+}
+
 char *uw_Basis_sqlifyTimeN(uw_context ctx, uw_Basis_time *t) {
   if (t == NULL)
     return "NULL";
   else
     return uw_Basis_sqlifyTime(ctx, *t);
 }
+
+// unused?
+char *uw_Basis_sqlifyClocktimeN(uw_context ctx, uw_Basis_clocktime *t) {
+  if (t == NULL)
+    return "NULL";
+  else
+    return uw_Basis_sqlifyClocktime(ctx, *t);
+}
+
+// unused?
+char *uw_Basis_sqlifyCalendardateN(uw_context ctx, uw_Basis_calendardate *t) {
+  if (t == NULL)
+    return "NULL";
+  else
+    return uw_Basis_sqlifyCalendardate(ctx, *t);
+}
+
 
 char *uw_Basis_ensqlBool(uw_Basis_bool b) {
   static uw_Basis_int true = 1;
@@ -3176,6 +3312,34 @@ uw_Basis_string uw_Basis_timef(uw_context ctx, const char *fmt, uw_Basis_time t)
     return r;
   } else
     return "<Invalid time>";
+}
+
+uw_Basis_string uw_Basis_clocktimef(uw_context ctx, const char *fmt, uw_Basis_clocktime t) {
+  size_t len;
+  char *r;
+
+  struct tm stm = {.tm_hour = t.hour, .tm_min = t.minute};
+  stm.tm_isdst = -1;
+
+  uw_check_heap(ctx, CLOCKTIMES_MAX);
+  r = ctx->heap.front;
+  len = strftime(r, CLOCKTIMES_MAX, fmt, &stm);
+  ctx->heap.front += len+1;
+  return r;
+}
+
+uw_Basis_string uw_Basis_calendardatef(uw_context ctx, const char *fmt, uw_Basis_calendardate t) {
+  size_t len;
+  char *r;
+
+  struct tm stm = {.tm_mday = t.day, .tm_mon = t.month, .tm_year = t.year + 1900};
+  stm.tm_isdst = -1;
+
+  uw_check_heap(ctx, CALENDARDATE_MAX);
+  r = ctx->heap.front;
+  len = strftime(r, CALENDARDATE_MAX, fmt, &stm);
+  ctx->heap.front += len+1;
+  return r;
 }
 
 uw_Basis_string uw_Basis_timeToString(uw_context ctx, uw_Basis_time t) {
@@ -3280,6 +3444,42 @@ uw_Basis_time *uw_Basis_stringToTime(uw_context ctx, uw_Basis_string s) {
   }
 }
 
+uw_Basis_clocktime *uw_Basis_stringToClocktime(uw_context ctx, uw_Basis_string s) {
+  char *end = strchr(s, 0);
+  struct tm stm = {};
+  stm.tm_isdst = -1;
+
+  if (strptime(s, "%H:%M:%S", &stm) == end) {
+    uw_Basis_clocktime *r = uw_malloc(ctx, sizeof(uw_Basis_clocktime));
+    r->hour = stm.tm_hour;
+    r->minute = stm.tm_min;
+    return r;
+  } else if (strptime(s, "%H:%M", &stm) == end) {
+    uw_Basis_clocktime *r = uw_malloc(ctx, sizeof(uw_Basis_clocktime));
+    r->hour = stm.tm_hour;
+    r->minute = stm.tm_min;
+    return r;
+  }
+  else
+    return NULL;
+}
+
+uw_Basis_calendardate *uw_Basis_stringToCalendardate(uw_context ctx, uw_Basis_string s) {
+  char *end = strchr(s, 0);
+  struct tm stm = {};
+  stm.tm_isdst = -1;
+
+  if (strptime(s, "%Y:%m:%d", &stm) == end) {
+    uw_Basis_calendardate *r = uw_malloc(ctx, sizeof(uw_Basis_calendardate));
+    r->year = stm.tm_year + 1900;
+    r->month = stm.tm_mon;
+    r->day = stm.tm_mday;
+    return r;
+  }
+  else
+    return NULL;
+}
+
 uw_Basis_time *uw_Basis_stringToTimef(uw_context ctx, const char *fmt, uw_Basis_string s) {
   char *end = strchr(s, 0);
   struct tm stm = {};
@@ -3289,6 +3489,37 @@ uw_Basis_time *uw_Basis_stringToTimef(uw_context ctx, const char *fmt, uw_Basis_
     uw_Basis_time *r = uw_malloc(ctx, sizeof(uw_Basis_time));
     r->seconds = mktime(&stm);
     r->microseconds = 0;
+    return r;
+  }
+  else
+    return NULL;
+}
+
+uw_Basis_clocktime *uw_Basis_stringToClocktimef(uw_context ctx, const char *fmt, uw_Basis_string s) {
+  char *end = strchr(s, 0);
+  struct tm stm = {};
+  stm.tm_isdst = -1;
+
+  if (strptime(s, fmt, &stm) == end) {
+    uw_Basis_clocktime *r = uw_malloc(ctx, sizeof(uw_Basis_clocktime));
+    r->hour = stm.tm_hour;
+    r->minute = stm.tm_min;
+    return r;
+  }
+  else
+    return NULL;
+}
+
+uw_Basis_calendardate *uw_Basis_stringToCalendardatef(uw_context ctx, const char *fmt, uw_Basis_string s) {
+  char *end = strchr(s, 0);
+  struct tm stm = {};
+  stm.tm_isdst = -1;
+
+  if (strptime(s, fmt, &stm) == end) {
+    uw_Basis_calendardate *r = uw_malloc(ctx, sizeof(uw_Basis_calendardate));
+    r->year = stm.tm_year + 1900;
+    r->month = stm.tm_mon;
+    r->day = stm.tm_mday;
     return r;
   }
   else
@@ -3405,6 +3636,22 @@ uw_Basis_time uw_Basis_unsqlTime(uw_context ctx, uw_Basis_string s) {
   }
 }
 
+uw_Basis_clocktime uw_Basis_unsqlClocktime(uw_context ctx, uw_Basis_string s) {
+  uw_Basis_clocktime* ct = uw_Basis_stringToClocktime(ctx, s);
+  if (ct){
+    return *ct;
+  } else
+    uw_error(ctx, FATAL, "Can't parse clocktime: %s", uw_Basis_htmlifyString(ctx, s));
+}
+
+uw_Basis_calendardate uw_Basis_unsqlCalendardate(uw_context ctx, uw_Basis_string s) {
+  uw_Basis_calendardate* d = uw_Basis_stringToCalendardate(ctx, s);
+  if (d){
+    return *d;
+  } else
+    uw_error(ctx, FATAL, "Can't parse calendardate: %s", uw_Basis_htmlifyString(ctx, s));
+}
+
 uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
   char *dot = strchr(s, '.'), *end = strchr(s, 0);
   struct tm stm = {};
@@ -3442,6 +3689,22 @@ uw_Basis_time uw_Basis_stringToTime_error(uw_context ctx, uw_Basis_string s) {
   }
 }
 
+uw_Basis_clocktime uw_Basis_stringToClocktime_error(uw_context ctx, uw_Basis_string s) {
+  uw_Basis_clocktime *ct = uw_Basis_stringToClocktime(ctx, s);
+  if (ct){
+    return *ct;
+  } else
+    uw_error(ctx, FATAL, "Can't parse clocktime: %s", uw_Basis_htmlifyString(ctx, s));
+}
+
+uw_Basis_calendardate uw_Basis_stringToCalendardate_error(uw_context ctx, uw_Basis_string s) {
+  uw_Basis_calendardate *d = uw_Basis_stringToCalendardate(ctx, s);
+  if (d){
+    return *d;
+  } else
+    uw_error(ctx, FATAL, "Can't parse calendardate: %s", uw_Basis_htmlifyString(ctx, s));
+}
+
 uw_Basis_time uw_Basis_stringToTimef_error(uw_context ctx, const char *fmt, uw_Basis_string s) {
   char *end = strchr(s, 0);
   struct tm stm = {};
@@ -3452,6 +3715,21 @@ uw_Basis_time uw_Basis_stringToTimef_error(uw_context ctx, const char *fmt, uw_B
     return r;
   } else
     uw_error(ctx, FATAL, "Can't parse time: %s", uw_Basis_htmlifyString(ctx, s));
+}
+
+uw_Basis_clocktime uw_Basis_stringToClocktimef_error(uw_context ctx, const char *fmt, uw_Basis_string s) {
+  uw_Basis_clocktime *ct = uw_Basis_stringToClocktimef(ctx, fmt, s);
+  if (ct){
+    return *ct;
+  } else
+    uw_error(ctx, FATAL, "Can't parse clocktime: %s", uw_Basis_htmlifyString(ctx, s));
+}
+uw_Basis_calendardate uw_Basis_stringToCalendardatef_error(uw_context ctx, const char *fmt, uw_Basis_string s) {
+  uw_Basis_calendardate *d = uw_Basis_stringToCalendardatef(ctx, fmt, s);
+  if (d){
+    return *d;
+  } else
+    uw_error(ctx, FATAL, "Can't parse calendardate: %s", uw_Basis_htmlifyString(ctx, s));
 }
 
 uw_Basis_blob uw_Basis_stringToBlob_error(uw_context ctx, uw_Basis_string s, size_t len) {
@@ -4547,6 +4825,45 @@ uw_Basis_int uw_Basis_datetimeDayOfWeek(uw_context ctx, uw_Basis_time time) {
   struct tm tm;
   localtime_r(&time.seconds, &tm);
   return tm.tm_wday;
+}
+
+uw_Basis_calendardate uw_Basis_getCurrentCalendardate(uw_context ctx) {
+  (void)ctx;
+  struct tm tm;
+  time_t now = time(NULL);
+  localtime_r(&now, &tm);
+  uw_Basis_calendardate r = { .year = tm.tm_year + 1900, .month = tm.tm_mon, .day = tm.tm_mday};
+  return r;
+}
+
+uw_Basis_int uw_Basis_getYear(uw_context ctx, uw_Basis_calendardate cd) {
+  (void)ctx;
+  return cd.year;
+}
+uw_Basis_int uw_Basis_getMonth(uw_context ctx, uw_Basis_calendardate cd) {
+  (void)ctx;
+  return cd.month;
+}
+uw_Basis_int uw_Basis_getDay(uw_context ctx, uw_Basis_calendardate cd) {
+  (void)ctx;
+  return cd.day;
+}
+
+uw_Basis_clocktime uw_Basis_getCurrentClocktime(uw_context ctx) {
+  (void)ctx;
+  struct tm tm;
+  time_t now = time(NULL);
+  localtime_r(&now, &tm);
+  uw_Basis_clocktime r = { .hour = tm.tm_hour, .minute = tm.tm_min };
+  return r;
+}
+uw_Basis_int uw_Basis_getHour(uw_context ctx, uw_Basis_clocktime t) {
+  (void)ctx;
+  return t.hour;
+}
+uw_Basis_int uw_Basis_getMinute(uw_context ctx, uw_Basis_clocktime t) {
+  (void)ctx;
+  return t.minute;
 }
 
 

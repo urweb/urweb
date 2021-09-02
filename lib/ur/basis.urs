@@ -4,6 +4,8 @@ type string
 type char
 type time
 type blob
+type calendardate
+type clocktime
 
 type unit = {}
 
@@ -200,6 +202,16 @@ val datetimeMinute: time -> int
 val datetimeSecond : time -> int
 val datetimeDayOfWeek : time -> int
 
+(** * Calendardate *)
+val getCurrentCalendardate: transaction calendardate
+val getYear: calendardate -> int
+val getMonth: calendardate -> int
+val getDay: calendardate -> int
+
+(** * Clocktime *)
+val getCurrentClocktime: transaction clocktime
+val getHour: clocktime -> int
+val getMinute: clocktime -> int
 
 (** HTTP operations *)
 
@@ -275,6 +287,8 @@ val sql_float : sql_injectable_prim float
 val sql_string : sql_injectable_prim string
 val sql_char : sql_injectable_prim char
 val sql_time : sql_injectable_prim time
+val sql_calendardate : sql_injectable_prim calendardate
+val sql_clocktime : sql_injectable_prim clocktime
 val sql_blob : sql_injectable_prim blob
 val sql_channel : t ::: Type -> sql_injectable_prim (channel t)
 val sql_client : sql_injectable_prim client
@@ -616,6 +630,8 @@ val sql_maxable_int : sql_maxable int
 val sql_maxable_float : sql_maxable float
 val sql_maxable_string : sql_maxable string
 val sql_maxable_time : sql_maxable time
+val sql_maxable_clocktime : sql_maxable clocktime
+val sql_maxable_calendardate : sql_maxable calendardate
 val sql_maxable_option : t ::: Type -> sql_maxable t -> sql_maxable (option t)
 val sql_max : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt
 val sql_min : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt

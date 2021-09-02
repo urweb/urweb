@@ -42,6 +42,8 @@ fun p_sql_type t =
       | Char => "char"
       | Bool => "bool"
       | Time => "timestamp"
+      | Clocktime => "time"
+      | Calendardate => "date"
       | Blob => "bytea"
       | Channel => "int8"
       | Client => "int4"
@@ -55,6 +57,8 @@ fun p_sql_type_base t =
       | Char => "character"
       | Bool => "boolean"
       | Time => "timestamp without time zone"
+      | Clocktime => "time without time zone"
+      | Calendardate => "date"
       | Blob => "bytea"
       | Channel => "bigint"
       | Client => "integer"
@@ -547,6 +551,8 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
               | Char => box [e, string "[0]"]
               | Bool => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
               | Time => box [string "uw_Basis_unsqlTime(ctx, ", e, string ")"]
+              | Clocktime => box [string "uw_Basis_unsqlClocktime(ctx, ", e, string ")"]
+              | Calendardate => box [string "uw_Basis_unsqlCalendardate(ctx, ", e, string ")"]
               | Blob => box [string "uw_Basis_stringToBlob_error(ctx, ",
                              e,
                              string ", ",
@@ -715,6 +721,8 @@ fun p_ensql t e =
       | Char => box [string "uw_Basis_attrifyChar(ctx, ", e, string ")"]
       | Bool => box [string "(", e, string " ? \"TRUE\" : \"FALSE\")"]
       | Time => box [string "uw_Basis_ensqlTime(ctx, ", e, string ")"]
+      | Clocktime => box [string "uw_Basis_ensqlClocktime(ctx, ", e, string ")"]
+      | Calendardate => box [string "uw_Basis_ensqlCalendardate(ctx, ", e, string ")"]
       | Blob => box [e, string ".data"]
       | Channel => box [string "uw_Basis_attrifyChannel(ctx, ", e, string ")"]
       | Client => box [string "uw_Basis_attrifyClient(ctx, ", e, string ")"]
