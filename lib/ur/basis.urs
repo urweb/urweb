@@ -204,14 +204,25 @@ val datetimeDayOfWeek : time -> int
 
 (** * Calendardate *)
 val getCurrentCalendardate: transaction calendardate
-val getYear: calendardate -> int
-val getMonth: calendardate -> int
-val getDay: calendardate -> int
+val getYearFromCalendardate: calendardate -> int
+val getMonthFromCalendardate: calendardate -> int
+val getDayFromCalendardate: calendardate -> int
+val makeCalendardate:
+    int (* year *)
+    -> int (* month, 0 - 11 *)
+    -> int (* day of month, 1 - 31 *)
+    -> option calendardate
+val addDaysToCalendardate: int -> calendardate -> calendardate
 
 (** * Clocktime *)
 val getCurrentClocktime: transaction clocktime
-val getHour: clocktime -> int
-val getMinute: clocktime -> int
+val getMinuteFromClocktime: clocktime -> int
+val getHourFromClocktime: clocktime -> int
+val makeClocktime:
+    int (* hour, 0 - 23 *)
+    -> int (* minute, 0 - 59 *)
+    -> option clocktime
+val addMinutesToClocktime: int -> clocktime -> clocktime
 
 (** HTTP operations *)
 

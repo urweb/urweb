@@ -4836,17 +4836,118 @@ uw_Basis_calendardate uw_Basis_getCurrentCalendardate(uw_context ctx) {
   return r;
 }
 
-uw_Basis_int uw_Basis_getYear(uw_context ctx, uw_Basis_calendardate cd) {
+uw_Basis_int uw_Basis_getYearFromCalendardate(uw_context ctx, uw_Basis_calendardate cd) {
   (void)ctx;
   return cd.year;
 }
-uw_Basis_int uw_Basis_getMonth(uw_context ctx, uw_Basis_calendardate cd) {
+uw_Basis_int uw_Basis_getMonthFromCalendardate(uw_context ctx, uw_Basis_calendardate cd) {
   (void)ctx;
   return cd.month;
 }
-uw_Basis_int uw_Basis_getDay(uw_context ctx, uw_Basis_calendardate cd) {
+uw_Basis_int uw_Basis_getDayFromCalendardate(uw_context ctx, uw_Basis_calendardate cd) {
   (void)ctx;
   return cd.day;
+}
+
+uw_Basis_calendardate *uw_Basis_makeCalendardate(uw_context ctx, uw_Basis_int year, uw_Basis_int month, uw_Basis_int day) {
+  (void)ctx;
+
+  if (month < 0 || month > 11) {
+    return NULL;
+  }
+
+  if (day < 1) {
+    return NULL;
+  }
+
+  // January
+  if (month == 0 && day > 31){
+    return NULL;
+  }
+
+  // February
+  if (month == 1 && year % 4 == 0 && day > 29){
+    return NULL;
+  } else if (month == 1 && day > 28){
+    return NULL;
+  }
+
+  // March
+  if (month == 2 && day > 31){
+    return NULL;
+  }
+
+  // April
+  if (month == 3 && day > 30){
+    return NULL;
+  }
+
+  // May
+  if (month == 4 && day > 31){
+    return NULL;
+  }
+
+  // June
+  if (month == 5 && day > 30){
+    return NULL;
+  }
+
+  // July
+  if (month == 6 && day > 31){
+    return NULL;
+  }
+
+  // August
+  if (month == 7 && day > 31){
+    return NULL;
+  }
+
+  // September
+  if (month == 8 && day > 30){
+    return NULL;
+  }
+
+  // October
+  if (month == 9 && day > 31){
+    return NULL;
+  }
+
+  // November
+  if (month == 10 && day > 30){
+    return NULL;
+  }
+
+  // December
+  if (month == 11 && day > 31){
+    return NULL;
+  }
+
+  uw_Basis_calendardate *cd = uw_malloc(ctx, sizeof(uw_Basis_calendardate));
+
+  cd->year = year;
+  cd->month = month;
+  cd->day = day;
+
+  return cd;
+}
+
+uw_Basis_calendardate uw_Basis_addDaysToCalendardate(uw_context ctx, uw_Basis_int daysToAdd, uw_Basis_calendardate curr){
+  (void)ctx;
+  struct tm tm = {
+    .tm_year = curr.year - 1900,
+    .tm_mon = curr.month,
+    .tm_mday = curr.day + daysToAdd
+  };
+
+  mktime(&tm);
+  
+  uw_Basis_calendardate d = {
+    .year = tm.tm_year + 1900,
+    .month = tm.tm_mon,
+    .day = tm.tm_mday
+  };
+
+  return d;
 }
 
 uw_Basis_clocktime uw_Basis_getCurrentClocktime(uw_context ctx) {
@@ -4857,13 +4958,45 @@ uw_Basis_clocktime uw_Basis_getCurrentClocktime(uw_context ctx) {
   uw_Basis_clocktime r = { .hour = tm.tm_hour, .minute = tm.tm_min };
   return r;
 }
-uw_Basis_int uw_Basis_getHour(uw_context ctx, uw_Basis_clocktime t) {
+uw_Basis_int uw_Basis_getHourFromClocktime(uw_context ctx, uw_Basis_clocktime t) {
   (void)ctx;
   return t.hour;
 }
-uw_Basis_int uw_Basis_getMinute(uw_context ctx, uw_Basis_clocktime t) {
+uw_Basis_int uw_Basis_getMinuteFromClocktime(uw_context ctx, uw_Basis_clocktime t) {
   (void)ctx;
   return t.minute;
+}
+
+uw_Basis_clocktime *uw_Basis_makeClocktime(uw_context ctx, uw_Basis_int hour, uw_Basis_int minute) {
+  (void)ctx;
+
+  if (hour < 0 || hour > 23){
+    return NULL;
+  }
+
+  if (minute < 0 || minute > 59){
+    return NULL;
+  }
+
+  uw_Basis_clocktime *t = uw_malloc(ctx, sizeof(uw_Basis_clocktime));
+
+  t->hour = hour;
+  t->minute = minute;
+
+  return t;
+}
+
+uw_Basis_clocktime uw_Basis_addMinutesToClocktime(uw_context ctx, uw_Basis_int totalMinutesToAdd, uw_Basis_clocktime curr){
+  (void)ctx;
+
+  uw_Basis_int currentMinutes = curr.hour * 60 + curr.minute;
+  uw_Basis_int newMinutes = currentMinutes + totalMinutesToAdd;
+
+  uw_Basis_clocktime t = {
+    .hour = (newMinutes / 60) % 24,
+    .minute = newMinutes % 60
+  };
+  return t;
 }
 
 
