@@ -3469,7 +3469,7 @@ uw_Basis_calendardate *uw_Basis_stringToCalendardate(uw_context ctx, uw_Basis_st
   struct tm stm = {};
   stm.tm_isdst = -1;
 
-  if (strptime(s, "%Y:%m:%d", &stm) == end) {
+  if (strptime(s, "%Y-%m-%d", &stm) == end) {
     uw_Basis_calendardate *r = uw_malloc(ctx, sizeof(uw_Basis_calendardate));
     r->year = stm.tm_year + 1900;
     r->month = stm.tm_mon;
