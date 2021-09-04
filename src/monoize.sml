@@ -2637,6 +2637,168 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "sql_current_timestamp") => (str "CURRENT_TIMESTAMP", fm)
 
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_year"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(YEAR FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_month"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(MONTH FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_day"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(DAY FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_isodayofweek"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(isodow FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_hour"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(HOUR FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_minute"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(MINUTE FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (
@@ -2698,6 +2860,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                        str ")"]), loc)), loc)), loc),
                  fm)
             end
+
           | L.EFfi ("Basis", "sql_similarity") =>
             ((case #supportsSimilar (Settings.currentDbms ()) of
                   NONE => ErrorMsg.errorAt loc "The DBMS you've selected doesn't support SIMILAR."

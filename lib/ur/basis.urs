@@ -663,6 +663,20 @@ val sql_known : t ::: Type -> sql_ufunc t bool
 val sql_lower : sql_ufunc string string
 val sql_upper : sql_ufunc string string
 
+class sql_contains_day
+val sql_contains_day_time : sql_contains_day time
+val sql_contains_day_calendardate : sql_contains_day calendardate
+val sql_extract_year: t ::: Type -> sql_contains_day t -> sql_ufunc t int
+val sql_extract_month: t ::: Type -> sql_contains_day t -> sql_ufunc t int
+val sql_extract_day: t ::: Type -> sql_contains_day t -> sql_ufunc t int
+val sql_extract_isodayofweek: t ::: Type -> sql_contains_day t -> sql_ufunc t int
+
+class sql_contains_time
+val sql_contains_day_time : sql_contains_time time
+val sql_contains_day_clocktime : sql_contains_time clocktime
+val sql_extract_hour: t ::: Type -> sql_contains_time t -> sql_ufunc t int
+val sql_extract_minute: t ::: Type -> sql_contains_time t -> sql_ufunc t int
+
 con sql_bfunc :: Type -> Type -> Type -> Type
 val sql_bfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> dom1 ::: Type -> dom2 ::: Type -> ran ::: Type
