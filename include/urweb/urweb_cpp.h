@@ -5,6 +5,10 @@
 
 #include "types_cpp.h"
 
+#if defined(_WIN32) || defined(__WIN32__) || defined(__WINDOWS__)
+#include "winshim.h"
+#endif
+
 int uw_really_send(int sock, const void *buf, ssize_t len);
 int uw_really_write(int fd, const void *buf, size_t len);
 

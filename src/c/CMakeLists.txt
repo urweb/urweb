@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(urweb_c VERSION 0.0.0 LANGUAGES C)
+project(urweb_c VERSION 0.0.0 LANGUAGES C CXX)
 
 ##################
 # Compiler flags #
@@ -105,16 +105,17 @@ foreach(EXEC_NAME ${targets})
 
     endif ()
 
-    message(STATUS "${EXEC_NAME}Header_Files = ${${EXEC_NAME}Header_Files}")
-    message(STATUS "${EXEC_NAME}Source_Files = ${${EXEC_NAME}Source_Files}")
+    if (WIN32)
+        list(APPEND ${${EXEC_NAME}Header_Files} "winshim.h")
+    endif ()
 
-    #source_group("${EXEC_NAME} Header Files" FILES "${EXEC_NAME}Header_Files")
+    source_group("${EXEC_NAME} Header Files" FILES "${EXEC_NAME}Header_Files")
     source_group("${EXEC_NAME} Source Files" FILES "${EXEC_NAME}Source_Files")
 
     add_executable(
             "${EXEC_NAME}"
-            #"${EXEC_NAME}Header_Files"
-            "${EXEC_NAME}Source_Files"
+            "${${EXEC_NAME}Header_Files}"
+            "${${EXEC_NAME}Source_Files}"
     )
 
     target_link_libraries("${EXEC_NAME}" PUBLIC "${PROJECT_LOWER_NAME}_compiler_flags")
