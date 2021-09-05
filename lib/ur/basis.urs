@@ -672,8 +672,8 @@ val sql_extract_day: t ::: Type -> sql_contains_day t -> sql_ufunc t int
 val sql_extract_isodayofweek: t ::: Type -> sql_contains_day t -> sql_ufunc t int
 
 class sql_contains_time
-val sql_contains_day_time : sql_contains_time time
-val sql_contains_day_clocktime : sql_contains_time clocktime
+val sql_contains_time_time : sql_contains_time time
+val sql_contains_time_clocktime : sql_contains_time clocktime
 val sql_extract_hour: t ::: Type -> sql_contains_time t -> sql_ufunc t int
 val sql_extract_minute: t ::: Type -> sql_contains_time t -> sql_ufunc t int
 

@@ -2450,7 +2450,7 @@ char *uw_Basis_jsifyClocktime(uw_context ctx, uw_Basis_clocktime t) {
 
   uw_check_heap(ctx, INTS_MAX);
   r = ctx->heap.front;
-  sprintf(r, "%lld%n", (uw_Basis_int)t.hour * 100 + t.minute, &len);
+  sprintf(r, "{ hour: %d, minute: %d }%n", t.hour, t.minute, &len);
   ctx->heap.front += len+1;
   return r;
 }
@@ -2461,7 +2461,7 @@ char *uw_Basis_jsifyCalendardate(uw_context ctx, uw_Basis_calendardate t) {
 
   uw_check_heap(ctx, INTS_MAX);
   r = ctx->heap.front;
-  sprintf(r, "%lld%n", (uw_Basis_int)t.year * 10000 + (uw_Basis_int)t.month * 100 + t.day, &len);
+  sprintf(r, "{ year: %d, month: %d, day: %d}%n", t.year, t.month, t.day, &len);
   ctx->heap.front += len+1;
   return r;
 }
