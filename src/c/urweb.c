@@ -5235,6 +5235,41 @@ uw_Basis_bool uw_Basis_le_time(uw_context ctx, uw_Basis_time t1, uw_Basis_time t
   return !!(uw_Basis_eq_time(ctx, t1, t2) || uw_Basis_lt_time(ctx, t1, t2));
 }
 
+uw_Basis_bool uw_Basis_eq_calendardate(uw_context ctx, uw_Basis_calendardate t1, uw_Basis_calendardate t2) {
+  (void)ctx;
+  return !!(t1.year == t2.year && t1.month == t2.month && t1.day == t2.day);
+}
+
+uw_Basis_bool uw_Basis_lt_calendardate(uw_context ctx, uw_Basis_calendardate t1, uw_Basis_calendardate t2) {
+  (void)ctx;
+  return !!(t1.year < t2.year
+            || (t1.year == t2.year && t1.month < t2.month)
+            || (t1.year == t2.year && t1.month == t2.month && t1.day == t2.day)
+            );
+}
+
+uw_Basis_bool uw_Basis_le_calendardate(uw_context ctx, uw_Basis_calendardate t1, uw_Basis_calendardate t2) {
+  return !!(uw_Basis_eq_calendardate(ctx, t1, t2) || uw_Basis_lt_calendardate(ctx, t1, t2));
+}
+
+
+uw_Basis_bool uw_Basis_eq_clocktime(uw_context ctx, uw_Basis_clocktime t1, uw_Basis_clocktime t2) {
+  (void)ctx;
+  return !!(t1.hour == t2.hour && t1.minute == t2.minute);
+}
+
+uw_Basis_bool uw_Basis_lt_clocktime(uw_context ctx, uw_Basis_clocktime t1, uw_Basis_clocktime t2) {
+  (void)ctx;
+  return !!(t1.hour < t2.hour
+            || (t1.hour == t2.hour && t1.minute < t2.minute)
+            );
+}
+
+uw_Basis_bool uw_Basis_le_clocktime(uw_context ctx, uw_Basis_clocktime t1, uw_Basis_clocktime t2) {
+  return !!(uw_Basis_eq_clocktime(ctx, t1, t2) || uw_Basis_lt_clocktime(ctx, t1, t2));
+}
+
+
 uw_Basis_time *uw_Basis_readUtc(uw_context ctx, uw_Basis_string s) {
   struct tm stm = {};
   char *end = strchr(s, 0);

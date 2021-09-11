@@ -406,6 +406,14 @@ uw_Basis_bool uw_Basis_eq_time(struct uw_context *, uw_Basis_time, uw_Basis_time
 uw_Basis_bool uw_Basis_lt_time(struct uw_context *, uw_Basis_time, uw_Basis_time);
 uw_Basis_bool uw_Basis_le_time(struct uw_context *, uw_Basis_time, uw_Basis_time);
 
+uw_Basis_bool uw_Basis_eq_calendardate(struct uw_context *, uw_Basis_calendardate, uw_Basis_calendardate);
+uw_Basis_bool uw_Basis_lt_calendardate(struct uw_context *, uw_Basis_calendardate, uw_Basis_calendardate);
+uw_Basis_bool uw_Basis_le_calendardate(struct uw_context *, uw_Basis_calendardate, uw_Basis_calendardate);
+
+uw_Basis_bool uw_Basis_eq_clocktime(struct uw_context *, uw_Basis_clocktime, uw_Basis_clocktime);
+uw_Basis_bool uw_Basis_lt_clocktime(struct uw_context *, uw_Basis_clocktime, uw_Basis_clocktime);
+uw_Basis_bool uw_Basis_le_clocktime(struct uw_context *, uw_Basis_clocktime, uw_Basis_clocktime);
+
 void uw_buffer_init(size_t max, uw_buffer *, size_t initial);
 void uw_buffer_free(uw_buffer *);
 void uw_buffer_reset(uw_buffer *);

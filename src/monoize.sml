@@ -732,6 +732,24 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                    ((L'.ERel 0, loc), (L'.TFfi ("Basis", "time"), loc))]), loc)), loc)), loc),
              fm)
 
+          | L.EFfi ("Basis", "eq_calendardate") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "calendardate"), loc),
+                       (L'.TFun ((L'.TFfi ("Basis", "calendardate"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                       (L'.EAbs ("y", (L'.TFfi ("Basis", "calendardate"), loc),
+                                 (L'.TFfi ("Basis", "bool"), loc),
+                                 (L'.EFfiApp ("Basis", "eq_calendardate", [((L'.ERel 1, loc), (L'.TFfi ("Basis", "calendardate"), loc)),
+                                                                        ((L'.ERel 0, loc), (L'.TFfi ("Basis", "calendardate"), loc))]), loc)), loc)), loc),
+             fm)
+
+          | L.EFfi ("Basis", "eq_clocktime") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "clocktime"), loc),
+                       (L'.TFun ((L'.TFfi ("Basis", "clocktime"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                       (L'.EAbs ("y", (L'.TFfi ("Basis", "clocktime"), loc),
+                                 (L'.TFfi ("Basis", "bool"), loc),
+                                 (L'.EFfiApp ("Basis", "eq_clocktime", [((L'.ERel 1, loc), (L'.TFfi ("Basis", "clocktime"), loc)),
+                                                                   ((L'.ERel 0, loc), (L'.TFfi ("Basis", "clocktime"), loc))]), loc)), loc)), loc),
+             fm)
+
           | L.ECApp ((L.EFfi ("Basis", "mkEq"), _), t) =>
             let
                 val t = monoType env t
@@ -2636,6 +2654,74 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             end
 
           | L.EFfi ("Basis", "sql_current_timestamp") => (str "CURRENT_TIMESTAMP", fm)
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.ECApp (
+                                                     (L.EFfi ("Basis", "sql_bfunc"), _),
+                                                     _), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_add_days"), _), _),
+                         _), _), _))
+            =>
+              let
+                  val s = (L'.TFfi ("Basis", "string"), loc)
+              in
+                  (* only + int4 is defined by postgres, not int8. *)
+                  (* Adding an interval would work, but always returns a timestamp, regardless of the input type *)
+                  (* Eg: date '01-01-2001' + interval '1 day' * 7::int8 :: timestamp *)
+                  (* Casting urweb's int8's to int4's will not be a problem in the context of adding date/time calculations (I think) *)
+                  ((L'.EAbs ("f", s, (L'.TFun (s, s), loc),
+                             (L'.EAbs ("x", s, s,
+                                       strcat [str "(",
+                                               (L'.ERel 0, loc),
+                                               str " + ",
+                                               (L'.ERel 1, loc),
+                                               str "::int4)"]), loc)), loc),
+                   fm)
+              end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.ECApp (
+                                                     (L.EFfi ("Basis", "sql_bfunc"), _),
+                                                     _), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_add_minutes"), _), _),
+                         _), _), _))
+            =>
+              let
+                  val s = (L'.TFfi ("Basis", "string"), loc)
+              in
+                  ((L'.EAbs ("f", s, (L'.TFun (s, s), loc),
+                             (L'.EAbs ("x", s, s,
+                                       strcat [str "(",
+                                               (L'.ERel 0, loc),
+                                               str " + (interval '1 minute' * ",
+                                               (L'.ERel 1, loc),
+                                               str "))"]), loc)), loc),
+                   fm)
+              end
 
           | L.EApp
                 ((L.ECApp (

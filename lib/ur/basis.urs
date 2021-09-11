@@ -34,6 +34,8 @@ val eq_string : eq string
 val eq_char : eq char
 val eq_bool : eq bool
 val eq_time : eq time
+val eq_calendardate : eq calendardate
+val eq_clocktime : eq clocktime
 val mkEq : t ::: Type -> (t -> t -> bool) -> eq t
 
 class num
@@ -59,6 +61,8 @@ val ord_string : ord string
 val ord_char : ord char
 val ord_bool : ord bool
 val ord_time : ord time
+val ord_calendardate : ord calendardate
+val ord_clocktime : ord clocktime
 val mkOrd : t ::: Type -> {Lt : t -> t -> bool, Le : t -> t -> bool} -> ord t
 
 
@@ -663,6 +667,17 @@ val sql_known : t ::: Type -> sql_ufunc t bool
 val sql_lower : sql_ufunc string string
 val sql_upper : sql_ufunc string string
 
+
+con sql_bfunc :: Type -> Type -> Type -> Type
+val sql_bfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
+                -> dom1 ::: Type -> dom2 ::: Type -> ran ::: Type
+                -> sql_bfunc dom1 dom2 ran
+                -> sql_exp tables agg exps dom1
+                -> sql_exp tables agg exps dom2
+                -> sql_exp tables agg exps ran
+val sql_similarity : sql_bfunc string string float
+(* Only supported by Postgres for now, via the pg_trgm module *)
+
 class sql_contains_day
 val sql_contains_day_time : sql_contains_day time
 val sql_contains_day_calendardate : sql_contains_day calendardate
@@ -674,18 +689,12 @@ val sql_extract_isodayofweek: t ::: Type -> sql_contains_day t -> sql_ufunc t in
 class sql_contains_time
 val sql_contains_time_time : sql_contains_time time
 val sql_contains_time_clocktime : sql_contains_time clocktime
+
 val sql_extract_hour: t ::: Type -> sql_contains_time t -> sql_ufunc t int
 val sql_extract_minute: t ::: Type -> sql_contains_time t -> sql_ufunc t int
 
-con sql_bfunc :: Type -> Type -> Type -> Type
-val sql_bfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
-                -> dom1 ::: Type -> dom2 ::: Type -> ran ::: Type
-                -> sql_bfunc dom1 dom2 ran
-                -> sql_exp tables agg exps dom1
-                -> sql_exp tables agg exps dom2
-                -> sql_exp tables agg exps ran
-val sql_similarity : sql_bfunc string string float
-(* Only supported by Postgres for now, via the pg_trgm module *)
+val sql_add_days : t ::: Type -> sql_contains_day t -> sql_bfunc int t t
+val sql_add_minutes : t ::: Type -> sql_contains_time t -> sql_bfunc int t t
 
 val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                    -> sql_injectable_prim t
