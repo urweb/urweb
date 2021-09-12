@@ -59,6 +59,19 @@ fun mapM [m] (_ : monad m) [a] [b] [c] (f : a -> b -> m c) =
         mapM'
     end
 
+fun app [m] (_ : monad m) [a] [b] (f : a -> b -> m unit) =
+    let
+        fun app' ls1 ls2 =
+            case (ls1, ls2) of
+                ([], []) => return ()
+              | (x1 :: ls1, x2 :: ls2) =>
+                f x1 x2;
+                app' ls1 ls2
+              | _ => error <xml>ListPair.app: Unequal list lengths</xml>
+    in
+        app'
+    end
+
 fun unzip [a] [b] (ls : list (a * b)) : list a * list b =
     let
         fun unzip' ls ls1 ls2 =
