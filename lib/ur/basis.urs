@@ -360,9 +360,13 @@ val check : fs ::: {Type}
 
 (*** Indices *)
 
+class trigrammable
+val trigrammable_string : trigrammable string
+val trigrammable_option_string : trigrammable (option string)
+
 con index_mode :: Type -> Type
 val equality : t ::: Type -> index_mode t
-val trigram : index_mode string (* only in Postgres, for now *)
+val trigram : t ::: Type -> trigrammable t -> index_mode t (* only in Postgres, for now *)
 val skipped : t ::: Type -> index_mode t (* handy for building these descriptions programmatically,
                                           * when not all columns in a row should be indexed *)
 
