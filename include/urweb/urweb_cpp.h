@@ -317,14 +317,16 @@ uw_Basis_int uw_Basis_datetimeSecond(struct uw_context *, uw_Basis_time);
 uw_Basis_int uw_Basis_datetimeDayOfWeek(struct uw_context *, uw_Basis_time);
 extern const uw_Basis_time uw_Basis_minTime;
 
-uw_Basis_calendardate uw_Basis_getCurrentCalendardate(struct uw_context *);
+uw_Basis_calendardate uw_Basis_getCurrentLocalCalendardate(struct uw_context *);
+uw_Basis_calendardate uw_Basis_getCurrentUTCCalendardate(struct uw_context *);
 uw_Basis_int uw_Basis_getYearFromCalendardate(struct uw_context *, uw_Basis_calendardate);
 uw_Basis_int uw_Basis_getMonthFromCalendardate(struct uw_context *, uw_Basis_calendardate);
 uw_Basis_int uw_Basis_getDayFromCalendardate(struct uw_context *, uw_Basis_calendardate);
 uw_Basis_calendardate *uw_Basis_makeCalendardate(struct uw_context *, uw_Basis_int, uw_Basis_int, uw_Basis_int);
 uw_Basis_calendardate uw_Basis_addDaysToCalendardate(struct uw_context *, uw_Basis_int, uw_Basis_calendardate);
 
-uw_Basis_clocktime uw_Basis_getCurrentClocktime(struct uw_context *);
+uw_Basis_clocktime uw_Basis_getCurrentLocalClocktime(struct uw_context *);
+uw_Basis_clocktime uw_Basis_getCurrentUTCClocktime(struct uw_context *);
 uw_Basis_int uw_Basis_getHourFromClocktime(struct uw_context *, uw_Basis_clocktime);
 uw_Basis_int uw_Basis_getMinuteFromClocktime(struct uw_context *, uw_Basis_clocktime);
 uw_Basis_int uw_Basis_getSecondFromClocktime(struct uw_context *, uw_Basis_clocktime);

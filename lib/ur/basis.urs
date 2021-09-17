@@ -207,7 +207,8 @@ val datetimeSecond : time -> int
 val datetimeDayOfWeek : time -> int
 
 (** * Calendardate *)
-val getCurrentCalendardate: transaction calendardate
+val getCurrentLocalCalendardate: transaction calendardate
+val getCurrentUTCCalendardate: transaction calendardate
 val getYearFromCalendardate: calendardate -> int
 val getMonthFromCalendardate: calendardate -> int
 val getDayFromCalendardate: calendardate -> int
@@ -219,7 +220,8 @@ val makeCalendardate:
 val addDaysToCalendardate: int -> calendardate -> calendardate
 
 (** * Clocktime *)
-val getCurrentClocktime: transaction clocktime
+val getCurrentLocalClocktime: transaction clocktime
+val getCurrentUTCClocktime: transaction clocktime
 val getHourFromClocktime: clocktime -> int
 val getMinuteFromClocktime: clocktime -> int
 val getSecondFromClocktime: clocktime -> int

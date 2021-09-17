@@ -4830,11 +4830,19 @@ uw_Basis_int uw_Basis_datetimeDayOfWeek(uw_context ctx, uw_Basis_time time) {
   return tm.tm_wday;
 }
 
-uw_Basis_calendardate uw_Basis_getCurrentCalendardate(uw_context ctx) {
+uw_Basis_calendardate uw_Basis_getCurrentLocalCalendardate(uw_context ctx) {
   (void)ctx;
   struct tm tm;
   time_t now = time(NULL);
   localtime_r(&now, &tm);
+  uw_Basis_calendardate r = { .year = tm.tm_year + 1900, .month = tm.tm_mon, .day = tm.tm_mday};
+  return r;
+}
+uw_Basis_calendardate uw_Basis_getCurrentUTCCalendardate(uw_context ctx) {
+  (void)ctx;
+  struct tm tm;
+  time_t now = time(NULL);
+  gmtime_r(&now, &tm);
   uw_Basis_calendardate r = { .year = tm.tm_year + 1900, .month = tm.tm_mon, .day = tm.tm_mday};
   return r;
 }
@@ -4953,11 +4961,19 @@ uw_Basis_calendardate uw_Basis_addDaysToCalendardate(uw_context ctx, uw_Basis_in
   return d;
 }
 
-uw_Basis_clocktime uw_Basis_getCurrentClocktime(uw_context ctx) {
+uw_Basis_clocktime uw_Basis_getCurrentLocalClocktime(uw_context ctx) {
   (void)ctx;
   struct tm tm;
   time_t now = time(NULL);
   localtime_r(&now, &tm);
+  uw_Basis_clocktime r = { .hour = tm.tm_hour, .minute = tm.tm_min, .second = tm.tm_sec };
+  return r;
+}
+uw_Basis_clocktime uw_Basis_getCurrentUTCClocktime(uw_context ctx) {
+  (void)ctx;
+  struct tm tm;
+  time_t now = time(NULL);
+  gmtime_r(&now, &tm);
   uw_Basis_clocktime r = { .hour = tm.tm_hour, .minute = tm.tm_min, .second = tm.tm_sec };
   return r;
 }
