@@ -327,8 +327,9 @@ uw_Basis_calendardate uw_Basis_addDaysToCalendardate(struct uw_context *, uw_Bas
 uw_Basis_clocktime uw_Basis_getCurrentClocktime(struct uw_context *);
 uw_Basis_int uw_Basis_getHourFromClocktime(struct uw_context *, uw_Basis_clocktime);
 uw_Basis_int uw_Basis_getMinuteFromClocktime(struct uw_context *, uw_Basis_clocktime);
-uw_Basis_clocktime *uw_Basis_makeClocktime(struct uw_context *, uw_Basis_int, uw_Basis_int);
-uw_Basis_clocktime uw_Basis_addMinutesToClocktime(struct uw_context *, uw_Basis_int, uw_Basis_clocktime);
+uw_Basis_int uw_Basis_getSecondFromClocktime(struct uw_context *, uw_Basis_clocktime);
+uw_Basis_clocktime *uw_Basis_makeClocktime(struct uw_context *, uw_Basis_int, uw_Basis_int, uw_Basis_int);
+uw_Basis_clocktime uw_Basis_addSecondsToClocktime(struct uw_context *, uw_Basis_int, uw_Basis_clocktime);
 
 int uw_register_transactional(struct uw_context *, void *data, uw_callback commit, uw_callback rollback, uw_callback_with_retry free);
 

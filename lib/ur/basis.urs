@@ -220,13 +220,15 @@ val addDaysToCalendardate: int -> calendardate -> calendardate
 
 (** * Clocktime *)
 val getCurrentClocktime: transaction clocktime
-val getMinuteFromClocktime: clocktime -> int
 val getHourFromClocktime: clocktime -> int
+val getMinuteFromClocktime: clocktime -> int
+val getSecondFromClocktime: clocktime -> int
 val makeClocktime:
     int (* hour, 0 - 23 *)
     -> int (* minute, 0 - 59 *)
+    -> int (* second, 0 - 59 *)
     -> option clocktime
-val addMinutesToClocktime: int -> clocktime -> clocktime
+val addSecondsToClocktime: int -> clocktime -> clocktime
 
 (** HTTP operations *)
 
@@ -692,9 +694,11 @@ val sql_contains_time_clocktime : sql_contains_time clocktime
 
 val sql_extract_hour: t ::: Type -> sql_contains_time t -> sql_ufunc t int
 val sql_extract_minute: t ::: Type -> sql_contains_time t -> sql_ufunc t int
+val sql_extract_second: t ::: Type -> sql_contains_time t -> sql_ufunc t int
 
 val sql_add_days : t ::: Type -> sql_contains_day t -> sql_bfunc int t t
 val sql_add_minutes : t ::: Type -> sql_contains_time t -> sql_bfunc int t t
+val sql_add_seconds : t ::: Type -> sql_contains_time t -> sql_bfunc int t t
 
 val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                    -> sql_injectable_prim t

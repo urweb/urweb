@@ -2105,11 +2105,11 @@ uw_unit uw_Basis_urlifyTime_w(uw_context ctx, uw_Basis_time t) {
 }
 
 uw_Basis_string uw_Basis_urlifyClocktime(uw_context ctx, uw_Basis_clocktime t) {
-  return uw_Basis_urlifyInt(ctx, (uw_Basis_int)t.hour * 100 + t.minute);
+  return uw_Basis_urlifyInt(ctx, (uw_Basis_int)t.hour * 10000 + t.minute * 100 + t.second);
 }
 
 uw_unit uw_Basis_urlifyClocktime_w(uw_context ctx, uw_Basis_clocktime t) {
-  return uw_Basis_urlifyInt_w(ctx, (uw_Basis_int)t.hour * 100 + t.minute);
+  return uw_Basis_urlifyInt_w(ctx, (uw_Basis_int)t.hour * 10000 + t.minute * 100 + t.second);
 }
 
 uw_Basis_string uw_Basis_urlifyCalendardate(uw_context ctx, uw_Basis_calendardate t) {
@@ -2234,7 +2234,7 @@ uw_Basis_time uw_Basis_unurlifyTime(uw_context ctx, char **s) {
 
 uw_Basis_clocktime uw_Basis_unurlifyClocktime(uw_context ctx, char **s) {
   uw_Basis_int n = uw_Basis_unurlifyInt(ctx, s);
-  uw_Basis_clocktime r = {n / 100, n % 100};
+  uw_Basis_clocktime r = {n / 10000, (n % 10000) / 100, n % 100};
   return r;
 }
 
@@ -2450,7 +2450,7 @@ char *uw_Basis_jsifyClocktime(uw_context ctx, uw_Basis_clocktime t) {
 
   uw_check_heap(ctx, INTS_MAX);
   r = ctx->heap.front;
-  sprintf(r, "{ hour: %d, minute: %d }%n", t.hour, t.minute, &len);
+  sprintf(r, "{ hour: %d, minute: %d, second: %d }%n", t.hour, t.minute, t.second, &len);
   ctx->heap.front += len+1;
   return r;
 }
@@ -3131,9 +3131,9 @@ char *uw_Basis_sqlifyClocktime(uw_context ctx, uw_Basis_clocktime t) {
   size_t len;
   char *r, *s;
 
-  if (t.hour < 24 && t.minute < 60) {
+  if (t.hour < 24 && t.minute < 60 && t.second < 60) {
     s = uw_malloc(ctx, CLOCKTIMES_MAX);
-    len = sprintf(s, "%i:%i:00", t.hour, t.minute);
+    len = sprintf(s, "%i:%i:%i", t.hour, t.minute, t.second);
     if (uw_sql_type_annotations) {
       r = uw_malloc(ctx, len + 9);
       sprintf(r, "'%s'::time", s);
@@ -3206,10 +3206,10 @@ char *uw_Basis_ensqlClocktime(uw_context ctx, uw_Basis_clocktime t) {
   size_t len;
   char *r;
 
-  if (t.hour < 24 && t.minute < 60) {
+  if (t.hour < 24 && t.minute < 60 && t.second < 60) {
     uw_check_heap(ctx, CLOCKTIMES_MAX);
     r = ctx->heap.front;
-    len = sprintf(r, "%i:%i:00", t.hour, t.minute);
+    len = sprintf(r, "%i:%i:%i", t.hour, t.minute, t.second);
     ctx->heap.front += len + 1;
     return r;
   } else
@@ -3221,7 +3221,7 @@ char *uw_Basis_ensqlCalendardate(uw_context ctx, uw_Basis_calendardate t) {
   char *r;
 
   if (t.month < 12 && t.day < 32) {
-    uw_check_heap(ctx, CLOCKTIMES_MAX);
+    uw_check_heap(ctx, CALENDARDATE_MAX);
     r = ctx->heap.front;
     len = sprintf(r, "%i-%i-%i", t.year, t.month + 1, t.day);
     ctx->heap.front += len + 1;
@@ -3318,7 +3318,7 @@ uw_Basis_string uw_Basis_clocktimef(uw_context ctx, const char *fmt, uw_Basis_cl
   size_t len;
   char *r;
 
-  struct tm stm = {.tm_hour = t.hour, .tm_min = t.minute};
+  struct tm stm = {.tm_hour = t.hour, .tm_min = t.minute, .tm_sec = t.second};
   stm.tm_isdst = -1;
 
   uw_check_heap(ctx, CLOCKTIMES_MAX);
@@ -3453,11 +3453,13 @@ uw_Basis_clocktime *uw_Basis_stringToClocktime(uw_context ctx, uw_Basis_string s
     uw_Basis_clocktime *r = uw_malloc(ctx, sizeof(uw_Basis_clocktime));
     r->hour = stm.tm_hour;
     r->minute = stm.tm_min;
+    r->second = stm.tm_sec;
     return r;
   } else if (strptime(s, "%H:%M", &stm) == end) {
     uw_Basis_clocktime *r = uw_malloc(ctx, sizeof(uw_Basis_clocktime));
     r->hour = stm.tm_hour;
     r->minute = stm.tm_min;
+    r->second = stm.tm_sec;
     return r;
   }
   else
@@ -3504,6 +3506,7 @@ uw_Basis_clocktime *uw_Basis_stringToClocktimef(uw_context ctx, const char *fmt,
     uw_Basis_clocktime *r = uw_malloc(ctx, sizeof(uw_Basis_clocktime));
     r->hour = stm.tm_hour;
     r->minute = stm.tm_min;
+    r->second = stm.tm_sec;
     return r;
   }
   else
@@ -4955,7 +4958,7 @@ uw_Basis_clocktime uw_Basis_getCurrentClocktime(uw_context ctx) {
   struct tm tm;
   time_t now = time(NULL);
   localtime_r(&now, &tm);
-  uw_Basis_clocktime r = { .hour = tm.tm_hour, .minute = tm.tm_min };
+  uw_Basis_clocktime r = { .hour = tm.tm_hour, .minute = tm.tm_min, .second = tm.tm_sec };
   return r;
 }
 uw_Basis_int uw_Basis_getHourFromClocktime(uw_context ctx, uw_Basis_clocktime t) {
@@ -4966,8 +4969,12 @@ uw_Basis_int uw_Basis_getMinuteFromClocktime(uw_context ctx, uw_Basis_clocktime 
   (void)ctx;
   return t.minute;
 }
+uw_Basis_int uw_Basis_getSecondFromClocktime(uw_context ctx, uw_Basis_clocktime t) {
+  (void)ctx;
+  return t.second;
+}
 
-uw_Basis_clocktime *uw_Basis_makeClocktime(uw_context ctx, uw_Basis_int hour, uw_Basis_int minute) {
+uw_Basis_clocktime *uw_Basis_makeClocktime(uw_context ctx, uw_Basis_int hour, uw_Basis_int minute, uw_Basis_int second) {
   (void)ctx;
 
   if (hour < 0 || hour > 23){
@@ -4978,23 +4985,29 @@ uw_Basis_clocktime *uw_Basis_makeClocktime(uw_context ctx, uw_Basis_int hour, uw
     return NULL;
   }
 
+  if (second < 0 || second > 59){
+    return NULL;
+  }
+
   uw_Basis_clocktime *t = uw_malloc(ctx, sizeof(uw_Basis_clocktime));
 
   t->hour = hour;
   t->minute = minute;
+  t->second = second;
 
   return t;
 }
 
-uw_Basis_clocktime uw_Basis_addMinutesToClocktime(uw_context ctx, uw_Basis_int totalMinutesToAdd, uw_Basis_clocktime curr){
+uw_Basis_clocktime uw_Basis_addSecondsToClocktime(uw_context ctx, uw_Basis_int secondsToAdd, uw_Basis_clocktime curr){
   (void)ctx;
 
-  uw_Basis_int currentMinutes = curr.hour * 60 + curr.minute;
-  uw_Basis_int newMinutes = currentMinutes + totalMinutesToAdd;
+  uw_Basis_int currentSeconds = curr.hour * 60 * 60 + curr.minute * 60 + curr.second;
+  uw_Basis_int newSeconds = currentSeconds + secondsToAdd;
 
   uw_Basis_clocktime t = {
-    .hour = (newMinutes / 60) % 24,
-    .minute = newMinutes % 60
+    .hour = (newSeconds / (60 * 60)) % 24,
+    .minute = (newSeconds / 60) % 60,
+    .second = newSeconds % 60
   };
   return t;
 }
@@ -5255,13 +5268,14 @@ uw_Basis_bool uw_Basis_le_calendardate(uw_context ctx, uw_Basis_calendardate t1,
 
 uw_Basis_bool uw_Basis_eq_clocktime(uw_context ctx, uw_Basis_clocktime t1, uw_Basis_clocktime t2) {
   (void)ctx;
-  return !!(t1.hour == t2.hour && t1.minute == t2.minute);
+  return !!(t1.hour == t2.hour && t1.minute == t2.minute && t1.second == t2.second);
 }
 
 uw_Basis_bool uw_Basis_lt_clocktime(uw_context ctx, uw_Basis_clocktime t1, uw_Basis_clocktime t2) {
   (void)ctx;
   return !!(t1.hour < t2.hour
             || (t1.hour == t2.hour && t1.minute < t2.minute)
+            || (t1.hour == t2.hour && t1.minute == t2.minute && t1.second < t2.second)
             );
 }
 

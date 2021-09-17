@@ -2729,6 +2729,38 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                              (L.ECApp (
                                    (L.ECApp (
                                          (L.ECApp (
+                                               (L.ECApp (
+                                                     (L.EFfi ("Basis", "sql_bfunc"), _),
+                                                     _), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_add_seconds"), _), _),
+                         _), _), _))
+            =>
+              let
+                  val s = (L'.TFfi ("Basis", "string"), loc)
+              in
+                  ((L'.EAbs ("f", s, (L'.TFun (s, s), loc),
+                             (L'.EAbs ("x", s, s,
+                                       strcat [str "(",
+                                               (L'.ERel 0, loc),
+                                               str " + (interval '1 second' * ",
+                                               (L'.ERel 1, loc),
+                                               str "))"]), loc)), loc),
+                   fm)
+              end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
                                                (L.EFfi ("Basis", "sql_ufunc"), _),
                                                _), _),
                                          _), _),
@@ -2880,6 +2912,33 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             in
                 ((L'.EAbs ("s", s, s,
                            strcat [str "EXTRACT(MINUTE FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_second"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(SECOND FROM ",
                                    (L'.ERel 0, loc),
                                    str ")"]), loc),
                  fm)

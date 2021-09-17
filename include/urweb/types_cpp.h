@@ -17,6 +17,7 @@ typedef struct {
 typedef struct {
   int hour; // 0 - 23
   int minute; // 0 - 59
+  int second; // 0 - 59
 } uw_Basis_clocktime;
 typedef struct {
   int year;

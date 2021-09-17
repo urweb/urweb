@@ -412,7 +412,7 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
     end
 
 val fmt = "\"%Y-%m-%d %H:%M:%S\""
-val clocktimefmt = "\"%H:%M:00\""
+val clocktimefmt = "\"%H:%M:%S\""
 val calendardatefmt = "\"%Y-%m-%d\""
 
 fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
