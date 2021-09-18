@@ -2303,12 +2303,13 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "sql_like") =>
             (str "LIKE", fm)
-          | L.EFfi ("Basis", "sql_distance") =>
+          | L.ECApp ((L.EFfi ("Basis", "sql_distance"), _), _) =>
             ((case #supportsSimilar (Settings.currentDbms ()) of
                   NONE => ErrorMsg.errorAt loc "The DBMS you've selected doesn't support <->."
                 | _ => ());
              uses_similar := true;
-             (str "<->", fm))
+             (((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                         str "<->"), loc), fm)))
 
           | L.ECApp (
             (L.ECApp (
@@ -2699,12 +2700,16 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                        str ")"]), loc)), loc)), loc),
                  fm)
             end
-          | L.EFfi ("Basis", "sql_similarity") =>
+          | (L.ECApp (
+                  (L.EFfi ("Basis", "sql_similarity"), _),
+                  _)) =>
             ((case #supportsSimilar (Settings.currentDbms ()) of
                   NONE => ErrorMsg.errorAt loc "The DBMS you've selected doesn't support SIMILAR."
                 | _ => ());
              uses_similar := true;
-             (str "similarity", fm))
+             ((L'.EAbs ("_", (L'.TRecord [], loc), (L'.TFfi ("Basis", "string"), loc),
+                        str "similarity"), loc),
+              fm))
 
           | (L.ECApp (
              (L.ECApp (

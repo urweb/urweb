@@ -595,7 +595,7 @@ val sql_gt : t ::: Type -> sql_binary t t bool
 val sql_ge : t ::: Type -> sql_binary t t bool
 
 val sql_like : sql_binary string string bool
-val sql_distance : sql_binary string string float
+val sql_distance : t ::: Type -> trigrammable t -> sql_binary t t float
 
 val sql_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_exp tables agg exps int
@@ -647,7 +647,7 @@ val sql_bfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_exp tables agg exps dom1
                 -> sql_exp tables agg exps dom2
                 -> sql_exp tables agg exps ran
-val sql_similarity : sql_bfunc string string float
+val sql_similarity : t ::: Type -> trigrammable t -> sql_bfunc t t float
 (* Only supported by Postgres for now, via the pg_trgm module *)
 
 val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
