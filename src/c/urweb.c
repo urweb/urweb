@@ -5273,7 +5273,7 @@ uw_Basis_bool uw_Basis_lt_calendardate(uw_context ctx, uw_Basis_calendardate t1,
   (void)ctx;
   return !!(t1.year < t2.year
             || (t1.year == t2.year && t1.month < t2.month)
-            || (t1.year == t2.year && t1.month == t2.month && t1.day == t2.day)
+            || (t1.year == t2.year && t1.month == t2.month && t1.day < t2.day)
             );
 }
 
