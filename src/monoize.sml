@@ -990,6 +990,34 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        boolBin "lt_time",
                        boolBin "le_time")
             end
+          | L.EFfi ("Basis", "ord_clocktime") =>
+            let
+                fun boolBin s =
+                    (L'.EAbs ("x", (L'.TFfi ("Basis", "clocktime"), loc),
+                              (L'.TFun ((L'.TFfi ("Basis", "clocktime"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                              (L'.EAbs ("y", (L'.TFfi ("Basis", "clocktime"), loc),
+                                        (L'.TFfi ("Basis", "bool"), loc),
+                                        (L'.EFfiApp ("Basis", s, [((L'.ERel 1, loc), (L'.TFfi ("Basis", "clocktime"), loc)),
+                                                                  ((L'.ERel 0, loc), (L'.TFfi ("Basis", "clocktime"), loc))]), loc)), loc)), loc)
+            in
+                ordEx ((L'.TFfi ("Basis", "clocktime"), loc),
+                       boolBin "lt_clocktime",
+                       boolBin "le_clocktime")
+            end
+          | L.EFfi ("Basis", "ord_calendardate") =>
+            let
+                fun boolBin s =
+                    (L'.EAbs ("x", (L'.TFfi ("Basis", "calendardate"), loc),
+                              (L'.TFun ((L'.TFfi ("Basis", "calendardate"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                              (L'.EAbs ("y", (L'.TFfi ("Basis", "calendardate"), loc),
+                                        (L'.TFfi ("Basis", "bool"), loc),
+                                        (L'.EFfiApp ("Basis", s, [((L'.ERel 1, loc), (L'.TFfi ("Basis", "calendardate"), loc)),
+                                                                  ((L'.ERel 0, loc), (L'.TFfi ("Basis", "calendardate"), loc))]), loc)), loc)), loc)
+            in
+                ordEx ((L'.TFfi ("Basis", "calendardate"), loc),
+                       boolBin "lt_calendardate",
+                       boolBin "le_calendardate")
+            end
           | L.ECApp ((L.EFfi ("Basis", "mkOrd"), _), t) =>
             let
                 val t = monoType env t
