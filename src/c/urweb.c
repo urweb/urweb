@@ -2234,13 +2234,21 @@ uw_Basis_time uw_Basis_unurlifyTime(uw_context ctx, char **s) {
 
 uw_Basis_clocktime uw_Basis_unurlifyClocktime(uw_context ctx, char **s) {
   uw_Basis_int n = uw_Basis_unurlifyInt(ctx, s);
-  uw_Basis_clocktime r = {n / 10000, (n % 10000) / 100, n % 100};
+  uw_Basis_clocktime r = {
+    .hour = n / 10000,
+    .minute = (n % 10000) / 100,
+    .second = n % 100
+  };
   return r;
 }
 
 uw_Basis_calendardate uw_Basis_unurlifyCalendardate(uw_context ctx, char **s) {
   uw_Basis_int n = uw_Basis_unurlifyInt(ctx, s);
-  uw_Basis_calendardate r = {n / 10000, (n % 10000) / 100, n % 100};
+  uw_Basis_calendardate r = {
+    .year = n / 10000,
+    .month = (n % 10000) / 100,
+    .day = n % 100
+  };
   return r;
 }
 
