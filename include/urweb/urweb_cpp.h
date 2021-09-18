@@ -187,6 +187,8 @@ uw_Basis_string uw_Basis_sqlifyString(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_sqlifyChar(struct uw_context *, uw_Basis_char);
 uw_Basis_string uw_Basis_sqlifyBool(struct uw_context *, uw_Basis_bool);
 uw_Basis_string uw_Basis_sqlifyTime(struct uw_context *, uw_Basis_time);
+uw_Basis_string uw_Basis_sqlifyClocktime(struct uw_context *, uw_Basis_clocktime);
+uw_Basis_string uw_Basis_sqlifyCalendardate(struct uw_context *, uw_Basis_calendardate);
 uw_Basis_string uw_Basis_sqlifyBlob(struct uw_context *, uw_Basis_blob);
 uw_Basis_string uw_Basis_sqlifyChannel(struct uw_context *, uw_Basis_channel);
 uw_Basis_string uw_Basis_sqlifyClient(struct uw_context *, uw_Basis_client);
@@ -196,6 +198,8 @@ uw_Basis_string uw_Basis_sqlifyFloatN(struct uw_context *, uw_Basis_float*);
 uw_Basis_string uw_Basis_sqlifyStringN(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_sqlifyBoolN(struct uw_context *, uw_Basis_bool*);
 uw_Basis_string uw_Basis_sqlifyTimeN(struct uw_context *, uw_Basis_time*);
+uw_Basis_string uw_Basis_sqlifyClocktimeN(struct uw_context *, uw_Basis_clocktime*);
+uw_Basis_string uw_Basis_sqlifyCalendardateN(struct uw_context *, uw_Basis_calendardate*);
 
 char *uw_Basis_ensqlBool(uw_Basis_bool);
 char *uw_Basis_ensqlTime(struct uw_context * ctx, uw_Basis_time);
