@@ -3119,13 +3119,13 @@ char *uw_Basis_sqlifyTimeN(uw_context ctx, uw_Basis_time *t) {
 }
 
 char *uw_Basis_ensqlBool(uw_Basis_bool b) {
-  static uw_Basis_int true = 1;
-  static uw_Basis_int false = 0;
+  static uw_Basis_int _true = 1;
+  static uw_Basis_int _false = 0;
 
   if (!b)
-    return (char *)&false;
+    return (char *)&_false;
   else
-    return (char *)&true;
+    return (char *)&_true;
 }
 
 uw_Basis_string uw_Basis_intToString(uw_context ctx, uw_Basis_int n) {
@@ -3223,13 +3223,13 @@ uw_Basis_char *uw_Basis_stringToChar(uw_context ctx, uw_Basis_string s) {
 
 uw_Basis_bool *uw_Basis_stringToBool(uw_context ctx, uw_Basis_string s) {
   (void)ctx;
-  static uw_Basis_bool true = uw_Basis_True;
-  static uw_Basis_bool false = uw_Basis_False;
+  static uw_Basis_bool _true = uw_Basis_True;
+  static uw_Basis_bool _false = uw_Basis_False;
 
   if (!strcasecmp (s, "True"))
-    return &true;
+    return &_true;
   else if (!strcasecmp (s, "False"))
-    return &false;
+    return &_false;
   else
     return NULL;
 }
