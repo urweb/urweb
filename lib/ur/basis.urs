@@ -586,6 +586,7 @@ val sql_minus : t ::: Type -> sql_arith t -> sql_binary t t t
 val sql_times : t ::: Type -> sql_arith t -> sql_binary t t t
 val sql_div : t ::: Type -> sql_arith t -> sql_binary t t t
 val sql_mod : sql_binary int int int
+val sql_concat : sql_binary string string string
 
 val sql_eq : t ::: Type -> sql_binary t t bool
 val sql_ne : t ::: Type -> sql_binary t t bool
