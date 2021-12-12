@@ -10,6 +10,9 @@ val mp : a ::: Type -> b ::: Type -> c ::: Type
          -> (a -> b -> c) -> list a -> list b -> list c
 
 val mapM : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type -> c ::: Type
-         -> (a -> b -> m c) -> list a -> list b -> m (list c)
+           -> (a -> b -> m c) -> list a -> list b -> m (list c)
+
+val app : m ::: (Type -> Type) -> monad m -> a ::: Type -> b ::: Type
+          -> (a -> b -> m unit) -> list a -> list b -> m unit
 
 val unzip : a ::: Type -> b ::: Type -> list (a * b) -> list a * list b

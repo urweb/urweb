@@ -393,9 +393,13 @@ val check : fs ::: {Type}
 
 (*** Indices *)
 
+class trigrammable
+val trigrammable_string : trigrammable string
+val trigrammable_option_string : trigrammable (option string)
+
 con index_mode :: Type -> Type
 val equality : t ::: Type -> index_mode t
-val trigram : index_mode string (* only in Postgres, for now *)
+val trigram : t ::: Type -> trigrammable t -> index_mode t (* only in Postgres, for now *)
 val skipped : t ::: Type -> index_mode t (* handy for building these descriptions programmatically,
                                           * when not all columns in a row should be indexed *)
 
@@ -624,7 +628,7 @@ val sql_gt : t ::: Type -> sql_binary t t bool
 val sql_ge : t ::: Type -> sql_binary t t bool
 
 val sql_like : sql_binary string string bool
-val sql_distance : sql_binary string string float
+val sql_distance : t ::: Type -> trigrammable t -> sql_binary t t float
 
 val sql_count : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_exp tables agg exps int
@@ -679,7 +683,7 @@ val sql_bfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_exp tables agg exps dom1
                 -> sql_exp tables agg exps dom2
                 -> sql_exp tables agg exps ran
-val sql_similarity : sql_bfunc string string float
+val sql_similarity : t ::: Type -> trigrammable t -> sql_bfunc t t float
 (* Only supported by Postgres for now, via the pg_trgm module *)
 
 class sql_contains_day

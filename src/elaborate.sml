@@ -1291,7 +1291,14 @@
               else if f c1All then
                   r := L'.Known c1All
               else
-                  err CScope)
+                  let
+                      val c1All' = ElabOps.reduceCon env c1All
+                  in
+                      if f c1All' then
+                          r := L'.Known c1All'
+                      else
+                          err CScope
+                  end)
 
            | (L'.CUnif (nl, _, k1, _, r as ref (L'.Unknown f)), _) =>
              if occursCon r c2All then
