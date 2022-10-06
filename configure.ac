@@ -1,4 +1,4 @@
-AC_INIT([urweb], [20200209])
+AC_INIT([urweb],[20200209])
 WORKING_VERSION=1
 AC_USE_SYSTEM_EXTENSIONS
 
@@ -8,7 +8,7 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign no-define])
 AC_PROG_CC()
-AC_PROG_LIBTOOL()
+LT_INIT([])
 AC_CONFIG_HEADERS([include/urweb/config.h])
 
 AX_PTHREAD([echo >/dev/null], [echo "Your C compiler does not support POSIX threads."; exit 1])
@@ -134,7 +134,7 @@ AC_CONFIG_FILES([
         src/config.sml
 ])
 
-AC_OUTPUT()
+AC_OUTPUT
 
 cat <<EOF
 
