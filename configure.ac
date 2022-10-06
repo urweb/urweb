@@ -16,6 +16,8 @@ AX_TLS([echo >/dev/null], [echo "Your C compiler does not support thread-local s
 
 AX_CHECK_OPENSSL([echo >/dev/null], [echo "You must install OpenSSL development files."; exit 1])
 
+AX_CHECK_ICU([63.1], [echo >/dev/null], [echo "You must install ICU."; exit 1])
+
 AC_CHECK_PROG(MLTON, mlton, yes, [])
 
 if test [-z $MLTON]; then
@@ -89,16 +91,6 @@ fi
 
 if test [-z $SQHEADER]; then
    SQHEADER=sqlite3.h
-fi
-
-if test [-z $ICU_INCLUDES]; then
-   ICU_INCLUDES=
-fi
-
-CPPFLAGS=$ICU_INCLUDES$CPPFLAGS
-
-if test [-z $ICU_LIBS]; then
-   ICU_LIBS=
 fi
 
 AC_CHECK_HEADERS([unicode/utypes.h],
