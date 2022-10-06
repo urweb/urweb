@@ -1,5 +1,5 @@
 # ===========================================================================
-#     http://www.gnu.org/software/autoconf-archive/ax_check_openssl.html
+#     https://www.gnu.org/software/autoconf-archive/ax_check_openssl.html
 # ===========================================================================
 #
 # SYNOPSIS
@@ -32,14 +32,14 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
-#serial 7
+#serial 11
 
 AU_ALIAS([CHECK_SSL], [AX_CHECK_OPENSSL])
 AC_DEFUN([AX_CHECK_OPENSSL], [
     found=false
-    AC_ARG_WITH(openssl,
-        AS_HELP_STRING([--with-openssl=DIR],
-            [root of the OpenSSL directory]),
+    AC_ARG_WITH([openssl],
+        [AS_HELP_STRING([--with-openssl=DIR],
+            [root of the OpenSSL directory])],
         [
             case "$withval" in
             "" | y | ye | yes | n | no)
@@ -51,7 +51,7 @@ AC_DEFUN([AX_CHECK_OPENSSL], [
         ], [
             # if pkg-config is installed and openssl has installed a .pc file,
             # then use that information and don't search ssldirs
-            AC_PATH_PROG(PKG_CONFIG, pkg-config)
+            AC_CHECK_TOOL([PKG_CONFIG], [pkg-config])
             if test x"$PKG_CONFIG" != x""; then
                 OPENSSL_LDFLAGS=`$PKG_CONFIG openssl --libs-only-L 2>/dev/null`
                 if test $? = 0; then
@@ -75,7 +75,7 @@ AC_DEFUN([AX_CHECK_OPENSSL], [
     if ! $found; then
         OPENSSL_INCLUDES=
         for ssldir in $ssldirs; do
-            AC_MSG_CHECKING([for openssl/ssl.h in $ssldir])
+            AC_MSG_CHECKING([for include/openssl/ssl.h in $ssldir])
             if test -f "$ssldir/include/openssl/ssl.h"; then
                 OPENSSL_INCLUDES="-I$ssldir/include"
                 OPENSSL_LDFLAGS="-L$ssldir/lib"
@@ -105,7 +105,8 @@ AC_DEFUN([AX_CHECK_OPENSSL], [
     LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
     LIBS="$OPENSSL_LIBS $LIBS"
     CPPFLAGS="$OPENSSL_INCLUDES $CPPFLAGS"
-    AC_LINK_IFELSE([AC_LANG_PROGRAM([#include <openssl/ssl.h>], [SSL_new(NULL)])],
+    AC_LINK_IFELSE(
+        [AC_LANG_PROGRAM([#include <openssl/ssl.h>], [SSL_new(NULL)])],
         [
             AC_MSG_RESULT([yes])
             $1
