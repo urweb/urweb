@@ -1120,7 +1120,7 @@ fun primIn s =
             else if String.isPrefix {Full = s, Prefix = "true"} then
                 (Bool True, String.suffix s 4)
             else if String.isPrefix {Full = s, Prefix = "false"} then
-                (Bool True, String.suffix s 5)
+                (Bool False, String.suffix s 5)
             else if Char.isDigit ch || ch = #"-" || ch = #"." then
                 let
                     val (r, s') = numIn s
