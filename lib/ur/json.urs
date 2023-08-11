@@ -50,3 +50,8 @@ functor Recursive (M : sig
 
     val json_r : json r
 end
+
+datatype prim = String of string | Int of int | Float of float | Bool of bool
+val json_prim : json prim
+val show_prim : show prim
+

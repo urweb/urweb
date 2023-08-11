@@ -1093,3 +1093,58 @@ functor Recursive (M : sig
 
     val json_r = {ToJson = rTo, FromJson = rFrom, ToYaml = yTo, FromYaml = yFrom}
 end
+
+datatype prim = String of string | Int of int | Float of float | Bool of bool
+
+fun primOut x =
+    case x of
+        String s => escape s
+      | Int n => show n
+      | Float n => show n
+      | Bool True => "true"
+      | Bool False => "false"
+
+fun primIn s =
+    if s = "" then
+        error <xml>Reading primitive from empty JSON string</xml>
+    else
+        let
+            val ch = String.sub s 0
+        in
+            if ch = #"\"" || ch = #"'" then
+                let
+                    val (r, s') = unescape s
+                in
+                    (String r, s')
+                end
+            else if String.isPrefix {Full = s, Prefix = "true"} then
+                (Bool True, String.suffix s 4)
+            else if String.isPrefix {Full = s, Prefix = "false"} then
+                (Bool True, String.suffix s 5)
+            else if Char.isDigit ch || ch = #"-" || ch = #"." then
+                let
+                    val (r, s') = numIn s
+                in
+                    case read r of
+                        Some n => (Int n, s')
+                      | None =>
+                        case read r of
+                            Some n => (Float n, s')
+                          | None => error <xml>Invalid number in JSON</xml>
+                end
+            else
+                error <xml>Didn't find primitive where expected in JSON</xml>
+        end
+
+val json_prim =
+    {ToJson = primOut,
+     ToYaml = fn _ => primOut,
+     FromJson = primIn,
+     FromYaml = fn _ _ => primIn}
+
+val show_prim = mkShow (fn x =>
+                           case x of
+                               String s => s
+                             | Int n => show n
+                             | Float n => show n
+                             | Bool b => show b)
