@@ -178,6 +178,9 @@ static void *worker(void *data) {
                 sock = 0;
                 break;
               }
+              size_t backbuf = back - buf;
+              size_t bodybuf = body - buf;
+              size_t sbuf = s - buf;
               new_buf = realloc(buf, new_buf_size);
               if(!new_buf) {
                 qfprintf(stderr, "Realloc failed while receiving content\n");
@@ -187,9 +190,9 @@ static void *worker(void *data) {
               }
 
               buf_size = new_buf_size;
-              back = new_buf + (back - buf);
-              body = new_buf + (body - buf);
-              s = new_buf + (s - buf);
+              back = new_buf + backbuf;
+              body = new_buf + bodybuf;
+              s = new_buf + sbuf;
 
               buf = new_buf;
             }
