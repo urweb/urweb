@@ -795,7 +795,7 @@ fun queryCommon {loc, query, cols, doCols} =
                                                                 string ";",
                                                                 newline]
                                           in
-                                              box [string "my_bool is_null",
+                                              box [string "bool is_null",
                                                    string (Int.toString i),
                                                    string ";",
                                                    newline,
@@ -985,7 +985,7 @@ fun queryPrepared {loc, id, query, inputs, cols, doCols, nested} =
                                                     | _ => box []
                                           in
                                               box [case t of
-                                                       Nullable t => box [string "my_bool in_is_null",
+                                                       Nullable t => box [string "bool in_is_null",
                                                                           string (Int.toString i),
                                                                           string ";",
                                                                           newline,
@@ -1309,7 +1309,7 @@ fun dmlPrepared {loc, id, dml, inputs, mode} =
                                                     | _ => box []
                                           in
                                               box [case t of
-                                                       Nullable t => box [string "my_bool in_is_null",
+                                                       Nullable t => box [string "bool in_is_null",
                                                                           string (Int.toString i),
                                                                           string ";",
                                                                           newline,
