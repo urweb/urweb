@@ -4,6 +4,8 @@ type string
 type char
 type time
 type blob
+type calendardate
+type clocktime
 
 type unit = {}
 
@@ -32,6 +34,8 @@ val eq_string : eq string
 val eq_char : eq char
 val eq_bool : eq bool
 val eq_time : eq time
+val eq_calendardate : eq calendardate
+val eq_clocktime : eq clocktime
 val mkEq : t ::: Type -> (t -> t -> bool) -> eq t
 
 class num
@@ -57,6 +61,8 @@ val ord_string : ord string
 val ord_char : ord char
 val ord_bool : ord bool
 val ord_time : ord time
+val ord_calendardate : ord calendardate
+val ord_clocktime : ord clocktime
 val mkOrd : t ::: Type -> {Lt : t -> t -> bool, Le : t -> t -> bool} -> ord t
 
 
@@ -200,6 +206,31 @@ val datetimeMinute: time -> int
 val datetimeSecond : time -> int
 val datetimeDayOfWeek : time -> int
 
+(** * Calendardate *)
+val getCurrentLocalCalendardate: transaction calendardate
+val getCurrentUTCCalendardate: transaction calendardate
+val getYearFromCalendardate: calendardate -> int
+val getMonthFromCalendardate: calendardate -> int
+val getDayFromCalendardate: calendardate -> int
+val makeCalendardate:
+    int (* year *)
+    -> int (* month, 0 - 11 *)
+    -> int (* day of month, 1 - 31 *)
+    -> option calendardate
+val addDaysToCalendardate: int -> calendardate -> calendardate
+
+(** * Clocktime *)
+val getCurrentLocalClocktime: transaction clocktime
+val getCurrentUTCClocktime: transaction clocktime
+val getHourFromClocktime: clocktime -> int
+val getMinuteFromClocktime: clocktime -> int
+val getSecondFromClocktime: clocktime -> int
+val makeClocktime:
+    int (* hour, 0 - 23 *)
+    -> int (* minute, 0 - 59 *)
+    -> int (* second, 0 - 59 *)
+    -> option clocktime
+val addSecondsToClocktime: int -> clocktime -> clocktime
 
 (** HTTP operations *)
 
@@ -275,6 +306,8 @@ val sql_float : sql_injectable_prim float
 val sql_string : sql_injectable_prim string
 val sql_char : sql_injectable_prim char
 val sql_time : sql_injectable_prim time
+val sql_calendardate : sql_injectable_prim calendardate
+val sql_clocktime : sql_injectable_prim clocktime
 val sql_blob : sql_injectable_prim blob
 val sql_channel : t ::: Type -> sql_injectable_prim (channel t)
 val sql_client : sql_injectable_prim client
@@ -620,6 +653,8 @@ val sql_maxable_int : sql_maxable int
 val sql_maxable_float : sql_maxable float
 val sql_maxable_string : sql_maxable string
 val sql_maxable_time : sql_maxable time
+val sql_maxable_clocktime : sql_maxable clocktime
+val sql_maxable_calendardate : sql_maxable calendardate
 val sql_maxable_option : t ::: Type -> sql_maxable t -> sql_maxable (option t)
 val sql_max : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt
 val sql_min : t ::: Type -> nt ::: Type -> sql_maxable t -> nullify t nt -> sql_aggregate t nt
@@ -640,6 +675,7 @@ val sql_known : t ::: Type -> sql_ufunc t bool
 val sql_lower : sql_ufunc string string
 val sql_upper : sql_ufunc string string
 
+
 con sql_bfunc :: Type -> Type -> Type -> Type
 val sql_bfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> dom1 ::: Type -> dom2 ::: Type -> ran ::: Type
@@ -649,6 +685,26 @@ val sql_bfunc : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type}
                 -> sql_exp tables agg exps ran
 val sql_similarity : t ::: Type -> trigrammable t -> sql_bfunc t t float
 (* Only supported by Postgres for now, via the pg_trgm module *)
+
+class sql_contains_day
+val sql_contains_day_time : sql_contains_day time
+val sql_contains_day_calendardate : sql_contains_day calendardate
+val sql_extract_year: t ::: Type -> sql_contains_day t -> sql_ufunc t int
+val sql_extract_month: t ::: Type -> sql_contains_day t -> sql_ufunc t int
+val sql_extract_day: t ::: Type -> sql_contains_day t -> sql_ufunc t int
+val sql_extract_isodayofweek: t ::: Type -> sql_contains_day t -> sql_ufunc t int
+
+class sql_contains_time
+val sql_contains_time_time : sql_contains_time time
+val sql_contains_time_clocktime : sql_contains_time clocktime
+
+val sql_extract_hour: t ::: Type -> sql_contains_time t -> sql_ufunc t int
+val sql_extract_minute: t ::: Type -> sql_contains_time t -> sql_ufunc t int
+val sql_extract_second: t ::: Type -> sql_contains_time t -> sql_ufunc t int
+
+val sql_add_days : t ::: Type -> sql_contains_day t -> sql_bfunc int t t
+val sql_add_minutes : t ::: Type -> sql_contains_time t -> sql_bfunc int t t
+val sql_add_seconds : t ::: Type -> sql_contains_time t -> sql_bfunc int t t
 
 val sql_nullable : tables ::: {{Type}} -> agg ::: {{Type}} -> exps ::: {Type} -> t ::: Type
                    -> sql_injectable_prim t

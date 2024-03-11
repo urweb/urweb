@@ -119,6 +119,8 @@ val clientToServerBase = basis ["int",
                                 "string",
                                 "char",
                                 "time",
+                                "clocktime",
+                                "calendardate",
                                 "file",
                                 "unit",
                                 "option",
@@ -175,6 +177,10 @@ val benignBase = basis ["get_cookie",
                         "debug",
                         "rand",
                         "now",
+                        "getCurrentLocalCalendardate",
+                        "getCurrentLocalClocktime",
+                        "getCurrentUTCCalendardate",
+                        "getCurrentUTCClocktime",
                         "getHeader",
                         "setHeader",
                         "spawn",
@@ -277,6 +283,21 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("urlifyInt", "ts"),
                           ("urlifyFloat", "ts"),
                           ("urlifyTime", "ts"),
+                          ("urlifyClocktime", "urlifyClocktime"),
+                          ("urlifyCalendardate", "urlifyCalendardate"),
+                          ("getCurrentLocalClocktime", "getCurrentLocalClocktime"),
+                          ("getCurrentUTCClocktime", "getCurrentUTCClocktime"),
+                          ("getMinuteFromClocktime", "getMinuteFromClocktime"),
+                          ("getHourFromClocktime", "getHourFromClocktime"),
+                          ("makeClocktime", "makeClocktime"),
+                          ("addSecondsToClocktime", "addSecondsToClocktime"),
+                          ("getCurrentLocalCalendardate", "getCurrentLocalCalendardate"),
+                          ("getCurrentUTCCalendardate", "getCurrentUTCCalendardate"),
+                          ("getYearFromCalendardate", "getYearFromCalendardate"),
+                          ("getMonthFromCalendardate", "getMonthFromCalendardate"),
+                          ("getDayFromCalendardate", "getDayFromCalendardate"),
+                          ("makeCalendardate", "makeCalendardate"),
+                          ("addDaysToCalendardate", "addDaysToCalendardate"),
                           ("urlifyString", "uf"),
                           ("urlifyChar", "uf"),
                           ("urlifyBool", "ub"),
@@ -336,6 +357,14 @@ val jsFuncsBase = basisM [("alert", "alert"),
                           ("eq_time", "eq"),
                           ("lt_time", "lt"),
                           ("le_time", "le"),
+
+                          ("eq_calendardate", "eqCalendardate"),
+                          ("lt_calendardate", "ltCalendardate"),
+                          ("le_calendardate", "leCalendardate"),
+
+                          ("eq_clocktime", "eqClocktime"),
+                          ("lt_clocktime", "ltClocktime"),
+                          ("le_clocktime", "leClocktime"),
 
                           ("debug", "uw_debug"),
                           ("naughtyDebug", "uw_debug"),
@@ -578,6 +607,8 @@ datatype sql_type =
        | Char
        | Bool
        | Time
+       | Clocktime
+       | Calendardate
        | Blob
        | Channel
        | Client
@@ -595,6 +626,8 @@ fun p_sql_ctype t =
           | Char => "uw_Basis_char"
           | Bool => "uw_Basis_bool"
           | Time => "uw_Basis_time"
+          | Clocktime => "uw_Basis_clocktime"
+          | Calendardate => "uw_Basis_calendardate"
           | Blob => "uw_Basis_blob"
           | Channel => "uw_Basis_channel"
           | Client => "uw_Basis_client"

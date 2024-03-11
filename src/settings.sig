@@ -161,6 +161,8 @@ signature SETTINGS = sig
            | Char
            | Bool
            | Time
+           | Clocktime
+           | Calendardate
            | Blob
            | Channel
            | Client

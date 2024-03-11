@@ -15,6 +15,16 @@ typedef struct {
   unsigned microseconds;
 } uw_Basis_time;
 typedef struct {
+  int hour; // 0 - 23
+  int minute; // 0 - 59
+  int second; // 0 - 59
+} uw_Basis_clocktime;
+typedef struct {
+  int year;
+  int day; // 1 - 31
+  int month; // 0-11
+} uw_Basis_calendardate;
+typedef struct {
   size_t size;
   char *data;
 } uw_Basis_blob;
@@ -62,6 +72,8 @@ typedef enum { SERVED, KEEP_OPEN, FAILED } request_result;
 #define INTS_MAX 50
 #define FLOATS_MAX 100
 #define TIMES_MAX 100
+#define CLOCKTIMES_MAX 100
+#define CALENDARDATE_MAX 100
 
 typedef void (*uw_callback)(void *);
 typedef void (*uw_callback_with_retry)(void *, int will_retry);

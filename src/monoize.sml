@@ -734,6 +734,24 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                                    ((L'.ERel 0, loc), (L'.TFfi ("Basis", "time"), loc))]), loc)), loc)), loc),
              fm)
 
+          | L.EFfi ("Basis", "eq_calendardate") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "calendardate"), loc),
+                       (L'.TFun ((L'.TFfi ("Basis", "calendardate"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                       (L'.EAbs ("y", (L'.TFfi ("Basis", "calendardate"), loc),
+                                 (L'.TFfi ("Basis", "bool"), loc),
+                                 (L'.EFfiApp ("Basis", "eq_calendardate", [((L'.ERel 1, loc), (L'.TFfi ("Basis", "calendardate"), loc)),
+                                                                        ((L'.ERel 0, loc), (L'.TFfi ("Basis", "calendardate"), loc))]), loc)), loc)), loc),
+             fm)
+
+          | L.EFfi ("Basis", "eq_clocktime") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "clocktime"), loc),
+                       (L'.TFun ((L'.TFfi ("Basis", "clocktime"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                       (L'.EAbs ("y", (L'.TFfi ("Basis", "clocktime"), loc),
+                                 (L'.TFfi ("Basis", "bool"), loc),
+                                 (L'.EFfiApp ("Basis", "eq_clocktime", [((L'.ERel 1, loc), (L'.TFfi ("Basis", "clocktime"), loc)),
+                                                                   ((L'.ERel 0, loc), (L'.TFfi ("Basis", "clocktime"), loc))]), loc)), loc)), loc),
+             fm)
+
           | L.ECApp ((L.EFfi ("Basis", "mkEq"), _), t) =>
             let
                 val t = monoType env t
@@ -973,6 +991,34 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                 ordEx ((L'.TFfi ("Basis", "time"), loc),
                        boolBin "lt_time",
                        boolBin "le_time")
+            end
+          | L.EFfi ("Basis", "ord_clocktime") =>
+            let
+                fun boolBin s =
+                    (L'.EAbs ("x", (L'.TFfi ("Basis", "clocktime"), loc),
+                              (L'.TFun ((L'.TFfi ("Basis", "clocktime"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                              (L'.EAbs ("y", (L'.TFfi ("Basis", "clocktime"), loc),
+                                        (L'.TFfi ("Basis", "bool"), loc),
+                                        (L'.EFfiApp ("Basis", s, [((L'.ERel 1, loc), (L'.TFfi ("Basis", "clocktime"), loc)),
+                                                                  ((L'.ERel 0, loc), (L'.TFfi ("Basis", "clocktime"), loc))]), loc)), loc)), loc)
+            in
+                ordEx ((L'.TFfi ("Basis", "clocktime"), loc),
+                       boolBin "lt_clocktime",
+                       boolBin "le_clocktime")
+            end
+          | L.EFfi ("Basis", "ord_calendardate") =>
+            let
+                fun boolBin s =
+                    (L'.EAbs ("x", (L'.TFfi ("Basis", "calendardate"), loc),
+                              (L'.TFun ((L'.TFfi ("Basis", "calendardate"), loc), (L'.TFfi ("Basis", "bool"), loc)), loc),
+                              (L'.EAbs ("y", (L'.TFfi ("Basis", "calendardate"), loc),
+                                        (L'.TFfi ("Basis", "bool"), loc),
+                                        (L'.EFfiApp ("Basis", s, [((L'.ERel 1, loc), (L'.TFfi ("Basis", "calendardate"), loc)),
+                                                                  ((L'.ERel 0, loc), (L'.TFfi ("Basis", "calendardate"), loc))]), loc)), loc)), loc)
+            in
+                ordEx ((L'.TFfi ("Basis", "calendardate"), loc),
+                       boolBin "lt_calendardate",
+                       boolBin "le_calendardate")
             end
           | L.ECApp ((L.EFfi ("Basis", "mkOrd"), _), t) =>
             let
@@ -1960,6 +2006,14 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "time"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyTime", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "time"), loc))]), loc)), loc),
              fm)
+          | L.EFfi ("Basis", "sql_clocktime") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "clocktime"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyClocktime", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "clocktime"), loc))]), loc)), loc),
+             fm)
+          | L.EFfi ("Basis", "sql_calendardate") =>
+            ((L'.EAbs ("x", (L'.TFfi ("Basis", "calendardate"), loc), (L'.TFfi ("Basis", "string"), loc),
+                       (L'.EFfiApp ("Basis", "sqlifyCalendardate", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "calendardate"), loc))]), loc)), loc),
+             fm)
           | L.EFfi ("Basis", "sql_blob") =>
             ((L'.EAbs ("x", (L'.TFfi ("Basis", "blob"), loc), (L'.TFfi ("Basis", "string"), loc),
                        (L'.EFfiApp ("Basis", "sqlifyBlob", [((L'.ERel 0, loc), (L'.TFfi ("Basis", "blob"), loc))]), loc)), loc),
@@ -2001,6 +2055,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                       | L'.TFfi ("Basis", "char") => Settings.Char
                       | L'.TFfi ("Basis", "bool") => Settings.Bool
                       | L'.TFfi ("Basis", "time") => Settings.Time
+                      | L'.TFfi ("Basis", "clocktime") => Settings.Clocktime
+                      | L'.TFfi ("Basis", "calendardate") => Settings.Calendardate
                       | L'.TFfi ("Basis", "blob") => Settings.Blob
                       | L'.TFfi ("Basis", "channel") => Settings.Channel
                       | L'.TFfi ("Basis", "client") => Settings.Client
@@ -2647,6 +2703,295 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
 
           | L.EFfi ("Basis", "sql_current_timestamp") => (str "CURRENT_TIMESTAMP", fm)
 
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.ECApp (
+                                                     (L.EFfi ("Basis", "sql_bfunc"), _),
+                                                     _), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_add_days"), _), _),
+                         _), _), _))
+            =>
+              let
+                  val s = (L'.TFfi ("Basis", "string"), loc)
+              in
+                  (* only + int4 is defined by postgres, not int8. *)
+                  (* Adding an interval would work, but always returns a timestamp, regardless of the input type *)
+                  (* Eg: date '01-01-2001' + interval '1 day' * 7::int8 :: timestamp *)
+                  (* Casting urweb's int8's to int4's will not be a problem in the context of adding date/time calculations (I think) *)
+                  ((L'.EAbs ("f", s, (L'.TFun (s, s), loc),
+                             (L'.EAbs ("x", s, s,
+                                       strcat [str "(",
+                                               (L'.ERel 0, loc),
+                                               str " + ",
+                                               (L'.ERel 1, loc),
+                                               str "::int4)"]), loc)), loc),
+                   fm)
+              end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.ECApp (
+                                                     (L.EFfi ("Basis", "sql_bfunc"), _),
+                                                     _), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_add_minutes"), _), _),
+                         _), _), _))
+            =>
+              let
+                  val s = (L'.TFfi ("Basis", "string"), loc)
+              in
+                  ((L'.EAbs ("f", s, (L'.TFun (s, s), loc),
+                             (L'.EAbs ("x", s, s,
+                                       strcat [str "(",
+                                               (L'.ERel 0, loc),
+                                               str " + (interval '1 minute' * ",
+                                               (L'.ERel 1, loc),
+                                               str "))"]), loc)), loc),
+                   fm)
+              end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.ECApp (
+                                                     (L.EFfi ("Basis", "sql_bfunc"), _),
+                                                     _), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_add_seconds"), _), _),
+                         _), _), _))
+            =>
+              let
+                  val s = (L'.TFfi ("Basis", "string"), loc)
+              in
+                  ((L'.EAbs ("f", s, (L'.TFun (s, s), loc),
+                             (L'.EAbs ("x", s, s,
+                                       strcat [str "(",
+                                               (L'.ERel 0, loc),
+                                               str " + (interval '1 second' * ",
+                                               (L'.ERel 1, loc),
+                                               str "))"]), loc)), loc),
+                   fm)
+              end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_year"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(YEAR FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_month"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(MONTH FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_day"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(DAY FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_isodayofweek"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(isodow FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_hour"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(HOUR FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_minute"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(MINUTE FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
+          | L.EApp
+                ((L.ECApp (
+                       (L.ECApp (
+                             (L.ECApp (
+                                   (L.ECApp (
+                                         (L.ECApp (
+                                               (L.EFfi ("Basis", "sql_ufunc"), _),
+                                               _), _),
+                                         _), _),
+                                   _), _),
+                             _), _),
+                       _), _)
+                , (L.EApp (
+                        (L.ECApp (
+                              (L.EFfi ("Basis", "sql_extract_second"), _), _),
+                         _), _), _))
+            =>
+            let
+                val s = (L'.TFfi ("Basis", "string"), loc)
+            in
+                ((L'.EAbs ("s", s, s,
+                           strcat [str "EXTRACT(SECOND FROM ",
+                                   (L'.ERel 0, loc),
+                                   str ")"]), loc),
+                 fm)
+            end
+
           | L.ECApp (
             (L.ECApp (
              (L.ECApp (
@@ -2708,6 +3053,7 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                                                        str ")"]), loc)), loc)), loc),
                  fm)
             end
+
           | (L.ECApp (
                   (L.EFfi ("Basis", "sql_similarity"), _),
                   _)) =>

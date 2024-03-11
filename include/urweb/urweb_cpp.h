@@ -133,6 +133,8 @@ char *uw_Basis_urlifyFloat(struct uw_context *, uw_Basis_float);
 char *uw_Basis_urlifyString(struct uw_context *, uw_Basis_string);
 char *uw_Basis_urlifyBool(struct uw_context *, uw_Basis_bool);
 char *uw_Basis_urlifyTime(struct uw_context *, uw_Basis_time);
+char *uw_Basis_urlifyClocktime(struct uw_context *, uw_Basis_clocktime);
+char *uw_Basis_urlifyCalendardate(struct uw_context *, uw_Basis_calendardate);
 char *uw_Basis_urlifyChannel(struct uw_context *, uw_Basis_channel);
 char *uw_Basis_urlifySource(struct uw_context *, uw_Basis_source);
 
@@ -142,6 +144,8 @@ uw_unit uw_Basis_urlifyChar_w(struct uw_context *, uw_Basis_char);
 uw_unit uw_Basis_urlifyString_w(struct uw_context *, uw_Basis_string);
 uw_unit uw_Basis_urlifyBool_w(struct uw_context *, uw_Basis_bool);
 uw_unit uw_Basis_urlifyTime_w(struct uw_context *, uw_Basis_time);
+uw_unit uw_Basis_urlifyClocktime_w(struct uw_context *, uw_Basis_clocktime);
+uw_unit uw_Basis_urlifyCalendardate_w(struct uw_context *, uw_Basis_calendardate);
 uw_unit uw_Basis_urlifyChannel_w(struct uw_context *, uw_Basis_channel);
 uw_unit uw_Basis_urlifySource_w(struct uw_context *, uw_Basis_source);
 
@@ -153,6 +157,8 @@ uw_Basis_char uw_Basis_unurlifyChar(struct uw_context *, char **);
 uw_Basis_string uw_Basis_unurlifyString_fromClient(struct uw_context *, char **);
 uw_Basis_bool uw_Basis_unurlifyBool(struct uw_context *, char **);
 uw_Basis_time uw_Basis_unurlifyTime(struct uw_context *, char **);
+uw_Basis_clocktime uw_Basis_unurlifyClocktime(struct uw_context *, char **);
+uw_Basis_calendardate uw_Basis_unurlifyCalendardate(struct uw_context *, char **);
 
 uw_Basis_int uw_Basis_strlen(struct uw_context *, const char *);
 uw_Basis_bool uw_Basis_strlenGe(struct uw_context *, uw_Basis_string, uw_Basis_int);
@@ -181,6 +187,8 @@ uw_Basis_string uw_Basis_sqlifyString(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_sqlifyChar(struct uw_context *, uw_Basis_char);
 uw_Basis_string uw_Basis_sqlifyBool(struct uw_context *, uw_Basis_bool);
 uw_Basis_string uw_Basis_sqlifyTime(struct uw_context *, uw_Basis_time);
+uw_Basis_string uw_Basis_sqlifyClocktime(struct uw_context *, uw_Basis_clocktime);
+uw_Basis_string uw_Basis_sqlifyCalendardate(struct uw_context *, uw_Basis_calendardate);
 uw_Basis_string uw_Basis_sqlifyBlob(struct uw_context *, uw_Basis_blob);
 uw_Basis_string uw_Basis_sqlifyChannel(struct uw_context *, uw_Basis_channel);
 uw_Basis_string uw_Basis_sqlifyClient(struct uw_context *, uw_Basis_client);
@@ -190,14 +198,20 @@ uw_Basis_string uw_Basis_sqlifyFloatN(struct uw_context *, uw_Basis_float*);
 uw_Basis_string uw_Basis_sqlifyStringN(struct uw_context *, uw_Basis_string);
 uw_Basis_string uw_Basis_sqlifyBoolN(struct uw_context *, uw_Basis_bool*);
 uw_Basis_string uw_Basis_sqlifyTimeN(struct uw_context *, uw_Basis_time*);
+uw_Basis_string uw_Basis_sqlifyClocktimeN(struct uw_context *, uw_Basis_clocktime*);
+uw_Basis_string uw_Basis_sqlifyCalendardateN(struct uw_context *, uw_Basis_calendardate*);
 
 char *uw_Basis_ensqlBool(uw_Basis_bool);
 char *uw_Basis_ensqlTime(struct uw_context * ctx, uw_Basis_time);
+char *uw_Basis_ensqlClocktime(struct uw_context * ctx, uw_Basis_clocktime);
+char *uw_Basis_ensqlCalendardate(struct uw_context * ctx, uw_Basis_calendardate);
 
 char *uw_Basis_jsifyString(struct uw_context *, uw_Basis_string);
 char *uw_Basis_jsifyChar(struct uw_context *, uw_Basis_char);
 char *uw_Basis_jsifyChannel(struct uw_context *, uw_Basis_channel);
 char *uw_Basis_jsifyTime(struct uw_context *, uw_Basis_time);
+char *uw_Basis_jsifyClocktime(struct uw_context *, uw_Basis_clocktime);
+char *uw_Basis_jsifyCalendardate(struct uw_context *, uw_Basis_calendardate);
 
 uw_Basis_string uw_Basis_intToString(struct uw_context *, uw_Basis_int);
 uw_Basis_string uw_Basis_floatToString(struct uw_context *, uw_Basis_float);
@@ -210,17 +224,23 @@ uw_Basis_float *uw_Basis_stringToFloat(struct uw_context *, uw_Basis_string);
 uw_Basis_char *uw_Basis_stringToChar(struct uw_context *, uw_Basis_string);
 uw_Basis_bool *uw_Basis_stringToBool(struct uw_context *, uw_Basis_string);
 uw_Basis_time *uw_Basis_stringToTime(struct uw_context *, const char *);
+uw_Basis_clocktime *uw_Basis_stringToClocktime(struct uw_context *, const char *);
+uw_Basis_calendardate *uw_Basis_stringToCalendardate(struct uw_context *, const char *);
 
 uw_Basis_int uw_Basis_stringToInt_error(struct uw_context *, uw_Basis_string);
 uw_Basis_float uw_Basis_stringToFloat_error(struct uw_context *, uw_Basis_string);
 uw_Basis_char uw_Basis_stringToChar_error(struct uw_context *, uw_Basis_string);
 uw_Basis_bool uw_Basis_stringToBool_error(struct uw_context *, uw_Basis_string);
 uw_Basis_time uw_Basis_stringToTime_error(struct uw_context *, const char *);
+uw_Basis_clocktime uw_Basis_stringToClocktime_error(struct uw_context *, const char *);
+uw_Basis_calendardate uw_Basis_stringToCalendardate_error(struct uw_context *, const char *);
 uw_Basis_blob uw_Basis_stringToBlob_error(struct uw_context *, uw_Basis_string, size_t);
 uw_Basis_channel uw_Basis_stringToChannel_error(struct uw_context *, uw_Basis_string);
 uw_Basis_client uw_Basis_stringToClient_error(struct uw_context *, uw_Basis_string);
 
 uw_Basis_time uw_Basis_unsqlTime(struct uw_context *, uw_Basis_string);
+uw_Basis_clocktime uw_Basis_unsqlClocktime(struct uw_context *, uw_Basis_string);
+uw_Basis_calendardate uw_Basis_unsqlCalendardate(struct uw_context *, uw_Basis_string);
 
 uw_Basis_string uw_Basis_requestHeader(struct uw_context *, uw_Basis_string);
 
@@ -301,6 +321,22 @@ uw_Basis_int uw_Basis_datetimeSecond(struct uw_context *, uw_Basis_time);
 uw_Basis_int uw_Basis_datetimeDayOfWeek(struct uw_context *, uw_Basis_time);
 extern const uw_Basis_time uw_Basis_minTime;
 
+uw_Basis_calendardate uw_Basis_getCurrentLocalCalendardate(struct uw_context *);
+uw_Basis_calendardate uw_Basis_getCurrentUTCCalendardate(struct uw_context *);
+uw_Basis_int uw_Basis_getYearFromCalendardate(struct uw_context *, uw_Basis_calendardate);
+uw_Basis_int uw_Basis_getMonthFromCalendardate(struct uw_context *, uw_Basis_calendardate);
+uw_Basis_int uw_Basis_getDayFromCalendardate(struct uw_context *, uw_Basis_calendardate);
+uw_Basis_calendardate *uw_Basis_makeCalendardate(struct uw_context *, uw_Basis_int, uw_Basis_int, uw_Basis_int);
+uw_Basis_calendardate uw_Basis_addDaysToCalendardate(struct uw_context *, uw_Basis_int, uw_Basis_calendardate);
+
+uw_Basis_clocktime uw_Basis_getCurrentLocalClocktime(struct uw_context *);
+uw_Basis_clocktime uw_Basis_getCurrentUTCClocktime(struct uw_context *);
+uw_Basis_int uw_Basis_getHourFromClocktime(struct uw_context *, uw_Basis_clocktime);
+uw_Basis_int uw_Basis_getMinuteFromClocktime(struct uw_context *, uw_Basis_clocktime);
+uw_Basis_int uw_Basis_getSecondFromClocktime(struct uw_context *, uw_Basis_clocktime);
+uw_Basis_clocktime *uw_Basis_makeClocktime(struct uw_context *, uw_Basis_int, uw_Basis_int, uw_Basis_int);
+uw_Basis_clocktime uw_Basis_addSecondsToClocktime(struct uw_context *, uw_Basis_int, uw_Basis_clocktime);
+
 int uw_register_transactional(struct uw_context *, void *data, uw_callback commit, uw_callback rollback, uw_callback_with_retry free);
 
 void uw_check_heap(struct uw_context *, size_t extra);
@@ -364,12 +400,26 @@ extern int uw_time_max, uw_supports_direct_status, uw_min_heap;
 failure_kind uw_runCallback(struct uw_context *, void (*callback)(struct uw_context *));
 
 uw_Basis_string uw_Basis_timef(struct uw_context *, const char *fmt, uw_Basis_time);
+uw_Basis_string uw_Basis_clocktimef(struct uw_context *, const char *fmt, uw_Basis_clocktime);
+uw_Basis_string uw_Basis_calendardatef(struct uw_context *, const char *fmt, uw_Basis_calendardate);
 uw_Basis_time uw_Basis_stringToTimef(struct uw_context *, const char *fmt, uw_Basis_string);
 uw_Basis_time uw_Basis_stringToTimef_error(struct uw_context *, const char *fmt, uw_Basis_string);
+uw_Basis_clocktime uw_Basis_stringToClocktimef(struct uw_context *, const char *fmt, uw_Basis_string);
+uw_Basis_clocktime uw_Basis_stringToClocktimef_error(struct uw_context *, const char *fmt, uw_Basis_string);
+uw_Basis_calendardate uw_Basis_stringToCalendardatef(struct uw_context *, const char *fmt, uw_Basis_string);
+uw_Basis_calendardate uw_Basis_stringToCalendardatef_error(struct uw_context *, const char *fmt, uw_Basis_string);
 
 uw_Basis_bool uw_Basis_eq_time(struct uw_context *, uw_Basis_time, uw_Basis_time);
 uw_Basis_bool uw_Basis_lt_time(struct uw_context *, uw_Basis_time, uw_Basis_time);
 uw_Basis_bool uw_Basis_le_time(struct uw_context *, uw_Basis_time, uw_Basis_time);
+
+uw_Basis_bool uw_Basis_eq_calendardate(struct uw_context *, uw_Basis_calendardate, uw_Basis_calendardate);
+uw_Basis_bool uw_Basis_lt_calendardate(struct uw_context *, uw_Basis_calendardate, uw_Basis_calendardate);
+uw_Basis_bool uw_Basis_le_calendardate(struct uw_context *, uw_Basis_calendardate, uw_Basis_calendardate);
+
+uw_Basis_bool uw_Basis_eq_clocktime(struct uw_context *, uw_Basis_clocktime, uw_Basis_clocktime);
+uw_Basis_bool uw_Basis_lt_clocktime(struct uw_context *, uw_Basis_clocktime, uw_Basis_clocktime);
+uw_Basis_bool uw_Basis_le_clocktime(struct uw_context *, uw_Basis_clocktime, uw_Basis_clocktime);
 
 void uw_buffer_init(size_t max, uw_buffer *, size_t initial);
 void uw_buffer_free(uw_buffer *);

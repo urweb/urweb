@@ -412,6 +412,8 @@ fun p_unsql wontLeakStrings env (tAll as (t, loc)) e eLen =
             box [string "uw_strdup(ctx, ", e, string ")"]
       | TFfi ("Basis", "bool") => box [string "uw_Basis_stringToBool_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "time") => box [string "uw_Basis_stringToTime_error(ctx, ", e, string ")"]
+      | TFfi ("Basis", "clocktime") => box [string "uw_Basis_stringToClocktime_error(ctx, ", e, string ")"]
+      | TFfi ("Basis", "calendar") => box [string "uw_Basis_stringToCalendardate_error(ctx, ", e, string ")"]
       | TFfi ("Basis", "blob") => box [string "uw_Basis_stringToBlob_error(ctx, ",
                                        e,
                                        string ", ",
@@ -499,6 +501,8 @@ fun getPargs (e, _) =
       | EFfiApp ("Basis", "sqlifyString", [(e, _)]) => [(e, String)]
       | EFfiApp ("Basis", "sqlifyBool", [(e, _)]) => [(e, Bool)]
       | EFfiApp ("Basis", "sqlifyTime", [(e, _)]) => [(e, Time)]
+      | EFfiApp ("Basis", "sqlifyClocktime", [(e, _)]) => [(e, Clocktime)]
+      | EFfiApp ("Basis", "sqlifyCalendardate", [(e, _)]) => [(e, Calendardate)]
       | EFfiApp ("Basis", "sqlifyBlob", [(e, _)]) => [(e, Blob)]
       | EFfiApp ("Basis", "sqlifyChannel", [(e, _)]) => [(e, Channel)]
       | EFfiApp ("Basis", "sqlifyClient", [(e, _)]) => [(e, Client)]
@@ -1401,6 +1405,8 @@ fun sql_type_in env (tAll as (t, loc)) =
       | TFfi ("Basis", "char") => Char
       | TFfi ("Basis", "bool") => Bool
       | TFfi ("Basis", "time") => Time
+      | TFfi ("Basis", "clocktime") => Clocktime
+      | TFfi ("Basis", "calendardate") => Calendardate
       | TFfi ("Basis", "blob") => Blob
       | TFfi ("Basis", "channel") => Channel
       | TFfi ("Basis", "client") => Client
@@ -2595,6 +2601,8 @@ fun p_sqltype'' env (tAll as (t, loc)) =
       | TFfi ("Basis", "string") => "text"
       | TFfi ("Basis", "bool") => "bool"
       | TFfi ("Basis", "time") => "timestamp"
+      | TFfi ("Basis", "clocktime") => "time"
+      | TFfi ("Basis", "calendardate") => "date"
       | TFfi ("Basis", "blob") => "bytea"
       | TFfi ("Basis", "channel") => "int8"
       | TFfi ("Basis", "client") => "int4"

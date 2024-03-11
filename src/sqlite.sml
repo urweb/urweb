@@ -39,6 +39,8 @@ fun p_sql_type t =
       | Char => "text"
       | Bool => "integer"
       | Time => "text"
+      | Clocktime => "text"
+      | Calendardate => "text"
       | Blob => "blob"
       | Channel => "integer"
       | Client => "integer"
@@ -410,6 +412,8 @@ fun init {dbstring, prepared = ss, tables, views, sequences} =
     end
 
 val fmt = "\"%Y-%m-%d %H:%M:%S\""
+val clocktimefmt = "\"%H:%M:%S\""
+val calendardatefmt = "\"%Y-%m-%d\""
 
 fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
     let
@@ -429,6 +433,16 @@ fun p_getcol {loc, wontLeakStrings, col = i, typ = t} =
                              string ", (uw_Basis_string)sqlite3_column_text(stmt, ",
                              string (Int.toString i),
                              string "))"]
+              | Clocktime => box [string "uw_Basis_stringToClocktimef_error(ctx, ",
+                                  string clocktimefmt,
+                                  string ", (uw_Basis_string)sqlite3_column_text(stmt, ",
+                                  string (Int.toString i),
+                                  string "))"]
+              | Calendardate => box [string "uw_Basis_stringToCalendardatef_error(ctx, ",
+                                     string calendardatefmt,
+                                     string ", (uw_Basis_string)sqlite3_column_text(stmt, ",
+                                     string (Int.toString i),
+                                     string "))"]
               | Blob => box [string "({",
                              newline,
                              string "char *data = (char *)sqlite3_column_blob(stmt, ",
@@ -609,6 +623,20 @@ fun p_inputs loc =
                                                      string ", ",
                                                      arg,
                                                      string "), -1, SQLITE_TRANSIENT)"]
+                                      | Clocktime => box [string "sqlite3_bind_text(stmt, ",
+                                                          string (Int.toString (i + 1)),
+                                                          string ", uw_Basis_clocktimef(ctx, ",
+                                                          string clocktimefmt,
+                                                          string ", ",
+                                                          arg,
+                                                          string "), -1, SQLITE_TRANSIENT)"]
+                                      | Calendardate => box [string "sqlite3_bind_text(stmt, ",
+                                                             string (Int.toString (i + 1)),
+                                                             string ", uw_Basis_calendardatef(ctx, ",
+                                                             string calendardatefmt,
+                                                             string ", ",
+                                                             arg,
+                                                             string "), -1, SQLITE_TRANSIENT)"]
                                       | Blob => box [string "sqlite3_bind_blob(stmt, ",
                                                      string (Int.toString (i + 1)),
                                                      string ", ",

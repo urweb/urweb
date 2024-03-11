@@ -128,6 +128,8 @@ fun process (file : file) =
               | TFfi ("Basis", "float") => ((EFfiApp ("Basis", "htmlifyFloat", [(e, t)]), loc), st)
               | TFfi ("Basis", "channel") => ((EFfiApp ("Basis", "jsifyChannel", [(e, t)]), loc), st)
               | TFfi ("Basis", "time") => ((EFfiApp ("Basis", "jsifyTime", [(e, t)]), loc), st)
+              | TFfi ("Basis", "clocktime") => ((EFfiApp ("Basis", "jsifyClocktime", [(e, t)]), loc), st)
+              | TFfi ("Basis", "calendardate") => ((EFfiApp ("Basis", "jsifyCalendardate", [(e, t)]), loc), st)
 
               | TFfi ("Basis", "bool") => ((ECase (e,
                                                    [((PCon (Enum, PConFfi {mod = "Basis",
@@ -312,6 +314,8 @@ fun process (file : file) =
               | TFfi ("Basis", "char") => ("uu(t[i++])", st)
               | TFfi ("Basis", "int") => ("parseInt(t[i++])", st)
               | TFfi ("Basis", "time") => ("parseInt(t[i++])", st)
+              | TFfi ("Basis", "clocktime") => ("unurlifyClocktime(t[i++])", st)
+              | TFfi ("Basis", "calendardate") => ("unurlifyCalendardate(t[i++])", st)
               | TFfi ("Basis", "float") => ("parseFloat(t[i++])", st)
               | TFfi ("Basis", "channel") => ("(t[i++].length > 0 ? parseInt(t[i-1]) : null)", st)
 
