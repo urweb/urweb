@@ -1791,7 +1791,7 @@ fun exhaustive (env, t, ps, loc) =
 
                     val (t1, args) = unapp (hnormCon env q1, [])
                     val t1 = hnormCon env t1
-                    fun doSub t = foldl (fn (arg, t) => subConInCon env (0, arg) t) t args
+                    fun doSub t = foldl (fn (arg, t) => (subConInCon env (0, arg) t)) t args
 
                     fun dtype (dtO, names) =
                         let
