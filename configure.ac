@@ -118,6 +118,9 @@ AC_SUBST(SRCLIB)
 AC_SUBST(INCLUDE)
 AC_SUBST(SITELISP)
 AC_SUBST(CCARGS)
+AC_SUBST(MLTON)
+AC_SUBST(MLLEX)
+AC_SUBST(MLYACC)
 AC_SUBST(MLTONARGS)
 AC_SUBST(PGHEADER)
 AC_SUBST(MSHEADER)
@@ -146,6 +149,9 @@ Ur/Web configuration:
   site-lisp directory: SITELISP       $SITELISP
   C compiler:          CC             $CC
   Extra CC args:       CCARGS         $CCARGS
+  MLton program:       MLTON          $MLTON
+  MLLex program:       MLLEX          $MLLEX
+  MLYacc program:      MLYACC         $MLYACC
   Extra MLTON args:    MLTONARGS      $MLTONARGS
   Postgres C header:   PGHEADER       $PGHEADER
   MySQL C header:      MSHEADER       $MSHEADER

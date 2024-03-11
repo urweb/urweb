@@ -5,6 +5,9 @@ SRCLIB    = @SRCLIB@
 INCLUDE   = @INCLUDE@
 SITELISP  = @SITELISP@
 VERSION   = @VERSION@
+MLTON     = @MLTON@
+MLLEX     = @MLLEX@
+MLYACC    = @MLYACC@
 MLTONARGS = @MLTONARGS@
 
 LIB_UR   = $(SRCLIB)/ur
@@ -40,12 +43,10 @@ src/urweb.mlton.grm: src/urweb.grm
 	cp $< $@
 
 src/urweb.mlton.lex.sml: src/urweb.mlton.lex
-	mllex $<
+	$(MLLEX) $<
 
 src/urweb.mlton.grm.sig src/urweb.mlton.grm.sml: src/urweb.mlton.grm
-	mlyacc $<
-
-MLTON = mlton
+	$(MLYACC) $<
 
 #ifdef DEBUG
 #	MLTON += -const 'Exn.keepHistory true'
