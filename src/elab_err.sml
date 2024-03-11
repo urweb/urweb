@@ -321,6 +321,135 @@ fun p_decl env d =
         end
     end
 
+datatype rowdiffresult = MissingLeft of string * con
+                       | MissingRight of string * con
+                       | Mismatch of string * con * con
+
+fun p_diffRows (env: ElabEnv.env) (diffs: rowdiffresult list): PD.pp_desc = 
+    let
+        fun p_fieldMissing (n, con) =
+            box [ PD.string ("Missing field #" ^ n ^ ": "), p_con env con, PD.newline]
+    in
+        p_list_sep PD.newline (fn r => case r of
+                                           MissingLeft (n, con) => p_fieldMissing (n, con)
+                                         | MissingRight (n, con) => p_fieldMissing (n, con)
+                                         | Mismatch (n, c1, c2) => vbox [ vbox [PD.string "Type mismatch in field #", PD.string n, PD.newline]
+                                                                        , vbox [PD.string "Have: ", PD.newline]
+                                                                        , vbox [indent 2, p_con env c1, PD.newline, PD.newline]
+                                                                        , vbox [PD.string "Need: ", PD.newline]
+                                                                        , vbox [indent 2, p_con env c2, PD.newline, PD.newline] ]
+                              ) diffs
+    end
+
+fun diffRows (env: ElabEnv.env) (rows1: (con * con) list) (rows2: (con * con) list): (rowdiffresult list) option =
+    let
+        fun toStrings (rows: (con * con) list) =
+            foldl
+                (fn ((n, c), acc) =>
+                    case acc of
+                        NONE => NONE
+                      | SOME acc => case n of
+                                        (CName n, _) => SOME ((n, c) :: acc)
+                                     | _ => NONE
+                )
+                (SOME [])
+                rows
+        val sort = ListMergeSort.sort (fn ((x, _), (y, _)) => String.compare (x, y) = GREATER)
+        fun compareNext rows1 rows2 acc: rowdiffresult list = 
+            case (rows1, rows2) of
+                ([], []) => acc
+              | (rows1, []) => List.revAppend (acc, (map MissingLeft rows1))
+              | ([], rows2) => List.revAppend (acc, (map MissingRight rows2))
+              | ((n1, c1) :: rest1, (n2, c2) :: rest2) => if n1 = n2
+                                                          then compareNext rest1 rest2 (if ElabOps.consEqSimple env (c1, c2)
+                                                                                        then acc
+                                                                                        else Mismatch (n1, c1, c2) :: acc)
+                                                          else
+                                                              if String.compare (n1, n2) = GREATER
+                                                              then compareNext ((n1, c1) :: rest1) rest2 (MissingRight (n2, c2) :: acc)
+                                                              else compareNext rest1 ((n2, c2) :: rest2) (MissingLeft (n1, c1) :: acc)
+    in
+        case (toStrings rows1, toStrings rows2) of
+            (SOME rows1, SOME rows2) => SOME (compareNext (sort rows1) (sort rows2) [])
+          | _ => NONE
+    end
+
+fun findTableForCunifsError (env: ElabEnv.env) (ds: Elab.decl list) =
+    let
+        fun findSqlTableMismatch a =
+            case a of
+                ECApp
+                    ((EApp
+                          ((ECApp
+                                ((ECApp
+                                      ((ECApp
+                                            ( (EModProj (_, _, "sql_from_table"), _)
+                                            , _ (* free *)
+                                            ),_)
+                                      , expectedTable (* t *)), _)
+                                , actualTable (* fs *)), _)
+                          , _ (* fieldsOf *)), _)
+                    , (CName tableName, _))
+                => (case #1 (ElabOps.reduceCon env actualTable) of
+                        CConcat
+                            ( (actualFields, _)
+                            , (CUnif _, _)) =>
+                        (case #1 (ElabOps.reduceCon env expectedTable) of
+                             CApp
+                                 ((CApp
+                                       (( CModProj (_, _, "sql_table"), _)
+                                       , (expectedFields, _)), _)
+                                 , _ (* {{Unit}} *)) =>
+                             (case (actualFields, expectedFields) of
+                                  (CRecord (_, actRows), CRecord (_, expRows)) =>
+                                  (case diffRows env actRows expRows of
+                                       NONE => NONE
+                                     | SOME res =>
+                                       let
+                                           fun skipMissingRight r =
+                                               case r of
+                                                   (* MissingRight is (in this case) not relevant *)
+                                                   (* The actual table is on the left, but if any are missing on the right *)
+                                                   (* it just means some fields of a table aren't being used, which is fine *)
+                                                   MissingRight _ => false 
+                                                 | MissingLeft _ => true
+                                                 | Mismatch _ => true
+                                           val filtered = List.filter skipMissingRight res 
+                                       in
+                                           if length filtered > 0
+                                           then SOME (tableName, filtered)
+                                           else NONE
+                                       end
+                                  )
+                                | _ => NONE
+                             )
+                           | _ => NONE
+                        )
+                      | _ => NONE)
+              | _ => NONE
+        val foundProblems = List.mapPartial (fn decl => U.Decl.search
+                                                            { kind = fn _ => NONE
+                                                            , sgn_item = fn _ => NONE
+                                                            , sgn = fn _ => NONE
+                                                            , str = fn _ => NONE
+                                                            , decl = fn _ => NONE
+                                                            , exp = findSqlTableMismatch
+                                                            , con = fn _ => NONE
+                                                            }
+                                                            decl
+                                            ) 
+                                            ds
+    in
+        print
+            (p_list
+                  (fn (tablename, rows) =>
+                      box [ vbox [PD.string ("Found problem in table " ^ tablename) , PD.newline]
+                          , p_diffRows env rows
+                          ]
+                      )
+                  foundProblems)
+    end
+
 fun declError env err =
     case err of
         KunifsRemain ds =>
@@ -328,7 +457,9 @@ fun declError env err =
          eprefaces' [("Decl", p_list_sep PD.newline (p_decl env) ds)])
       | CunifsRemain ds =>
         (ErrorMsg.errorAt (lspan ds) "Some constructor unification variables are undetermined in declaration\n(look for them as \"<UNIF:...>\")";
-         eprefaces' [("Decl", p_list_sep PD.newline (p_decl env) ds)])
+         eprefaces' [("Decl", p_list_sep PD.newline (p_decl env) ds)];
+         findTableForCunifsError env ds
+        )
       | Nonpositive d =>
         (ErrorMsg.errorAt (#2 d) "Non-strictly-positive datatype declaration (could allow non-termination)";
          eprefaces' [("Decl", p_decl env d)])

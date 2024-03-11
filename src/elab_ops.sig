@@ -41,6 +41,7 @@ signature ELAB_OPS = sig
 
     val hnormCon : ElabEnv.env -> Elab.con -> Elab.con
     val reduceCon : ElabEnv.env -> Elab.con -> Elab.con
+    val consEqSimple: ElabEnv.env -> (Elab.con * Elab.con) -> bool
 
     val identity : int ref
     val distribute : int ref
