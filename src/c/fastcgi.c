@@ -6,21 +6,31 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <unistd.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <ctype.h>
-
-#include <pthread.h>
 
 #include "urweb.h"
 #include "request.h"
 #include "queue.h"
 
 #include "fastcgi.h"
+
+#if defined(_WIN32) || defined(__WIN32__) || defined(__WINDOWS__)
+#include "winshim.h"
+#include <WS2tcpip.h>
+#include <signal.h>
+#define close closesocket
+#define SIGPIPE 13
+#define SIGUSR1 26
+#else
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <unistd.h>
+
+#include <pthread.h>
+#endif
 
 #define THREAD_LOCAL __thread
 

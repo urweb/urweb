@@ -5,11 +5,16 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <stdarg.h>
 
 #include "urweb.h"
 #include "request.h"
+
+#if defined(_WIN32) || defined(__WIN32__) || defined(__WINDOWS__)
+#include "winshim.h"
+#else
+#include <unistd.h>
+#endif
 
 extern uw_app uw_application;
 

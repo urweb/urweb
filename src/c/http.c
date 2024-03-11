@@ -4,20 +4,57 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <signal.h>
+#include <stdarg.h>
+
+#include "urweb.h"
+#include "request.h"
+#include "queue.h"
+
+#if defined(_WIN32) || defined(__WIN32__) || defined(__WINDOWS__)
+#include "winshim.h"
+#include <WS2tcpip.h>
+#include <signal.h>
+#define strncasecmp _strnicmp
+#define close closesocket
+#define SIGPIPE 13
+
+char *strcasestr(const char *str, const char *pattern) {
+    size_t i;
+
+    if (!*pattern) return (char*)str;
+
+    for (; *str; str++) {
+        if (toupper((unsigned char)*str) == toupper((unsigned char)*pattern))
+            for (i = 1;; i++) {
+                if (!pattern[i])
+                    return (char *) str;
+                else if (toupper((unsigned char) str[i]) != toupper((unsigned char) pattern[i]))
+                    break;
+            }
+    }
+    return NULL;
+}
+
+char * strsep(char **sp, char *sep) {
+    char *p, *s;
+    if (sp == NULL || *sp == NULL || **sp == '\0') return NULL;
+    s = *sp;
+    p = s + strcspn(s, sep);
+    if (*p != '\0') *p++ = '\0';
+    *sp = p;
+    return s;
+}
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <signal.h>
-#include <stdarg.h>
 #include <sys/un.h>
 
 #include <pthread.h>
-
-#include "urweb.h"
-#include "request.h"
-#include "queue.h"
+#endif
 
 extern uw_app uw_application;
 
@@ -362,7 +399,7 @@ int main(int argc, char *argv[]) {
   int recv_timeout_sec = 5;
  
   signal(SIGINT, sigint);
-  signal(SIGPIPE, SIG_IGN); 
+  signal(SIGPIPE, SIG_IGN);
 
   // default if not specified: IPv4 with my IP
   memset(&my_addr, 0, sizeof my_addr);

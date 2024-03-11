@@ -2,9 +2,14 @@
 #define URWEB_TYPES_CPP_H
 
 #include <time.h>
-#include <unistd.h>
 #include <stdint.h>
+
+#if defined(_WIN32) || defined(__WIN32__) || defined(__WINDOWS__)
+typedef uint32_t UChar32;
+#else
+#include <unistd.h>
 #include <unicode/utypes.h>
+#endif
 
 typedef long long uw_Basis_int;
 typedef double uw_Basis_float;
@@ -124,7 +129,10 @@ typedef struct {
 
 // Caching
 
+#if defined(_WIN32) || defined(__WIN32__) || defined(__WINDOWS__)
+#else
 #include <pthread.h>
+#endif
 #include "uthash.h"
 
 typedef struct uw_Sqlcache_Value {
