@@ -112,6 +112,7 @@ datatype cunify_error =
          CKind of kind * kind * E.env * kunify_error
        | COccursCheckFailed of con * con
        | CIncompatible of con * con
+       | CMissingCApp of con (* Missing applied con *) * con (* Wrapped *)
        | CExplicitness of con * con
        | CKindof of kind * con * string
        | CRecordFailure of con * con * (con * con * con * (E.env * cunify_error) option) option
@@ -135,6 +136,13 @@ fun cunifyError env err : unit =
         eprefaces "Incompatible constructors"
                   [("Have", p_con env c1),
                    ("Need", p_con env c2)]
+      | CMissingCApp (c1, c2) =>
+        print
+            (vbox
+                 [ PD.string "Missing a constructor application:", PD.newline
+                 , vbox [indent 2, p_con env c1, PD.newline, PD.newline]
+                 , PD.string "On: ", PD.newline
+                 , vbox [indent 2, p_con env c2, PD.newline, PD.newline]])
       | CExplicitness (c1, c2) =>
         eprefaces "Differing constructor function explicitness"
                   [("Have", p_con env c1),
