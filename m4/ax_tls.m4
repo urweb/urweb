@@ -1,5 +1,5 @@
 # ===========================================================================
-#          http://www.gnu.org/software/autoconf-archive/ax_tls.html
+#          https://www.gnu.org/software/autoconf-archive/ax_tls.html
 # ===========================================================================
 #
 # SYNOPSIS
@@ -9,9 +9,9 @@
 # DESCRIPTION
 #
 #   Provides a test for the compiler support of thread local storage (TLS)
-#   extensions. Defines TLS if it is found. Currently knows about GCC/ICC
-#   and MSVC. I think SunPro uses the same as GCC, and Borland apparently
-#   supports either.
+#   extensions. Defines TLS if it is found. Currently knows about C++11,
+#   GCC/ICC, and MSVC. I think SunPro uses the same as GCC, and Borland
+#   apparently supports either.
 #
 # LICENSE
 #
@@ -29,7 +29,7 @@
 #   Public License for more details.
 #
 #   You should have received a copy of the GNU General Public License along
-#   with this program. If not, see <http://www.gnu.org/licenses/>.
+#   with this program. If not, see <https://www.gnu.org/licenses/>.
 #
 #   As a special exception, the respective Autoconf Macro's copyright owner
 #   gives unlimited permission to copy, distribute and modify the configure
@@ -44,31 +44,28 @@
 #   modified version of the Autoconf Macro, you may extend this special
 #   exception to the GPL to apply to your modified version as well.
 
-#serial 11
+#serial 15
 
 AC_DEFUN([AX_TLS], [
   AC_MSG_CHECKING([for thread local storage (TLS) class])
   AC_CACHE_VAL([ac_cv_tls],
-   [for ax_tls_keyword in __thread '__declspec(thread)' none; do
+   [for ax_tls_keyword in thread_local _Thread_local __thread '__declspec(thread)' none; do
        AS_CASE([$ax_tls_keyword],
           [none], [ac_cv_tls=none ; break],
-          [AC_TRY_COMPILE(
-              [#include <stdlib.h>
-               static void
-               foo(void) {
-               static ] $ax_tls_keyword [ int bar;
-               exit(1);
-               }],
-               [],
-               [ac_cv_tls=$ax_tls_keyword ; break],
-               ac_cv_tls=none
-           )])
-    done
-  ])
+          [AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+              [#include <stdlib.h>],
+              [static  $ax_tls_keyword  int bar;]
+            )],
+            [ac_cv_tls=$ax_tls_keyword ; break],
+            [ac_cv_tls=none]
+          )]
+        )
+    done ]
+  )
   AC_MSG_RESULT([$ac_cv_tls])
 
   AS_IF([test "$ac_cv_tls" != "none"],
-    [AC_DEFINE_UNQUOTED([TLS],[$ac_cv_tls],[If the compiler supports a TLS storage class define it to that here])
-     m4_ifnblank([$1],[$1])],
-    [m4_ifnblank([$2],[$2])])
+    [AC_DEFINE_UNQUOTED([TLS],[$ac_cv_tls],[If the compiler supports a TLS storage class, define it to that here])
+     m4_ifnblank([$1],[$1],[[:]])],
+    [m4_ifnblank([$2],[$2],[[:]])])
 ])
