@@ -170,6 +170,8 @@ uw_Basis_string uw_Basis_ofUnicode(struct uw_context *, uw_Basis_int);
 uw_Basis_int uw_Basis_strlenUtf8(struct uw_context *, const char *);
 uw_Basis_char uw_Basis_strsubUtf8(struct uw_context *, const char *, uw_Basis_int);
 uw_Basis_string uw_Basis_strsuffixUtf8(struct uw_context *, const char *, uw_Basis_int);
+uw_Basis_string uw_Basis_encodeURIComponent(struct uw_context *, const char *);
+uw_Basis_string uw_Basis_decodeURIComponent(struct uw_context *, const char *);
 
 uw_Basis_string uw_strdup(struct uw_context *, const char *);
 uw_Basis_string uw_maybe_strdup(struct uw_context *, const char *);

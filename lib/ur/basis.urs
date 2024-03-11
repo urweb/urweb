@@ -96,6 +96,9 @@ val strcspn : string -> string -> int
 val substring : string -> int -> int -> string
 val str1 : char -> string
 
+val encodeURIComponent : string -> string
+val decodeURIComponent : string -> option string
+
 (* These last three reveal the Unicode encoding,
  * into sequences of 8-bit bytes. *)
 val strlenUtf8 : string -> int
