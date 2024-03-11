@@ -2177,6 +2177,7 @@ sqlexp : TRUE                           (sql_inject (EVar (["Basis"], "True", In
        | sqlexp STAR sqlexp             (sql_binary ("times", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
        | sqlexp DIVIDE sqlexp           (sql_binary ("div", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
        | sqlexp MOD sqlexp              (sql_binary ("mod", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
+       | sqlexp ORELSE sqlexp           (sql_binary ("concat", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
 
        | sqlexp CAND sqlexp             (sql_binary ("and", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))
        | sqlexp OR sqlexp               (sql_binary ("or", sqlexp1, sqlexp2, s (sqlexp1left, sqlexp2right)))

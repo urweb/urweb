@@ -2300,6 +2300,8 @@ fun monoExp (env, st, fm) (all as (e, loc)) =
                        str "/"), loc), fm)
           | L.EFfi ("Basis", "sql_mod") =>
             (str "%", fm)
+          | L.EFfi ("Basis", "sql_concat") =>
+            (str "||", fm)
 
           | L.EFfi ("Basis", "sql_like") =>
             (str "LIKE", fm)
