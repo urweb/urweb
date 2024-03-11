@@ -1,6 +1,6 @@
 { stdenv, lib, fetchFromGitHub, file, openssl, mlton
-, mysql, postgresql, sqlite, gcc
-, automake, autoconf, libtool, icu, nix-gitignore
+, libmysqlclient, postgresql, sqlite, gcc
+, automake, autoconf, libtool, icu
 }:
 
 stdenv.mkDerivation rec {
@@ -20,7 +20,7 @@ stdenv.mkDerivation rec {
   # };
   src = ./.;
 
-  buildInputs = [ openssl mlton mysql.connector-c postgresql sqlite automake autoconf libtool icu.dev openssl.dev];
+  buildInputs = [ openssl mlton libmysqlclient postgresql sqlite automake autoconf libtool icu.dev openssl.dev];
 
   # prePatch = ''
   #   sed -e 's@/usr/bin/file@${file}/bin/file@g' -i configure
@@ -31,13 +31,13 @@ stdenv.mkDerivation rec {
   preConfigure = ''
     ./autogen.sh
     export PGHEADER="${postgresql}/include/libpq-fe.h";
-    export MSHEADER="${mysql.connector-c}/include/mysql/mysql.h";
+    export MSHEADER="${libmysqlclient.dev}/include/mysql/mysql.h";
     export SQHEADER="${sqlite.dev}/include/sqlite3.h";
     export CC="${gcc}/bin/gcc";
     export CCARGS="-I$out/include \
                    -I${icu.dev}/include \
                    -L${openssl.out}/lib \
-                   -L${mysql.connector-c}/lib \
+                   -L${libmysqlclient}/lib \
                    -L${postgresql.lib}/lib \
                    -L${sqlite.out}/lib \
                    -L${icu.out}/lib";
